@@ -14,15 +14,15 @@ const nextConfig: NextConfig = {
   // images: {
   //   remotePatterns: [new URL(`${process.env.NEXT_IMAGE_PUBLIC_URL}`)],
   // },
-  // async redirects() {
-  //   return [
-  //     {
-  //       source: '/',
-  //       destination: `${process.env.NEXT_PUBLIC_DESTINATION}`,
-  //       permanent: true,
-  //     },
-  //   ];
-  // },
+  async redirects() {
+    return [
+      {
+        source: '/',
+        destination: `${process.env.NEXT_PUBLIC_DESTINATION}`,
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

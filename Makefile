@@ -30,10 +30,9 @@ setup-supabase: init-log
 		echo "NEXT_PUBLIC_APP_URL=http://localhost:3000" >> .env; \
 		echo "NEXT_IMAGE_PUBLIC_URL=http://127.0.0.1:54321/storage/**" >> .env; \
 		echo "NEXT_PUBLIC_SUPABASE_URL=$$(grep 'API URL' supabase_output.txt | awk -F': ' '{print $$2}' | tr -d '\r')" >> .env; \
-		echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$$(grep 'Publishable key' supabase_output.txt | awk -F': ' '{print $$2}' | tr -d '\r')" >> .env; \
-		echo "NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY=$$(grep 'Secret key' supabase_output.txt | awk -F': ' '{print $$2}' | tr -d '\r')" >> .env; \
+		echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$$(grep 'Publishable' supabase_output.txt | awk -F': ' '{print $$2}' | tr -d '\r')" >> .env; \
+		echo "NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY=$$(grep 'Secret' supabase_output.txt | awk -F': ' '{print $$2}' | tr -d '\r')" >> .env; \
 		echo "NEXT_PUBLIC_SUPABASE_DB_URL=$$(grep 'Database URL' supabase_output.txt | awk -F': ' '{print $$2}' | tr -d '\r')" >> .env; \
-		echo "NEXT_PUBLIC_SYNCFUSION_KEY=SYNCFUSION_KEY" >> .env; \
 		echo "[$(TIMESTAMP)] .env file created successfully" | tee -a $(LOG_FILE); \
 	else \
 		echo "[$(TIMESTAMP)] Error: Supabase output is empty. Check Supabase CLI or Docker setup." | tee -a $(LOG_FILE); \

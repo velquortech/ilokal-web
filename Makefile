@@ -30,8 +30,8 @@ setup-supabase: init-log
 		echo "NEXT_PUBLIC_APP_URL=http://localhost:3000" >> .env; \
 		echo "NEXT_IMAGE_PUBLIC_URL=http://127.0.0.1:54321/storage/**" >> .env; \
 		echo "NEXT_PUBLIC_SUPABASE_URL=$$(grep 'API URL' supabase_output.txt | awk -F': ' '{print $$2}' | tr -d '\r')" >> .env; \
-		echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$$(grep 'Publishable' supabase_output.txt | awk -F': ' '{print $$2}' | tr -d '\r')" >> .env; \
-		echo "NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY=$$(grep 'Secret' supabase_output.txt | awk -F': ' '{print $$2}' | tr -d '\r')" >> .env; \
+		echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$$(grep 'Publishable' supabase_output.txt | awk -F': ' '{print $$2}' | tr -d '\r')" >> .env; \
+		echo "NEXT_PUBLIC_SUPABASE_SERVICE_SECRET_KEY=$$(grep 'Secret' supabase_output.txt | awk -F': ' '{print $$2}' | tr -d '\r')" >> .env; \
 		echo "NEXT_PUBLIC_SUPABASE_DB_URL=$$(grep 'Database URL' supabase_output.txt | awk -F': ' '{print $$2}' | tr -d '\r')" >> .env; \
 		echo "[$(TIMESTAMP)] .env file created successfully" | tee -a $(LOG_FILE); \
 	else \

@@ -10,7 +10,7 @@ export async function updateSession(request: NextRequest) {
   });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_SECRET_KEY;
 
   if (!url || !key) {
     throw new Error(

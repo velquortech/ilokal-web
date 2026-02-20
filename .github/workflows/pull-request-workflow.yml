@@ -1,0 +1,67 @@
+name: Ilokal Web app github actions based on pull request
+
+run-name: Ilokal Web pull request CI/CD pipeline
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+on: [pull_request]
+
+jobs:
+  Setup:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node-version: [22.x]
+
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      NEXT_IMAGE_PUBLIC_URL: ${{ secrets.NEXT_IMAGE_PUBLIC_URL }}
+
+    steps:
+      - name: Make envfile
+        uses: SpicyPizza/create-envfile@v1
+        with:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_IMAGE_PUBLIC_URL: ${{ secrets.NEXT_IMAGE_PUBLIC_URL }}
+          file_name: .env
+
+      - name: Yarn install
+        uses: actions/checkout@v4
+
+      - name: Node Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'yarn'
+      - run: yarn install
+      - run: yarn run build
+      - run: yarn run lint
+
+  Deploy-preview:
+    runs-on: ${{ matrix.os }}
+    needs: Setup
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+
+    steps:
+      - name: Yarn Install
+        run: yarn install
+      - name: Install Vercel
+        run: yarn global add vercel@latest
+      - uses: actions/checkout@v4
+      - name: Install Vercel CLI
+        run: echo ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Build Project Artifacts
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy Project Artifacts to Vercel
+        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}

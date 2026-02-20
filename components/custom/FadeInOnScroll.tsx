@@ -1,14 +1,14 @@
 'use client'; // This component uses client-side hooks
 
 import { useEffect } from 'react';
-import { motion, useAnimation } from 'framer-motion';
+import { motion, useAnimation, Variants } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 
-const fadeInVariants = {
-  hidden: { opacity: 0, y: 50 }, // Starts 50px down and invisible
+const fadeInVariants: Variants = {
+  hidden: { opacity: 0, y: 50 },
   visible: {
     opacity: 1,
-    y: 0, // Ends at original position and fully visible
+    y: 0,
     transition: {
       duration: 0.6,
       ease: 'easeOut',
@@ -19,8 +19,8 @@ const fadeInVariants = {
 const FadeInOnScroll = ({ children }: { children: React.ReactNode }) => {
   const controls = useAnimation();
   const [ref, inView] = useInView({
-    triggerOnce: true, // Animation only runs once
-    threshold: 0.1, // Triggers when 10% of the item is visible
+    triggerOnce: true,
+    threshold: 0.1,
   });
 
   useEffect(() => {

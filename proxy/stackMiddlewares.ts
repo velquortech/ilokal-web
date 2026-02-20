@@ -1,4 +1,4 @@
-import { MiddlewareFactory } from '@/lib/types/middlewares';
+import { MiddlewareFactory } from '@/lib/types/middleware';
 import { NextProxy, NextResponse } from 'next/server';
 
 export function stackMiddlewares(

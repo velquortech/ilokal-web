@@ -1,0 +1,56 @@
+name: Deploy Supabase Migrations
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  Deploy-migration:
+    runs-on: [ubuntu-latest]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Set database URL based on branch
+        run: |
+          if [ "$GITHUB_REF" == "refs/heads/main" ]; then
+            echo "SUPABASE_DB_URL=${{ secrets.SUPABASE_DB_URL_PRODUCTION }}" >> $GITHUB_ENV
+          else
+            echo "SUPABASE_DB_URL=${{ secrets.SUPABASE_DB_URL_ACCEPTANCE }}" >> $GITHUB_ENV
+          fi
+
+      - name: Apply Supabase migrations
+        run: supabase db push --db-url $SUPABASE_DB_URL
+
+  Production-preview:
+    runs-on: ${{ matrix.os }}
+    needs: Deploy-migration
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+
+    steps:
+      - name: Yarn Install
+        run: yarn install
+      - name: Install Vercel
+        run: yarn global add vercel@latest
+      - uses: actions/checkout@v4
+      - name: Install Vercel CLI
+        run: echo ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Build Project Artifacts
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy Project Artifacts to Vercel
+        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}

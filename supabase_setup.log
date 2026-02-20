@@ -1,20 +1,20 @@
-[2026-02-19 20:44:51] Initializing setup process
-[2026-02-19 20:44:51] Supabase config found, proceeding with setup
-[2026-02-19 20:44:51] Starting Supabase setup...
-[2026-02-19 20:44:51] Docker is running, executing 'yarn supabase start'...
- gateway Skipped - Image is already present locally 
+[2026-02-20 08:23:43] Initializing setup process
+[2026-02-20 08:23:43] Supabase config found, proceeding with setup
+[2026-02-20 08:23:43] Starting Supabase setup...
+[2026-02-20 08:23:43] Docker is running, executing 'yarn supabase start'...
  api Skipped - Image is already present locally 
- edgeRuntime Skipped - Image is already present locally 
+ mailpit Skipped - Image is already present locally 
+ imgProxy Skipped - Image is already present locally 
+ db Skipped - Image is already present locally 
  studio Skipped - Image is already present locally 
  pgmeta Skipped - Image is already present locally 
  analytics Skipped - Image is already present locally 
  vector Skipped - Image is already present locally 
- db Skipped - Image is already present locally 
- mailpit Skipped - Image is already present locally 
+ gateway Skipped - Image is already present locally 
  auth Skipped - Image is already present locally 
  realtime Skipped - Image is already present locally 
  storage Skipped - Image is already present locally 
- imgProxy Skipped - Image is already present locally 
+ edgeRuntime Skipped - Image is already present locally 
 Starting database from backup...
 Starting containers...
 Waiting for health checks...
@@ -22,7 +22,7 @@ Started supabase local development setup.
 
 A new version of Supabase CLI is available: v2.75.0 (currently installed v2.74.5)
 We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
-[2026-02-19 20:44:51] Supabase started successfully
-[2026-02-19 20:44:51] Creating .env file with Supabase configurations...
-[2026-02-19 20:44:51] .env file created successfully
-[2026-02-19 20:44:51] Temporary output file cleaned up
+[2026-02-20 08:23:43] Supabase started successfully
+[2026-02-20 08:23:43] Creating .env file with Supabase configurations...
+[2026-02-20 08:23:43] .env file created successfully
+[2026-02-20 08:23:43] Temporary output file cleaned up

@@ -12,10 +12,12 @@ import {
   MobileNavMenu,
 } from '@/components/ui/resizable-navbar';
 import { useTheme } from 'next-themes';
+import { useRouter } from 'next/navigation';
 import { Sun, Moon } from 'lucide-react';
 import { useState, JSX } from 'react';
 
 export const Navigation = (): JSX.Element => {
+  const router = useRouter();
   const navItems = [
     {
       name: 'Features',
@@ -34,6 +36,10 @@ export const Navigation = (): JSX.Element => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const { theme, setTheme } = useTheme();
 
+  const handleLoginClick = () => {
+    router.push('/auth/login');
+  };
+
   return (
     <Navbar>
       {/* Desktop Navigation */}
@@ -47,7 +53,7 @@ export const Navigation = (): JSX.Element => {
           >
             {theme === 'dark' ? <Sun /> : <Moon />}
           </button>
-          <NavbarButton variant="secondary">Login</NavbarButton>
+          <NavbarButton variant="secondary" onClick={handleLoginClick}>Login</NavbarButton>
           <NavbarButton variant="primary">Book a call</NavbarButton>
         </div>
       </NavBody>
@@ -78,7 +84,10 @@ export const Navigation = (): JSX.Element => {
           ))}
           <div className="flex w-full flex-col gap-4">
             <NavbarButton
-              onClick={() => setIsMobileMenuOpen(false)}
+              onClick={() => {
+                handleLoginClick();
+                setIsMobileMenuOpen(false);
+              }}
               variant="primary"
               className="w-full"
             >

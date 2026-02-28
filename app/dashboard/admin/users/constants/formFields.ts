@@ -43,7 +43,7 @@ export const selectFields: Record<string, SelectFieldConfig> = {
     name: 'status',
     label: 'Status',
     placeholder: 'Select status',
-    showFor: ['admin', 'consumer'],
+    showFor: ['admin', 'user'],
     options: [
       { value: 'active', label: 'Active' },
       { value: 'inactive', label: 'Inactive' },

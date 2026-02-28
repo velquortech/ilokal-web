@@ -4,7 +4,7 @@ export const getRoleFromUserType = (userType: string): UserRole => {
   const roleMap: Record<string, UserRole> = {
     admin: 'admin',
     business_owner: 'business_owner',
-    consumer: 'consumer',
+    user: 'user',
   };
-  return roleMap[userType] || 'consumer';
+  return roleMap[userType] || 'user';
 };

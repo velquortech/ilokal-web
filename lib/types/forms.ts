@@ -20,6 +20,6 @@ export interface UserFormModalProps {
   onSubmit: (
     formData: Omit<UserFormData, 'confirm_password'> & { role: UserRole },
   ) => void;
-  userType: 'admin' | 'business_owner' | 'consumer';
+  userType: 'admin' | 'business_owner' | 'user';
   initialData?: Partial<UserFormData> & { created_at?: string };
 }

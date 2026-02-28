@@ -56,7 +56,14 @@ export default function SignupForm() {
 
       // Redirect after a short delay to show success message
       setTimeout(() => {
-        router.push('/home');
+        const role = response.user.role;
+        if (role === 'admin') {
+          router.push('/dashboard/admin');
+        } else if (role === 'business_owner') {
+          router.push('/dashboard/business');
+        } else {
+          router.push('/home');
+        }
       }, 2000);
     } catch (error) {
       const errorMessage =

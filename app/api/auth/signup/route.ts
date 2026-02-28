@@ -78,7 +78,10 @@ export async function POST(req: NextRequest) {
       user: {
         id: authData.user.id,
         email: authData.user.email || '',
-        name,
+        full_name: name,
+        phone_number: null,
+        role: role,
+        avatar_url: null,
       },
       message: 'Account created successfully. Please verify your email.',
     });

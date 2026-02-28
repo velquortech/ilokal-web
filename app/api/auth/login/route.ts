@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { createClient } from '@/config/index';
+import { createServerSupabaseClient } from '@/config/server';
 import {
   badRequestResponse,
   generalErrorResponse,
@@ -7,9 +7,9 @@ import {
   unauthorizedResponse,
 } from '@/app/api/helpers/response';
 
-export async function POST(req: NextRequest) {
+export async function POST(_req: NextRequest) {
   try {
-    const { email, password } = await req.json();
+    const { email, password } = await _req.json();
 
     // Validate input
     if (!email || !password) {
@@ -18,7 +18,8 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const supabase = await createClient();
+    // Use service role client (bypasses RLS) for auth operations
+    const supabase = await createServerSupabaseClient();
 
     // Sign in with Supabase Auth
     const { data: authData, error: authError } =
@@ -28,37 +29,41 @@ export async function POST(req: NextRequest) {
       });
 
     if (authError || !authData.user) {
+      console.error('[login] Auth error:', authError);
       return unauthorizedResponse({
         message: 'Invalid email or password',
       });
     }
 
-    // Get user profile
+    // Fetch profile data from 'profiles' table
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, email, full_name')
+      .select('id, email, full_name, phone_number, role, avatar_url')
       .eq('id', authData.user.id)
       .single();
 
     if (profileError || !profile) {
+      console.error('[login] Profile fetch error:', profileError);
       return generalErrorResponse({
         message: 'Failed to load user profile',
       });
     }
 
-    // Set auth cookie (Supabase SSR handles this)
     const response = successResponse({
       user: {
         id: profile.id,
         email: profile.email,
-        name: profile.full_name,
+        full_name: profile.full_name,
+        phone_number: profile.phone_number,
+        role: profile.role,
+        avatar_url: profile.avatar_url,
       },
       message: 'Logged in successfully',
     });
 
     return response;
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('[login] Unexpected error:', error);
     return generalErrorResponse({
       message: 'An unexpected error occurred during login',
     });

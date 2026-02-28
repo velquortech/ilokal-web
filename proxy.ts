@@ -54,7 +54,6 @@ export async function proxy(request: NextRequest) {
   // Define protected routes by role
   const adminRoutes = ['/dashboard/admin'];
   const businessRoutes = ['/dashboard/business'];
-  const authRoutes = ['/auth/login', '/auth/signup'];
   const protectedRoutes = [...adminRoutes, ...businessRoutes];
 
   // Check if current path is protected
@@ -65,16 +64,10 @@ export async function proxy(request: NextRequest) {
   const isBusinessRoute = businessRoutes.some((route) =>
     pathname.startsWith(route),
   );
-  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
 
   // Redirect unauthenticated users trying to access protected routes
   if (isProtectedRoute && !user) {
     return NextResponse.redirect(new URL('/auth/login', request.url));
-  }
-
-  // Redirect authenticated users away from auth pages
-  if (isAuthRoute && user) {
-    return NextResponse.redirect(new URL('/home', request.url));
   }
 
   // Role-based access control for admin routes

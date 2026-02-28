@@ -46,17 +46,23 @@ export const Navigation = (): JSX.Element => {
       <NavBody>
         <NavbarLogo logo={null} title="iLokal" />
         <NavItems items={navItems} />
-        <div className="flex items-center gap-4">
+        <div className="relative z-20 flex items-center gap-4">
           <button
             className="z-50 cursor-pointer"
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           >
             {theme === 'dark' ? <Sun /> : <Moon />}
           </button>
-          <NavbarButton variant="secondary" onClick={handleLoginClick}>
+          <NavbarButton
+            as="button"
+            variant="secondary"
+            onClick={handleLoginClick}
+          >
             Login
           </NavbarButton>
-          <NavbarButton variant="primary">Book a call</NavbarButton>
+          <NavbarButton as="button" variant="primary">
+            Book a call
+          </NavbarButton>
         </div>
       </NavBody>
 
@@ -86,6 +92,7 @@ export const Navigation = (): JSX.Element => {
           ))}
           <div className="flex w-full flex-col gap-4">
             <NavbarButton
+              as="button"
               onClick={() => {
                 handleLoginClick();
                 setIsMobileMenuOpen(false);
@@ -96,6 +103,7 @@ export const Navigation = (): JSX.Element => {
               Login
             </NavbarButton>
             <NavbarButton
+              as="button"
               onClick={() => setIsMobileMenuOpen(false)}
               variant="primary"
               className="w-full"

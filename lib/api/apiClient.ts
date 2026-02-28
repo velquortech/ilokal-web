@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 export interface ApiErrorResponse {
   message?: string;
@@ -26,19 +27,13 @@ class ApiManager {
   private setupInterceptors() {
     // Request interceptor
     this.instance.interceptors.request.use(
-      (config) => {
-        return config;
-      },
-      (error) => {
-        return Promise.reject(error);
-      },
+      (config) => config,
+      (error) => Promise.reject(error),
     );
 
     // Response interceptor
     this.instance.interceptors.response.use(
-      (response) => {
-        return response.data;
-      },
+      (response) => response.data,
       (error: AxiosError) => {
         const errorResponse: ApiErrorResponse = {
           message: error.message,

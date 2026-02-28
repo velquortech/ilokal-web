@@ -53,7 +53,9 @@ export const Navigation = (): JSX.Element => {
           >
             {theme === 'dark' ? <Sun /> : <Moon />}
           </button>
-          <NavbarButton variant="secondary" onClick={handleLoginClick}>Login</NavbarButton>
+          <NavbarButton variant="secondary" onClick={handleLoginClick}>
+            Login
+          </NavbarButton>
           <NavbarButton variant="primary">Book a call</NavbarButton>
         </div>
       </NavBody>

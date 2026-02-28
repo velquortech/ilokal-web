@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server';
 import { createClient } from '@/config/index';
-import { generalErrorResponse, successResponse } from '../helpers/response';
+import { generalErrorResponse, successResponse } from '../../helpers/response';
 
-export async function POST(req: NextRequest) {
+export async function POST(_req: NextRequest) {
   try {
     const supabase = await createClient();
 

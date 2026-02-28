@@ -18,7 +18,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen] = useState(true);
 
   const navItems = [
     {
@@ -59,8 +59,8 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen bg-gray-50">
-        {/* Sidebar */}
-        <div
+      {/* Sidebar */}
+      <div
         className={`${
           isOpen ? 'w-64' : 'w-20'
         } border-r border-gray-200 bg-white transition-all duration-300`}
@@ -76,25 +76,22 @@ export default function DashboardLayout({
         </div>
 
         <nav className="space-y-2 p-4">
-          {navItems.map((item) => {
-            const icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex items-center gap-3 rounded-lg px-4 py-2 transition-colors hover:bg-gray-100"
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="flex items-center gap-3 rounded-lg px-4 py-2 transition-colors hover:bg-gray-100"
+            >
+              {/* {icon && icon({ className: 'h-5 w-5 text-gray-600' })} */}
+              <span
+                className={`${
+                  isOpen ? 'block' : 'hidden'
+                } text-sm text-gray-700`}
               >
-                {/* {icon && icon({ className: 'h-5 w-5 text-gray-600' })} */}
-                <span
-                  className={`${
-                    isOpen ? 'block' : 'hidden'
-                  } text-sm text-gray-700`}
-                >
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
+                {item.label}
+              </span>
+            </Link>
+          ))}
         </nav>
 
         <div className="absolute right-4 bottom-4 left-4">
@@ -108,10 +105,10 @@ export default function DashboardLayout({
         </div>
       </div>
 
-        {/* Main content */}
-        <div className="flex-1 overflow-auto">
-          <div className="p-8">{children}</div>
-        </div>
+      {/* Main content */}
+      <div className="flex-1 overflow-auto">
+        <div className="p-8">{children}</div>
       </div>
+    </div>
   );
 }

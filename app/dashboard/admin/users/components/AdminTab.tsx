@@ -7,12 +7,14 @@ import { Plus, Edit2, Trash2 } from 'lucide-react';
 import { Profile } from '@/lib/types/user';
 import UserFormModal from './UserFormModal';
 import userService from '@/lib/api/userService';
+import authService from '@/lib/api/authService';
 
 export default function AdminTab() {
   const [admins, setAdmins] = useState<Profile[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,7 +36,6 @@ export default function AdminTab() {
       setIsLoading(false);
     }
   };
-
   const handleCreateAdmin = async (
     formData: Omit<Parameters<typeof userService.createProfile>[0], 'role'> & {
       role: 'admin';
@@ -45,6 +46,7 @@ export default function AdminTab() {
       setError(null);
 
       if (selectedAdmin) {
+        // Update existing admin
         const updated = await userService.updateProfile(selectedAdmin.id, {
           email: formData.email,
           full_name: formData.full_name,
@@ -53,7 +55,16 @@ export default function AdminTab() {
         });
         setAdmins(admins.map((a) => (a.id === selectedAdmin.id ? updated : a)));
       } else {
-        const newAdmin = await userService.createProfile(formData);
+        // Create new admin account using auth service
+        const response = await authService.signup({
+          email: formData.email,
+          password: formData.password,
+          name: formData.full_name,
+          role: 'admin',
+        });
+
+        // Add to local state with proper data
+        const newAdmin = response.user as Profile;
         setAdmins([...admins, newAdmin]);
       }
 
@@ -92,6 +103,18 @@ export default function AdminTab() {
         err instanceof Error ? err.message : 'Failed to delete admin';
       setError(errorMessage);
       console.error('Error deleting admin:', err);
+    }
+  };
+
+  const formatDate = (dateString: string | Date): string => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return new Date().toLocaleDateString();
+      }
+      return date.toLocaleDateString();
+    } catch {
+      return new Date().toLocaleDateString();
     }
   };
 
@@ -158,17 +181,20 @@ export default function AdminTab() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-xs text-gray-600">
-                  Created: {new Date(admin.created_at).toLocaleDateString()}
-                </p>
-                <p className="text-xs text-gray-600">
-                  Updated: {new Date(admin.updated_at).toLocaleDateString()}
-                </p>
+                <div className="space-y-1">
+                  <p className="text-xs text-gray-600">
+                    Created: {formatDate(admin.created_at)}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    Updated: {formatDate(admin.updated_at)}
+                  </p>
+                </div>
                 <div className="flex gap-2">
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => handleEdit(admin)}
+                    disabled={isSubmitting}
                     className="flex-1 gap-1"
                   >
                     <Edit2 className="h-3 w-3" />
@@ -178,6 +204,7 @@ export default function AdminTab() {
                     size="sm"
                     variant="outline"
                     onClick={() => handleDelete(admin.id)}
+                    disabled={isSubmitting}
                     className="flex-1 gap-1 text-red-600 hover:text-red-700"
                   >
                     <Trash2 className="h-3 w-3" />

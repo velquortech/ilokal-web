@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate role
-    if (!['business_owner', 'user'].includes(role)) {
+    if (!['business_owner', 'admin', 'user'].includes(role)) {
       return badRequestResponse({
         message: 'Invalid role. Must be "business_owner" or "user"',
       });

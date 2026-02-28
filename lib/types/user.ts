@@ -3,7 +3,7 @@
  * Mirrors the 'profiles' table structure in Supabase
  */
 
-export type UserRole = 'admin' | 'business_owner' | 'user';
+export type UserRole = 'admin' | 'business_owner' | 'consumer';
 
 /**
  * Core User/Profile type matching the database schema

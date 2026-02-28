@@ -23,17 +23,12 @@ export default function DashboardLayout({
   const navItems = [
     {
       label: 'Dashboard',
-      href: '/dashboard',
+      href: '/dashboard/admin',
       icon: LayoutDashboard,
     },
     {
-      label: 'Create Admin Account',
-      href: '/dashboard/create-admin',
-      icon: Users,
-    },
-    {
-      label: 'Manage Accounts',
-      href: '/dashboard/accounts',
+      label: 'User Management',
+      href: '/dashboard/admin/users',
       icon: Users,
     },
     {

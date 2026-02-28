@@ -1,0 +1,49 @@
+import apiClient from './apiClient';
+import { Profile, UserRole } from '@/lib/types/user';
+
+export interface CreateUserInput {
+  email: string;
+  full_name: string;
+  password: string;
+  business_name?: string;
+  status?: 'active' | 'inactive' | 'suspended';
+  verification_status?: 'pending' | 'verified' | 'suspended' | 'rejected';
+  role: UserRole;
+}
+
+export interface UpdateUserInput extends Omit<
+  CreateUserInput,
+  'password' | 'role'
+> {
+  password?: string;
+}
+
+const userService = {
+  async getProfilesByRole(role: UserRole): Promise<Profile[]> {
+    try {
+      const response = await apiClient.get(`/profiles?role=${role}`);
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      console.error(`Error fetching ${role} profiles:`, error);
+      throw error;
+    }
+  },
+
+  async getProfileById(id: string): Promise<Profile> {
+    return await apiClient.get(`/profiles/${id}`);
+  },
+
+  async createProfile(data: CreateUserInput): Promise<Profile> {
+    return await apiClient.post('/profiles', data);
+  },
+
+  async updateProfile(id: string, data: UpdateUserInput): Promise<Profile> {
+    return await apiClient.put(`/profiles/${id}`, data);
+  },
+
+  async deleteProfile(id: string): Promise<{ message: string }> {
+    return await apiClient.delete(`/profiles/${id}`);
+  },
+};
+
+export default userService;

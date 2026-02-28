@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createClient } from '@/config/index';
 import {
   badRequestResponse,
@@ -21,10 +21,11 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient();
 
     // Sign in with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data: authData, error: authError } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
     if (authError || !authData.user) {
       return unauthorizedResponse({
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
     // Get user profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, email, name')
+      .select('id, email, full_name')
       .eq('id', authData.user.id)
       .single();
 
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
       user: {
         id: profile.id,
         email: profile.email,
-        name: profile.name,
+        name: profile.full_name,
       },
       message: 'Logged in successfully',
     });

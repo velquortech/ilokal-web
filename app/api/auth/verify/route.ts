@@ -5,7 +5,7 @@ import {
   successResponse,
 } from '@/app/api/helpers/response';
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     const supabase = await createClient();
 

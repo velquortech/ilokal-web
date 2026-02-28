@@ -1,15 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createClient } from '@/config/index';
-import { badRequestResponse, generalErrorResponse, successResponse, conflictRequestResponse } from '../helpers/response';
+import {
+  badRequestResponse,
+  generalErrorResponse,
+  successResponse,
+  conflictRequestResponse,
+} from '../../helpers/response';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, name } = await req.json();
+    const { email, password, name, role } = await req.json();
 
     // Validate input
-    if (!email || !password || !name) {
+    if (!email || !password || !name || !role) {
       return badRequestResponse({
-        message: 'Email, password, and name are required',
+        message: 'Email, password, name, and role are required',
+      });
+    }
+
+    // Validate role
+    if (!['business_owner', 'user'].includes(role)) {
+      return badRequestResponse({
+        message: 'Invalid role. Must be "business_owner" or "user"',
       });
     }
 
@@ -29,7 +41,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Sign up the user with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUpWithPassword({
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
     });
@@ -50,7 +62,8 @@ export async function POST(req: NextRequest) {
     const { error: profileError } = await supabase.from('profiles').insert({
       id: authData.user.id,
       email,
-      name,
+      full_name: name,
+      role,
       created_at: new Date(),
       updated_at: new Date(),
     });

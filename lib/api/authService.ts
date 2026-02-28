@@ -13,33 +13,28 @@ export interface LogoutResponse {
 
 const authService = {
   async signup(data: SignupInput): Promise<AuthResponse> {
-    const response = await apiClient.post<AuthResponse>('/auth/signup', {
+    return await apiClient.post('/auth/signup', {
       email: data.email,
       password: data.password,
       name: data.name,
+      role: data.role,
     });
-    return response;
   },
 
   async login(data: LoginInput): Promise<AuthResponse> {
-    const response = await apiClient.post<AuthResponse>('/auth/login', {
+    return await apiClient.post('/auth/login', {
       email: data.email,
       password: data.password,
     });
-    return response;
   },
 
   async logout(): Promise<LogoutResponse> {
-    const response = await apiClient.post<LogoutResponse>('/auth/logout');
-    return response;
+    return await apiClient.post('/auth/logout');
   },
 
   async verifySession(): Promise<{ user: User | null }> {
     try {
-      const response = await apiClient.get<{ user: User | null }>(
-        '/auth/verify',
-      );
-      return response;
+      return await apiClient.get('/auth/verify');
     } catch {
       return { user: null };
     }

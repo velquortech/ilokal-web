@@ -17,6 +17,9 @@ export const signupSchema = z
       .max(100, 'Password must not exceed 100 characters'),
     confirmPassword: z.string(),
     name: z.string().min(1, 'Name is required').max(100, 'Name is too long'),
+    role: z.enum(['business_owner', 'user'], {
+      errorMap: () => ({ message: 'Please select a role' }),
+    }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',

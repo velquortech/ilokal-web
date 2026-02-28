@@ -8,7 +8,7 @@ export type UserRole = 'admin' | 'business_owner' | 'consumer';
 /**
  * Core User/Profile type matching the database schema
  */
-export interface Profile {
+export type Profile = {
   id: string;
   email: string;
   full_name: string | null;
@@ -18,7 +18,7 @@ export interface Profile {
   created_at: string;
   updated_at: string;
   archived_at: string | null;
-}
+};
 
 /**
  * User type for auth context (subset of Profile for client-side)
@@ -31,9 +31,22 @@ export type User = Pick<
 /**
  * Minimal user info for responses and stores
  */
-export interface AuthUser {
+export type AuthUser = {
   id: string;
   email: string;
   full_name: string | null;
   role: UserRole;
-}
+};
+
+export type FormFieldConfig = {
+  name: keyof FormData;
+  label: string;
+  placeholder: string;
+  type?: string;
+  required?: boolean;
+  showFor?: string[];
+};
+
+export type SelectFieldConfig = Omit<FormFieldConfig, 'type'> & {
+  options: { value: string; label: string }[];
+};

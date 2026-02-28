@@ -1,11 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -13,60 +11,47 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Form } from '@/components/ui/form';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { UserRole } from '@/lib/types/user';
+  userFormSchema,
+  type UserFormData,
+} from '@/lib/schemas/userFormSchema';
+import { UserFormModalProps } from '@/lib/types/forms';
+import { getRoleFromUserType } from '@/lib/utils/roleMapper';
+import { baseFormFields, selectFields } from '../constants/formFields';
+import { InputFormFields, SelectFormFields } from './FormFields';
 
-const formSchema = z
-  .object({
-    email: z.string().email('Invalid email address'),
-    full_name: z.string().min(2, 'Full name must be at least 2 characters'),
-    business_name: z.string().optional(),
-    password: z.string().min(8, 'Password must be at least 8 characters'),
-    confirm_password: z.string(),
-    status: z.enum(['active', 'inactive', 'suspended']).optional(),
-    verification_status: z
-      .enum(['pending', 'verified', 'suspended', 'rejected'])
-      .optional(),
-  })
-  .refine((data) => data.password === data.confirm_password, {
-    message: "Passwords don't match",
-    path: ['confirm_password'],
-  });
-
-type FormData = z.infer<typeof formSchema>;
-
-interface UserFormModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (
-    formData: Omit<FormData, 'confirm_password'> & { role: UserRole },
-  ) => void;
-  userType: 'admin' | 'business_owner' | 'consumer';
-  initialData?: Partial<FormData> & { created_at?: string };
-}
-
-const getRoleFromUserType = (userType: string): UserRole => {
-  const roleMap = {
-    admin: 'admin' as const,
-    business_owner: 'business_owner' as const,
-    consumer: 'consumer' as const,
+const getUserLabel = (userType: string): string => {
+  const labels: Record<string, string> = {
+    admin: 'Admin',
+    business_owner: 'Business Owner',
+    consumer: 'Consumer',
   };
-  return roleMap[userType as keyof typeof roleMap];
+  return labels[userType] || userType;
 };
+
+const getDefaultValues = (
+  userType: string,
+  initialData?: Record<string, unknown>,
+): UserFormData => ({
+  email: (initialData?.email as string) || '',
+  full_name: (initialData?.full_name as string) || '',
+  business_name: (initialData?.business_name as string) || '',
+  password: '',
+  confirm_password: '',
+  status:
+    userType !== 'business_owner'
+      ? (initialData?.status as 'active' | 'inactive' | 'suspended') || 'active'
+      : undefined,
+  verification_status:
+    userType === 'business_owner'
+      ? (initialData?.verification_status as
+          | 'pending'
+          | 'verified'
+          | 'suspended'
+          | 'rejected') || 'pending'
+      : undefined,
+});
 
 export default function UserFormModal({
   isOpen,
@@ -75,74 +60,39 @@ export default function UserFormModal({
   userType,
   initialData,
 }: UserFormModalProps) {
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: initialData?.email || '',
-      full_name: initialData?.full_name || '',
-      business_name: initialData?.business_name || '',
-      password: '',
-      confirm_password: '',
-      status:
-        userType !== 'business_owner'
-          ? (initialData?.status as 'active' | 'inactive' | 'suspended') ||
-            'active'
-          : undefined,
-      verification_status:
-        userType === 'business_owner'
-          ? (initialData?.verification_status as
-              | 'pending'
-              | 'verified'
-              | 'suspended'
-              | 'rejected') || 'pending'
-          : undefined,
-    },
+  const defaultValues = useMemo(
+    () => getDefaultValues(userType, initialData),
+    [userType, initialData?.id],
+  );
+
+  const form = useForm<UserFormData>({
+    resolver: zodResolver(userFormSchema),
+    defaultValues,
   });
 
   useEffect(() => {
     if (isOpen) {
-      form.reset({
-        email: initialData?.email || '',
-        full_name: initialData?.full_name || '',
-        business_name: initialData?.business_name || '',
-        password: '',
-        confirm_password: '',
-        status:
-          userType !== 'business_owner'
-            ? (initialData?.status as 'active' | 'inactive' | 'suspended') ||
-              'active'
-            : undefined,
-        verification_status:
-          userType === 'business_owner'
-            ? (initialData?.verification_status as
-                | 'pending'
-                | 'verified'
-                | 'suspended'
-                | 'rejected') || 'pending'
-            : undefined,
-      });
+      form.reset(defaultValues);
     }
-  }, [initialData, isOpen, form, userType]);
+  }, [isOpen, defaultValues, form]);
 
   const getTitle = () => {
-    const userLabel =
-      userType === 'admin'
-        ? 'Admin'
-        : userType === 'business_owner'
-          ? 'Business Owner'
-          : 'Consumer';
+    const userLabel = getUserLabel(userType);
     return initialData ? `Edit ${userLabel}` : `Create New ${userLabel}`;
   };
 
-  const handleSubmit = (data: FormData) => {
-    const { confirm_password, ...submitData } = data;
+  const handleSubmit = (data: UserFormData) => {
+    const { ...submitData } = data;
     const role = getRoleFromUserType(userType);
     onSubmit({ ...submitData, role });
   };
 
+  const shouldShowField = (field?: string[]) =>
+    !field || field.includes(userType);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-106.25">
+      <DialogContent className="sm:max-w-100.25">
         <DialogHeader>
           <DialogTitle>{getTitle()}</DialogTitle>
           <DialogDescription>
@@ -157,152 +107,17 @@ export default function UserFormModal({
             onSubmit={form.handleSubmit(handleSubmit)}
             className="space-y-4"
           >
-            <FormField
+            <InputFormFields
               control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Address</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="user@example.com"
-                      type="email"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              fields={baseFormFields}
+              shouldShowField={shouldShowField}
             />
 
-            <FormField
+            <SelectFormFields
               control={form.control}
-              name="full_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="John Doe" type="text" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              selectFields={selectFields}
+              shouldShowField={shouldShowField}
             />
-
-            {userType === 'business_owner' && (
-              <FormField
-                control={form.control}
-                name="business_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Business Name</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Your Business Name"
-                        type="text"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Enter password"
-                      type="password"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="confirm_password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Confirm password"
-                      type="password"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {(userType === 'admin' || userType === 'consumer') && (
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select
-                      value={field.value || ''}
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                        {userType === 'consumer' && (
-                          <SelectItem value="suspended">Suspended</SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            {userType === 'business_owner' && (
-              <FormField
-                control={form.control}
-                name="verification_status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Verification Status</FormLabel>
-                    <Select
-                      value={field.value || ''}
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="verified">Verified</SelectItem>
-                        <SelectItem value="suspended">Suspended</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
 
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={onClose}>

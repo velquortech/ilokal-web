@@ -16,9 +16,19 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_SUPABASE_DB_URL: process.env.NEXT_PUBLIC_SUPABASE_DB_URL,
     NEXT_PUBLIC_SUPABASE_TOKEN: process.env.NEXT_PUBLIC_SUPABASE_TOKEN,
   },
-  images: {
-    remotePatterns: [new URL(`${process.env.NEXT_IMAGE_PUBLIC_URL}`)],
-  },
+  ...(process.env.NEXT_IMAGE_PUBLIC_URL && {
+    images: {
+      remotePatterns: [
+        {
+          protocol: new URL(process.env.NEXT_IMAGE_PUBLIC_URL).protocol.slice(
+            0,
+            -1,
+          ) as 'http' | 'https',
+          hostname: new URL(process.env.NEXT_IMAGE_PUBLIC_URL).hostname!,
+        },
+      ],
+    },
+  }),
   async redirects() {
     return [
       {

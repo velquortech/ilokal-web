@@ -1,6 +1,6 @@
 import apiClient from './apiClient';
 import { LoginInput, SignupInput } from '@/lib/validation/auth';
-import { User } from '@/lib/stores/authStore';
+import { User } from '@/lib/types/user';
 
 export interface AuthResponse {
   user: User;

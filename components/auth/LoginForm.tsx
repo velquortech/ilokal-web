@@ -35,8 +35,15 @@ export default function LoginForm() {
       const response = await authService.login(data);
       setUser(response.user);
 
-      // Redirect to home page
-      router.push('/home');
+      // Redirect based on user role
+      const role = response.user.role;
+      if (role === 'admin') {
+        router.push('/dashboard/admin');
+      } else if (role === 'business_owner') {
+        router.push('/dashboard/business');
+      } else {
+        router.push('/home');
+      }
     } catch (error) {
       const errorMessage =
         error instanceof Error

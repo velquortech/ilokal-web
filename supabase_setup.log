@@ -1,2 +1,14 @@
-[2026-02-28 09:44:22] Initializing setup process
-[2026-02-28 09:44:22] Supabase config found, proceeding with setup
+[2026-02-28 13:13:23] Initializing setup process
+[2026-02-28 13:13:23] Supabase config found, proceeding with setup
+[2026-02-28 13:13:23] Starting Supabase setup...
+[2026-02-28 13:13:23] Docker is running, executing 'yarn supabase start'...
+supabase start is already running.
+Stopped services: [supabase_imgproxy_ilokal-web supabase_edge_runtime_ilokal-web supabase_pooler_ilokal-web]
+supabase local development setup is running.
+
+A new version of Supabase CLI is available: v2.75.0 (currently installed v2.74.5)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+[2026-02-28 13:13:23] Supabase started successfully
+[2026-02-28 13:13:23] Creating .env file with Supabase configurations...
+[2026-02-28 13:13:23] .env file created successfully
+[2026-02-28 13:13:23] Temporary output file cleaned up

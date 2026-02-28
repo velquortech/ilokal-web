@@ -58,7 +58,7 @@ export default function LoginForm() {
 
       {apiError && (
         <div className="flex gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          <AlertCircle className="h-5 w-5 flex-shrink-0" />
+          <AlertCircle className="h-5 w-5 shrink-0" />
           <p>{apiError}</p>
         </div>
       )}

@@ -25,7 +25,7 @@ const getUserLabel = (userType: string): string => {
   const labels: Record<string, string> = {
     admin: 'Admin',
     business_owner: 'Business Owner',
-    consumer: 'Consumer',
+    user: 'user',
   };
   return labels[userType] || userType;
 };

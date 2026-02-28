@@ -13,7 +13,7 @@ export default function UserManagementHub() {
       <div>
         <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
         <p className="mt-2 text-gray-600">
-          Manage admins, business owners, and consumer accounts
+          Manage admins, business owners, and user accounts
         </p>
       </div>
 

@@ -4,47 +4,59 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { Profile } from '@/lib/types/user';
 import UserFormModal from './UserFormModal';
-interface Admin {
-  id: string;
-  email: string;
-  full_name: string;
-  created_at: string;
-  status: 'active' | 'inactive';
-}
 
 interface AdminFormData {
   email: string;
   full_name: string;
+  password: string;
+  status?: 'active' | 'inactive' | 'suspended';
+  role: 'admin';
 }
 
-const mockAdmins: Admin[] = [
+const mockAdmins: Profile[] = [
   {
     id: '1',
     email: 'admin@ilokal.com',
     full_name: 'Admin User',
+    phone_number: null,
+    role: 'admin',
+    avatar_url: null,
     created_at: '2025-01-15',
-    status: 'active',
+    updated_at: '2025-01-15',
+    archived_at: null,
   },
   {
     id: '2',
     email: 'superadmin@ilokal.com',
     full_name: 'Super Admin',
+    phone_number: null,
+    role: 'admin',
+    avatar_url: null,
     created_at: '2025-01-10',
-    status: 'active',
+    updated_at: '2025-01-10',
+    archived_at: null,
   },
 ];
 
 export default function AdminTab() {
-  const [admins, setAdmins] = useState<Admin[]>(mockAdmins);
+  const [admins, setAdmins] = useState<Profile[]>(mockAdmins);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null);
+  const [selectedAdmin, setSelectedAdmin] = useState<Profile | null>(null);
 
   const handleCreateAdmin = (formData: AdminFormData) => {
     if (selectedAdmin) {
       setAdmins(
         admins.map((a) =>
-          a.id === selectedAdmin.id ? { ...a, ...formData } : a,
+          a.id === selectedAdmin.id
+            ? {
+                ...a,
+                email: formData.email,
+                full_name: formData.full_name,
+                updated_at: new Date().toISOString(),
+              }
+            : a,
         ),
       );
     } else {
@@ -52,9 +64,14 @@ export default function AdminTab() {
         ...admins,
         {
           id: Date.now().toString(),
-          ...formData,
-          created_at: new Date().toISOString().split('T')[0],
-          status: 'active',
+          email: formData.email,
+          full_name: formData.full_name,
+          phone_number: null,
+          role: formData.role,
+          avatar_url: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          archived_at: null,
         },
       ]);
     }
@@ -62,7 +79,7 @@ export default function AdminTab() {
     setSelectedAdmin(null);
   };
 
-  const handleEdit = (admin: Admin) => {
+  const handleEdit = (admin: Profile) => {
     setSelectedAdmin(admin);
     setIsFormOpen(true);
   };
@@ -96,7 +113,6 @@ export default function AdminTab() {
         </Button>
       </div>
 
-      {/* Admins List */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {admins.map((admin) => (
           <Card key={admin.id}>
@@ -106,15 +122,6 @@ export default function AdminTab() {
                   <CardTitle className="text-base">{admin.full_name}</CardTitle>
                   <p className="mt-1 text-xs text-gray-600">{admin.email}</p>
                 </div>
-                <span
-                  className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                    admin.status === 'active'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  {admin.status}
-                </span>
               </div>
             </CardHeader>
             <CardContent>
@@ -146,7 +153,6 @@ export default function AdminTab() {
         ))}
       </div>
 
-      {/* Form Modal */}
       <UserFormModal
         isOpen={isFormOpen}
         onClose={() => {
@@ -155,7 +161,7 @@ export default function AdminTab() {
         }}
         onSubmit={handleCreateAdmin}
         userType="admin"
-        initialData={selectedAdmin || undefined}
+        initialData={selectedAdmin}
       />
     </div>
   );

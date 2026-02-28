@@ -19,8 +19,12 @@ export async function proxy(request: NextRequest) {
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+      setAll(
+        cookiesToSet: { name: string; value: string; options: CookieOptions }[],
+      ) {
+        cookiesToSet.forEach(({ name, value }) =>
+          request.cookies.set(name, value),
+        );
         response = NextResponse.next({ request });
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options),
@@ -54,9 +58,13 @@ export async function proxy(request: NextRequest) {
   const protectedRoutes = [...adminRoutes, ...businessRoutes];
 
   // Check if current path is protected
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
+  const isProtectedRoute = protectedRoutes.some((route) =>
+    pathname.startsWith(route),
+  );
   const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route));
-  const isBusinessRoute = businessRoutes.some((route) => pathname.startsWith(route));
+  const isBusinessRoute = businessRoutes.some((route) =>
+    pathname.startsWith(route),
+  );
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
 
   // Redirect unauthenticated users trying to access protected routes

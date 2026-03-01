@@ -1,5 +1,6 @@
 import apiClient from './apiClient';
 import { Profile, UserRole } from '@/lib/types/user';
+import { PaginatedResponse } from './paginationService';
 
 export interface CreateUserInput {
   email: string;
@@ -24,6 +25,22 @@ const userService = {
       return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error(`Error fetching ${role} profiles:`, error);
+      throw error;
+    }
+  },
+
+  async getProfilesByRolePaginated(
+    role: UserRole,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<PaginatedResponse<Profile>> {
+    try {
+      const response = await apiClient.get(
+        `/profiles?role=${role}&page=${page}&limit=${limit}`,
+      );
+      return response;
+    } catch (error) {
+      console.error(`Error fetching paginated ${role} profiles:`, error);
       throw error;
     }
   },

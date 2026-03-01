@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Profile } from '@/lib/types/user';
+import { PaginatedResponse } from '@/lib/api/paginationService';
 import UserFormModal from './UserFormModal';
+import AdminUsersTable from './AdminUsersTable';
 import userService, { CreateUserInput } from '@/lib/api/userService';
 import authService from '@/lib/api/authService';
 
@@ -42,23 +43,31 @@ const extractErrorMessage = (err: unknown): string => {
 };
 
 export default function AdminTab() {
-  const [admins, setAdmins] = useState<Profile[]>([]);
+  const [adminsData, setAdminsData] =
+    useState<PaginatedResponse<Profile> | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
-    fetchAdmins();
-  }, []);
+    fetchAdmins(currentPage);
+  }, [currentPage]);
 
-  const fetchAdmins = async () => {
+  const fetchAdmins = async (page: number) => {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await userService.getProfilesByRole('admin');
-      setAdmins(data);
+      const data = await userService.getProfilesByRolePaginated(
+        'admin',
+        page,
+        ITEMS_PER_PAGE,
+      );
+      setAdminsData(data);
     } catch (err) {
       const errorMessage = extractErrorMessage(err);
       setError(errorMessage);
@@ -80,10 +89,19 @@ export default function AdminTab() {
           status: formData.status,
           verification_status: formData.verification_status,
         });
-        setAdmins(admins.map((a) => (a.id === selectedAdmin.id ? updated : a)));
+
+        // Update the data in table
+        if (adminsData) {
+          setAdminsData({
+            ...adminsData,
+            data: adminsData.data.map((a) =>
+              a.id === selectedAdmin.id ? updated : a,
+            ),
+          });
+        }
       } else {
         // Create new admin account using auth service
-        const response = await authService.signup({
+        await authService.signup({
           email: formData.email,
           password: formData.password,
           confirmPassword: formData.password,
@@ -91,9 +109,9 @@ export default function AdminTab() {
           role: formData.role,
         });
 
-        // Add to local state with proper data
-        const newAdmin = response.user as Profile;
-        setAdmins([...admins, newAdmin]);
+        // Refresh the first page to show the new admin
+        await fetchAdmins(1);
+        setCurrentPage(1);
       }
 
       setIsFormOpen(false);
@@ -124,36 +142,21 @@ export default function AdminTab() {
     try {
       setError(null);
       await userService.deleteProfile(id);
-      setAdmins(admins.filter((a) => a.id !== id));
+
+      // Refresh current page (or go to first page if last item on this page)
+      if (adminsData && adminsData.data.length > 1) {
+        await fetchAdmins(currentPage);
+      } else if (currentPage > 1) {
+        setCurrentPage(currentPage - 1);
+      } else {
+        await fetchAdmins(1);
+      }
     } catch (err) {
       const errorMessage = extractErrorMessage(err);
       setError(errorMessage);
       console.error('Error deleting admin:', err);
     }
   };
-
-  const formatDate = (dateString: string | Date): string => {
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) {
-        return new Date().toLocaleDateString();
-      }
-      return date.toLocaleDateString();
-    } catch {
-      return new Date().toLocaleDateString();
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="flex flex-col items-center gap-2">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
-          <p className="text-gray-600">Loading admins...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-4">
@@ -163,7 +166,7 @@ export default function AdminTab() {
             Admin Accounts
           </h2>
           <p className="mt-1 text-sm text-gray-600">
-            Total admins: {admins.length}
+            Total admins: {adminsData?.pagination.totalItems || 0}
           </p>
         </div>
         <Button
@@ -178,63 +181,15 @@ export default function AdminTab() {
         </Button>
       </div>
 
-      {admins.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-300 p-12 text-center">
-          <p className="text-gray-600">No admins found</p>
-          <p className="mt-1 text-sm text-gray-500">
-            Create your first admin account to get started
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {admins.map((admin) => (
-            <Card key={admin.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-base">
-                      {admin.full_name}
-                    </CardTitle>
-                    <p className="mt-1 text-xs text-gray-600">{admin.email}</p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1">
-                  <p className="text-xs text-gray-600">
-                    Created: {formatDate(admin.created_at)}
-                  </p>
-                  <p className="text-xs text-gray-600">
-                    Updated: {formatDate(admin.updated_at)}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleEdit(admin)}
-                    disabled={isSubmitting}
-                    className="flex-1 gap-1"
-                  >
-                    <Edit2 className="h-3 w-3" />
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDelete(admin.id)}
-                    disabled={isSubmitting}
-                    className="flex-1 gap-1 text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    Delete
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <AdminUsersTable
+        data={adminsData}
+        isLoading={isLoading}
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        isSubmitting={isSubmitting}
+      />
 
       <UserFormModal
         isOpen={isFormOpen}

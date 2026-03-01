@@ -2,45 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, X } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Profile } from '@/lib/types/user';
 import { PaginatedResponse } from '@/lib/api/paginationService';
 import UserFormModal from './UserFormModal';
 import AdminUsersTable from './AdminUsersTable';
+import { AdminSearchFilter } from './AdminSearchFilter';
 import userService, { CreateUserInput } from '@/lib/api/userService';
 import authService from '@/lib/api/authService';
-
-/**
- * Extracts error message from various error formats
- */
-const extractErrorMessage = (err: unknown): string => {
-  const errorMessage = 'Failed to perform action';
-
-  if (err instanceof Error) {
-    // Check if error has data property (from axios error)
-    if ('data' in err && typeof err.data === 'object' && err.data !== null) {
-      const errorData = err.data as Record<string, unknown>;
-      if (typeof errorData.message === 'string') {
-        return errorData.message;
-      }
-    }
-
-    // Check for message property
-    if (err.message) {
-      return err.message;
-    }
-  }
-
-  // Fallback for unknown error types
-  if (typeof err === 'object' && err !== null) {
-    const errorObj = err as Record<string, unknown>;
-    if (typeof errorObj.message === 'string') {
-      return errorObj.message;
-    }
-  }
-
-  return errorMessage;
-};
+import { extractErrorMessage } from '@/lib/utils/errorHandler';
 
 export default function AdminTab() {
   const [adminsData, setAdminsData] =
@@ -215,6 +185,8 @@ export default function AdminTab() {
     setCurrentPage(1);
   };
 
+  const hasActiveFilters = !!searchQuery || statusFilter !== 'all';
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -238,85 +210,20 @@ export default function AdminTab() {
         </Button>
       </div>
 
-      {/* Search and Filter Section */}
-      <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end">
-          {/* Search Input */}
-          <div className="flex-1">
-            <label
-              htmlFor="search-input"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              Search
-            </label>
-            <div className="relative">
-              <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                id="search-input"
-                type="text"
-                placeholder="Search by name or email..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="w-full rounded-lg border border-gray-300 bg-white py-2 pr-3 pl-10 text-sm text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Status Filter Dropdown */}
-          <div className="md:w-48">
-            <label
-              htmlFor="status-filter"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              Status
-            </label>
-            <select
-              id="status-filter"
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(
-                  e.target.value as 'all' | 'active' | 'inactive' | 'suspended',
-                );
-                setCurrentPage(1);
-              }}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-            >
-              <option value="all">All</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="suspended">Suspended</option>
-            </select>
-          </div>
-
-          {/* Reset Button */}
-          {(searchQuery || statusFilter !== 'all') && (
-            <Button
-              variant="outline"
-              onClick={handleResetFilters}
-              className="gap-2"
-            >
-              <X className="h-4 w-4" />
-              Reset
-            </Button>
-          )}
-        </div>
-
-        {/* Active Filters Display */}
-        {(searchQuery || statusFilter !== 'all') && (
-          <div className="text-xs text-gray-600">
-            <span>Filters applied:</span>
-            {searchQuery && (
-              <span className="ml-2 font-medium">"Search: {searchQuery}"</span>
-            )}
-            {statusFilter !== 'all' && (
-              <span className="ml-2 font-medium">Status: {statusFilter}</span>
-            )}
-          </div>
-        )}
-      </div>
+      <AdminSearchFilter
+        searchQuery={searchQuery}
+        onSearchChange={(query) => {
+          setSearchQuery(query);
+          setCurrentPage(1);
+        }}
+        statusFilter={statusFilter}
+        onStatusFilterChange={(status) => {
+          setStatusFilter(status);
+          setCurrentPage(1);
+        }}
+        onReset={handleResetFilters}
+        hasActiveFilters={hasActiveFilters}
+      />
 
       <AdminUsersTable
         data={adminsData}

@@ -5,6 +5,7 @@ CREATE TABLE public.profiles (
   full_name TEXT,
   phone_number TEXT,
   role TEXT NOT NULL CHECK (role IN ('admin', 'business_owner', 'user')),
+  status TEXT NOT NULL DEFAULT 'inactive' CHECK (status IN ('active', 'inactive', 'suspended')),
   avatar_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),

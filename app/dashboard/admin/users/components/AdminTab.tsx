@@ -26,12 +26,13 @@ export default function AdminTab() {
   const [statusFilter, setStatusFilter] = useState<
     'all' | 'active' | 'inactive' | 'suspended'
   >('all');
+  const [sortOrder, setSortOrder] = useState<'latest' | 'oldest'>('latest');
 
   const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
     fetchAdmins(currentPage);
-  }, [currentPage, searchQuery, statusFilter]);
+  }, [currentPage, searchQuery, statusFilter, sortOrder]);
 
   const fetchAdmins = async (page: number) => {
     try {
@@ -84,6 +85,13 @@ export default function AdminTab() {
     if (statusFilter !== 'all') {
       filtered = filtered.filter((admin) => admin.status === statusFilter);
     }
+
+    // Sort by created_at
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime();
+      const dateB = new Date(b.created_at).getTime();
+      return sortOrder === 'latest' ? dateB - dateA : dateA - dateB;
+    });
 
     const totalItems = filtered.length;
     const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
@@ -245,6 +253,7 @@ export default function AdminTab() {
   const handleResetFilters = () => {
     setSearchQuery('');
     setStatusFilter('all');
+    setSortOrder('latest');
     setCurrentPage(1);
   };
 
@@ -282,6 +291,11 @@ export default function AdminTab() {
         statusFilter={statusFilter}
         onStatusFilterChange={(status) => {
           setStatusFilter(status);
+          setCurrentPage(1);
+        }}
+        sortOrder={sortOrder}
+        onSortOrderChange={(order) => {
+          setSortOrder(order);
           setCurrentPage(1);
         }}
         onReset={handleResetFilters}

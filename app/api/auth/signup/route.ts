@@ -6,25 +6,25 @@ import {
   successResponse,
   conflictRequestResponse,
 } from '../../helpers/response';
+import {
+  validateSignupData,
+  getValidationErrorMessage,
+} from '../../helpers/authValidation';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, name, role } = await req.json();
+    const body = await req.json();
 
-    // Validate input
-    if (!email || !password || !name || !role) {
+    // Validate input using reusable validation schema
+    const validationResult = validateSignupData(body);
+
+    if (!validationResult.success) {
       return badRequestResponse({
-        message: 'Email, password, name, and role are required',
+        message: getValidationErrorMessage(validationResult.error.issues),
       });
     }
 
-    // Validate role
-    if (!['business_owner', 'admin', 'user'].includes(role)) {
-      return badRequestResponse({
-        message: 'Invalid role. Must be "business_owner" or "user"',
-      });
-    }
-
+    const { email, password, name, role } = validationResult.data;
     const supabase = await createClient();
 
     // Check if user already exists

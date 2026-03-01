@@ -9,6 +9,38 @@ import UserFormModal from './UserFormModal';
 import userService, { CreateUserInput } from '@/lib/api/userService';
 import authService from '@/lib/api/authService';
 
+/**
+ * Extracts error message from various error formats
+ */
+const extractErrorMessage = (err: unknown): string => {
+  const errorMessage = 'Failed to perform action';
+
+  if (err instanceof Error) {
+    // Check if error has data property (from axios error)
+    if ('data' in err && typeof err.data === 'object' && err.data !== null) {
+      const errorData = err.data as Record<string, unknown>;
+      if (typeof errorData.message === 'string') {
+        return errorData.message;
+      }
+    }
+
+    // Check for message property
+    if (err.message) {
+      return err.message;
+    }
+  }
+
+  // Fallback for unknown error types
+  if (typeof err === 'object' && err !== null) {
+    const errorObj = err as Record<string, unknown>;
+    if (typeof errorObj.message === 'string') {
+      return errorObj.message;
+    }
+  }
+
+  return errorMessage;
+};
+
 export default function AdminTab() {
   const [admins, setAdmins] = useState<Profile[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -28,8 +60,7 @@ export default function AdminTab() {
       const data = await userService.getProfilesByRole('admin');
       setAdmins(data);
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to fetch admins';
+      const errorMessage = extractErrorMessage(err);
       setError(errorMessage);
       console.error('Error fetching admins:', err);
     } finally {
@@ -68,8 +99,7 @@ export default function AdminTab() {
       setIsFormOpen(false);
       setSelectedAdmin(null);
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to save admin';
+      const errorMessage = extractErrorMessage(err);
       setError(errorMessage);
       console.error('Error saving admin:', err);
     } finally {
@@ -96,8 +126,7 @@ export default function AdminTab() {
       await userService.deleteProfile(id);
       setAdmins(admins.filter((a) => a.id !== id));
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to delete admin';
+      const errorMessage = extractErrorMessage(err);
       setError(errorMessage);
       console.error('Error deleting admin:', err);
     }
@@ -148,13 +177,6 @@ export default function AdminTab() {
           Create Admin
         </Button>
       </div>
-
-      {error && (
-        <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
-          <p className="font-medium">Error</p>
-          <p>{error}</p>
-        </div>
-      )}
 
       {admins.length === 0 ? (
         <div className="rounded-lg border border-dashed border-gray-300 p-12 text-center">
@@ -223,6 +245,7 @@ export default function AdminTab() {
         }}
         onSubmit={handleCreateAdmin}
         userType="admin"
+        error={error}
         initialData={
           selectedAdmin
             ? {

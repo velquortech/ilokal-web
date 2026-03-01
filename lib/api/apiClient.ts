@@ -35,8 +35,18 @@ class ApiManager {
     this.instance.interceptors.response.use(
       (response) => response.data,
       (error: AxiosError) => {
+        // Extract the actual error message from the response data
+        const responseData = error.response?.data as Record<string, unknown>;
+        const errorMessage =
+          (typeof responseData?.message === 'string'
+            ? responseData.message
+            : null) ||
+          error.message ||
+          'An error occurred';
+
+        // Create proper error response
         const errorResponse: ApiErrorResponse = {
-          message: error.message,
+          message: errorMessage,
           status: error.response?.status || 500,
           data: error.response?.data,
         };
@@ -49,7 +59,13 @@ class ApiManager {
           }
         }
 
-        return Promise.reject(errorResponse);
+        // Throw as Error to maintain instanceof Error check in error handling
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const err: any = new Error(errorMessage);
+        err.data = errorResponse.data;
+        err.status = errorResponse.status;
+
+        return Promise.reject(err);
       },
     );
   }

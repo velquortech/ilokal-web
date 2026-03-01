@@ -1,4 +1,4 @@
-import { FormFieldConfig, SelectFieldConfig } from '@/lib/types/forms';
+import { FormFieldConfig } from '@/lib/types/forms';
 
 export const baseFormFields: FormFieldConfig[] = [
   {
@@ -16,6 +16,13 @@ export const baseFormFields: FormFieldConfig[] = [
     required: true,
   },
   {
+    name: 'business_name',
+    label: 'Business Name',
+    placeholder: 'Your Business Name',
+    type: 'text',
+    showFor: ['business_owner'],
+  },
+  {
     name: 'password',
     label: 'Password',
     placeholder: 'Enter password',
@@ -30,29 +37,3 @@ export const baseFormFields: FormFieldConfig[] = [
     required: true,
   },
 ];
-
-export const selectFields: Record<string, SelectFieldConfig> = {
-  status: {
-    name: 'status',
-    label: 'Status',
-    placeholder: 'Select status',
-    showFor: ['admin', 'user'],
-    options: [
-      { value: 'active', label: 'Active' },
-      { value: 'inactive', label: 'Inactive' },
-      { value: 'suspended', label: 'Suspended' },
-    ],
-  },
-  verification_status: {
-    name: 'verification_status',
-    label: 'Verification Status',
-    placeholder: 'Select status',
-    showFor: ['business_owner'],
-    options: [
-      { value: 'pending', label: 'Pending' },
-      { value: 'verified', label: 'Verified' },
-      { value: 'suspended', label: 'Suspended' },
-      { value: 'rejected', label: 'Rejected' },
-    ],
-  },
-};

@@ -43,6 +43,7 @@
     "recharts": "^3.7.0",
     "shadcn-ui": "^0.9.5",
     "supabase": "^2.76.15",
+    "table": "^6.9.0",
     "tailwind-merge": "^3.4.0",
     "zod": "^4.3.6",
     "zustand": "^4.4.7"

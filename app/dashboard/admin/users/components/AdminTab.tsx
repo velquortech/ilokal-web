@@ -232,6 +232,16 @@ export default function AdminTab() {
         onPageChange={setCurrentPage}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onStatusChange={(updatedAdmin) => {
+          if (adminsData) {
+            setAdminsData({
+              ...adminsData,
+              data: adminsData.data.map((a) =>
+                a.id === updatedAdmin.id ? updatedAdmin : a,
+              ),
+            });
+          }
+        }}
         isSubmitting={isSubmitting}
       />
 

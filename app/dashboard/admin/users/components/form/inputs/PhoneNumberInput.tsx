@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 
-interface PhoneNumberInputProps {
+export interface PhoneNumberInputProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;

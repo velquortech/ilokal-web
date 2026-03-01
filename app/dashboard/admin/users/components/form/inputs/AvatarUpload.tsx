@@ -6,7 +6,7 @@ import { Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AvatarImage } from '@/components/custom/AvatarImage';
 
-interface AvatarUploadProps {
+export interface AvatarUploadProps {
   value: string | null;
   onChange: (url: string) => void;
   disabled?: boolean;

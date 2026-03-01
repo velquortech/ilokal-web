@@ -7,9 +7,8 @@ import { Profile } from '@/lib/types/user';
 import { PaginatedResponse } from '@/lib/api/paginationService';
 import { extractErrorMessage } from '@/lib/utils/errorHandler';
 import { UserFormData } from '@/lib/schemas/userFormSchema';
-import UserFormModal from './UserFormModal';
-import AdminUsersTable from './AdminUsersTable';
-import { AdminSearchFilter } from './AdminSearchFilter';
+import { UserFormModal } from '../../form';
+import { AdminUsersTable, AdminSearchFilter } from '../../common';
 import userService from '@/lib/api/userService';
 import authService from '@/lib/api/authService';
 

@@ -21,7 +21,7 @@ import {
 import { Profile } from '@/lib/types/user';
 import { PaginatedResponse } from '@/lib/api/paginationService';
 import { AvatarImage } from '@/components/custom/AvatarImage';
-import { StatusDropdown } from './StatusDropdown';
+import { StatusDropdown } from '../form/fields/StatusDropdown';
 
 interface AdminUsersTableProps {
   data: PaginatedResponse<Profile> | null;

@@ -18,8 +18,8 @@ import {
   adminEditSchema,
   type AdminEditFormData,
 } from '@/lib/schemas/userFormSchema';
-import { PhoneNumberInput } from './PhoneNumberInput';
-import { AvatarUpload } from './AvatarUpload';
+import { PhoneNumberInput } from './form/inputs/PhoneNumberInput';
+import { AvatarUpload } from './form/inputs/AvatarUpload';
 
 interface AdminEditFormProps {
   admin: Profile;

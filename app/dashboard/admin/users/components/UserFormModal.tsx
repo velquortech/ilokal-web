@@ -62,7 +62,7 @@ export default function UserFormModal({
 }: UserFormModalProps) {
   const defaultValues = useMemo(
     () => getDefaultValues(userType, initialData),
-    [userType, initialData?.id],
+    [userType, initialData?.email],
   );
 
   const form = useForm<UserFormData>({

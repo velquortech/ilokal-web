@@ -12,7 +12,7 @@ export function generalErrorResponse<T>(data?: T): Response {
 
 export function conflictRequestResponse<T>(data?: T): NextResponse {
   return new NextResponse(
-    JSON.stringify(data || { message: 'entry conflict' }),
+    JSON.stringify(data || { message: 'Entry Conflict' }),
     {
       status: 409,
       headers: { 'Content-Type': 'application/json' },
@@ -21,7 +21,7 @@ export function conflictRequestResponse<T>(data?: T): NextResponse {
 }
 
 export function successResponse<T>(data?: T): NextResponse {
-  return new NextResponse(JSON.stringify(data || { message: 'Successfuly' }), {
+  return new NextResponse(JSON.stringify(data || { message: 'Successfully' }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
@@ -35,7 +35,7 @@ export function notFoundResponse<T>(data?: T): NextResponse {
 }
 
 export function badRequestResponse<T>(data?: T): NextResponse {
-  return new NextResponse(JSON.stringify(data || { message: 'Bad request' }), {
+  return new NextResponse(JSON.stringify(data || { message: 'Bad Request' }), {
     status: 400,
     headers: { 'Content-Type': 'application/json' },
   });

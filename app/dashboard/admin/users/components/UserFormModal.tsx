@@ -58,6 +58,7 @@ export default function UserFormModal({
   onSubmit,
   userType,
   initialData,
+  error,
 }: UserFormModalProps) {
   const defaultValues = useMemo(
     () => getDefaultValues(userType, initialData),
@@ -100,6 +101,12 @@ export default function UserFormModal({
               : 'Fill in the details to create a new user account'}
           </DialogDescription>
         </DialogHeader>
+
+        {error && (
+          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            <p>{error}</p>
+          </div>
+        )}
 
         <Form {...form}>
           <form

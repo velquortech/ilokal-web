@@ -22,4 +22,5 @@ export interface UserFormModalProps {
   ) => void;
   userType: 'admin' | 'business_owner' | 'user';
   initialData?: Partial<UserFormData> & { created_at?: string };
+  error?: string | null;
 }

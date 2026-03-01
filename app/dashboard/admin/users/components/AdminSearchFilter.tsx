@@ -9,6 +9,8 @@ interface AdminSearchFilterProps {
   onStatusFilterChange: (
     status: 'all' | 'active' | 'inactive' | 'suspended',
   ) => void;
+  sortOrder: 'latest' | 'oldest';
+  onSortOrderChange: (order: 'latest' | 'oldest') => void;
   onReset: () => void;
   hasActiveFilters: boolean;
 }
@@ -18,6 +20,8 @@ export function AdminSearchFilter({
   onSearchChange,
   statusFilter,
   onStatusFilterChange,
+  sortOrder,
+  onSortOrderChange,
   onReset,
   hasActiveFilters,
 }: AdminSearchFilterProps) {
@@ -67,6 +71,27 @@ export function AdminSearchFilter({
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
             <option value="suspended">Suspended</option>
+          </select>
+        </div>
+
+        {/* Sort Filter Dropdown */}
+        <div className="md:w-48">
+          <label
+            htmlFor="sort-filter"
+            className="mb-1 block text-sm font-medium text-gray-700"
+          >
+            Sort by
+          </label>
+          <select
+            id="sort-filter"
+            value={sortOrder}
+            onChange={(e) =>
+              onSortOrderChange(e.target.value as 'latest' | 'oldest')
+            }
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+          >
+            <option value="latest">Latest</option>
+            <option value="oldest">Oldest</option>
           </select>
         </div>
 

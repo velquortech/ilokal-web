@@ -19,9 +19,9 @@ import {
 } from '@/lib/schemas/userFormSchema';
 import { UserFormModalProps } from '@/lib/types/forms';
 import { getRoleFromUserType } from '@/lib/utils/roleMapper';
-import { baseFormFields } from '../constants/formFields';
+import { baseFormFields } from '../../../constants/formFields';
 import { InputFormFields } from '@/lib/components/FormFields';
-import { AdminEditForm } from './AdminEditForm';
+import { AdminEditForm } from '../AdminEditForm';
 import { Profile } from '@/lib/types/user';
 
 const getUserLabel = (userType: string): string => {

@@ -9,7 +9,7 @@ import { extractErrorMessage } from '@/lib/utils/errorHandler';
 import { StatusBadge } from './StatusBadge';
 import { Loader2, ChevronDown } from 'lucide-react';
 
-interface StatusDropdownProps {
+export interface StatusDropdownProps {
   admin: Profile;
   onStatusChange?: (updatedAdmin: Profile) => void;
   onError?: (error: string) => void;

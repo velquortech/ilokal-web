@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Shield, Building2, Users } from 'lucide-react';
-import AdminTab from './components/AdminTab';
+import { AdminTab } from './components';
 
 export default function UserManagementHub() {
   const [activeTab, setActiveTab] = useState('admins');

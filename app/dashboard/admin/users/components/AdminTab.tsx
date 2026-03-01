@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
 import { Profile } from '@/lib/types/user';
 import UserFormModal from './UserFormModal';
-import userService from '@/lib/api/userService';
+import userService, { CreateUserInput } from '@/lib/api/userService';
 import authService from '@/lib/api/authService';
 
 export default function AdminTab() {
@@ -36,11 +36,7 @@ export default function AdminTab() {
       setIsLoading(false);
     }
   };
-  const handleCreateAdmin = async (
-    formData: Omit<Parameters<typeof userService.createProfile>[0], 'role'> & {
-      role: 'admin';
-    },
-  ) => {
+  const handleCreateAdmin = async (formData: CreateUserInput) => {
     try {
       setIsSubmitting(true);
       setError(null);
@@ -52,6 +48,7 @@ export default function AdminTab() {
           full_name: formData.full_name,
           business_name: formData.business_name,
           status: formData.status,
+          verification_status: formData.verification_status,
         });
         setAdmins(admins.map((a) => (a.id === selectedAdmin.id ? updated : a)));
       } else {
@@ -59,8 +56,9 @@ export default function AdminTab() {
         const response = await authService.signup({
           email: formData.email,
           password: formData.password,
+          confirmPassword: formData.password,
           name: formData.full_name,
-          role: 'admin',
+          role: formData.role,
         });
 
         // Add to local state with proper data
@@ -226,7 +224,16 @@ export default function AdminTab() {
         }}
         onSubmit={handleCreateAdmin}
         userType="admin"
-        initialData={selectedAdmin}
+        initialData={
+          selectedAdmin
+            ? {
+                email: selectedAdmin.email,
+                full_name: selectedAdmin.full_name || '',
+                business_name: '',
+                created_at: selectedAdmin.created_at,
+              }
+            : undefined
+        }
       />
     </div>
   );

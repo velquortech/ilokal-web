@@ -21,6 +21,7 @@ export const signupSchema = z
       message: 'Please select a role',
     }),
     phone_number: z.string().optional().or(z.literal('')),
+    avatar_url: z.string().optional().or(z.literal('')),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',

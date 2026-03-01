@@ -44,6 +44,7 @@ const getDefaultValues = (
   role: getRoleFromUserType(userType),
   status: 'inactive',
   phone_number: '',
+  avatar_url: '',
 });
 
 export default function UserFormModal({
@@ -88,6 +89,7 @@ export default function UserFormModal({
       password: data.password || '',
       confirm_password: data.password || '',
       phone_number: data.phone_number,
+      avatar_url: data.avatar_url || '',
       role,
       status: 'inactive',
     } as UserFormData);

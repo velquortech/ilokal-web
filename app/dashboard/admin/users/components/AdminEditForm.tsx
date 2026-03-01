@@ -19,6 +19,7 @@ import {
   type AdminEditFormData,
 } from '@/lib/schemas/userFormSchema';
 import { PhoneNumberInput } from './PhoneNumberInput';
+import { AvatarUpload } from './AvatarUpload';
 
 interface AdminEditFormProps {
   admin: Profile;
@@ -42,6 +43,7 @@ export function AdminEditForm({
       phone_number: admin.phone_number || '',
       email: admin.email,
       password: '',
+      avatar_url: admin.avatar_url || '',
     },
   });
 
@@ -51,6 +53,7 @@ export function AdminEditForm({
       phone_number: admin.phone_number || '',
       email: admin.email,
       password: '',
+      avatar_url: admin.avatar_url || '',
     });
   }, [admin, form]);
 
@@ -135,6 +138,25 @@ export function AdminEditForm({
                   placeholder="Leave empty to keep current password"
                   {...field}
                   disabled={isSubmitting}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="avatar_url"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Avatar (Optional)</FormLabel>
+              <FormControl>
+                <AvatarUpload
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                  disabled={isSubmitting}
+                  currentAvatarUrl={admin.avatar_url}
                 />
               </FormControl>
               <FormMessage />

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Profile } from '@/lib/types/user';
 import { PaginatedResponse } from '@/lib/api/paginationService';
+import { AvatarImage } from '@/components/custom/AvatarImage';
 import { StatusDropdown } from './StatusDropdown';
 
 interface AdminUsersTableProps {
@@ -97,6 +98,7 @@ export default function AdminUsersTable({
             <TableHeader className="bg-gray-50">
               <TableRow>
                 <TableHead className="font-semibold">#</TableHead>
+                <TableHead className="font-semibold">Avatar</TableHead>
                 <TableHead className="font-semibold">Name</TableHead>
                 <TableHead className="font-semibold">Email</TableHead>
                 <TableHead className="font-semibold">Created</TableHead>
@@ -114,6 +116,26 @@ export default function AdminUsersTable({
                     <span className="font-medium">
                       {(currentPage - 1) * 10 + index + 1}
                     </span>
+                  </TableCell>
+                  <TableCell>
+                    {admin.avatar_url ? (
+                      <AvatarImage
+                        src={admin.avatar_url}
+                        alt={admin.full_name || 'Avatar'}
+                        width={40}
+                        height={40}
+                        className="h-10 w-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-xs font-medium text-gray-600">
+                        {admin.full_name
+                          ?.split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .toUpperCase()
+                          .slice(0, 2) || 'N/A'}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <span className="font-medium">{admin.full_name}</span>

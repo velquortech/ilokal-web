@@ -30,6 +30,13 @@ export const baseFormFields: FormFieldConfig[] = [
     showFor: ['admin'],
   },
   {
+    name: 'avatar_url',
+    label: 'Avatar (Optional)',
+    placeholder: '',
+    type: 'avatar',
+    showFor: ['admin'],
+  },
+  {
     name: 'password',
     label: 'Password',
     placeholder: 'Enter password',

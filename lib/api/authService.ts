@@ -22,6 +22,7 @@ const authService = {
       name: data.name,
       role: data.role,
       ...(hasPhoneNumber && { phone_number: phoneNumber }),
+      ...(data.avatar_url && { avatar_url: data.avatar_url }),
     });
   },
 

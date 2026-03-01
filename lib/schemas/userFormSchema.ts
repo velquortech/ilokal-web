@@ -16,6 +16,7 @@ export const userFormSchema = z
         (val) => !val || /^\+[1-9]\d{1,14}(\s\d+)?$/.test(val),
         'Phone number must be in format: +1 5550000000',
       ),
+    avatar_url: z.string().optional().or(z.literal('')),
   })
   .refine((data) => data.password === data.confirm_password, {
     message: "Passwords don't match",
@@ -41,6 +42,7 @@ export const adminEditSchema = z.object({
       (val) => !val || val.length >= 8,
       'Password must be at least 8 characters if provided',
     ),
+  avatar_url: z.string().optional().or(z.literal('')),
 });
 
 export type UserFormData = z.infer<typeof userFormSchema>;

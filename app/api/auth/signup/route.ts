@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
 
     const { email, password, name, role } = validationResult.data;
     const phoneNumber = body.phone_number;
+    const avatarUrl = body.avatar_url;
     const supabase = await createClient();
 
     // Check if user already exists
@@ -73,6 +74,10 @@ export async function POST(req: NextRequest) {
       profileData.phone_number = phoneNumber;
     }
 
+    if (avatarUrl) {
+      profileData.avatar_url = avatarUrl;
+    }
+
     const { error: profileError } = await supabase
       .from('profiles')
       .insert(profileData);
@@ -90,7 +95,7 @@ export async function POST(req: NextRequest) {
         full_name: name,
         phone_number: phoneNumber || null,
         role: role,
-        avatar_url: null,
+        avatar_url: avatarUrl || null,
       },
       message: 'Account created successfully. Please verify your email.',
     });

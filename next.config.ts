@@ -16,19 +16,27 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_SUPABASE_DB_URL: process.env.NEXT_PUBLIC_SUPABASE_DB_URL,
     NEXT_PUBLIC_SUPABASE_TOKEN: process.env.NEXT_PUBLIC_SUPABASE_TOKEN,
   },
-  ...(process.env.NEXT_IMAGE_PUBLIC_URL && {
-    images: {
-      remotePatterns: [
-        {
-          protocol: new URL(process.env.NEXT_IMAGE_PUBLIC_URL).protocol.slice(
-            0,
-            -1,
-          ) as 'http' | 'https',
-          hostname: new URL(process.env.NEXT_IMAGE_PUBLIC_URL).hostname!,
-        },
-      ],
-    },
-  }),
+  images: {
+    remotePatterns: [
+      // Local Supabase storage (development)
+      {
+        protocol: 'http',
+        hostname: '127.0.0.1',
+        port: '54321',
+      },
+      // Production Supabase storage (will be added from env vars)
+      ...(process.env.NEXT_IMAGE_PUBLIC_URL
+        ? [
+            {
+              protocol: new URL(
+                process.env.NEXT_IMAGE_PUBLIC_URL,
+              ).protocol.slice(0, -1) as 'http' | 'https',
+              hostname: new URL(process.env.NEXT_IMAGE_PUBLIC_URL).hostname!,
+            },
+          ]
+        : []),
+    ],
+  },
   async redirects() {
     return [
       {

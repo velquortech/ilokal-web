@@ -45,6 +45,9 @@ export async function PUT(
     if ('phone_number' in body && body.phone_number !== undefined) {
       updateData.phone_number = body.phone_number;
     }
+    if ('avatar_url' in body && body.avatar_url !== undefined) {
+      updateData.avatar_url = body.avatar_url;
+    }
 
     // Update profile in database (only if profile fields need updating)
     let profileData;

@@ -123,6 +123,7 @@ export default function AdminTab() {
     email?: string;
     full_name?: string;
     phone_number?: string;
+    avatar_url?: string;
     password?: string;
   } => {
     const changes: Record<string, unknown> = {};
@@ -142,6 +143,11 @@ export default function AdminTab() {
       changes.phone_number = formData.phone_number;
     }
 
+    // Check if avatar_url changed
+    if ((formData.avatar_url || '') !== (original.avatar_url || '')) {
+      changes.avatar_url = formData.avatar_url;
+    }
+
     // Only include password if it's not empty (user wants to change it)
     if (formData.password && formData.password.length > 0) {
       changes.password = formData.password;
@@ -151,6 +157,7 @@ export default function AdminTab() {
       email?: string;
       full_name?: string;
       phone_number?: string;
+      avatar_url?: string;
       password?: string;
     };
   };
@@ -204,6 +211,7 @@ export default function AdminTab() {
           name: formData.full_name,
           role: formData.role,
           ...(hasPhoneNumber && { phone_number: phoneNumber }),
+          ...(formData.avatar_url && { avatar_url: formData.avatar_url }),
         });
 
         // Refresh the first page to show the new admin
@@ -342,6 +350,7 @@ export default function AdminTab() {
                 email: selectedAdmin.email,
                 full_name: selectedAdmin.full_name || '',
                 phone_number: selectedAdmin.phone_number || '',
+                avatar_url: selectedAdmin.avatar_url || '',
                 created_at: selectedAdmin.created_at,
               }
             : undefined

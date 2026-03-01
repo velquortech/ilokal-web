@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { PhoneNumberInput } from '@/app/dashboard/admin/users/components/PhoneNumberInput';
+import { AvatarUpload } from '@/app/dashboard/admin/users/components/AvatarUpload';
 
 interface FormFieldsProps {
   control: Control<UserFormData>;
@@ -50,6 +51,11 @@ export function InputFormFields({
                       value={field.value || ''}
                       onChange={field.onChange}
                       placeholder={placeholder}
+                    />
+                  ) : type === 'avatar' ? (
+                    <AvatarUpload
+                      value={field.value || ''}
+                      onChange={field.onChange}
                     />
                   ) : (
                     <Input placeholder={placeholder} type={type} {...field} />

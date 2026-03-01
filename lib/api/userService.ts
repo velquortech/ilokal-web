@@ -35,10 +35,31 @@ const userService = {
     limit: number = 10,
   ): Promise<PaginatedResponse<Profile>> {
     try {
-      const response = await apiClient.get(
+      const response = await apiClient.get<PaginatedResponse<Profile>>(
         `/profiles?role=${role}&page=${page}&limit=${limit}`,
       );
-      return response;
+
+      // Ensure response is a PaginatedResponse with data and pagination
+      if (
+        response &&
+        typeof response === 'object' &&
+        'data' in response &&
+        'pagination' in response
+      ) {
+        return response as unknown as PaginatedResponse<Profile>;
+      }
+
+      // Fallback if response structure is unexpected
+      console.warn('Unexpected API response structure:', response);
+      return {
+        data: Array.isArray(response) ? response : [],
+        pagination: {
+          currentPage: page,
+          pageSize: limit,
+          totalItems: 0,
+          totalPages: 0,
+        },
+      };
     } catch (error) {
       console.error(`Error fetching paginated ${role} profiles:`, error);
       throw error;

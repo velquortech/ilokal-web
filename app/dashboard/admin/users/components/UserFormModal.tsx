@@ -18,8 +18,8 @@ import {
 } from '@/lib/schemas/userFormSchema';
 import { UserFormModalProps } from '@/lib/types/forms';
 import { getRoleFromUserType } from '@/lib/utils/roleMapper';
-import { baseFormFields, selectFields } from '../constants/formFields';
-import { InputFormFields, SelectFormFields } from './FormFields';
+import { baseFormFields } from '../constants/formFields';
+import { InputFormFields } from './FormFields';
 
 const getUserLabel = (userType: string): string => {
   const labels: Record<string, string> = {
@@ -116,12 +116,6 @@ export default function UserFormModal({
             <InputFormFields
               control={form.control}
               fields={baseFormFields}
-              shouldShowField={shouldShowField}
-            />
-
-            <SelectFormFields
-              control={form.control}
-              selectFields={selectFields}
               shouldShowField={shouldShowField}
             />
 

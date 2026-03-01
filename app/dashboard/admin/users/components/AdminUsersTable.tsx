@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Table,
   TableBody,
@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Profile } from '@/lib/types/user';
 import { PaginatedResponse } from '@/lib/api/paginationService';
-import { StatusBadge } from './StatusBadge';
+import { StatusDropdown } from './StatusDropdown';
 
 interface AdminUsersTableProps {
   data: PaginatedResponse<Profile> | null;
@@ -29,6 +29,7 @@ interface AdminUsersTableProps {
   onPageChange: (page: number) => void;
   onEdit: (admin: Profile) => void;
   onDelete: (id: string) => void;
+  onStatusChange?: (updatedAdmin: Profile) => void;
   isSubmitting: boolean;
 }
 
@@ -51,8 +52,11 @@ export default function AdminUsersTable({
   onPageChange,
   onEdit,
   onDelete,
+  onStatusChange,
   isSubmitting,
 }: AdminUsersTableProps) {
+  const [error, setError] = useState<string | null>(null);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -81,76 +85,91 @@ export default function AdminUsersTable({
 
   return (
     <div className="space-y-4">
+      {error && (
+        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-lg border border-gray-200">
-        <Table>
-          <TableHeader className="bg-gray-50">
-            <TableRow>
-              <TableHead className="font-semibold">#</TableHead>
-              <TableHead className="font-semibold">Name</TableHead>
-              <TableHead className="font-semibold">Email</TableHead>
-              <TableHead className="font-semibold">Created</TableHead>
-              <TableHead className="font-semibold">Updated</TableHead>
-              <TableHead className="font-semibold">Status</TableHead>
-              <TableHead className="text-right font-semibold">
-                Actions
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.data.map((admin, index) => (
-              <TableRow key={admin.id} className="hover:bg-gray-50">
-                <TableCell>
-                  <span className="font-medium">
-                    {(currentPage - 1) * 10 + index + 1}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <span className="font-medium">{admin.full_name}</span>
-                </TableCell>
-                <TableCell className="text-sm text-gray-600">
-                  {admin.email}
-                </TableCell>
-                <TableCell className="text-sm text-gray-600">
-                  {formatDate(admin.created_at)}
-                </TableCell>
-                <TableCell className="text-sm text-gray-600">
-                  {formatDate(admin.updated_at)}
-                </TableCell>
-                <TableCell>
-                  <StatusBadge status={admin.status} />
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onEdit(admin)}
-                      disabled={isSubmitting}
-                      className="gap-1"
-                    >
-                      <Edit2 className="h-3 w-3" />
-                      <span className="hidden sm:inline">Edit</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onDelete(admin.id)}
-                      disabled={isSubmitting}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      <span className="hidden sm:inline">Delete</span>
-                    </Button>
-                  </div>
-                </TableCell>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gray-50">
+              <TableRow>
+                <TableHead className="font-semibold">#</TableHead>
+                <TableHead className="font-semibold">Name</TableHead>
+                <TableHead className="font-semibold">Email</TableHead>
+                <TableHead className="font-semibold">Created</TableHead>
+                <TableHead className="font-semibold">Updated</TableHead>
+                <TableHead className="font-semibold">Status</TableHead>
+                <TableHead className="text-right font-semibold">
+                  Actions
+                </TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {data.data.map((admin, index) => (
+                <TableRow key={admin.id} className="hover:bg-gray-50">
+                  <TableCell>
+                    <span className="font-medium">
+                      {(currentPage - 1) * 10 + index + 1}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-medium">{admin.full_name}</span>
+                  </TableCell>
+                  <TableCell className="text-sm text-gray-600">
+                    {admin.email}
+                  </TableCell>
+                  <TableCell className="text-sm text-gray-600">
+                    {formatDate(admin.created_at)}
+                  </TableCell>
+                  <TableCell className="text-sm text-gray-600">
+                    {formatDate(admin.updated_at)}
+                  </TableCell>
+                  <TableCell>
+                    <StatusDropdown
+                      admin={admin}
+                      onStatusChange={(updatedAdmin) => {
+                        onStatusChange?.(updatedAdmin);
+                        setError(null);
+                      }}
+                      onError={setError}
+                    />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onEdit(admin)}
+                        disabled={isSubmitting}
+                        className="gap-1"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                        <span className="hidden sm:inline">Edit</span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onDelete(admin.id)}
+                        disabled={isSubmitting}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        <span className="hidden sm:inline">Delete</span>
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4">
+      <div className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm text-gray-600">
           Page <span className="font-medium">{currentPage}</span> of{' '}
           <span className="font-medium">{pagination.totalPages}</span>
@@ -158,7 +177,7 @@ export default function AdminUsersTable({
           <span className="font-medium">{pagination.totalItems}</span> total
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             size="sm"

@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { email, password, name, role } = validationResult.data;
+    const phoneNumber = body.phone_number;
     const supabase = await createClient();
 
     // Check if user already exists
@@ -59,14 +60,22 @@ export async function POST(req: NextRequest) {
     }
 
     // Create profile in database
-    const { error: profileError } = await supabase.from('profiles').insert({
+    const profileData: Record<string, unknown> = {
       id: authData.user.id,
       email,
       full_name: name,
       role,
       created_at: new Date(),
       updated_at: new Date(),
-    });
+    };
+
+    if (phoneNumber && /\d/.test(phoneNumber)) {
+      profileData.phone_number = phoneNumber;
+    }
+
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert(profileData);
 
     if (profileError) {
       return generalErrorResponse({
@@ -79,7 +88,7 @@ export async function POST(req: NextRequest) {
         id: authData.user.id,
         email: authData.user.email || '',
         full_name: name,
-        phone_number: null,
+        phone_number: phoneNumber || null,
         role: role,
         avatar_url: null,
       },

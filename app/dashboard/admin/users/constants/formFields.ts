@@ -23,6 +23,13 @@ export const baseFormFields: FormFieldConfig[] = [
     showFor: ['business_owner'],
   },
   {
+    name: 'phone_number',
+    label: 'Phone Number (Optional)',
+    placeholder: '(917) 000-0000',
+    type: 'phone',
+    showFor: ['admin'],
+  },
+  {
     name: 'password',
     label: 'Password',
     placeholder: 'Enter password',

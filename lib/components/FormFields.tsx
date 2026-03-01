@@ -2,10 +2,7 @@
 
 import { Control } from 'react-hook-form';
 import { UserFormData } from '@/lib/schemas/userFormSchema';
-import {
-  FormFieldConfig,
-  SelectFieldConfig,
-} from '@/lib/types/forms';
+import { FormFieldConfig, SelectFieldConfig } from '@/lib/types/forms';
 import {
   FormField,
   FormItem,
@@ -21,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { PhoneNumberInput } from '@/app/dashboard/admin/users/components/PhoneNumberInput';
 
 interface FormFieldsProps {
   control: Control<UserFormData>;
@@ -47,11 +45,15 @@ export function InputFormFields({
               <FormItem>
                 <FormLabel>{label}</FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder={placeholder}
-                    type={type}
-                    {...field}
-                  />
+                  {type === 'phone' ? (
+                    <PhoneNumberInput
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      placeholder={placeholder}
+                    />
+                  ) : (
+                    <Input placeholder={placeholder} type={type} {...field} />
+                  )}
                 </FormControl>
                 <FormMessage />
               </FormItem>

@@ -6,6 +6,7 @@ export interface CreateUserInput {
   email: string;
   full_name: string;
   password: string;
+  phone_number?: string;
   status?: 'active' | 'inactive' | 'suspended';
   verification_status?: 'pending' | 'verified' | 'suspended' | 'rejected';
   role: UserRole;

@@ -194,12 +194,16 @@ export default function AdminTab() {
         }
       } else {
         // Create new admin account
+        const phoneNumber = formData.phone_number?.trim();
+        const hasPhoneNumber = phoneNumber && /\d/.test(phoneNumber);
+
         await authService.signup({
           email: formData.email,
           password: formData.password,
           confirmPassword: formData.confirm_password || '',
           name: formData.full_name,
           role: formData.role,
+          ...(hasPhoneNumber && { phone_number: phoneNumber }),
         });
 
         // Refresh the first page to show the new admin

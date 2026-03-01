@@ -13,11 +13,15 @@ export interface LogoutResponse {
 
 const authService = {
   async signup(data: SignupInput): Promise<AuthResponse> {
+    const phoneNumber = data.phone_number?.trim();
+    const hasPhoneNumber = phoneNumber && /\d/.test(phoneNumber);
+
     return await apiClient.post('/auth/signup', {
       email: data.email,
       password: data.password,
       name: data.name,
       role: data.role,
+      ...(hasPhoneNumber && { phone_number: phoneNumber }),
     });
   },
 

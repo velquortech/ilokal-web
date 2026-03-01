@@ -20,6 +20,7 @@ export const signupSchema = z
     role: z.enum(['admin', 'business_owner', 'user'], {
       message: 'Please select a role',
     }),
+    phone_number: z.string().optional().or(z.literal('')),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',

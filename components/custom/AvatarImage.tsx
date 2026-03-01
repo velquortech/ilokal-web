@@ -13,8 +13,8 @@ interface AvatarImageProps {
 
 /**
  * Avatar image component that handles both optimized and unoptimized images.
- * Uses standard img tag for localhost/development URLs to avoid optimization issues,
- * and Next.js Image component for production URLs.
+ * Uses unoptimized Image component for localhost/development URLs
+ * and optimized Image component for production URLs.
  */
 export function AvatarImage({
   src,
@@ -23,20 +23,9 @@ export function AvatarImage({
   height = 40,
   className = 'h-10 w-10 rounded-full object-cover',
 }: AvatarImageProps) {
-  // Use standard img tag for localhost URLs (development)
-  if (src && src.includes('127.0.0.1')) {
-    return (
-      <img
-        src={src}
-        alt={alt}
-        width={width}
-        height={height}
-        className={className}
-      />
-    );
-  }
+  // Use unoptimized for localhost URLs (development)
+  const isLocalhost = !!(src && src.includes('127.0.0.1'));
 
-  // Use Next.js Image component for optimized production URLs
   return (
     <Image
       src={src || ''}
@@ -44,6 +33,7 @@ export function AvatarImage({
       width={width}
       height={height}
       className={className}
+      unoptimized={isLocalhost}
     />
   );
 }

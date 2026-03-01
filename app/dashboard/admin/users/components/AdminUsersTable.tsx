@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Profile } from '@/lib/types/user';
 import { PaginatedResponse } from '@/lib/api/paginationService';
+import { StatusBadge } from './StatusBadge';
 
 interface AdminUsersTableProps {
   data: PaginatedResponse<Profile> | null;
@@ -89,6 +90,7 @@ export default function AdminUsersTable({
               <TableHead className="font-semibold">Email</TableHead>
               <TableHead className="font-semibold">Created</TableHead>
               <TableHead className="font-semibold">Updated</TableHead>
+              <TableHead className="font-semibold">Status</TableHead>
               <TableHead className="text-right font-semibold">
                 Actions
               </TableHead>
@@ -113,6 +115,9 @@ export default function AdminUsersTable({
                 </TableCell>
                 <TableCell className="text-sm text-gray-600">
                   {formatDate(admin.updated_at)}
+                </TableCell>
+                <TableCell>
+                  <StatusBadge status={admin.status} />
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">

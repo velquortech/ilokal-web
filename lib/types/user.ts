@@ -13,6 +13,7 @@ export type Profile = {
   email: string;
   full_name: string | null;
   phone_number: string | null;
+  status: 'active' | 'inactive' | 'suspended';
   role: UserRole;
   avatar_url: string | null;
   created_at: string;

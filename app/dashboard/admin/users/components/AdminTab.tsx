@@ -46,7 +46,6 @@ export default function AdminTab() {
         const updated = await userService.updateProfile(selectedAdmin.id, {
           email: formData.email,
           full_name: formData.full_name,
-          business_name: formData.business_name,
           status: formData.status,
           verification_status: formData.verification_status,
         });
@@ -229,7 +228,6 @@ export default function AdminTab() {
             ? {
                 email: selectedAdmin.email,
                 full_name: selectedAdmin.full_name || '',
-                business_name: '',
                 created_at: selectedAdmin.created_at,
               }
             : undefined

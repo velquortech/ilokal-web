@@ -36,7 +36,6 @@ const getDefaultValues = (
 ): UserFormData => ({
   email: (initialData?.email as string) || '',
   full_name: (initialData?.full_name as string) || '',
-  business_name: (initialData?.business_name as string) || '',
   password: '',
   confirm_password: '',
   status:

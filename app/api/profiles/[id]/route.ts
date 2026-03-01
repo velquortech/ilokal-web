@@ -1,17 +1,19 @@
 import { createServerSupabaseClient } from '@/config/server';
+import { createClient } from '@/config';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const supabase = await createServerSupabaseClient();
 
     const { data, error } = await supabase
       .from('profiles')
       .select()
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (error) {
@@ -30,16 +32,17 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
     const { data, error } = await supabase
       .from('profiles')
       .update({ ...body, updated_at: new Date().toISOString() })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
 
@@ -59,23 +62,27 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const supabase = await createServerSupabaseClient();
+    const { id } = await params;
+    // Use admin client (with service secret key) for auth operations
+    const supabase = await createClient();
 
-    const { error } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('id', params.id);
+    // Delete the user from auth.users using admin API
+    // This will cascade-delete the profile due to ON DELETE CASCADE constraint
+    const { error: deleteError } = await supabase.auth.admin.deleteUser(id);
 
-    if (error) {
-      return NextResponse.json({ message: error.message }, { status: 400 });
+    if (deleteError) {
+      return NextResponse.json(
+        { message: deleteError.message },
+        { status: 400 },
+      );
     }
 
-    return NextResponse.json({ message: 'Profile deleted successfully' });
+    return NextResponse.json({ message: 'User deleted successfully' });
   } catch (error) {
-    console.error('Profile deletion error:', error);
+    console.error('User deletion error:', error);
     return NextResponse.json(
       { message: 'Internal server error' },
       { status: 500 },

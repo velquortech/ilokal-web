@@ -6,7 +6,6 @@ const getDefaultValues = (
 ): UserFormData => ({
   email: initialData?.email || '',
   full_name: initialData?.full_name || '',
-  business_name: initialData?.business_name || '',
   password: '',
   confirm_password: '',
   status:

@@ -5,7 +5,6 @@ export interface CreateUserInput {
   email: string;
   full_name: string;
   password: string;
-  business_name?: string;
   status?: 'active' | 'inactive' | 'suspended';
   verification_status?: 'pending' | 'verified' | 'suspended' | 'rejected';
   role: UserRole;

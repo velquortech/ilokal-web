@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { Profile } from '@/lib/types/user';
 import { PaginatedResponse } from '@/lib/api/paginationService';
+import { extractErrorMessage } from '@/lib/utils/errorHandler';
+import { UserFormData } from '@/lib/schemas/userFormSchema';
 import UserFormModal from './UserFormModal';
 import AdminUsersTable from './AdminUsersTable';
 import { AdminSearchFilter } from './AdminSearchFilter';
-import userService, { CreateUserInput } from '@/lib/api/userService';
+import userService from '@/lib/api/userService';
 import authService from '@/lib/api/authService';
-import { extractErrorMessage } from '@/lib/utils/errorHandler';
 
 export default function AdminTab() {
   const [adminsData, setAdminsData] =
@@ -42,7 +43,6 @@ export default function AdminTab() {
         ITEMS_PER_PAGE,
       );
 
-      // Apply filters on the fetched data
       const filteredData = filterAdmins(data);
       setAdminsData(filteredData);
     } catch (err) {
@@ -57,9 +57,20 @@ export default function AdminTab() {
   const filterAdmins = (
     data: PaginatedResponse<Profile>,
   ): PaginatedResponse<Profile> => {
+    if (!data || !data.data || data.data.length === 0) {
+      return {
+        data: [],
+        pagination: {
+          currentPage,
+          pageSize: ITEMS_PER_PAGE,
+          totalItems: 0,
+          totalPages: 0,
+        },
+      };
+    }
+
     let filtered = [...data.data];
 
-    // Apply search filter (case-insensitive)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(
@@ -70,16 +81,13 @@ export default function AdminTab() {
       );
     }
 
-    // Apply status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter((admin) => admin.status === statusFilter);
     }
 
-    // Calculate new pagination based on filtered results
     const totalItems = filtered.length;
     const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
-    // Apply pagination
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const paginatedFiltered = filtered.slice(
       startIndex,
@@ -97,19 +105,75 @@ export default function AdminTab() {
     };
   };
 
-  const handleCreateAdmin = async (formData: CreateUserInput) => {
+  /**
+   * Compare form data with original admin and return only changed fields
+   */
+  const getChangedFields = (
+    original: Profile,
+    formData: UserFormData,
+  ): {
+    email?: string;
+    full_name?: string;
+    phone_number?: string;
+    password?: string;
+  } => {
+    const changes: Record<string, unknown> = {};
+
+    // Check if email changed
+    if (formData.email !== original.email) {
+      changes.email = formData.email;
+    }
+
+    // Check if full_name changed
+    if (formData.full_name !== (original.full_name || '')) {
+      changes.full_name = formData.full_name;
+    }
+
+    // Check if phone_number changed
+    if ((formData.phone_number || '') !== (original.phone_number || '')) {
+      changes.phone_number = formData.phone_number;
+    }
+
+    // Only include password if it's not empty (user wants to change it)
+    if (formData.password && formData.password.length > 0) {
+      changes.password = formData.password;
+    }
+
+    return changes as {
+      email?: string;
+      full_name?: string;
+      phone_number?: string;
+      password?: string;
+    };
+  };
+
+  const handleCreateAdmin = async (
+    formData: Omit<UserFormData, 'confirm_password'> & {
+      confirm_password?: string;
+    },
+  ) => {
     try {
       setIsSubmitting(true);
       setError(null);
 
       if (selectedAdmin) {
-        // Update existing admin
-        const updated = await userService.updateProfile(selectedAdmin.id, {
-          email: formData.email,
-          full_name: formData.full_name,
-          status: formData.status,
-          verification_status: formData.verification_status,
-        });
+        // Update existing admin - only send changed fields
+        const changedFields = getChangedFields(
+          selectedAdmin,
+          formData as UserFormData,
+        );
+
+        // If nothing changed, just close the modal
+        if (Object.keys(changedFields).length === 0) {
+          setIsFormOpen(false);
+          setSelectedAdmin(null);
+          return;
+        }
+
+        const updated = await userService.adminUpdateProfile(
+          selectedAdmin.id,
+          changedFields,
+        );
 
         // Update the data in table
         if (adminsData) {
@@ -121,11 +185,11 @@ export default function AdminTab() {
           });
         }
       } else {
-        // Create new admin account using auth service
+        // Create new admin account
         await authService.signup({
           email: formData.email,
           password: formData.password,
-          confirmPassword: formData.password,
+          confirmPassword: formData.confirm_password || '',
           name: formData.full_name,
           role: formData.role,
         });
@@ -164,7 +228,6 @@ export default function AdminTab() {
       setError(null);
       await userService.deleteProfile(id);
 
-      // Refresh current page (or go to first page if last item on this page)
       if (adminsData && adminsData.data.length > 1) {
         await fetchAdmins(currentPage);
       } else if (currentPage > 1) {
@@ -185,7 +248,7 @@ export default function AdminTab() {
     setCurrentPage(1);
   };
 
-  const hasActiveFilters = !!searchQuery || statusFilter !== 'all';
+  const hasActiveFilters = Boolean(searchQuery) || statusFilter !== 'all';
 
   return (
     <div className="space-y-4">
@@ -260,6 +323,7 @@ export default function AdminTab() {
             ? {
                 email: selectedAdmin.email,
                 full_name: selectedAdmin.full_name || '',
+                phone_number: selectedAdmin.phone_number || '',
                 created_at: selectedAdmin.created_at,
               }
             : undefined

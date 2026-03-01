@@ -8,17 +8,10 @@ const getDefaultValues = (
   full_name: initialData?.full_name || '',
   password: '',
   confirm_password: '',
+  role: (initialData?.role as 'admin' | 'business_owner' | 'user') || userType,
   status:
     userType !== 'business_owner'
       ? (initialData?.status as 'active' | 'inactive' | 'suspended') || 'active'
-      : undefined,
-  verification_status:
-    userType === 'business_owner'
-      ? (initialData?.verification_status as
-          | 'pending'
-          | 'verified'
-          | 'suspended'
-          | 'rejected') || 'pending'
       : undefined,
 });
 

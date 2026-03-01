@@ -18,6 +18,13 @@ export interface UpdateUserInput extends Omit<
   password?: string;
 }
 
+export interface AdminUpdateUserInput {
+  email?: string;
+  full_name?: string;
+  phone_number?: string;
+  password?: string;
+}
+
 const userService = {
   async getProfilesByRole(role: UserRole): Promise<Profile[]> {
     try {
@@ -39,7 +46,6 @@ const userService = {
         `/profiles?role=${role}&page=${page}&limit=${limit}`,
       );
 
-      // Ensure response is a PaginatedResponse with data and pagination
       if (
         response &&
         typeof response === 'object' &&
@@ -49,7 +55,6 @@ const userService = {
         return response as unknown as PaginatedResponse<Profile>;
       }
 
-      // Fallback if response structure is unexpected
       console.warn('Unexpected API response structure:', response);
       return {
         data: Array.isArray(response) ? response : [],
@@ -76,6 +81,13 @@ const userService = {
 
   async updateProfile(id: string, data: UpdateUserInput): Promise<Profile> {
     return await apiClient.put(`/profiles/${id}`, data);
+  },
+
+  async adminUpdateProfile(
+    id: string,
+    data: AdminUpdateUserInput,
+  ): Promise<Profile> {
+    return await apiClient.put(`/profiles/${id}/admin`, data);
   },
 
   async deleteProfile(id: string): Promise<{ message: string }> {

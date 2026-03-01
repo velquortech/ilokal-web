@@ -15,17 +15,20 @@ import { Form } from '@/components/ui/form';
 import {
   userFormSchema,
   type UserFormData,
+  type AdminEditFormData,
 } from '@/lib/schemas/userFormSchema';
 import { UserFormModalProps } from '@/lib/types/forms';
 import { getRoleFromUserType } from '@/lib/utils/roleMapper';
 import { baseFormFields } from '../constants/formFields';
 import { InputFormFields } from './FormFields';
+import { AdminEditForm } from './AdminEditForm';
+import { Profile } from '@/lib/types/user';
 
 const getUserLabel = (userType: string): string => {
   const labels: Record<string, string> = {
     admin: 'Admin',
     business_owner: 'Business Owner',
-    user: 'user',
+    user: 'User',
   };
   return labels[userType] || userType;
 };
@@ -38,18 +41,9 @@ const getDefaultValues = (
   full_name: (initialData?.full_name as string) || '',
   password: '',
   confirm_password: '',
-  status:
-    userType !== 'business_owner'
-      ? (initialData?.status as 'active' | 'inactive' | 'suspended') || 'active'
-      : undefined,
-  verification_status:
-    userType === 'business_owner'
-      ? (initialData?.verification_status as
-          | 'pending'
-          | 'verified'
-          | 'suspended'
-          | 'rejected') || 'pending'
-      : undefined,
+  role: getRoleFromUserType(userType),
+  status: 'inactive',
+  phone_number: '',
 });
 
 export default function UserFormModal({
@@ -60,6 +54,7 @@ export default function UserFormModal({
   initialData,
   error,
 }: UserFormModalProps) {
+  const isEditMode = !!initialData;
   const defaultValues = useMemo(
     () => getDefaultValues(userType, initialData),
     [userType, initialData?.email],
@@ -78,25 +73,61 @@ export default function UserFormModal({
 
   const getTitle = () => {
     const userLabel = getUserLabel(userType);
-    return initialData ? `Edit ${userLabel}` : `Create New ${userLabel}`;
+    return isEditMode ? `Edit ${userLabel}` : `Create New ${userLabel}`;
   };
 
   const handleSubmit = (data: UserFormData) => {
-    const { ...submitData } = data;
+    onSubmit(data);
+  };
+
+  const handleEditSubmit = async (data: AdminEditFormData) => {
     const role = getRoleFromUserType(userType);
-    onSubmit({ ...submitData, role });
+    onSubmit({
+      email: data.email,
+      full_name: data.full_name,
+      password: data.password || '',
+      confirm_password: data.password || '',
+      phone_number: data.phone_number,
+      role,
+      status: 'inactive',
+    } as UserFormData);
   };
 
   const shouldShowField = (field?: string[]) =>
     !field || field.includes(userType);
 
+  // Render edit form for admins
+  if (isEditMode && userType === 'admin') {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-106.25">
+          <DialogHeader>
+            <DialogTitle>{getTitle()}</DialogTitle>
+            <DialogDescription>
+              Update the admin account details below
+            </DialogDescription>
+          </DialogHeader>
+
+          <AdminEditForm
+            admin={initialData as unknown as Profile}
+            onSubmit={handleEditSubmit}
+            onCancel={onClose}
+            isSubmitting={false}
+            error={error}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Render create form
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-100.25">
+      <DialogContent className="sm:max-w-106.25">
         <DialogHeader>
           <DialogTitle>{getTitle()}</DialogTitle>
           <DialogDescription>
-            {initialData
+            {isEditMode
               ? 'Update the user details below'
               : 'Fill in the details to create a new user account'}
           </DialogDescription>
@@ -123,7 +154,7 @@ export default function UserFormModal({
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit">{initialData ? 'Update' : 'Create'}</Button>
+              <Button type="submit">{isEditMode ? 'Update' : 'Create'}</Button>
             </div>
           </form>
         </Form>

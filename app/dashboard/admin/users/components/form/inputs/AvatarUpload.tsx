@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { createClient } from '@/config/client';
-import { Upload, X } from 'lucide-react';
+import { Upload, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AvatarImage } from '@/components/custom/AvatarImage';
 
@@ -11,18 +11,31 @@ export interface AvatarUploadProps {
   onChange: (url: string) => void;
   disabled?: boolean;
   currentAvatarUrl?: string | null;
+  userId?: string; // Profile owner ID for avatar storage path
 }
 
 export function AvatarUpload({
+  value,
   onChange,
   disabled = false,
   currentAvatarUrl,
+  userId,
 }: AvatarUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(
-    currentAvatarUrl || null,
+    value || currentAvatarUrl || null,
   );
+  const [error, setError] = useState<string | null>(null);
   const supabase = React.useMemo(() => createClient(), []);
+
+  // Sync preview with form value when it changes
+  React.useEffect(() => {
+    if (value) {
+      setPreview(value);
+    } else if (!value && !uploading) {
+      setPreview(currentAvatarUrl || null);
+    }
+  }, [value, currentAvatarUrl, uploading]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -30,6 +43,19 @@ export function AvatarUpload({
 
     try {
       setUploading(true);
+      setError(null);
+
+      // Validate file
+      const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+      if (file.size > MAX_FILE_SIZE) {
+        setError('File size must be less than 5MB');
+        return;
+      }
+
+      if (!file.type.startsWith('image/')) {
+        setError('Please upload an image file');
+        return;
+      }
 
       // Create a preview
       const reader = new FileReader();
@@ -38,21 +64,32 @@ export function AvatarUpload({
       };
       reader.readAsDataURL(file);
 
-      // Upload to Supabase Storage
-      const fileName = `${Date.now()}-${file.name}`;
-      const filePath = fileName;
-
+      // Upload to Supabase Storage with user-specific path
       const supabaseClient = await supabase;
+
+      // Use provided userId or fall back to current user
+      let targetUserId = userId;
+      if (!targetUserId) {
+        const {
+          data: { user },
+        } = await supabaseClient.auth.getUser();
+        targetUserId = user?.id || 'unknown';
+      }
+
+      const fileName = `${Date.now()}-${file.name}`;
+      const filePath = `${targetUserId}/${fileName}`;
 
       const { error: uploadError } = await supabaseClient.storage
         .from('avatars')
         .upload(filePath, file, {
           cacheControl: '3600',
-          upsert: false,
+          upsert: true,
         });
 
       if (uploadError) {
         console.error('Upload error:', uploadError);
+        setError(`Upload failed: ${uploadError.message}`);
+        setPreview(null);
         return;
       }
 
@@ -63,9 +100,17 @@ export function AvatarUpload({
 
       if (data?.publicUrl) {
         onChange(data.publicUrl);
+        setError(null);
+      } else {
+        setError('Failed to get public URL');
+        setPreview(null);
       }
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error occurred';
       console.error('Error uploading avatar:', error);
+      setError(`Upload error: ${errorMessage}`);
+      setPreview(null);
     } finally {
       setUploading(false);
     }
@@ -73,11 +118,24 @@ export function AvatarUpload({
 
   const handleRemove = () => {
     setPreview(null);
+    setError(null);
     onChange('');
+    // Reset input value
+    const input = document.getElementById('avatar-upload') as HTMLInputElement;
+    if (input) {
+      input.value = '';
+    }
   };
 
   return (
     <div className="flex flex-col gap-4">
+      {error && (
+        <div className="flex gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <p>{error}</p>
+        </div>
+      )}
+
       <div className="flex items-end gap-4">
         {/* Preview */}
         {preview ? (
@@ -122,7 +180,7 @@ export function AvatarUpload({
             className="hidden"
           />
           <p className="text-xs text-gray-500">
-            Recommended: Square image, at least 200x200px
+            Recommended: Square image, at least 200x200px (max 5MB)
           </p>
         </div>
       </div>

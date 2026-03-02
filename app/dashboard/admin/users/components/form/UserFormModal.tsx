@@ -21,7 +21,7 @@ import { UserFormModalProps } from '@/lib/types/forms';
 import { getRoleFromUserType } from '@/lib/utils/roleMapper';
 import { baseFormFields } from '../../../constants/formFields';
 import { InputFormFields } from '@/lib/components/FormFields';
-import { AdminEditForm } from '../AdminEditForm';
+import { AdminEditForm } from './AdminEditForm';
 import { Profile } from '@/lib/types/user';
 
 const getUserLabel = (userType: string): string => {
@@ -78,6 +78,11 @@ export default function UserFormModal({
   };
 
   const handleSubmit = (data: UserFormData) => {
+    // During creation, don't send avatar_url since we don't have the user's UID yet
+    // Users can add/update their avatar after account creation during edit
+    if (!isEditMode) {
+      data.avatar_url = '';
+    }
     onSubmit(data);
   };
 
@@ -97,6 +102,11 @@ export default function UserFormModal({
 
   const shouldShowField = (field?: string[]) =>
     !field || field.includes(userType);
+
+  // Filter out avatar field during creation since we don't have user's UID yet
+  const formFieldsToDisplay = isEditMode
+    ? baseFormFields
+    : baseFormFields.filter((f) => f.name !== 'avatar_url');
 
   // Render edit form for admins
   if (isEditMode && userType === 'admin') {
@@ -148,7 +158,7 @@ export default function UserFormModal({
           >
             <InputFormFields
               control={form.control}
-              fields={baseFormFields}
+              fields={formFieldsToDisplay}
               shouldShowField={shouldShowField}
             />
 

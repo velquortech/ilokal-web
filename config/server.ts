@@ -12,9 +12,17 @@ export async function createServerSupabaseClient() {
         return cookieStore.getAll();
       },
       setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) =>
-          cookieStore.set(name, value, options),
-        );
+        cookiesToSet.forEach(({ name, value, options }) => {
+          // Apply security headers to all cookies
+          const secureOptions = {
+            ...options,
+            httpOnly: true, // Prevent JavaScript access (XSS protection)
+            secure: true, // Only send over HTTPS
+            sameSite: 'lax' as const, // CSRF protection
+            path: '/', // Available to entire app
+          };
+          cookieStore.set(name, value, secureOptions);
+        });
       },
     },
   });

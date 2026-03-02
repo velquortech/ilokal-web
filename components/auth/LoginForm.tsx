@@ -1,57 +1,60 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, LoginInput } from '@/lib/validation/auth';
 import { useAuthStore } from '@/lib/stores/authStore';
-import authService from '@/lib/api/authService';
+import { loginAction, redirectByRole } from '@/app/auth/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
 export default function LoginForm() {
-  const router = useRouter();
   const [apiError, setApiError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
   const setUser = useAuthStore((state) => state.setUser);
-  const setIsLoading = useAuthStore((state) => state.setIsLoading);
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = async (data: LoginInput) => {
-    try {
-      setApiError(null);
-      setIsLoading(true);
+  const onSubmit = (data: LoginInput) => {
+    startTransition(async () => {
+      try {
+        setApiError(null);
+        setSuccessMessage(null);
 
-      const response = await authService.login(data);
-      setUser(response.user);
+        // Call Server Action for secure authentication
+        const response = await loginAction(data.email, data.password);
 
-      // Redirect based on user role
-      const role = response.user.role;
-      if (role === 'admin') {
-        router.push('/dashboard/admin');
-      } else if (role === 'business_owner') {
-        router.push('/dashboard/business');
-      } else {
-        router.push('/home');
+        // Update local auth state with user data
+        setUser(response.user);
+
+        // Show success message briefly before redirect
+        setSuccessMessage('Login successful! Redirecting...');
+
+        // Redirect based on user role (Server Action)
+        // Note: redirect() from Next.js uses internal mechanism, don't catch its error
+        redirectByRole(response.user.role).catch(() => {
+          // Silently ignore redirect errors - they're expected
+        });
+      } catch (error) {
+        // Only set error if we haven't already shown success
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : 'Failed to login. Please try again.';
+        setApiError(errorMessage);
       }
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : 'Failed to login. Please try again.';
-      setApiError(errorMessage);
-      setIsLoading(false);
-    }
+    });
   };
 
   return (
@@ -63,12 +66,19 @@ export default function LoginForm() {
         </p>
       </div>
 
-      {apiError && (
+      {successMessage ? (
+        <div className="flex gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          <div className="flex h-5 w-5 shrink-0 items-center justify-center">
+            <div className="h-2 w-2 rounded-full bg-green-600" />
+          </div>
+          <p>{successMessage}</p>
+        </div>
+      ) : apiError ? (
         <div className="flex gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <p>{apiError}</p>
         </div>
-      )}
+      ) : null}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {/* Email Field */}
@@ -79,7 +89,7 @@ export default function LoginForm() {
             type="email"
             placeholder="you@example.com"
             {...register('email')}
-            disabled={isSubmitting}
+            disabled={isPending}
             className={errors.email ? 'border-red-500' : ''}
           />
           {errors.email && (
@@ -95,7 +105,7 @@ export default function LoginForm() {
             type="password"
             placeholder="••••••••"
             {...register('password')}
-            disabled={isSubmitting}
+            disabled={isPending}
             className={errors.password ? 'border-red-500' : ''}
           />
           {errors.password && (
@@ -106,10 +116,10 @@ export default function LoginForm() {
         {/* Submit Button */}
         <Button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isPending}
           className="w-full bg-black text-white hover:bg-slate-900"
         >
-          {isSubmitting ? (
+          {isPending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Signing in...

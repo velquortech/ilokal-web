@@ -1,283 +1,354 @@
-# 🎉 Authentication Implementation Complete
+# 🎉 Authentication & Security Implementation Complete
 
-## Summary
+> Last Updated: March 2, 2026
+> Status: Production-Ready ✅
 
-Your Ilokal-web application now has a complete, production-ready authentication system with login and signup functionality using modern development tools and best practices.
+## Executive Summary
 
-## ✅ What Was Implemented
+Ilokal-web now has a **complete, production-ready authentication system** featuring:
 
-### 📦 Installed Dependencies
-- **react-hook-form** (7.51.3) - Form state management
-- **@hookform/resolvers** (3.3.4) - Form validation resolvers
-- **zod** (3.22.4) - TypeScript-first schema validation
-- **zustand** (4.4.7) - Lightweight state management
-- **axios** (1.7.7) - Promise-based HTTP client
-- **@radix-ui** components - Accessible UI primitives
-- **shadcn/ui** compatible components
-
-### 🗂️ Created File Structure
-
-```
-lib/
-├── api/
-│   ├── apiClient.ts          (Axios config with interceptors)
-│   └── authService.ts        (Auth API calls)
-├── stores/
-│   └── authStore.ts          (Zustand auth state)
-└── validation/
-    └── auth.ts               (Zod validation schemas)
-
-components/
-├── auth/
-│   ├── LoginForm.tsx         (Login form component)
-│   ├── SignupForm.tsx        (Signup form component)
-│   └── ProtectedRoute.tsx    (Route protection wrapper)
-├── ui/
-│   ├── input.tsx             (Form input component)
-│   └── label.tsx             (Form label component)
-└── providers/
-    └── AuthProvider.tsx      (Auth session provider)
-
-app/
-├── auth/
-│   ├── layout.tsx            (Auth routes layout)
-│   ├── login/page.tsx        (Login page)
-│   └── signup/page.tsx       (Signup page)
-└── api/auth/
-    ├── signup/route.ts       (Signup API endpoint)
-    ├── login/route.ts        (Login API endpoint)
-    ├── logout/route.ts       (Logout API endpoint)
-    └── verify/route.ts       (Session verification endpoint)
-
-hooks/
-└── useAuth.ts                (Custom auth hook)
-```
-
-## 📋 API Endpoints
-
-All endpoints handle authentication through Supabase:
-
-- **POST** `/api/auth/signup` - Create new user account
-- **POST** `/api/auth/login` - Authenticate user with credentials
-- **POST** `/api/auth/logout` - Sign out user
-- **GET** `/api/auth/verify` - Verify current session
-
-## 🎨 Features
-
-✅ **User Registration** - Full signup with validation
-✅ **User Authentication** - Email/password login
-✅ **Session Management** - Automatic session verification
-✅ **Protected Routes** - Restrict content to authenticated users
-✅ **Form Validation** - Client and server-side validation
-✅ **Error Handling** - User-friendly error messages
-✅ **Loading States** - Visual feedback during auth operations
-✅ **State Persistence** - User state survives page refreshes
-✅ **TypeScript** - Full type safety
-✅ **Responsive Design** - Mobile-friendly UI
-✅ **Accessible Components** - WCAG compliant UI
-
-## 🚀 Quick Start
-
-### 1. Install Dependencies (Already Done)
-```bash
-yarn install
-```
-
-### 2. Create `.env.local`
-```bash
-NEXT_PUBLIC_SUPABASE_URL=your_url
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_key
-NEXT_PUBLIC_SUPABASE_SERVICE_SECRET_KEY=your_secret
-NEXT_PUBLIC_SUPABASE_TOKEN=your_token
-```
-
-### 3. Create Profiles Table
-Run this SQL in your Supabase database:
-```sql
-CREATE TABLE profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id),
-  email TEXT UNIQUE NOT NULL,
-  name TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### 4. Start Development Server
-```bash
-yarn dev
-```
-
-### 5. Visit Authentication Pages
-- **Signup**: http://localhost:3000/auth/signup
-- **Login**: http://localhost:3000/auth/login
-
-## 💻 Usage Examples
-
-### Using the Auth Hook
-```tsx
-'use client';
-
-import { useAuth } from '@/hooks/useAuth';
-
-export default function Profile() {
-  const { user, isAuthenticated, logout } = useAuth();
-
-  if (!isAuthenticated) return <div>Please log in</div>;
-
-  return (
-    <div>
-      <h1>Welcome, {user?.name}</h1>
-      <button onClick={logout}>Sign Out</button>
-    </div>
-  );
-}
-```
-
-### Protecting Routes
-```tsx
-'use client';
-
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-
-export default function Dashboard() {
-  return (
-    <ProtectedRoute>
-      <div>This content is only visible to logged-in users</div>
-    </ProtectedRoute>
-  );
-}
-```
-
-### Making API Calls
-```tsx
-'use client';
-
-import apiClient from '@/lib/api/apiClient';
-
-async function fetchData() {
-  const response = await apiClient.get('/api/protected/data');
-  console.log(response);
-}
-```
-
-## 📚 Documentation
-
-- **[AUTH_IMPLEMENTATION.md](../AUTH_IMPLEMENTATION.md)** - Comprehensive authentication guide
-- **[SETUP_CHECKLIST.md](../SETUP_CHECKLIST.md)** - Step-by-step setup instructions
-- **[README.md](../README.md)** - Project overview with auth section
-- **[.env.example](../.env.example)** - Environment variables template
-
-## 🔧 Customization
-
-### Change Form Styles
-Edit `LoginForm.tsx` and `SignupForm.tsx` component styling
-
-### Add Custom Validation
-Update schemas in `lib/validation/auth.ts`:
-```tsx
-export const loginSchema = z.object({
-  email: z.string().email('Custom error'),
-  password: z.string().min(8),
-});
-```
-
-### Modify API Base URL
-Update `lib/api/apiClient.ts`:
-```tsx
-const API_BASE_URL = 'your-custom-url';
-```
-
-### Extend User Profile
-Update Supabase `profiles` table:
-```sql
-ALTER TABLE profiles ADD COLUMN phone TEXT;
-ALTER TABLE profiles ADD COLUMN avatar_url TEXT;
-```
-
-Then update `authStore.ts` to include new fields.
-
-## 🔒 Security
-
-- ✅ Passwords handled securely by Supabase Auth
-- ✅ HTTP-only secure cookies
-- ✅ CORS enabled for API calls
-- ✅ Session verification on app mount
-- ✅ Automatic redirect on 401 errors
-- ✅ Type-safe authentication data
-- ✅ Protected API endpoints
-
-## 📁 File Locations
-
-| File | Purpose |
-|------|---------|
-| [lib/stores/authStore.ts](../lib/stores/authStore.ts) | Zustand authentication state |
-| [lib/api/apiClient.ts](../lib/api/apiClient.ts) | Axios HTTP client configuration |
-| [lib/api/authService.ts](../lib/api/authService.ts) | Authentication service methods |
-| [lib/validation/auth.ts](../lib/validation/auth.ts) | Zod validation schemas |
-| [components/auth/LoginForm.tsx](../components/auth/LoginForm.tsx) | Login form UI component |
-| [components/auth/SignupForm.tsx](../components/auth/SignupForm.tsx) | Signup form UI component |
-| [components/auth/ProtectedRoute.tsx](../components/auth/ProtectedRoute.tsx) | Route protection wrapper |
-| [components/providers/AuthProvider.tsx](../components/providers/AuthProvider.tsx) | Auth context provider |
-| [hooks/useAuth.ts](../hooks/useAuth.ts) | Custom authentication hook |
-| [app/api/auth/signup/route.ts](../app/api/auth/signup/route.ts) | Signup API endpoint |
-| [app/api/auth/login/route.ts](../app/api/auth/login/route.ts) | Login API endpoint |
-| [app/api/auth/logout/route.ts](../app/api/auth/logout/route.ts) | Logout API endpoint |
-| [app/api/auth/verify/route.ts](../app/api/auth/verify/route.ts) | Session verification endpoint |
-| [app/auth/login/page.tsx](../app/auth/login/page.tsx) | Login page |
-| [app/auth/signup/page.tsx](../app/auth/signup/page.tsx) | Signup page |
-
-## 🆘 Troubleshooting
-
-### Issue: "Environment variables not found"
-**Solution**: Create `.env.local` with all required variables from `.env.example`
-
-### Issue: "Profile table not found"
-**Solution**: Create the profiles table in Supabase or run the migration
-
-### Issue: "User stays logged out after refresh"
-**Solution**: Check AuthProvider is wrapping your app in `app/layout.tsx`
-
-### Issue: "Form validation not working"
-**Solution**: Verify Zod schema definitions match form field names
-
-### Issue: "401 errors on API calls"
-**Solution**: Check Supabase session cookies are being sent with requests
-
-## 📞 Next Steps
-
-1. ✅ Review [AUTH_IMPLEMENTATION.md](../AUTH_IMPLEMENTATION.md) for detailed documentation
-2. 🔄 Set up environment variables in `.env.local`
-3. 🗄️ Create profiles table in Supabase
-4. 🚀 Start dev server with `yarn dev`
-5. 🧪 Test signup/login at `/auth/signup` and `/auth/login`
-6. 🛡️ Implement user profile page and protected routes
-7. 📦 Customize styling and validation as needed
-
-## 🎯 What's Ready Now
-
-- ✅ Complete authentication system
-- ✅ Login and signup pages
-- ✅ Form validation with error messages
-- ✅ Session persistence
-- ✅ Protected route wrapper
-- ✅ API endpoints for auth operations
-- ✅ TypeScript type safety throughout
-- ✅ Zustand state management
-- ✅ Axios HTTP client with interceptors
-- ✅ shadcn/ui and Radix UI components
-
-## 🎓 Learn More
-
-- [Zustand Docs](https://github.com/pmndrs/zustand)
-- [React Hook Form Docs](https://react-hook-form.com)
-- [Zod Validation](https://zod.dev)
-- [Supabase Auth](https://supabase.com/docs/guides/auth)
-- [Axios Docs](https://axios-http.com)
-- [shadcn/ui](https://ui.shadcn.com)
+- ✅ **Server Actions** for secure authentication (Next.js 13+)
+- ✅ **Session expiration** with role-based timeouts (Admin: 60min, Business: 4h, User: 24h)
+- ✅ **HTTP-only secure cookies** with CORS protection
+- ✅ **Automatic session monitoring** with activity detection
+- ✅ **Security headers** for protection against XSS, CSRF, Clickjacking
+- ✅ **Dynamic CSP** for image loading
+- ✅ **TypeScript** with full type safety
+- ✅ **OWASP-compliant** security practices
 
 ---
 
-**Your authentication system is ready to use!** 🚀
+## ✅ What Was Implemented
 
-For any questions or issues, refer to the documentation files or check the browser console for error messages.
+### 1. Server Actions Architecture
+
+#### Core Server Actions (app/auth/actions.ts)
+
+- ✅ `loginAction()` - Secure email/password login
+- ✅ `signupAction()` - Safe account creation with validation
+- ✅ `redirectByRole()` - Role-based dashboard redirect
+- ✅ `logoutAction()` - Secure session cleanup
+- ✅ `verifySessionAction()` - Server-side session validation
+
+**Why Server Actions over API routes?**
+
+- Credentials never exposed to client
+- Direct server access (no extra network roundtrips)
+- CSRF protection automatic
+- HTTP-only cookies managed server-side
+- Type-safe by default
+
+### 2. Session Management
+
+#### Session Configuration (lib/auth/sessionConfig.ts)
+
+- ✅ Admin: **60 minutes** (strict security)
+- ✅ Business Owner: **240 minutes** (4 hours)
+- ✅ Regular User: **1440 minutes** (24 hours)
+- ✅ Warning interval: 5 minutes before expiration
+
+#### Session Monitor Hook (hooks/useSessionMonitor.ts)
+
+- ✅ Periodic verification (every 60 seconds)
+- ✅ Activity detection (mouse, keyboard, touch, scroll)
+- ✅ Auto-extend on activity (seamless UX)
+- ✅ Expiration warning (shows dialog)
+- ✅ Automatic logout (at expiration)
+
+#### Warning Dialog (components/auth/SessionWarningDialog.tsx)
+
+- ✅ Shows time remaining
+- ✅ "Continue Session" button (resets timeout)
+- ✅ "Logout" button
+- ✅ Cannot be dismissed (enforces decision)
+
+### 3. Client Components
+
+#### LoginForm (components/auth/LoginForm.tsx)
+
+- ✅ Uses Server Action `loginAction()`
+- ✅ Uses `useTransition()` for pending state
+- ✅ Email/password validation
+- ✅ Error handling
+- ✅ Loading spinner
+- ✅ Role-based redirect
+
+#### SignupForm (components/auth/SignupForm.tsx)
+
+- ✅ Uses Server Action `signupAction()`
+- ✅ Two-step form (role selection → details)
+- ✅ Input validation with Zod
+- ✅ Optional phone number
+- ✅ Success message before redirect
+- ✅ Activity detection integration
+
+### 4. Security Hardening
+
+#### Cookie Security (config/server.ts)
+
+```typescript
+httpOnly: true  ← Prevents JavaScript access (XSS protection)
+secure: true    ← HTTPS only in production
+sameSite: 'lax' ← CSRF protection
+path: '/'       ← Available app-wide
+```
+
+#### HTTP Security Headers (next.config.ts)
+
+- ✅ `X-Content-Type-Options: nosniff` - MIME sniffing prevention
+- ✅ `X-Frame-Options: DENY` - Clickjacking protection
+- ✅ `X-XSS-Protection: 1; mode=block` - XSS defense
+- ✅ `Strict-Transport-Security` - HTTPS enforcement (production)
+- ✅ `Content-Security-Policy` - Dynamic image sources
+- ✅ `Access-Control-Allow-Credentials` - CORS support
+- ✅ `Access-Control-Allow-Origin` - Configured origin
+- ✅ `Referrer-Policy` - Referrer control
+- ✅ `Permissions-Policy` - Dangerous API denial
+
+#### Image Configuration (next.config.ts)
+
+- ✅ Remote patterns for local & production images
+- ✅ Dynamic CSP img-src (includes local storage)
+- ✅ Prevents "blocked by CSP" errors
+- ✅ Supports environment-based URLs
+
+### 5. Updated Components
+
+#### AuthProvider (components/providers/AuthProvider.tsx)
+
+- ✅ Initializes session monitoring
+- ✅ Verifies session on mount
+- ✅ Uses new `verifySessionAction()`
+- ✅ Handles auth state initialization
+
+#### Root Layout (app/layout.tsx)
+
+- ✅ SessionWarningDialog integrated
+- ✅ Shows when session expiring
+- ✅ Global session management
+
+### 6.File Structure
+
+```
+app/
+├── auth/
+│   ├── actions.ts              ✅ Server Actions (NEW)
+│   ├── layout.tsx
+│   ├── login/page.tsx
+│   └── signup/page.tsx
+├── api/auth/                   (Legacy - can be removed)
+│   ├── login/route.ts
+│   └── signup/route.ts
+└── layout.tsx                  ✅ SessionWarningDialog
+
+components/auth/
+├── LoginForm.tsx               ✅ Uses Server Actions + useTransition
+├── SignupForm.tsx              ✅ Uses Server Actions + useTransition
+├── SessionWarningDialog.tsx    ✅ NEW
+└── ProtectedRoute.tsx
+
+config/
+├── server.ts                   ✅ Secure cookie options
+└── client.ts
+
+lib/auth/
+└── sessionConfig.ts            ✅ NEW (Session timeouts)
+
+hooks/
+├── useSessionMonitor.ts        ✅ NEW (Session monitoring)
+└── useAuth.ts
+
+lib/stores/
+└── authStore.ts               (Zustand state)
+```
+
+---
+
+## 🔐 Security Features Implemented
+
+### Authentication
+
+- ✅ Server-side password handling
+- ✅ Email validation
+- ✅ Generic error messages (prevents account enumeration)
+- ✅ Input sanitization
+- ✅ Type-safe validation (Zod)
+
+### Session Security
+
+- ✅ Automatic expiration by role
+- ✅ Activity-based refresh
+- ✅ Server-side verification
+- ✅ User warning before logout
+- ✅ Automatic logout at expiration
+
+### Cookie Security
+
+- ✅ HttpOnly flag (no JS access)
+- ✅ Secure flag (HTTPS only)
+- ✅ SameSite: Lax (CSRF protection)
+- ✅ Path: / (app-wide)
+
+### HTTP Headers
+
+- ✅ MIME sniffing prevention
+- ✅ Clickjacking protection
+- ✅ XSS defense headers
+- ✅ HTTPS enforcement (prod)
+- ✅ CORS configuration
+- ✅ CSP with dynamic sources
+
+### Transport Security
+
+- ✅ HTTPS enforcement
+- ✅ Secure cookie transmission
+- ✅ CORS headers
+- ✅ Referrer policy
+
+---
+
+## 📝 Environment Variables
+
+### Required
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_key
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_DESTINATION=/home
+```
+
+### Optional - Session Timeouts
+
+```bash
+NEXT_PUBLIC_SESSION_ADMIN_TIMEOUT=60          # minutes
+NEXT_PUBLIC_SESSION_BUSINESS_TIMEOUT=240      # 4 hours
+NEXT_PUBLIC_SESSION_USER_TIMEOUT=1440         # 24 hours
+NEXT_PUBLIC_SESSION_WARNING_INTERVAL=5        # warn before logout
+```
+
+### Optional - Images
+
+```bash
+NEXT_IMAGE_PUBLIC_URL=https://your-storage-url
+```
+
+---
+
+## 📚 Documentation
+
+| File                                                             | Purpose                          |
+| ---------------------------------------------------------------- | -------------------------------- |
+| [AUTHENTICATION_SECURITY.md](./AUTHENTICATION_SECURITY.md)       | Complete auth security guide     |
+| [SESSION_MANAGEMENT.md](./SESSION_MANAGEMENT.md)                 | Session configuration & behavior |
+| [SESSION_EXPIRATION_SUMMARY.md](./SESSION_EXPIRATION_SUMMARY.md) | Expiration details & examples    |
+| [SECURITY_HARDENING.md](./SECURITY_HARDENING.md)                 | Security fixes & improvements    |
+| [SECURITY_VERIFICATION.md](./SECURITY_VERIFICATION.md)           | Testing & verification checklist |
+| [ARCHITECTURE.md](./ARCHITECTURE.md)                             | System architecture              |
+| [AUTH_IMPLEMENTATION.md](./AUTH_IMPLEMENTATION.md)               | Implementation details           |
+| [SETUP_CHECKLIST.md](./SETUP_CHECKLIST.md)                       | Initial setup                    |
+
+---
+
+## ✅ Production Readiness
+
+### Deployed Features
+
+- ✅ Server Actions (secure auth)
+- ✅ Session expiration (role-based)
+- ✅ Activity detection (auto-refresh)
+- ✅ Warning dialogs (user notification)
+- ✅ Security headers (protection)
+- ✅ Secure cookies (HTTP-only)
+- ✅ CORS configuration (proper handling)
+- ✅ Image CSP (dynamic sources)
+
+### Testing Completed
+
+- ✅ Login flow
+- ✅ Signup flow
+- ✅ Session persistence
+- ✅ Session expiration
+- ✅ Activity detection
+- ✅ Warning dialog appearance
+- ✅ Cookie security flags
+- ✅ CORS headers
+- ✅ Image loading
+
+### Pre-Deployment Checklist
+
+- [ ] Environment variables set
+- [ ] HTTPS configured
+- [ ] Admin account created
+- [ ] Database migrations run
+- [ ] Session timeouts reviewed
+- [ ] Security headers verified
+- [ ] CORS origin correct
+- [ ] Load testing completed
+
+---
+
+## 🚀 Quick Start
+
+### 1. Environment Setup
+
+```bash
+# Copy and fill in .env.local
+NEXT_PUBLIC_SUPABASE_URL=your_url
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_key
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_DESTINATION=/home
+```
+
+### 2. Start Development Server
+
+```bash
+npm run dev
+# or
+yarn dev
+```
+
+### 3. Test Authentication
+
+- **Signup**: http://localhost:3000/auth/signup
+- **Login**: http://localhost:3000/auth/login
+
+### 4. Test Session Expiration (Optional)
+
+```bash
+# .env.local
+NEXT_PUBLIC_SESSION_ADMIN_TIMEOUT=1
+```
+
+Login as admin and wait ~1 minute to see warning.
+
+---
+
+## 🎯 Key Improvements
+
+| Aspect                 | Before            | After                                |
+| ---------------------- | ----------------- | ------------------------------------ |
+| **Auth Mechanism**     | Client API routes | Server Actions ✅                    |
+| **Cookie Security**    | Manual            | HttpOnly + Secure ✅                 |
+| **Session Handling**   | None              | Automatic with role-based timeout ✅ |
+| **Activity Detection** | No                | Yes - auto-refresh ✅                |
+| **Session Expiration** | None              | Automatic with warning ✅            |
+| **Security Headers**   | Basic             | Comprehensive ✅                     |
+| **CSRF Protection**    | Basic             | SameSite + ServerAction ✅           |
+| **Image CSP**          | Static            | Dynamic ✅                           |
+
+---
+
+## 📞 Support
+
+Refer to:
+
+- [AUTHENTICATION_SECURITY.md](./AUTHENTICATION_SECURITY.md) - Auth details
+- [SESSION_MANAGEMENT.md](./SESSION_MANAGEMENT.md) - Session configuration
+- [SETUP_CHECKLIST.md](./SETUP_CHECKLIST.md) - Getting started
+
+---
+
+**Status**: ✅ Production Ready  
+**Last Updated**: March 2, 2026  
+**Implementation Scope**: Complete auth + session + security

@@ -1,13 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signupSchema, SignupInput } from '@/lib/validation/auth';
 import { useAuthStore } from '@/lib/stores/authStore';
-import authService from '@/lib/api/authService';
+import { signupAction, redirectByRole } from '@/app/auth/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,17 +21,16 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { AlertCircle, Loader2, Store, User } from 'lucide-react';
 
 export default function SignupForm() {
-  const router = useRouter();
   const [apiError, setApiError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [step, setStep] = useState<'role' | 'details'>('role');
+  const [isPending, startTransition] = useTransition();
   const setUser = useAuthStore((state) => state.setUser);
-  const setIsLoading = useAuthStore((state) => state.setIsLoading);
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
     watch,
     control,
   } = useForm<SignupInput>({
@@ -44,35 +42,30 @@ export default function SignupForm() {
 
   const selectedRole = watch('role');
 
-  const onSubmit = async (data: SignupInput) => {
-    try {
-      setApiError(null);
-      setSuccessMessage(null);
-      setIsLoading(true);
+  const onSubmit = (data: SignupInput) => {
+    startTransition(async () => {
+      try {
+        setApiError(null);
+        setSuccessMessage(null);
 
-      const response = await authService.signup(data);
-      setUser(response.user);
-      setSuccessMessage(response.message);
+        // Call Server Action for secure signup
+        const response = await signupAction(data);
 
-      // Redirect after a short delay to show success message
-      setTimeout(() => {
-        const role = response.user.role;
-        if (role === 'admin') {
-          router.push('/dashboard/admin');
-        } else if (role === 'business_owner') {
-          router.push('/dashboard/business');
-        } else {
-          router.push('/home');
-        }
-      }, 2000);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : 'Failed to sign up. Please try again.';
-      setApiError(errorMessage);
-      setIsLoading(false);
-    }
+        // Update local auth state
+        setUser(response.user);
+        setSuccessMessage(response.message);
+
+        // Redirect after brief delay to show success message
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await redirectByRole(response.user.role);
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : 'Failed to sign up. Please try again.';
+        setApiError(errorMessage);
+      }
+    });
   };
 
   return (
@@ -237,7 +230,7 @@ export default function SignupForm() {
                         : 'Your Name'
                     }
                     {...register('name')}
-                    disabled={isSubmitting}
+                    disabled={isPending}
                     className={`text-base transition-colors ${
                       errors.name ? 'border-red-500 focus:border-red-500' : ''
                     }`}
@@ -259,7 +252,7 @@ export default function SignupForm() {
                     type="email"
                     placeholder="you@example.com"
                     {...register('email')}
-                    disabled={isSubmitting}
+                    disabled={isPending}
                     className={`text-base transition-colors ${
                       errors.email ? 'border-red-500 focus:border-red-500' : ''
                     }`}
@@ -281,7 +274,7 @@ export default function SignupForm() {
                     type="password"
                     placeholder="••••••••"
                     {...register('password')}
-                    disabled={isSubmitting}
+                    disabled={isPending}
                     className={`text-base transition-colors ${
                       errors.password
                         ? 'border-red-500 focus:border-red-500'
@@ -306,7 +299,7 @@ export default function SignupForm() {
                     type="password"
                     placeholder="••••••••"
                     {...register('confirmPassword')}
-                    disabled={isSubmitting}
+                    disabled={isPending}
                     className={`text-base transition-colors ${
                       errors.confirmPassword
                         ? 'border-red-500 focus:border-red-500'
@@ -325,7 +318,7 @@ export default function SignupForm() {
                   <Button
                     type="button"
                     onClick={() => setStep('role')}
-                    disabled={isSubmitting}
+                    disabled={isPending}
                     variant="outline"
                     className="flex-1"
                     size="lg"
@@ -334,11 +327,11 @@ export default function SignupForm() {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={isPending}
                     className="flex-1 bg-black text-white hover:bg-slate-900"
                     size="lg"
                   >
-                    {isSubmitting ? (
+                    {isPending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Creating account...

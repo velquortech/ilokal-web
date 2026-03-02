@@ -18,8 +18,8 @@ import {
   adminEditSchema,
   type AdminEditFormData,
 } from '@/lib/schemas/userFormSchema';
-import { PhoneNumberInput } from './form/inputs/PhoneNumberInput';
-import { AvatarUpload } from './form/inputs/AvatarUpload';
+import { PhoneNumberInput } from './inputs/PhoneNumberInput';
+import { AvatarUpload } from './inputs/AvatarUpload';
 
 interface AdminEditFormProps {
   admin: Profile;
@@ -157,6 +157,7 @@ export function AdminEditForm({
                   onChange={field.onChange}
                   disabled={isSubmitting}
                   currentAvatarUrl={admin.avatar_url}
+                  userId={admin.id}
                 />
               </FormControl>
               <FormMessage />

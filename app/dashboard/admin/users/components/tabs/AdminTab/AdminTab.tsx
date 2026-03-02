@@ -114,6 +114,7 @@ export default function AdminTab() {
 
   /**
    * Compare form data with original admin and return only changed fields
+   * Note: Password is NOT included as it should never be sent to the profiles table
    */
   const getChangedFields = (
     original: Profile,
@@ -123,7 +124,6 @@ export default function AdminTab() {
     full_name?: string;
     phone_number?: string;
     avatar_url?: string;
-    password?: string;
   } => {
     const changes: Record<string, unknown> = {};
 
@@ -147,17 +147,11 @@ export default function AdminTab() {
       changes.avatar_url = formData.avatar_url;
     }
 
-    // Only include password if it's not empty (user wants to change it)
-    if (formData.password && formData.password.length > 0) {
-      changes.password = formData.password;
-    }
-
     return changes as {
       email?: string;
       full_name?: string;
       phone_number?: string;
       avatar_url?: string;
-      password?: string;
     };
   };
 

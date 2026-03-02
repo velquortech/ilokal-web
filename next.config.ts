@@ -135,7 +135,7 @@ const nextConfig: NextConfig = {
           // Content-Security-Policy - dynamically built to include all image sources
           {
             key: 'Content-Security-Policy',
-            value: `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src ${buildCSPImageSources()}; font-src 'self' data:`,
+            value: `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src ${buildCSPImageSources()}; connect-src 'self' http://127.0.0.1:54321${process.env.NEXT_PUBLIC_SUPABASE_URL ? ' ' + process.env.NEXT_PUBLIC_SUPABASE_URL : ''}; font-src 'self' data:`,
           },
         ],
       },

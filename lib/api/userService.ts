@@ -24,7 +24,6 @@ export interface AdminUpdateUserInput {
   full_name?: string;
   phone_number?: string;
   avatar_url?: string;
-  password?: string;
 }
 
 const userService = {
@@ -89,7 +88,7 @@ const userService = {
     id: string,
     data: AdminUpdateUserInput,
   ): Promise<Profile> {
-    return await apiClient.put(`/profiles/${id}/admin`, data);
+    return await apiClient.put(`/profiles/${id}`, data);
   },
 
   async deleteProfile(id: string): Promise<{ message: string }> {

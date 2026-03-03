@@ -1,0 +1,49 @@
+import { z } from 'zod';
+
+export const userFormSchema = z
+  .object({
+    email: z.string().email('Invalid email address'),
+    full_name: z.string().min(1, 'Full name is required'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirm_password: z.string(),
+    role: z.enum(['admin', 'business_owner', 'user'] as const),
+    status: z.enum(['active', 'inactive', 'suspended'] as const).optional(),
+    phone_number: z
+      .string()
+      .optional()
+      .or(z.literal(''))
+      .refine(
+        (val) => !val || /^\+[1-9]\d{1,14}(\s\d+)?$/.test(val),
+        'Phone number must be in format: +1 5550000000',
+      ),
+    avatar_url: z.string().optional().or(z.literal('')),
+  })
+  .refine((data) => data.password === data.confirm_password, {
+    message: "Passwords don't match",
+    path: ['confirm_password'],
+  });
+
+export const adminEditSchema = z.object({
+  full_name: z.string().min(1, 'Full name is required'),
+  phone_number: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .refine(
+      (val) => !val || /^\+[1-9]\d{1,14}(\s\d+)?$/.test(val),
+      'Phone number must be in format: +1 5550000000',
+    ),
+  email: z.string().email('Invalid email'),
+  password: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .refine(
+      (val) => !val || val.length >= 8,
+      'Password must be at least 8 characters if provided',
+    ),
+  avatar_url: z.string().optional().or(z.literal('')),
+});
+
+export type UserFormData = z.infer<typeof userFormSchema>;
+export type AdminEditFormData = z.infer<typeof adminEditSchema>;

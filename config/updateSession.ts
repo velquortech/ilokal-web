@@ -14,7 +14,7 @@ export async function updateSession(request: NextRequest) {
 
   if (!url || !key) {
     throw new Error(
-      'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY',
+      'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_SERVICE_SECRET_KEY',
     );
   }
 
@@ -48,7 +48,7 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { data: userData } = await supabase
-    .from('users')
+    .from('profiles')
     .select('role, id')
     .eq('id', user?.id)
     .single();

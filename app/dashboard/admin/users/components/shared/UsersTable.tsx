@@ -178,7 +178,7 @@ export default function UsersTable({
                         }}
                         disabled={isSubmitting}
                         className="gap-1"
-                        aria-label={`Edit user ${user.full_name || user.email}`}
+                        aria-label={`Edit user ${user.full_name || user.email || 'this user'}`}
                       >
                         <Edit2 className="h-3 w-3" />
                         <span className="hidden sm:inline">Edit</span>
@@ -191,7 +191,7 @@ export default function UsersTable({
                         }
                         disabled={isSubmitting}
                         className="text-red-600 hover:text-red-700"
-                        aria-label={`Delete user ${user.full_name || user.email}`}
+                        aria-label={`Delete user ${user.full_name || user.email || 'this user'}`}
                       >
                         <Trash2 className="h-3 w-3" />
                         <span className="hidden sm:inline">Delete</span>

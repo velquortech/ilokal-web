@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Shield, Building2, Users } from 'lucide-react';
-import { AdminTab } from './components';
+import { AdminTab, ConsumersTab } from './components';
 
 export default function UserManagementHub() {
   const [activeTab, setActiveTab] = useState('admins');
@@ -91,11 +91,11 @@ export default function UserManagementHub() {
         )} */}
 
         {/* Consumers Tab */}
-        {/* {activeTab === 'consumers' && (
+        {activeTab === 'consumers' && (
           <div className="mt-4 space-y-4">
             <ConsumersTab />
           </div>
-        )} */}
+        )}
       </div>
     </div>
   );

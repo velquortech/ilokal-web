@@ -18,8 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { PhoneNumberInput } from '@/app/dashboard/admin/users/components/form/inputs/PhoneNumberInput';
-import { AvatarUpload } from '@/app/dashboard/admin/users/components/form/inputs/AvatarUpload';
+import { PhoneNumberInput } from '@/app/dashboard/admin/users/components/forms/inputs/PhoneNumberInput';
+import { AvatarUpload } from '@/app/dashboard/admin/users/components/forms/inputs/AvatarUpload';
 
 interface FormFieldsProps {
   control: Control<UserFormData>;

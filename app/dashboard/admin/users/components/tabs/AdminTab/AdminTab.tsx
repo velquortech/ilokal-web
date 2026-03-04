@@ -28,11 +28,15 @@ export default function AdminTab() {
   >('all');
   const [sortOrder, setSortOrder] = useState<'latest' | 'oldest'>('latest');
 
-  // Debounce search input
+  // Reset to page 1 immediately when the search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  // Debounce search input value used for querying
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-      setCurrentPage(1); // Reset to page 1 on search
     }, ADMIN_CONFIG.SEARCH_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);

@@ -4,6 +4,8 @@
         "Supabase"
     ],
     "chat.tools.terminal.autoApprove": {
-        "yarn add": true
+        "yarn add": true,
+        "npx supabase": true,
+        "docker exec": true
     }
 }

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/components/providers/AuthProvider';
+import { QueryProvider } from '@/providers/QueryProvider';
 import { SessionWarningDialog } from '@/components/auth/SessionWarningDialog';
 import './globals.css';
 
@@ -36,10 +37,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <AuthProvider>
-            {children}
-            <SessionWarningDialog />
-          </AuthProvider>
+          <QueryProvider>
+            <AuthProvider>
+              {children}
+              <SessionWarningDialog />
+            </AuthProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

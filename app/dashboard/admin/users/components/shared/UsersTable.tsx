@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 import {
   Table,
   TableBody,
@@ -10,6 +11,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   ChevronLeft,
   ChevronRight,
@@ -22,31 +31,20 @@ import { Profile } from '@/lib/types/user';
 import { PaginatedResponse } from '@/lib/api/paginationService';
 import { AvatarImage } from '@/components/custom/AvatarImage';
 import { StatusDropdown } from '../form/fields/StatusDropdown';
+import { getTimeAgo } from '@/lib/utils/dateFormatter';
 
-interface AdminUsersTableProps {
+interface UsersTableProps {
   data: PaginatedResponse<Profile> | null;
   isLoading: boolean;
   currentPage: number;
   onPageChange: (page: number) => void;
-  onEdit: (admin: Profile) => void;
+  onEdit: (user: Profile) => void;
   onDelete: (id: string) => void;
-  onStatusChange?: (updatedAdmin: Profile) => void;
+  onStatusChange?: (updatedUser: Profile) => void;
   isSubmitting: boolean;
 }
 
-const formatDate = (dateString: string | Date): string => {
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      return new Date().toLocaleDateString();
-    }
-    return date.toLocaleDateString();
-  } catch {
-    return new Date().toLocaleDateString();
-  }
-};
-
-export default function AdminUsersTable({
+export default function UsersTable({
   data,
   isLoading,
   currentPage,
@@ -55,15 +53,29 @@ export default function AdminUsersTable({
   onDelete,
   onStatusChange,
   isSubmitting,
-}: AdminUsersTableProps) {
+}: UsersTableProps) {
   const [error, setError] = useState<string | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    open: boolean;
+    user: Profile | null;
+  }>({
+    open: false,
+    user: null,
+  });
+
+  const handleDeleteConfirm = () => {
+    if (deleteConfirmation.user) {
+      onDelete(deleteConfirmation.user.id);
+      setDeleteConfirmation({ open: false, user: null });
+    }
+  };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="flex flex-col items-center gap-2">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
-          <p className="text-gray-600">Loading admins...</p>
+          <p className="text-gray-600">Loading users...</p>
         </div>
       </div>
     );
@@ -72,9 +84,9 @@ export default function AdminUsersTable({
   if (!data || data.data.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-gray-300 p-12 text-center">
-        <p className="text-gray-600">No admins found</p>
+        <p className="text-gray-600">No users found</p>
         <p className="mt-1 text-sm text-gray-500">
-          Create your first admin account to get started
+          Create your first account to get started
         </p>
       </div>
     );
@@ -110,25 +122,25 @@ export default function AdminUsersTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.data.map((admin, index) => (
-                <TableRow key={admin.id} className="hover:bg-gray-50">
+              {data.data.map((user, index) => (
+                <TableRow key={user.id} className="hover:bg-gray-50">
                   <TableCell>
                     <span className="font-medium">
                       {(currentPage - 1) * 10 + index + 1}
                     </span>
                   </TableCell>
                   <TableCell>
-                    {admin.avatar_url ? (
+                    {user.avatar_url ? (
                       <AvatarImage
-                        src={admin.avatar_url}
-                        alt={admin.full_name || 'Avatar'}
+                        src={user.avatar_url}
+                        alt={user.full_name || 'Avatar'}
                         width={40}
                         height={40}
                         className="h-10 w-10 rounded-full object-cover"
                       />
                     ) : (
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-xs font-medium text-gray-600">
-                        {admin.full_name
+                        {user.full_name
                           ?.split(' ')
                           .map((n) => n[0])
                           .join('')
@@ -138,22 +150,22 @@ export default function AdminUsersTable({
                     )}
                   </TableCell>
                   <TableCell>
-                    <span className="font-medium">{admin.full_name}</span>
+                    <span className="font-medium">{user.full_name}</span>
                   </TableCell>
                   <TableCell className="text-sm text-gray-600">
-                    {admin.email}
+                    {user.email}
                   </TableCell>
                   <TableCell className="text-sm text-gray-600">
-                    {formatDate(admin.created_at)}
+                    {getTimeAgo(user.created_at)}
                   </TableCell>
                   <TableCell className="text-sm text-gray-600">
-                    {formatDate(admin.updated_at)}
+                    {getTimeAgo(user.updated_at)}
                   </TableCell>
                   <TableCell>
                     <StatusDropdown
-                      admin={admin}
-                      onStatusChange={(updatedAdmin) => {
-                        onStatusChange?.(updatedAdmin);
+                      admin={user}
+                      onStatusChange={(updatedUser) => {
+                        onStatusChange?.(updatedUser);
                         setError(null);
                       }}
                       onError={setError}
@@ -164,7 +176,10 @@ export default function AdminUsersTable({
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => onEdit(admin)}
+                        onClick={() => {
+                          onEdit(user);
+                          toast.info(`Editing ${user.full_name}`);
+                        }}
                         disabled={isSubmitting}
                         className="gap-1"
                       >
@@ -174,7 +189,9 @@ export default function AdminUsersTable({
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => onDelete(admin.id)}
+                        onClick={() =>
+                          setDeleteConfirmation({ open: true, user })
+                        }
                         disabled={isSubmitting}
                         className="text-red-600 hover:text-red-700"
                       >
@@ -245,6 +262,43 @@ export default function AdminUsersTable({
           </Button>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog
+        open={deleteConfirmation.open}
+        onOpenChange={(open) =>
+          setDeleteConfirmation({ ...deleteConfirmation, open })
+        }
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{' '}
+              <span className="font-semibold">
+                {deleteConfirmation.user?.full_name}
+              </span>
+              ? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirmation({ open: false, user: null })}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={isSubmitting}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

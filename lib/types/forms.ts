@@ -1,4 +1,3 @@
-import { UserRole } from './user';
 import { UserFormData } from '@/lib/schemas/userFormSchema';
 
 export type FormFieldConfig = {
@@ -17,9 +16,7 @@ export interface SelectFieldConfig extends Omit<FormFieldConfig, 'type'> {
 export interface UserFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (
-    formData: Omit<UserFormData, 'confirm_password'> & { role: UserRole },
-  ) => void;
+  onSubmit: (formData: UserFormData) => void | Promise<void>;
   userType: 'admin' | 'business_owner' | 'user';
   initialData?: Partial<UserFormData> & { created_at?: string };
   error?: string | null;

@@ -67,9 +67,9 @@ export function Hero(): JSX.Element {
             </div>
           </div>
 
-          <div className="pointer-events-none absolute top-0 left-0 h-[500px] w-[500px] rounded-full bg-white/5 blur-[100px]"></div>
+          <div className="pointer-events-none absolute top-0 left-0 h-125 w-125 rounded-full bg-white/5 blur-[100px]"></div>
 
-          <div className="absolute bottom-0 z-30 h-32 w-full bg-gradient-to-t from-white to-transparent"></div>
+          <div className="absolute bottom-0 z-30 h-32 w-full bg-linear-to-t from-white to-transparent"></div>
         </div>
       </FadeInAnimation>
     </div>

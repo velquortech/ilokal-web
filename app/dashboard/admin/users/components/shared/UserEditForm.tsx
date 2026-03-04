@@ -18,44 +18,46 @@ import {
   adminEditSchema,
   type AdminEditFormData,
 } from '@/lib/schemas/userFormSchema';
-import { PhoneNumberInput } from './inputs/PhoneNumberInput';
-import { AvatarUpload } from './inputs/AvatarUpload';
+import { PhoneNumberInput } from '../form/inputs/PhoneNumberInput';
+import { AvatarUpload } from '../form/inputs/AvatarUpload';
 
-interface AdminEditFormProps {
-  admin: Profile;
+interface UserEditFormProps {
+  user: Profile;
   onSubmit: (data: AdminEditFormData) => Promise<void>;
   onCancel: () => void;
   isSubmitting: boolean;
   error?: string | null;
+  submitButtonLabel?: string;
 }
 
-export function AdminEditForm({
-  admin,
+export function UserEditForm({
+  user,
   onSubmit,
   onCancel,
   isSubmitting,
   error,
-}: AdminEditFormProps) {
+  submitButtonLabel = 'Update User',
+}: UserEditFormProps) {
   const form = useForm<AdminEditFormData>({
     resolver: zodResolver(adminEditSchema),
     defaultValues: {
-      full_name: admin.full_name || '',
-      phone_number: admin.phone_number || '',
-      email: admin.email,
+      full_name: user.full_name || '',
+      phone_number: user.phone_number || '',
+      email: user.email,
       password: '',
-      avatar_url: admin.avatar_url || '',
+      avatar_url: user.avatar_url || '',
     },
   });
 
   useEffect(() => {
     form.reset({
-      full_name: admin.full_name || '',
-      phone_number: admin.phone_number || '',
-      email: admin.email,
+      full_name: user.full_name || '',
+      phone_number: user.phone_number || '',
+      email: user.email,
       password: '',
-      avatar_url: admin.avatar_url || '',
+      avatar_url: user.avatar_url || '',
     });
-  }, [admin, form]);
+  }, [user, form]);
 
   const handleSubmit = async (data: AdminEditFormData) => {
     await onSubmit(data);
@@ -116,7 +118,7 @@ export function AdminEditForm({
               <FormControl>
                 <Input
                   type="email"
-                  placeholder="admin@example.com"
+                  placeholder="user@example.com"
                   {...field}
                   disabled={isSubmitting}
                 />
@@ -156,8 +158,8 @@ export function AdminEditForm({
                   value={field.value || ''}
                   onChange={field.onChange}
                   disabled={isSubmitting}
-                  currentAvatarUrl={admin.avatar_url}
-                  userId={admin.id}
+                  currentAvatarUrl={user.avatar_url}
+                  userId={user.id}
                 />
               </FormControl>
               <FormMessage />
@@ -175,7 +177,7 @@ export function AdminEditForm({
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Updating...' : 'Update Admin'}
+            {isSubmitting ? `${submitButtonLabel}...` : submitButtonLabel}
           </Button>
         </div>
       </form>

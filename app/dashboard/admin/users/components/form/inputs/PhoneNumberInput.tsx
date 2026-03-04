@@ -55,37 +55,64 @@ export function PhoneNumberInput({
   placeholder = '(917) 000-0000',
   disabled = false,
 }: PhoneNumberInputProps) {
-  // Extract country code and number from value
-  const getCountryCodeAndNumber = (val: string) => {
+  /**
+   * Value format: "ABBR+CODE|DIGITS" (e.g., "CA+1|1234567890")
+   * This format persists the country selection even when codes are shared (US/CA both +1)
+   */
+  const parsePhoneValue = (val: string) => {
     const uniqueCountries = getUniqueCountryCodes();
-    // Find matching country code (sorted by length descending to handle +358 before +35)
+
+    // Try to parse the new format: "ABBR+CODE|DIGITS"
+    if (val.includes('|')) {
+      const [countryPart, digits] = val.split('|');
+      // Extract abbreviation from "ABBR+CODE" format
+      const match = countryPart.match(/^([A-Z]{2})(.*)/);
+      if (match) {
+        const abbr = match[1];
+        const code = match[2];
+        const country = uniqueCountries.find(
+          (c) => c.abbreviation === abbr && c.code === code,
+        );
+        if (country) {
+          return {
+            country,
+            digits: digits || '',
+          };
+        }
+      }
+    }
+
+    // Fallback: try to parse old format or plain code "+CODE DIGITS"
     const sorted = [...uniqueCountries].sort(
       (a, b) => b.code.length - a.code.length,
     );
     const country = sorted.find((c) => val.startsWith(c.code));
 
     if (country) {
+      const digitsMatch = val.slice(country.code.length).trim();
       return {
-        ...country,
-        number: val.slice(country.code.length).trim(),
+        country,
+        digits: digitsMatch,
       };
     }
 
     // Default to Philippines or first country
     const defaultCountry = DEFAULT_COUNTRY_CODE || uniqueCountries[0];
-
     return {
-      ...defaultCountry,
-      number: val,
+      country: defaultCountry,
+      digits: val,
     };
   };
 
-  const currentCountry = useMemo(() => getCountryCodeAndNumber(value), [value]);
+  const { country: currentCountry, digits: numberValue } = useMemo(
+    () => parsePhoneValue(value),
+    [value],
+  );
 
   // Extract only digits from the number part
   const digitsOnly = useMemo(
-    () => currentCountry.number.replace(/\D/g, ''),
-    [currentCountry.number],
+    () => numberValue.replace(/\D/g, ''),
+    [numberValue],
   );
 
   // Check if phone number is valid
@@ -110,8 +137,8 @@ export function PhoneNumberInput({
     );
 
     if (newCountry) {
-      // Keep digits, update to new country code
-      const formatted = `${code} ${digitsOnly}`.trim();
+      // Format: "ABBR+CODE|DIGITS" (e.g., "CA+1|1234567890")
+      const formatted = `${abbr}${code}|${digitsOnly}`;
       onChange(formatted);
     }
   };
@@ -122,7 +149,8 @@ export function PhoneNumberInput({
     const newDigits = newValue.replace(/\D/g, '');
     // Limit to max length for current country
     const limitedDigits = newDigits.slice(0, currentCountry.maxLength);
-    const formatted = `${currentCountry.code} ${limitedDigits}`.trim();
+    // Format: "ABBR+CODE|DIGITS" (e.g., "CA+1|1234567890")
+    const formatted = `${currentCountry.abbreviation}${currentCountry.code}|${limitedDigits}`;
     onChange(formatted);
   };
 

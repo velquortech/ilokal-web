@@ -7,6 +7,16 @@ import type { CountryCode } from '@/lib/types/phoneInput';
 
 export const COUNTRY_CODES: CountryCode[] = [
   {
+    code: '+63',
+    country: 'Philippines',
+    abbreviation: 'PH',
+    emoji: '🇵🇭',
+    pattern: /^[0-9]{10}$/,
+    format: 'XXX XXX XXXX',
+    minLength: 10,
+    maxLength: 10,
+  },
+  {
     code: '+1',
     country: 'United States',
     abbreviation: 'US',
@@ -485,16 +495,6 @@ export const COUNTRY_CODES: CountryCode[] = [
     format: 'XXXX XXXX XXXX',
     minLength: 9,
     maxLength: 11,
-  },
-  {
-    code: '+63',
-    country: 'Philippines',
-    abbreviation: 'PH',
-    emoji: '🇵🇭',
-    pattern: /^[0-9]{10}$/,
-    format: 'XXX XXX XXXX',
-    minLength: 10,
-    maxLength: 10,
   },
   {
     code: '+92',

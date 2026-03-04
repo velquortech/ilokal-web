@@ -28,17 +28,17 @@ export default function AdminTab() {
 
   const ITEMS_PER_PAGE = 10;
 
-  // Fetch admins data
+  // Fetch admins data from server (always page 1, large limit for client-side pagination)
   const {
     data: rawData,
     isLoading,
     error: fetchError,
   } = useProfilesByRole('admin', {
-    page: currentPage,
-    limit: ITEMS_PER_PAGE * 3, // Fetch more for client-side filtering
+    page: 1, // Always fetch from page 1, let client handle pagination
+    limit: 1000, // Fetch enough data for client-side filtering and pagination
   });
 
-  // Apply filters and pagination
+  // Apply filters and pagination on client side
   const adminsData = useApplyFilters(
     rawData,
     searchQuery,

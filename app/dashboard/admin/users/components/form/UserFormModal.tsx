@@ -21,7 +21,7 @@ import { UserFormModalProps } from '@/lib/types/forms';
 import { getRoleFromUserType } from '@/lib/utils/roleMapper';
 import { baseFormFields } from '../../../constants/formFields';
 import { InputFormFields } from '@/lib/components/FormFields';
-import { AdminEditForm } from './AdminEditForm';
+import { UserEditForm } from '../shared';
 import { Profile } from '@/lib/types/user';
 
 const getUserLabel = (userType: string): string => {
@@ -96,7 +96,7 @@ export default function UserFormModal({
       phone_number: data.phone_number,
       avatar_url: data.avatar_url || '',
       role,
-      status: 'inactive',
+      status: 'inactive', // Default for new users only; existing status managed by StatusDropdown
     } as UserFormData);
   };
 
@@ -120,12 +120,13 @@ export default function UserFormModal({
             </DialogDescription>
           </DialogHeader>
 
-          <AdminEditForm
-            admin={initialData as unknown as Profile}
+          <UserEditForm
+            user={initialData as unknown as Profile}
             onSubmit={handleEditSubmit}
             onCancel={onClose}
             isSubmitting={false}
             error={error}
+            submitButtonLabel={`Update ${getUserLabel(userType)}`}
           />
         </DialogContent>
       </Dialog>

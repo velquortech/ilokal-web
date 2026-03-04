@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { createClient } from '@/config/client';
 import { Upload, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AvatarImage } from '@/components/custom/AvatarImage';
@@ -26,7 +25,6 @@ export function AvatarUpload({
     value || currentAvatarUrl || null,
   );
   const [error, setError] = useState<string | null>(null);
-  const supabase = React.useMemo(() => createClient(), []);
 
   // Sync preview with form value when it changes
   React.useEffect(() => {
@@ -45,7 +43,7 @@ export function AvatarUpload({
       setUploading(true);
       setError(null);
 
-      // Validate file
+      // Validate file (client-side pre-check)
       const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
       if (file.size > MAX_FILE_SIZE) {
         setError('File size must be less than 5MB');
@@ -64,42 +62,29 @@ export function AvatarUpload({
       };
       reader.readAsDataURL(file);
 
-      // Upload to Supabase Storage with user-specific path
-      const supabaseClient = await supabase;
-
-      // Use provided userId or fall back to current user
-      let targetUserId = userId;
-      if (!targetUserId) {
-        const {
-          data: { user },
-        } = await supabaseClient.auth.getUser();
-        targetUserId = user?.id || 'unknown';
+      // Upload via server API route (uses httpOnly cookie auth)
+      const formData = new FormData();
+      formData.append('file', file);
+      if (userId) {
+        formData.append('userId', userId);
       }
 
-      const fileName = `${Date.now()}-${file.name}`;
-      const filePath = `${targetUserId}/${fileName}`;
+      const response = await fetch('/api/upload/avatar', {
+        method: 'POST',
+        body: formData,
+      });
 
-      const { error: uploadError } = await supabaseClient.storage
-        .from('avatars')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true,
-        });
+      const result = await response.json();
 
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        setError(`Upload failed: ${uploadError.message}`);
+      if (!response.ok) {
+        console.error('Upload error:', result.message);
+        setError(`Upload failed: ${result.message}`);
         setPreview(null);
         return;
       }
 
-      // Get public URL
-      const { data } = supabaseClient.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      if (data?.publicUrl) {
-        onChange(data.publicUrl);
+      if (result.publicUrl) {
+        onChange(result.publicUrl);
         setError(null);
       } else {
         setError('Failed to get public URL');

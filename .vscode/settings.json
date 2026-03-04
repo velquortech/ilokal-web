@@ -2,5 +2,10 @@
     "cSpell.words": [
         "Ilokal",
         "Supabase"
-    ]
+    ],
+    "chat.tools.terminal.autoApprove": {
+        "yarn add": true,
+        "npx supabase": true,
+        "docker exec": true
+    }
 }

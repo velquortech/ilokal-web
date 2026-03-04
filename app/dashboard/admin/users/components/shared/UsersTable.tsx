@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 import {
   Table,
   TableBody,
@@ -164,7 +165,10 @@ export default function UsersTable({
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => onEdit(user)}
+                        onClick={() => {
+                          onEdit(user);
+                          toast.info(`Editing ${user.full_name}`);
+                        }}
                         disabled={isSubmitting}
                         className="gap-1"
                       >

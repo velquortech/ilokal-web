@@ -2,8 +2,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Profile } from '@/lib/types/user';
-import { useAdminStore } from '@/lib/store/adminStore';
+import { useAdminStore } from '@/lib/stores/adminStore';
 import userService from '@/lib/api/userService';
 import { extractErrorMessage } from '@/lib/utils/errorHandler';
 import { StatusBadge } from './StatusBadge';
@@ -28,9 +30,13 @@ export function StatusDropdown({
 }: StatusDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+  const [optimisticStatus, setOptimisticStatus] = useState<
+    'active' | 'inactive' | 'suspended' | null
+  >(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const { setUpdatingId, isUpdating } = useAdminStore();
-  const isLoading = isUpdating(admin.id);
+  const queryClient = useQueryClient();
+  const { setUpdatingId } = useAdminStore();
+  const isLoading = optimisticStatus !== null;
 
   useEffect(() => {
     if (isOpen && buttonRef.current) {
@@ -45,29 +51,48 @@ export function StatusDropdown({
   const handleStatusChange = async (
     newStatus: 'active' | 'inactive' | 'suspended',
   ) => {
-    if (newStatus === admin.status) {
+    if (newStatus === admin.status && optimisticStatus === null) {
       setIsOpen(false);
       return;
     }
 
+    // Set optimistic status for instant UI feedback
+    setOptimisticStatus(newStatus);
+    setUpdatingId(admin.id);
+
     try {
-      setUpdatingId(admin.id);
+      const loadingToast = toast.loading(`Updating status to ${newStatus}...`);
+
+      // Call API
       const updated = await userService.updateProfile(admin.id, {
         email: admin.email,
         full_name: admin.full_name || '',
         status: newStatus,
       });
 
+      toast.dismiss(loadingToast);
+      toast.success(`Status updated to ${newStatus} successfully!`);
+
+      // Invalidate React Query cache to refetch with fresh data
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+
+      // Call parent callback with updated data
       onStatusChange?.(updated);
       setIsOpen(false);
+      setOptimisticStatus(null);
     } catch (err) {
       const errorMessage = extractErrorMessage(err);
+      toast.error(`Failed to update status: ${errorMessage}`);
       onError?.(errorMessage);
       console.error('Error updating status:', err);
+      setOptimisticStatus(null);
     } finally {
       setUpdatingId(null);
     }
   };
+
+  // Use optimistic status if available, otherwise use admin's current status
+  const displayStatus = optimisticStatus || admin.status;
 
   return (
     <>
@@ -83,7 +108,7 @@ export function StatusDropdown({
         ) : (
           <>
             <div className="flex items-center">
-              <StatusBadge status={admin.status} />
+              <StatusBadge status={displayStatus} />
             </div>
             <ChevronDown
               className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
@@ -114,7 +139,7 @@ export function StatusDropdown({
                   key={status}
                   onClick={() => handleStatusChange(status)}
                   className={`block w-full cursor-pointer px-4 py-2 text-left text-sm transition-colors ${
-                    admin.status === status
+                    displayStatus === status
                       ? 'bg-blue-50 font-medium text-blue-700'
                       : 'text-gray-700 hover:bg-gray-50'
                   } ${index === 0 ? 'rounded-t-lg' : ''} ${
@@ -123,7 +148,7 @@ export function StatusDropdown({
                 >
                   <div className="flex items-center gap-2">
                     <span className="capitalize">{status}</span>
-                    {admin.status === status && (
+                    {displayStatus === status && (
                       <span className="ml-auto">✓</span>
                     )}
                   </div>

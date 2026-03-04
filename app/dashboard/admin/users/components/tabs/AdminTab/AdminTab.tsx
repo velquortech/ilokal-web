@@ -68,6 +68,7 @@ export default function AdminTab() {
       toast.success('Admin account updated successfully!');
       setIsFormOpen(false);
       setSelectedAdmin(null);
+      setCurrentPage(1); // Reset to page 1 to ensure user appears in view
     },
     (err) => {
       const errorMsg = extractErrorMessage(err);
@@ -171,7 +172,8 @@ export default function AdminTab() {
     toast.info('Filters reset');
   };
 
-  const hasActiveFilters = Boolean(searchQuery) || statusFilter !== 'all';
+  const hasActiveFilters =
+    Boolean(searchQuery) || statusFilter !== 'all' || sortOrder !== 'latest';
   const isSubmitting =
     createAdminMutation.isPending ||
     updateAdminMutation.isPending ||

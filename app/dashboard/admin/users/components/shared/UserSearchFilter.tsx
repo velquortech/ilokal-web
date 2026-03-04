@@ -114,6 +114,9 @@ export function UserSearchFilter({
           {statusFilter !== 'all' && (
             <span className="ml-2 font-medium">Status: {statusFilter}</span>
           )}
+          {sortOrder !== 'latest' && (
+            <span className="ml-2 font-medium">Sort: {sortOrder}</span>
+          )}
         </div>
       )}
     </div>

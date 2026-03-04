@@ -47,8 +47,9 @@ export function useUpdateAdmin(
       id: string;
       changes: Record<string, unknown>;
     }) => userService.adminUpdateProfile(id, changes),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+    onSuccess: async () => {
+      // Invalidate all profiles queries to refetch fresh data
+      await queryClient.invalidateQueries({ queryKey: ['profiles'] });
       onSuccess?.();
     },
     onError,

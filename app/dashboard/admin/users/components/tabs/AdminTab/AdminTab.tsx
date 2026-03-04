@@ -234,7 +234,7 @@ export default function AdminTab() {
         }}
         onReset={handleResetFilters}
         hasActiveFilters={
-          Boolean(debouncedSearchQuery) ||
+          Boolean(searchQuery || debouncedSearchQuery) ||
           statusFilter !== 'all' ||
           sortOrder !== 'latest'
         }

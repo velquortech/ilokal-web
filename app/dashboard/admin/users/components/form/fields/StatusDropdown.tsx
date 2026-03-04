@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Profile } from '@/lib/types/user';
 import { useAdminStore } from '@/lib/stores/adminStore';
 import userService from '@/lib/api/userService';
+import { PaginatedResponse } from '@/lib/api/paginationService';
 import { extractErrorMessage } from '@/lib/utils/errorHandler';
 import { StatusBadge } from './StatusBadge';
 import { Loader2, ChevronDown } from 'lucide-react';
@@ -30,13 +31,10 @@ export function StatusDropdown({
 }: StatusDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
-  const [optimisticStatus, setOptimisticStatus] = useState<
-    'active' | 'inactive' | 'suspended' | null
-  >(null);
+  const [isUpdating, setIsUpdating] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const queryClient = useQueryClient();
   const { setUpdatingId } = useAdminStore();
-  const isLoading = optimisticStatus !== null;
 
   useEffect(() => {
     if (isOpen && buttonRef.current) {
@@ -48,67 +46,86 @@ export function StatusDropdown({
     }
   }, [isOpen]);
 
+  // Helper to optimistically update the profile status in all matching query caches
+  const updateCachedStatus = (
+    newStatus: 'active' | 'inactive' | 'suspended',
+  ) => {
+    queryClient.setQueriesData<PaginatedResponse<Profile>>(
+      { queryKey: ['profiles'] },
+      (oldData) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          data: oldData.data.map((profile) =>
+            profile.id === admin.id
+              ? {
+                  ...profile,
+                  status: newStatus,
+                  updated_at: new Date().toISOString(),
+                }
+              : profile,
+          ),
+        };
+      },
+    );
+  };
+
   const handleStatusChange = async (
     newStatus: 'active' | 'inactive' | 'suspended',
   ) => {
-    if (newStatus === admin.status && optimisticStatus === null) {
+    if (newStatus === admin.status) {
       setIsOpen(false);
       return;
     }
 
-    // Set optimistic status for instant UI feedback
-    setOptimisticStatus(newStatus);
+    const previousStatus = admin.status;
+    setIsOpen(false);
+    setIsUpdating(true);
     setUpdatingId(admin.id);
 
-    try {
-      const loadingToast = toast.loading(`Updating status to ${newStatus}...`);
+    // Optimistically update the cache immediately — row stays in place
+    updateCachedStatus(newStatus);
 
-      // Call API
-      const updated = await userService.updateProfile(admin.id, {
-        email: admin.email,
-        full_name: admin.full_name || '',
+    try {
+      const updated = await userService.adminUpdateProfile(admin.id, {
         status: newStatus,
       });
 
-      toast.dismiss(loadingToast);
-      toast.success(`Status updated to ${newStatus} successfully!`);
+      toast.success(`Status updated to ${newStatus}`);
 
-      // Invalidate React Query cache to refetch with fresh data
+      // Silently refetch in background to sync with server
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
 
-      // Call parent callback with updated data
       onStatusChange?.(updated);
-      setIsOpen(false);
-      setOptimisticStatus(null);
     } catch (err) {
+      // Revert optimistic update on failure
+      updateCachedStatus(previousStatus);
+
       const errorMessage = extractErrorMessage(err);
       toast.error(`Failed to update status: ${errorMessage}`);
       onError?.(errorMessage);
       console.error('Error updating status:', err);
-      setOptimisticStatus(null);
     } finally {
+      setIsUpdating(false);
       setUpdatingId(null);
     }
   };
-
-  // Use optimistic status if available, otherwise use admin's current status
-  const displayStatus = optimisticStatus || admin.status;
 
   return (
     <>
       <button
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
-        disabled={isLoading}
+        disabled={isUpdating}
         className="inline-flex items-center gap-2 rounded-lg px-2 py-1 transition-all duration-200 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
         title="Click to change status"
       >
-        {isLoading ? (
+        {isUpdating ? (
           <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
         ) : (
           <>
             <div className="flex items-center">
-              <StatusBadge status={displayStatus} />
+              <StatusBadge status={admin.status} />
             </div>
             <ChevronDown
               className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
@@ -120,7 +137,7 @@ export function StatusDropdown({
       </button>
 
       {isOpen &&
-        !isLoading &&
+        !isUpdating &&
         createPortal(
           <>
             <div
@@ -139,7 +156,7 @@ export function StatusDropdown({
                   key={status}
                   onClick={() => handleStatusChange(status)}
                   className={`block w-full cursor-pointer px-4 py-2 text-left text-sm transition-colors ${
-                    displayStatus === status
+                    admin.status === status
                       ? 'bg-blue-50 font-medium text-blue-700'
                       : 'text-gray-700 hover:bg-gray-50'
                   } ${index === 0 ? 'rounded-t-lg' : ''} ${
@@ -148,7 +165,7 @@ export function StatusDropdown({
                 >
                   <div className="flex items-center gap-2">
                     <span className="capitalize">{status}</span>
-                    {displayStatus === status && (
+                    {admin.status === status && (
                       <span className="ml-auto">✓</span>
                     )}
                   </div>

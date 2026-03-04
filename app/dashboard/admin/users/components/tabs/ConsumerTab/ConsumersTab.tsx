@@ -75,9 +75,13 @@ export default function ConsumersTab() {
   const updateConsumerMutation = useUpdateConsumer(
     () => {
       toast.success('Consumer account updated successfully!');
-      setIsFormOpen(false);
-      setSelectedConsumer(null);
-      setCurrentPage(1);
+      // Add small delay to ensure React has rendered all updates before closing modal
+      // This prevents phone number from flashing old value
+      setTimeout(() => {
+        setIsFormOpen(false);
+        setSelectedConsumer(null);
+        setCurrentPage(1);
+      }, 100);
     },
     (err) => {
       const errorMsg = extractErrorMessage(err);

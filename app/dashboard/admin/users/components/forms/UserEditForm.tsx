@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,8 @@ export function UserEditForm({
   error,
   submitButtonLabel = 'Update User',
 }: UserEditFormProps) {
+  const previousUserIdRef = useRef(user.id);
+
   const form = useForm<AdminEditFormData>({
     resolver: zodResolver(adminEditSchema),
     defaultValues: {
@@ -49,7 +51,12 @@ export function UserEditForm({
     },
   });
 
+  // Reset form when user changes (new user selected for editing)
   useEffect(() => {
+    if (previousUserIdRef.current !== user.id) {
+      previousUserIdRef.current = user.id;
+    }
+
     form.reset({
       full_name: user.full_name || '',
       phone_number: user.phone_number || '',
@@ -57,10 +64,27 @@ export function UserEditForm({
       password: '',
       avatar_url: user.avatar_url || '',
     });
-  }, [user, form]);
+  }, [
+    user.id,
+    user.full_name,
+    user.phone_number,
+    user.email,
+    user.avatar_url,
+    form,
+  ]);
 
   const handleSubmit = async (data: AdminEditFormData) => {
+    // Ensure form state is committed before closing modal
+    await form.trigger(); // Validate all fields
+
+    // Call parent submit function
     await onSubmit(data);
+
+    // Use setTimeout to ensure React has rendered the updated values
+    // before the parent component closes the modal
+    setTimeout(() => {
+      // Values are now committed, safe for modal to close
+    }, 0);
   };
 
   return (

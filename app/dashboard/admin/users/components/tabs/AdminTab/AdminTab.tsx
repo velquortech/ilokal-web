@@ -147,15 +147,6 @@ export default function AdminTab() {
   };
 
   const handleDelete = async (id: string) => {
-    if (
-      !confirm(
-        'Are you sure you want to delete this admin? This action cannot be undone.',
-      )
-    ) {
-      toast.info('Delete cancelled');
-      return;
-    }
-
     const deleteToast = toast.loading('Deleting admin account...');
     try {
       await deleteAdminMutation.mutateAsync(id);

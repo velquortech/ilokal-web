@@ -39,17 +39,22 @@ export async function GET(request: NextRequest) {
 
     // Apply search filter (search in full_name or email)
     if (search) {
-      // Escape special characters for Supabase pattern matching
+      // Escape special characters for Supabase/PostgREST pattern matching
       const escapedSearch = search
         .replace(/\\/g, '\\\\') // Escape backslashes first
-        .replace(/"/g, '\\"') // Escape quotes
-        .replace(/'/g, "''"); // Escape single quotes
+        .replace(/"/g, '\\"') // Escape double quotes
+        .replace(/'/g, "''") // Escape single quotes for SQL
+        .replace(/%/g, '\\%') // Escape LIKE wildcard %
+        .replace(/_/g, '\\_'); // Escape LIKE wildcard _
+
+      // Wrap pattern in double quotes so commas/parentheses are treated as literals
+      const likePattern = `"%${escapedSearch}%"`;
 
       countQuery = countQuery.or(
-        `full_name.ilike.%${escapedSearch}%,email.ilike.%${escapedSearch}%`,
+        `full_name.ilike.${likePattern},email.ilike.${likePattern}`,
       );
       dataQuery = dataQuery.or(
-        `full_name.ilike.%${escapedSearch}%,email.ilike.%${escapedSearch}%`,
+        `full_name.ilike.${likePattern},email.ilike.${likePattern}`,
       );
     }
 

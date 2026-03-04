@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Search, X } from 'lucide-react';
@@ -44,6 +46,7 @@ export function UserSearchFilter({
               placeholder="Search by name or email..."
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
+              suppressHydrationWarning
               className="w-full rounded-lg border border-gray-300 bg-white py-2 pr-3 pl-10 text-sm text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
             />
           </div>
@@ -65,6 +68,7 @@ export function UserSearchFilter({
                 e.target.value as 'all' | 'active' | 'inactive' | 'suspended',
               )
             }
+            suppressHydrationWarning
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
           >
             <option value="all">All</option>
@@ -88,6 +92,7 @@ export function UserSearchFilter({
             onChange={(e) =>
               onSortOrderChange(e.target.value as 'latest' | 'oldest')
             }
+            suppressHydrationWarning
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
           >
             <option value="latest">Latest</option>

@@ -12,6 +12,14 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   ChevronLeft,
   ChevronRight,
   Edit2,
@@ -47,6 +55,20 @@ export default function UsersTable({
   isSubmitting,
 }: UsersTableProps) {
   const [error, setError] = useState<string | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    open: boolean;
+    user: Profile | null;
+  }>({
+    open: false,
+    user: null,
+  });
+
+  const handleDeleteConfirm = () => {
+    if (deleteConfirmation.user) {
+      onDelete(deleteConfirmation.user.id);
+      setDeleteConfirmation({ open: false, user: null });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -167,7 +189,9 @@ export default function UsersTable({
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => onDelete(user.id)}
+                        onClick={() =>
+                          setDeleteConfirmation({ open: true, user })
+                        }
                         disabled={isSubmitting}
                         className="text-red-600 hover:text-red-700"
                       >
@@ -238,6 +262,43 @@ export default function UsersTable({
           </Button>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteConfirmation.open}
+        onOpenChange={(open) =>
+          setDeleteConfirmation({ ...deleteConfirmation, open })
+        }
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{' '}
+              <span className="font-semibold">
+                {deleteConfirmation.user?.full_name}
+              </span>
+              ? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirmation({ open: false, user: null })}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={isSubmitting}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

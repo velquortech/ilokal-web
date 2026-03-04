@@ -263,7 +263,7 @@ export default function UsersTable({
         </div>
       </div>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation Modal */}
       <Dialog
         open={deleteConfirmation.open}
         onOpenChange={(open) =>

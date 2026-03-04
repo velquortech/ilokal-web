@@ -27,7 +27,6 @@ export const baseFormFields: FormFieldConfig[] = [
     label: 'Phone Number (Optional)',
     placeholder: '(917) 000-0000',
     type: 'phone',
-    showFor: ['admin'],
   },
   {
     name: 'avatar_url',

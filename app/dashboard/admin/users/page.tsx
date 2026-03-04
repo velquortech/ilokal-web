@@ -16,7 +16,6 @@ export default function UserManagementHub() {
           Manage admins, business owners, and user accounts
         </p>
       </div>
-
       {/* Tabs */}
       <div>
         <div className="-cols-3 flex w-full max-w-md border-b border-gray-200">

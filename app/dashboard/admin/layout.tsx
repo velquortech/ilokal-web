@@ -21,8 +21,8 @@ export default function AdminDashboardLayout({
     <div className="flex min-h-screen w-screen bg-gray-50">
       <Sidebar items={adminNavItems} onLogout={handleLogout} appName="iLokal" />
 
-      {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      {/* Main content - adjusted for fixed sidebar */}
+      <div className="ml-64 flex flex-1 flex-col overflow-hidden">
         <Header
           userEmail={user?.email || 'user@example.com'}
           userFullName={user?.full_name || 'User'}
@@ -30,7 +30,7 @@ export default function AdminDashboardLayout({
           onLogout={handleLogout}
           showSearch={true}
         />
-        <div className="min-h-0 flex-1 overflow-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="p-8">{children}</div>
         </div>
       </div>

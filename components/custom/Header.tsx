@@ -1,6 +1,12 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  useRef,
+} from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Bell,
@@ -10,7 +16,6 @@ import {
   ChevronDown,
   Moon,
   Sun,
-  Search,
   LucideIcon,
 } from 'lucide-react';
 import {
@@ -119,11 +124,12 @@ export function Header({
   userFullName = 'User Name',
   userAvatar,
   onLogout,
-  showSearch = true,
+
   notificationCount = 0,
 }: HeaderProps) {
   const [isDark, setIsDark] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollY = useRef(0);
   const router = useRouter();
 
   // Memoize initials calculation
@@ -147,16 +153,25 @@ export function Header({
     }
   }, [onLogout, router]);
 
-  // Handle search submission
-  const handleSearch = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      if (searchQuery.trim()) {
-        console.info('Search:', searchQuery);
+  // Handle scroll visibility
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
+        // Scrolling down and past 100px
+        setIsVisible(false);
+      } else {
+        // Scrolling up or near top
+        setIsVisible(true);
       }
-    },
-    [searchQuery],
-  );
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Navigation helper
   const navigateTo = useCallback(
@@ -182,25 +197,14 @@ export function Header({
 
   return (
     <TooltipProvider>
-      <header className="sticky top-0 z-40 border-b border-gray-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between px-8 py-4">
-          {/* Left: Search Bar */}
-          {showSearch && (
-            <form onSubmit={handleSearch} className="max-w-md flex-1">
-              <div className="relative">
-                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 bg-gray-50 py-2 pr-4 pl-10 text-sm placeholder-gray-500 transition-colors focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                  aria-label="Search"
-                />
-              </div>
-            </form>
-          )}
-
+      <header
+        className={`fixed top-6 right-6 z-40 rounded-lg border border-gray-200 bg-white shadow-lg transition-all duration-300 ease-in-out ${
+          isVisible
+            ? 'translate-y-0 opacity-100'
+            : 'pointer-events-none -translate-y-4 opacity-0'
+        }`}
+      >
+        <div className="flex items-center justify-end px-4 py-3">
           {/* Right: Tools & Profile */}
           <div className="flex items-center gap-2">
             {/* Dynamic Icon Buttons */}

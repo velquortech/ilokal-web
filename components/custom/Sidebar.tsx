@@ -60,7 +60,7 @@ export function Sidebar({
   return (
     <TooltipProvider>
       <aside
-        className={`flex flex-col bg-linear-to-b from-slate-900 to-slate-800 text-white shadow-lg transition-all duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 z-50 flex h-screen flex-col bg-linear-to-b from-slate-900 to-slate-800 text-white shadow-lg transition-all duration-300 ease-in-out ${
           isOpen ? 'w-64' : 'w-20'
         }`}
       >

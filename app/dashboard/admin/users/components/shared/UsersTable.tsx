@@ -23,6 +23,7 @@ import { Profile } from '@/lib/types/user';
 import { PaginatedResponse } from '@/lib/api/paginationService';
 import { AvatarImage } from '@/components/custom/AvatarImage';
 import { StatusDropdown } from '../form/fields/StatusDropdown';
+import { getTimeAgo } from '@/lib/utils/dateFormatter';
 
 interface UsersTableProps {
   data: PaginatedResponse<Profile> | null;
@@ -34,18 +35,6 @@ interface UsersTableProps {
   onStatusChange?: (updatedUser: Profile) => void;
   isSubmitting: boolean;
 }
-
-const formatDate = (dateString: string | Date): string => {
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      return new Date().toLocaleDateString();
-    }
-    return date.toLocaleDateString();
-  } catch {
-    return new Date().toLocaleDateString();
-  }
-};
 
 export default function UsersTable({
   data,
@@ -145,10 +134,10 @@ export default function UsersTable({
                     {user.email}
                   </TableCell>
                   <TableCell className="text-sm text-gray-600">
-                    {formatDate(user.created_at)}
+                    {getTimeAgo(user.created_at)}
                   </TableCell>
                   <TableCell className="text-sm text-gray-600">
-                    {formatDate(user.updated_at)}
+                    {getTimeAgo(user.updated_at)}
                   </TableCell>
                   <TableCell>
                     <StatusDropdown

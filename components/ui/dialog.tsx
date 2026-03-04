@@ -1,8 +1,21 @@
 import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { Slot } from '@radix-ui/react-slot';
 import { X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+
+interface VisuallyHiddenProps extends React.HTMLAttributes<HTMLDivElement> {
+  asChild?: boolean;
+}
+
+const VisuallyHidden = React.forwardRef<HTMLDivElement, VisuallyHiddenProps>(
+  ({ className, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : 'div';
+    return <Comp ref={ref} className={cn('sr-only', className)} {...props} />;
+  },
+);
+VisuallyHidden.displayName = 'VisuallyHidden';
 
 const Dialog = DialogPrimitive.Root;
 
@@ -41,6 +54,9 @@ const DialogContent = React.forwardRef<
       )}
       {...props}
     >
+      <VisuallyHidden asChild>
+        <DialogPrimitive.Title>Dialog</DialogPrimitive.Title>
+      </VisuallyHidden>
       {children}
       <DialogPrimitive.Close className="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:ring-2 focus:ring-gray-950 focus:ring-offset-2 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-gray-100 data-[state=open]:text-gray-500">
         <X className="h-4 w-4" />
@@ -117,4 +133,5 @@ export {
   DialogFooter,
   DialogTitle,
   DialogDescription,
+  VisuallyHidden,
 };

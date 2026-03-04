@@ -44,6 +44,24 @@ class ApiManager {
           error.message ||
           'An error occurred';
 
+        // Log error details (safe fields only, redacted in production)
+        if (process.env.NODE_ENV === 'development') {
+          // Development: log full details for debugging
+          console.error('API Error Details:', {
+            status: error.response?.status,
+            message: errorMessage,
+            data: responseData,
+            url: error.config?.url,
+          });
+        } else {
+          // Production: log only safe fields to prevent PII leakage
+          console.error('API Error:', {
+            status: error.response?.status,
+            message: errorMessage,
+            url: error.config?.url,
+          });
+        }
+
         // Create proper error response
         const errorResponse: ApiErrorResponse = {
           message: errorMessage,

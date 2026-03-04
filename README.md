@@ -169,7 +169,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function MyComponent() {
   const { user, isAuthenticated, logout } = useAuth();
-  
+
   return (
     <>
       {isAuthenticated && <p>Welcome, {user?.name}</p>}

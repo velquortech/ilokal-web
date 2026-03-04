@@ -6,77 +6,111 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
     const { searchParams } = new URL(request.url);
+
     const role = searchParams.get('role');
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const search = searchParams.get('search')?.trim() || '';
+    const status = searchParams.get('status');
+    const sort = searchParams.get('sort') || 'latest';
 
     // Validate pagination params
     const validPage = Math.max(1, page);
     const validLimit = Math.min(100, Math.max(1, limit));
     const offset = (validPage - 1) * validLimit;
 
-    if (role) {
-      // Get total count
-      const { count: totalItems, error: countError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', role);
-
-      if (countError) {
-        return NextResponse.json(
-          { message: countError.message },
-          { status: 400 },
-        );
-      }
-
-      // Get paginated data
-      const { data, error } = await supabase
-        .from('profiles')
-        .select()
-        .eq('role', role)
-        .range(offset, offset + validLimit - 1);
-
-      if (error) {
-        return NextResponse.json({ message: error.message }, { status: 400 });
-      }
-
-      const paginatedResponse = createPaginatedResponse(
-        data || [],
-        validPage,
-        validLimit,
-        totalItems || 0,
-      );
-
-      return NextResponse.json(paginatedResponse);
-    }
-
-    // Get total count for all profiles
-    const { count: totalItems, error: countError } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true });
-
-    if (countError) {
+    // Validate role parameter if provided
+    const validRoles = ['admin', 'business_owner', 'user'];
+    if (role && !validRoles.includes(role)) {
       return NextResponse.json(
-        { message: countError.message },
+        { message: 'Invalid role parameter' },
         { status: 400 },
       );
     }
 
-    // Get paginated data for all profiles
-    const { data, error } = await supabase
-      .from('profiles')
-      .select()
-      .range(offset, offset + validLimit - 1);
-
-    if (error) {
-      return NextResponse.json({ message: error.message }, { status: 400 });
+    // Validate sort parameter
+    if (sort !== 'latest' && sort !== 'oldest') {
+      return NextResponse.json(
+        { message: 'Invalid sort parameter. Must be "latest" or "oldest"' },
+        { status: 400 },
+      );
     }
 
+    // Build base query
+    let countQuery = supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true });
+
+    let dataQuery = supabase.from('profiles').select();
+
+    // Apply equality filters
+    if (role) {
+      countQuery = countQuery.eq('role', role);
+      dataQuery = dataQuery.eq('role', role);
+    }
+
+    if (status && status !== 'all') {
+      countQuery = countQuery.eq('status', status);
+      dataQuery = dataQuery.eq('status', status);
+    }
+
+    // Apply search filter (search in full_name or email)
+    if (search) {
+      // Escape special characters for Supabase/PostgREST pattern matching
+      const escapedSearch = search
+        .replace(/\\/g, '\\\\') // Escape backslashes first
+        .replace(/"/g, '\\"') // Escape double quotes
+        .replace(/'/g, "''") // Escape single quotes for SQL
+        .replace(/%/g, '\\%') // Escape LIKE wildcard %
+        .replace(/_/g, '\\_'); // Escape LIKE wildcard _
+
+      // Wrap pattern in double quotes so commas/parentheses are treated as literals
+      const likePattern = `"%${escapedSearch}%"`;
+
+      countQuery = countQuery.or(
+        `full_name.ilike.${likePattern},email.ilike.${likePattern}`,
+      );
+      dataQuery = dataQuery.or(
+        `full_name.ilike.${likePattern},email.ilike.${likePattern}`,
+      );
+    }
+
+    // Apply sorting
+    if (sort === 'oldest') {
+      dataQuery = dataQuery.order('created_at', { ascending: true });
+    } else {
+      dataQuery = dataQuery.order('created_at', { ascending: false });
+    }
+
+    // Execute count query
+    const countResult = await countQuery;
+    const totalItems = countResult.count || 0;
+
+    if (countResult.error) {
+      console.error('Count query error:', countResult.error);
+      return NextResponse.json(
+        { message: countResult.error.message },
+        { status: 400 },
+      );
+    }
+
+    // Execute data query
+    const dataResult = await dataQuery.range(offset, offset + validLimit - 1);
+
+    if (dataResult.error) {
+      console.error('Data query error:', dataResult.error);
+      return NextResponse.json(
+        { message: dataResult.error.message },
+        { status: 400 },
+      );
+    }
+
+    // Create and return paginated response
     const paginatedResponse = createPaginatedResponse(
-      data || [],
+      dataResult.data || [],
       validPage,
       validLimit,
-      totalItems || 0,
+      totalItems,
     );
 
     return NextResponse.json(paginatedResponse);

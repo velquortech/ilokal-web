@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -14,39 +14,46 @@ import {
   useUpdateAdmin,
   useDeleteAdmin,
 } from '@/hooks/useAdminMutations';
-import { useProfilesByRole, useApplyFilters } from '@/hooks/useProfiles';
+import { useProfilesByRole } from '@/hooks/useProfiles';
+import { ADMIN_CONFIG } from '@/config/adminConfig';
 
 export default function AdminTab() {
   const [selectedAdmin, setSelectedAdmin] = useState<Profile | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<
     'all' | 'active' | 'inactive' | 'suspended'
   >('all');
   const [sortOrder, setSortOrder] = useState<'latest' | 'oldest'>('latest');
 
-  const ITEMS_PER_PAGE = 10;
+  // Reset to page 1 immediately when the search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
-  // Fetch admins data from server (always page 1, large limit for client-side pagination)
+  // Debounce search input value used for querying
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, ADMIN_CONFIG.SEARCH_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Fetch admins data with server-side pagination and filtering
   const {
-    data: rawData,
+    data: adminsData,
     isLoading,
     error: fetchError,
   } = useProfilesByRole('admin', {
-    page: 1, // Always fetch from page 1, let client handle pagination
-    limit: 1000, // Fetch enough data for client-side filtering and pagination
-  });
-
-  // Apply filters and pagination on client side
-  const adminsData = useApplyFilters(
-    rawData,
-    searchQuery,
+    page: currentPage,
+    limit: ADMIN_CONFIG.ITEMS_PER_PAGE,
+    searchQuery: debouncedSearchQuery,
     statusFilter,
     sortOrder,
-    currentPage,
-    ITEMS_PER_PAGE,
-  );
+  });
 
   // Mutations
   const createAdminMutation = useCreateAdmin(
@@ -137,35 +144,38 @@ export default function AdminTab() {
         await createAdminMutation.mutateAsync(formData);
       }
     } catch (err) {
+      // Error is already handled by mutation callbacks
       console.error('Error in handleCreateAdmin:', err);
     }
   };
 
-  const handleEdit = (admin: Profile) => {
+  const handleEdit = useCallback((admin: Profile) => {
     setSelectedAdmin(admin);
     setIsFormOpen(true);
-  };
+  }, []);
 
-  const handleDelete = async (id: string) => {
-    const deleteToast = toast.loading('Deleting admin account...');
-    try {
-      await deleteAdminMutation.mutateAsync(id);
-      toast.dismiss(deleteToast);
-    } catch {
-      toast.dismiss(deleteToast);
-    }
-  };
+  const handleDelete = useCallback(
+    async (id: string) => {
+      const deleteToast = toast.loading('Deleting admin account...');
+      try {
+        await deleteAdminMutation.mutateAsync(id);
+        toast.dismiss(deleteToast);
+      } catch {
+        toast.dismiss(deleteToast);
+      }
+    },
+    [deleteAdminMutation],
+  );
 
-  const handleResetFilters = () => {
+  const handleResetFilters = useCallback(() => {
     setSearchQuery('');
+    setDebouncedSearchQuery('');
     setStatusFilter('all');
     setSortOrder('latest');
     setCurrentPage(1);
     toast.info('Filters reset');
-  };
+  }, []);
 
-  const hasActiveFilters =
-    Boolean(searchQuery) || statusFilter !== 'all' || sortOrder !== 'latest';
   const isSubmitting =
     createAdminMutation.isPending ||
     updateAdminMutation.isPending ||
@@ -211,10 +221,7 @@ export default function AdminTab() {
 
       <UserSearchFilter
         searchQuery={searchQuery}
-        onSearchChange={(query) => {
-          setSearchQuery(query);
-          setCurrentPage(1);
-        }}
+        onSearchChange={setSearchQuery}
         statusFilter={statusFilter}
         onStatusFilterChange={(status) => {
           setStatusFilter(status);
@@ -226,7 +233,11 @@ export default function AdminTab() {
           setCurrentPage(1);
         }}
         onReset={handleResetFilters}
-        hasActiveFilters={hasActiveFilters}
+        hasActiveFilters={
+          Boolean(searchQuery || debouncedSearchQuery) ||
+          statusFilter !== 'all' ||
+          sortOrder !== 'latest'
+        }
       />
 
       <UsersTable
@@ -236,9 +247,6 @@ export default function AdminTab() {
         onPageChange={setCurrentPage}
         onEdit={handleEdit}
         onDelete={handleDelete}
-        onStatusChange={(_updatedAdmin) => {
-          // The status change is handled by StatusDropdown which uses its own mutation
-        }}
         isSubmitting={isSubmitting}
       />
 

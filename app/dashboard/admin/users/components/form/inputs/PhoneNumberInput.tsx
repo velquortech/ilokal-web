@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Select,
   SelectContent,
@@ -9,87 +9,52 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-
-export interface PhoneNumberInputProps {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  disabled?: boolean;
-}
-
-const COUNTRY_CODES = [
-  { code: '+1', country: 'United States', emoji: '🇺🇸' },
-  { code: '+1', country: 'Canada', emoji: '🇨🇦' },
-  { code: '+44', country: 'United Kingdom', emoji: '🇬🇧' },
-  { code: '+33', country: 'France', emoji: '🇫🇷' },
-  { code: '+49', country: 'Germany', emoji: '🇩🇪' },
-  { code: '+39', country: 'Italy', emoji: '🇮🇹' },
-  { code: '+34', country: 'Spain', emoji: '🇪🇸' },
-  { code: '+31', country: 'Netherlands', emoji: '🇳🇱' },
-  { code: '+46', country: 'Sweden', emoji: '🇸🇪' },
-  { code: '+47', country: 'Norway', emoji: '🇳🇴' },
-  { code: '+45', country: 'Denmark', emoji: '🇩🇰' },
-  { code: '+358', country: 'Finland', emoji: '🇫🇮' },
-  { code: '+43', country: 'Austria', emoji: '🇦🇹' },
-  { code: '+41', country: 'Switzerland', emoji: '🇨🇭' },
-  { code: '+32', country: 'Belgium', emoji: '🇧🇪' },
-  { code: '+48', country: 'Poland', emoji: '🇵🇱' },
-  { code: '+420', country: 'Czech Republic', emoji: '🇨🇿' },
-  { code: '+36', country: 'Hungary', emoji: '🇭🇺' },
-  { code: '+40', country: 'Romania', emoji: '🇷🇴' },
-  { code: '+90', country: 'Turkey', emoji: '🇹🇷' },
-  { code: '+353', country: 'Ireland', emoji: '🇮🇪' },
-  { code: '+30', country: 'Greece', emoji: '🇬🇷' },
-  { code: '+385', country: 'Croatia', emoji: '🇭🇷' },
-  { code: '+372', country: 'Estonia', emoji: '🇪🇪' },
-  { code: '+371', country: 'Latvia', emoji: '🇱🇻' },
-  { code: '+370', country: 'Lithuania', emoji: '🇱🇹' },
-  { code: '+359', country: 'Bulgaria', emoji: '🇧🇬' },
-  { code: '+386', country: 'Slovenia', emoji: '🇸🇮' },
-  { code: '+389', country: 'Macedonia', emoji: '🇲🇰' },
-  { code: '+387', country: 'Bosnia', emoji: '🇧🇦' },
-  { code: '+381', country: 'Serbia', emoji: '🇷🇸' },
-  { code: '+355', country: 'Albania', emoji: '🇦🇱' },
-  { code: '+7', country: 'Russia', emoji: '🇷🇺' },
-  { code: '+380', country: 'Ukraine', emoji: '🇺🇦' },
-  { code: '+375', country: 'Belarus', emoji: '🇧🇾' },
-  { code: '+60', country: 'Malaysia', emoji: '🇲🇾' },
-  { code: '+65', country: 'Singapore', emoji: '🇸🇬' },
-  { code: '+81', country: 'Japan', emoji: '🇯🇵' },
-  { code: '+86', country: 'China', emoji: '🇨🇳' },
-  { code: '+91', country: 'India', emoji: '🇮🇳' },
-  { code: '+55', country: 'Brazil', emoji: '🇧🇷' },
-  { code: '+27', country: 'South Africa', emoji: '🇿🇦' },
-  { code: '+61', country: 'Australia', emoji: '🇦🇺' },
-  { code: '+64', country: 'New Zealand', emoji: '🇳🇿' },
-  { code: '+82', country: 'South Korea', emoji: '🇰🇷' },
-  { code: '+66', country: 'Thailand', emoji: '🇹🇭' },
-  { code: '+84', country: 'Vietnam', emoji: '🇻🇳' },
-  { code: '+62', country: 'Indonesia', emoji: '🇮🇩' },
-  { code: '+63', country: 'Philippines', emoji: '🇵🇭' },
-  { code: '+92', country: 'Pakistan', emoji: '🇵🇰' },
-  { code: '+20', country: 'Egypt', emoji: '🇪🇬' },
-  { code: '+212', country: 'Morocco', emoji: '🇲🇦' },
-  { code: '+234', country: 'Nigeria', emoji: '🇳🇬' },
-  { code: '+56', country: 'Chile', emoji: '🇨🇱' },
-  { code: '+57', country: 'Colombia', emoji: '🇨🇴' },
-  { code: '+52', country: 'Mexico', emoji: '🇲🇽' },
-];
-
-const UNIQUE_COUNTRY_CODES = Array.from(
-  new Map(
-    COUNTRY_CODES.map((item) => [`${item.code}-${item.emoji}`, item]),
-  ).values(),
-);
+import type {
+  CountryCode,
+  PhoneNumberInputProps,
+} from '@/lib/types/phoneInput';
+import {
+  getUniqueCountryCodes,
+  DEFAULT_COUNTRY_CODE,
+} from '@/config/phoneConfig';
 
 /**
- * Normalize phone number to format: +63 9454757783
- * Only keep country code and digits
+ * Format phone number according to country pattern
+ * Replaces X with digits in the format string
  */
-const normalizePhoneNumber = (code: string, number: string): string => {
-  // Remove all non-digit characters from the number part
-  const digitsOnly = number.replace(/\D/g, '');
-  return `${code} ${digitsOnly}`.trim();
+const formatPhoneNumber = (format: string, digits: string): string => {
+  let result = '';
+  let digitIndex = 0;
+
+  for (let i = 0; i < format.length && digitIndex < digits.length; i++) {
+    if (format[i] === 'X') {
+      result += digits[digitIndex];
+      digitIndex++;
+    } else {
+      result += format[i];
+    }
+  }
+
+  return result;
+};
+
+/**
+ * Validate phone number against country pattern
+ */
+const validatePhoneNumber = (
+  countryCode: CountryCode,
+  digits: string,
+): boolean =>
+  digits.length >= countryCode.minLength &&
+  digits.length <= countryCode.maxLength &&
+  countryCode.pattern.test(digits);
+
+/**
+ * Extract raw phone value for API (format: "+CODE DIGITS")
+ */
+const getRawPhoneValue = (country: CountryCode, digits: string): string => {
+  if (!digits) return '';
+  return `${country.code}${digits}`;
 };
 
 export function PhoneNumberInput({
@@ -98,80 +63,154 @@ export function PhoneNumberInput({
   placeholder = '(917) 000-0000',
   disabled = false,
 }: PhoneNumberInputProps) {
-  // Extract country code and number from value
-  const getCountryCodeAndNumber = (val: string) => {
-    // Find matching country code (sorted by length descending to handle +358 before +35)
-    const sorted = [...UNIQUE_COUNTRY_CODES].sort(
+  /**
+   * Value format: "ABBR+CODE|DIGITS" (e.g., "CA+1|1234567890")
+   * This format persists the country selection even when codes are shared (US/CA both +1)
+   */
+  const parsePhoneValue = (val: string) => {
+    const uniqueCountries = getUniqueCountryCodes();
+
+    // Try to parse the new format: "ABBR+CODE|DIGITS" (backwards compatibility)
+    if (val.includes('|')) {
+      const [countryPart, digits] = val.split('|');
+      // Extract abbreviation from "ABBR+CODE" format
+      const match = countryPart.match(/^([A-Z]{2})(.*)/);
+      if (match) {
+        const abbr = match[1];
+        const code = match[2];
+        const country = uniqueCountries.find(
+          (c) => c.abbreviation === abbr && c.code === code,
+        );
+        if (country) {
+          return {
+            country,
+            digits: digits || '',
+          };
+        }
+      }
+    }
+
+    // Parse standard format: "+CODE DIGITS" or "+CODEDIGITS" (e.g., "+639324234324")
+    const sorted = [...uniqueCountries].sort(
       (a, b) => b.code.length - a.code.length,
     );
     const country = sorted.find((c) => val.startsWith(c.code));
 
     if (country) {
+      const digitsMatch = val.slice(country.code.length).trim();
       return {
-        code: country.code,
-        emoji: country.emoji,
-        number: val.slice(country.code.length).trim(),
+        country,
+        digits: digitsMatch,
       };
     }
 
+    // Default to Philippines or first country
+    const defaultCountry = DEFAULT_COUNTRY_CODE || uniqueCountries[0];
     return {
-      code: '+63',
-      emoji: '🇵🇭',
-      number: val,
+      country: defaultCountry,
+      digits: val,
     };
   };
 
-  const {
-    code: currentCode,
-    emoji: currentEmoji,
-    number: currentNumber,
-  } = getCountryCodeAndNumber(value);
+  const { country: currentCountry, digits: numberValue } = useMemo(
+    () => parsePhoneValue(value),
+    [value],
+  );
+
+  // Extract only digits from the number part
+  const digitsOnly = useMemo(
+    () => numberValue.replace(/\D/g, ''),
+    [numberValue],
+  );
+
+  // Check if phone number is valid
+  const isValid = useMemo(
+    () =>
+      digitsOnly.length === 0 ||
+      validatePhoneNumber(currentCountry, digitsOnly),
+    [digitsOnly, currentCountry],
+  );
+
+  // Format the display value
+  const displayValue = useMemo(() => {
+    if (digitsOnly.length === 0) return '';
+    return formatPhoneNumber(currentCountry.format, digitsOnly);
+  }, [digitsOnly, currentCountry.format]);
 
   const handleCodeChange = (selectValue: string) => {
-    const [code] = selectValue.split('|');
-    const normalized = normalizePhoneNumber(code, currentNumber);
-    onChange(normalized);
+    const [code, abbr] = selectValue.split('|');
+    const uniqueCountries = getUniqueCountryCodes();
+    const newCountry = uniqueCountries.find(
+      (c) => c.code === code && c.abbreviation === abbr,
+    );
+
+    if (newCountry) {
+      // Send raw phone value for API: "+CODE DIGITS" (e.g., "+639324234324")
+      const rawPhoneValue = getRawPhoneValue(newCountry, digitsOnly);
+      onChange(rawPhoneValue);
+    }
   };
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newNumber = e.target.value;
-    const normalized = normalizePhoneNumber(currentCode, newNumber);
-    onChange(normalized);
+    const newValue = e.target.value;
+    // Keep only digits
+    const newDigits = newValue.replace(/\D/g, '');
+    // Limit to max length for current country
+    const limitedDigits = newDigits.slice(0, currentCountry.maxLength);
+    // Send raw phone value for API: "+CODE DIGITS" (e.g., "+639324234324")
+    const rawPhoneValue = getRawPhoneValue(currentCountry, limitedDigits);
+    onChange(rawPhoneValue);
   };
 
-  return (
-    <div className="flex gap-2">
-      <Select
-        value={`${currentCode}|${currentEmoji}`}
-        onValueChange={handleCodeChange}
-      >
-        <SelectTrigger className="w-48">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {UNIQUE_COUNTRY_CODES.map((item) => (
-            <SelectItem
-              key={`${item.code}-${item.emoji}`}
-              value={`${item.code}|${item.emoji}`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{item.emoji}</span>
-                <span className="font-medium">{item.code}</span>
-                <span className="text-xs text-gray-500">{item.country}</span>
-              </div>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+  const selectValue = `${currentCountry.code}|${currentCountry.abbreviation}`;
 
-      <Input
-        type="tel"
-        placeholder={placeholder}
-        value={currentNumber}
-        onChange={handleNumberChange}
-        disabled={disabled}
-        className="flex-1"
-      />
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <Select value={selectValue} onValueChange={handleCodeChange}>
+          <SelectTrigger className="flex-1">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {getUniqueCountryCodes().map((item) => (
+              <SelectItem
+                key={`${item.code}-${item.abbreviation}`}
+                value={`${item.code}|${item.abbreviation}`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{item.emoji}</span>
+                  <span className="font-medium">{item.abbreviation}</span>
+                  <span className="text-xs text-gray-500">{item.code}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Input
+          type="tel"
+          placeholder={placeholder}
+          value={displayValue}
+          onChange={handleNumberChange}
+          disabled={disabled}
+          className={`flex-3 ${
+            digitsOnly.length > 0 && !isValid
+              ? 'border-red-500 focus-visible:ring-red-500'
+              : ''
+          }`}
+        />
+      </div>
+
+      {digitsOnly.length > 0 && !isValid && (
+        <p className="text-xs text-red-600">
+          Invalid format for {currentCountry.abbreviation}. Expected:{' '}
+          {currentCountry.code} {currentCountry.format.replace(/X/g, '0')}
+        </p>
+      )}
+
+      {digitsOnly.length > 0 && isValid && (
+        <p className="text-xs text-green-600">✓ Valid phone number</p>
+      )}
     </div>
   );
 }

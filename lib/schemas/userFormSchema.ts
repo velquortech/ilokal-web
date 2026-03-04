@@ -14,7 +14,7 @@ export const userFormSchema = z
       .or(z.literal(''))
       .refine(
         (val) => !val || /^\+[1-9]\d{1,14}(\s\d+)?$/.test(val),
-        'Phone number must be in format: +1 5550000000',
+        'Phone number must be in international format with country code (e.g., +639324234324)',
       ),
     avatar_url: z.string().optional().or(z.literal('')),
   })
@@ -31,7 +31,7 @@ export const adminEditSchema = z.object({
     .or(z.literal(''))
     .refine(
       (val) => !val || /^\+[1-9]\d{1,14}(\s\d+)?$/.test(val),
-      'Phone number must be in format: +1 5550000000',
+      'Phone number must be in international format with country code (e.g., +639324234324)',
     ),
   email: z.string().email('Invalid email'),
   password: z

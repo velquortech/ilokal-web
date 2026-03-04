@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Sidebar } from '@/components/custom/Sidebar';
 import { Header } from '@/components/custom/Header';
 import { adminNavItems } from '@/config/sidebarConfig';
@@ -12,6 +12,7 @@ export default function AdminDashboardLayout({
   children: React.ReactNode;
 }) {
   const { user, logout } = useAuth();
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -19,16 +20,23 @@ export default function AdminDashboardLayout({
 
   return (
     <div className="flex min-h-screen w-screen bg-gray-50">
-      <Sidebar items={adminNavItems} onLogout={handleLogout} appName="iLokal" />
+      <Sidebar
+        items={adminNavItems}
+        onLogout={handleLogout}
+        appName="iLokal"
+        isMobileSidebarOpen={isMobileSidebarOpen}
+        setIsMobileSidebarOpen={setIsMobileSidebarOpen}
+      />
 
-      {/* Main content - adjusted for fixed sidebar */}
-      <div className="ml-64 flex flex-1 flex-col overflow-hidden">
+      {/* Main content - adjusted for fixed sidebar, responsive */}
+      <div className="flex flex-1 flex-col overflow-hidden md:ml-64">
         <Header
           userEmail={user?.email || 'user@example.com'}
           userFullName={user?.full_name || 'User'}
           userAvatar={user?.avatar_url || undefined}
           onLogout={handleLogout}
           showSearch={true}
+          onMobileMenuClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         />
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="p-8">{children}</div>

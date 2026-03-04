@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -19,6 +19,8 @@ interface SidebarProps {
   onLogout?: () => void;
   appName?: string;
   appLogo?: React.ReactNode;
+  isMobileSidebarOpen?: boolean;
+  setIsMobileSidebarOpen?: (value: boolean) => void;
 }
 
 export function Sidebar({
@@ -27,6 +29,8 @@ export function Sidebar({
   onLogout,
   appName = 'iLokal',
   appLogo,
+  isMobileSidebarOpen = false,
+  setIsMobileSidebarOpen,
 }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(true);
   const pathname = usePathname();
@@ -59,10 +63,18 @@ export function Sidebar({
 
   return (
     <TooltipProvider>
+      {/* Mobile backdrop overlay */}
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setIsMobileSidebarOpen?.(false)}
+        />
+      )}
+
       <aside
         className={`fixed top-0 left-0 z-50 flex h-screen flex-col bg-linear-to-b from-slate-900 to-slate-800 text-white shadow-lg transition-all duration-300 ease-in-out ${
           isOpen ? 'w-64' : 'w-20'
-        }`}
+        } ${isMobileSidebarOpen ? 'block' : 'hidden md:block'}`}
       >
         {/* Header */}
         <div className="border-b border-slate-700 p-4">
@@ -78,18 +90,29 @@ export function Sidebar({
               <h1 className="text-xl font-bold tracking-tight">{appName}</h1>
             </div>
 
-            {/* Toggle Button */}
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="rounded-lg p-2 transition-colors hover:bg-slate-700 active:scale-95"
-              aria-label="Toggle sidebar"
-            >
-              {isOpen ? (
-                <ChevronLeft className="h-5 w-5" />
-              ) : (
-                <ChevronRight className="h-5 w-5" />
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Toggle Button */}
+              <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="hidden rounded-lg p-2 transition-colors hover:bg-slate-700 active:scale-95 md:block"
+                aria-label="Toggle sidebar"
+              >
+                {isOpen ? (
+                  <ChevronLeft className="h-5 w-5" />
+                ) : (
+                  <ChevronRight className="h-5 w-5" />
+                )}
+              </button>
+
+              {/* Mobile Close Button */}
+              <button
+                onClick={() => setIsMobileSidebarOpen?.(false)}
+                className="rounded-lg p-2 transition-colors hover:bg-slate-700 active:scale-95 md:hidden"
+                aria-label="Close sidebar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         </div>
 

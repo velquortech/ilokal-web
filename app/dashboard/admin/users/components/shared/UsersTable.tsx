@@ -12,14 +12,6 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
   ChevronLeft,
   ChevronRight,
   Edit2,
@@ -32,6 +24,7 @@ import { PaginatedResponse } from '@/lib/api/paginationService';
 import { AvatarImage } from '@/components/custom/AvatarImage';
 import { StatusDropdown } from '../form/fields/StatusDropdown';
 import { getTimeAgo } from '@/lib/utils/dateFormatter';
+import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
 
 interface UsersTableProps {
   data: PaginatedResponse<Profile> | null | undefined;
@@ -189,7 +182,9 @@ export default function UsersTable({
                         variant="outline"
                         onClick={() => {
                           onEdit(user);
-                          toast.info(`Editing ${user.full_name}`);
+                          const displayName =
+                            user.full_name || user.email || 'User';
+                          toast.info(`Editing ${displayName}`);
                         }}
                         disabled={isSubmitting}
                         className="gap-1"
@@ -206,7 +201,7 @@ export default function UsersTable({
                         }
                         disabled={isSubmitting}
                         className="text-red-600 hover:text-red-700"
-                        aria-label={`Delete user ${user.full_name || user.email || 'this user'}`}
+                        aria-label={`Delete ${user.full_name ? `user ${user.full_name}` : user.email ? `user with email ${user.email}` : 'this user'}`}
                       >
                         <Trash2 className="h-3 w-3" />
                         <span className="hidden sm:inline">Delete</span>
@@ -292,46 +287,14 @@ export default function UsersTable({
         </div>
       </nav>
 
-      {/* Delete Confirmation Modal */}
-      <Dialog
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
         open={deleteConfirmation.open}
-        onOpenChange={(open) =>
-          setDeleteConfirmation({ ...deleteConfirmation, open })
-        }
-      >
-        <DialogContent
-          role="alertdialog"
-          aria-labelledby="delete-dialog-title"
-          aria-describedby="delete-dialog-description"
-        >
-          <DialogHeader>
-            <DialogTitle id="delete-dialog-title">Delete User</DialogTitle>
-            <DialogDescription id="delete-dialog-description">
-              Are you sure you want to delete{' '}
-              <span className="font-semibold">
-                {deleteConfirmation.user?.full_name}
-              </span>
-              ? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteConfirmation({ open: false, user: null })}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteConfirm}
-              disabled={isSubmitting}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        user={deleteConfirmation.user}
+        isSubmitting={isSubmitting}
+        onClose={() => setDeleteConfirmation({ open: false, user: null })}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 }

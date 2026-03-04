@@ -169,6 +169,7 @@ export default function AdminTab() {
 
   const handleResetFilters = useCallback(() => {
     setSearchQuery('');
+    setDebouncedSearchQuery('');
     setStatusFilter('all');
     setSortOrder('latest');
     setCurrentPage(1);

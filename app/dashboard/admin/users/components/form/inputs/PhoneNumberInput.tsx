@@ -145,7 +145,7 @@ export function PhoneNumberInput({
         value={`${currentCode}|${currentEmoji}`}
         onValueChange={handleCodeChange}
       >
-        <SelectTrigger className="w-48">
+        <SelectTrigger className="flex-1">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -154,10 +154,9 @@ export function PhoneNumberInput({
               key={`${item.code}-${item.emoji}`}
               value={`${item.code}|${item.emoji}`}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <span className="text-lg">{item.emoji}</span>
                 <span className="font-medium">{item.code}</span>
-                <span className="text-xs text-gray-500">{item.country}</span>
               </div>
             </SelectItem>
           ))}
@@ -170,7 +169,7 @@ export function PhoneNumberInput({
         value={currentNumber}
         onChange={handleNumberChange}
         disabled={disabled}
-        className="flex-1"
+        className="flex-3"
       />
     </div>
   );

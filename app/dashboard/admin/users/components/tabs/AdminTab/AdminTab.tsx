@@ -159,6 +159,7 @@ export default function AdminTab() {
     const deleteToast = toast.loading('Deleting admin account...');
     try {
       await deleteAdminMutation.mutateAsync(id);
+      toast.dismiss(deleteToast);
     } catch {
       toast.dismiss(deleteToast);
     }

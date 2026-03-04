@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Moon,
   Sun,
+  Menu,
   LucideIcon,
 } from 'lucide-react';
 import {
@@ -40,6 +41,7 @@ interface HeaderProps {
   onLogout?: () => void;
   showSearch?: boolean;
   notificationCount?: number;
+  onMobileMenuClick?: () => void;
 }
 
 interface IconButtonConfig {
@@ -124,7 +126,7 @@ export function Header({
   userFullName = 'User Name',
   userAvatar,
   onLogout,
-
+  onMobileMenuClick,
   notificationCount = 0,
 }: HeaderProps) {
   const [isDark, setIsDark] = useState(false);
@@ -207,6 +209,25 @@ export function Header({
         <div className="flex items-center justify-end px-4 py-3">
           {/* Right: Tools & Profile */}
           <div className="flex items-center gap-2">
+            {/* Mobile Menu Button */}
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onMobileMenuClick}
+                  className="rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 md:hidden"
+                  aria-label="Toggle mobile menu"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="bottom"
+                className="border-slate-700 bg-slate-950 text-white"
+              >
+                <p className="text-sm">Toggle menu</p>
+              </TooltipContent>
+            </Tooltip>
+
             {/* Dynamic Icon Buttons */}
             {iconButtons.map((button) => (
               <HeaderIconButton key={button.ariaLabel} {...button} />

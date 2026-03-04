@@ -96,7 +96,7 @@ export default function UserFormModal({
       phone_number: data.phone_number,
       avatar_url: data.avatar_url || '',
       role,
-      status: 'inactive',
+      status: 'inactive', // Default for new users only; existing status managed by StatusDropdown
     } as UserFormData);
   };
 

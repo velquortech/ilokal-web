@@ -19,6 +19,23 @@ export async function GET(request: NextRequest) {
     const validLimit = Math.min(100, Math.max(1, limit));
     const offset = (validPage - 1) * validLimit;
 
+    // Validate role parameter if provided
+    const validRoles = ['admin', 'business_owner', 'user'];
+    if (role && !validRoles.includes(role)) {
+      return NextResponse.json(
+        { message: 'Invalid role parameter' },
+        { status: 400 },
+      );
+    }
+
+    // Validate sort parameter
+    if (sort !== 'latest' && sort !== 'oldest') {
+      return NextResponse.json(
+        { message: 'Invalid sort parameter. Must be "latest" or "oldest"' },
+        { status: 400 },
+      );
+    }
+
     // Build base query
     let countQuery = supabase
       .from('profiles')

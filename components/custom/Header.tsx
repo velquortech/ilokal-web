@@ -1,18 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Bell,
   Settings,
-  HelpCircle,
   LogOut,
   User,
   ChevronDown,
   Moon,
   Sun,
-  MessageSquare,
   Search,
+  LucideIcon,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -36,7 +35,83 @@ interface HeaderProps {
   onLogout?: () => void;
   showSearch?: boolean;
   notificationCount?: number;
-  messageCount?: number;
+}
+
+interface IconButtonConfig {
+  icon: LucideIcon;
+  tooltip: string;
+  action: () => void;
+  badge?: number;
+  ariaLabel: string;
+}
+
+/**
+ * Reusable icon button with tooltip and optional badge
+ */
+function HeaderIconButton({
+  icon: Icon,
+  tooltip,
+  action,
+  badge,
+  ariaLabel,
+}: IconButtonConfig) {
+  const showBadge = badge !== undefined && badge > 0;
+
+  return (
+    <Tooltip delayDuration={200}>
+      <TooltipTrigger asChild>
+        <button
+          onClick={action}
+          className="relative rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+          aria-label={ariaLabel}
+        >
+          <Icon className="h-5 w-5" />
+          {showBadge && (
+            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+              {badge > 9 ? '9+' : badge}
+            </span>
+          )}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent
+        side="bottom"
+        className="border-slate-700 bg-slate-950 text-white"
+      >
+        <p className="text-sm">{tooltip}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/**
+ * User avatar component
+ */
+function UserAvatar({
+  src,
+  alt,
+  initials,
+}: {
+  src?: string;
+  alt: string;
+  initials: string;
+}) {
+  if (src) {
+    return (
+      <AvatarImage
+        src={src}
+        alt={alt}
+        width={32}
+        height={32}
+        className="h-8 w-8 rounded-full object-cover"
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-blue-400 to-blue-600 text-xs font-bold text-white">
+      {initials}
+    </div>
+  );
 }
 
 export function Header({
@@ -46,34 +121,64 @@ export function Header({
   onLogout,
   showSearch = true,
   notificationCount = 0,
-  messageCount = 0,
 }: HeaderProps) {
   const [isDark, setIsDark] = useState(false);
-  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
+  const router = useRouter();
 
-  const handleLogout = () => {
+  // Memoize initials calculation
+  const initials = useMemo(
+    () =>
+      userFullName
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2),
+    [userFullName],
+  );
+
+  // Handle logout with callback
+  const handleLogout = useCallback(() => {
     if (onLogout) {
       onLogout();
     } else {
       router.push('/auth/login');
     }
-  };
+  }, [onLogout, router]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      // You can implement global search later
-      console.info('Search:', searchQuery);
-    }
-  };
+  // Handle search submission
+  const handleSearch = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (searchQuery.trim()) {
+        console.info('Search:', searchQuery);
+      }
+    },
+    [searchQuery],
+  );
 
-  const initials = userFullName
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+  // Navigation helper
+  const navigateTo = useCallback(
+    (path: string) => {
+      router.push(path);
+    },
+    [router],
+  );
+
+  // Icon button configurations
+  const iconButtons: IconButtonConfig[] = useMemo(
+    () => [
+      {
+        icon: Bell,
+        tooltip: 'Notifications',
+        action: () => navigateTo('/dashboard/notifications'),
+        badge: notificationCount,
+        ariaLabel: 'View notifications',
+      },
+    ],
+    [notificationCount, navigateTo],
+  );
 
   return (
     <TooltipProvider>
@@ -90,6 +195,7 @@ export function Header({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full rounded-lg border border-gray-300 bg-gray-50 py-2 pr-4 pl-10 text-sm placeholder-gray-500 transition-colors focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  aria-label="Search"
                 />
               </div>
             </form>
@@ -97,87 +203,10 @@ export function Header({
 
           {/* Right: Tools & Profile */}
           <div className="flex items-center gap-2">
-            {/* Notifications */}
-            <Tooltip delayDuration={200}>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => router.push('/dashboard/notifications')}
-                  className="relative rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
-                >
-                  <Bell className="h-5 w-5" />
-                  {notificationCount > 0 && (
-                    <span className="absolute top-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
-                      {notificationCount > 9 ? '9+' : notificationCount}
-                    </span>
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                className="border-slate-700 bg-slate-950 text-white"
-              >
-                <p className="text-sm">Notifications</p>
-              </TooltipContent>
-            </Tooltip>
-
-            {/* Messages */}
-            <Tooltip delayDuration={200}>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => router.push('/dashboard/messages')}
-                  className="relative rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
-                >
-                  <MessageSquare className="h-5 w-5" />
-                  {messageCount > 0 && (
-                    <span className="absolute top-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs font-bold text-white">
-                      {messageCount > 9 ? '9+' : messageCount}
-                    </span>
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                className="border-slate-700 bg-slate-950 text-white"
-              >
-                <p className="text-sm">Messages</p>
-              </TooltipContent>
-            </Tooltip>
-
-            {/* Help */}
-            <Tooltip delayDuration={200}>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => router.push('/help')}
-                  className="rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
-                >
-                  <HelpCircle className="h-5 w-5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                className="border-slate-700 bg-slate-950 text-white"
-              >
-                <p className="text-sm">Help & Support</p>
-              </TooltipContent>
-            </Tooltip>
-
-            {/* Settings */}
-            <Tooltip delayDuration={200}>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => router.push('/dashboard/settings')}
-                  className="rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
-                >
-                  <Settings className="h-5 w-5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                className="border-slate-700 bg-slate-950 text-white"
-              >
-                <p className="text-sm">Settings</p>
-              </TooltipContent>
-            </Tooltip>
+            {/* Dynamic Icon Buttons */}
+            {iconButtons.map((button) => (
+              <HeaderIconButton key={button.ariaLabel} {...button} />
+            ))}
 
             {/* Theme Toggle */}
             <Tooltip delayDuration={200}>
@@ -185,6 +214,7 @@ export function Header({
                 <button
                   onClick={() => setIsDark(!isDark)}
                   className="rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  aria-label="Toggle dark mode"
                 >
                   {isDark ? (
                     <Sun className="h-5 w-5" />
@@ -207,20 +237,15 @@ export function Header({
             {/* Profile Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 rounded-lg px-3 py-1.5 transition-colors hover:bg-gray-100">
-                  {userAvatar ? (
-                    <AvatarImage
-                      src={userAvatar}
-                      alt={userFullName}
-                      width={32}
-                      height={32}
-                      className="h-8 w-8 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-blue-400 to-blue-600 text-xs font-bold text-white">
-                      {initials}
-                    </div>
-                  )}
+                <button
+                  className="flex items-center gap-2 rounded-lg px-3 py-1.5 transition-colors hover:bg-gray-100"
+                  aria-label="User menu"
+                >
+                  <UserAvatar
+                    src={userAvatar}
+                    alt={userFullName}
+                    initials={initials}
+                  />
                   <div className="hidden text-left sm:block">
                     <p className="max-w-30 truncate text-sm font-medium text-gray-900">
                       {userFullName}
@@ -232,22 +257,15 @@ export function Header({
                   <ChevronDown className="h-4 w-4 text-gray-600" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <div className="px-2 py-1.5">
-                  <p className="text-sm font-semibold text-gray-900">
-                    {userFullName}
-                  </p>
-                  <p className="text-xs text-gray-500">{userEmail}</p>
-                </div>
-                <DropdownMenuSeparator />
+              <DropdownMenuContent align="end" className="w-44">
                 <DropdownMenuItem
-                  onClick={() => router.push('/dashboard/profile')}
+                  onClick={() => navigateTo('/dashboard/profile')}
                 >
                   <User className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => router.push('/dashboard/settings')}
+                  onClick={() => navigateTo('/dashboard/settings')}
                 >
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>

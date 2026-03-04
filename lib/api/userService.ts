@@ -42,10 +42,30 @@ const userService = {
     role: UserRole,
     page: number = 1,
     limit: number = 10,
+    filters?: {
+      searchQuery?: string;
+      statusFilter?: 'all' | 'active' | 'inactive' | 'suspended';
+      sortOrder?: 'latest' | 'oldest';
+    },
   ): Promise<PaginatedResponse<Profile>> {
     try {
+      const params = new URLSearchParams();
+      params.append('role', role);
+      params.append('page', page.toString());
+      params.append('limit', limit.toString());
+
+      if (filters?.searchQuery) {
+        params.append('search', filters.searchQuery);
+      }
+      if (filters?.statusFilter && filters.statusFilter !== 'all') {
+        params.append('status', filters.statusFilter);
+      }
+      if (filters?.sortOrder) {
+        params.append('sort', filters.sortOrder);
+      }
+
       const response = await apiClient.get<PaginatedResponse<Profile>>(
-        `/profiles?role=${role}&page=${page}&limit=${limit}`,
+        `/profiles?${params.toString()}`,
       );
 
       if (

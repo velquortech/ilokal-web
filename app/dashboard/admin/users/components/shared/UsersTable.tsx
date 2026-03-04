@@ -12,14 +12,6 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
   ChevronLeft,
   ChevronRight,
   Edit2,
@@ -32,15 +24,15 @@ import { PaginatedResponse } from '@/lib/api/paginationService';
 import { AvatarImage } from '@/components/custom/AvatarImage';
 import { StatusDropdown } from '../form/fields/StatusDropdown';
 import { getTimeAgo } from '@/lib/utils/dateFormatter';
+import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
 
 interface UsersTableProps {
-  data: PaginatedResponse<Profile> | null;
+  data: PaginatedResponse<Profile> | null | undefined;
   isLoading: boolean;
   currentPage: number;
   onPageChange: (page: number) => void;
   onEdit: (user: Profile) => void;
   onDelete: (id: string) => void;
-  onStatusChange?: (updatedUser: Profile) => void;
   isSubmitting: boolean;
 }
 
@@ -51,7 +43,6 @@ export default function UsersTable({
   onPageChange,
   onEdit,
   onDelete,
-  onStatusChange,
   isSubmitting,
 }: UsersTableProps) {
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +63,13 @@ export default function UsersTable({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div
+        className="flex items-center justify-center py-12"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        aria-label="Loading users table"
+      >
         <div className="flex flex-col items-center gap-2">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
           <p className="text-gray-600">Loading users...</p>
@@ -106,17 +103,31 @@ export default function UsersTable({
 
       <div className="overflow-hidden rounded-lg border border-gray-200">
         <div className="overflow-x-auto">
-          <Table>
+          <Table role="table" aria-label="Users list table">
             <TableHeader className="bg-gray-50">
               <TableRow>
-                <TableHead className="font-semibold">#</TableHead>
-                <TableHead className="font-semibold">Avatar</TableHead>
-                <TableHead className="font-semibold">Name</TableHead>
-                <TableHead className="font-semibold">Email</TableHead>
-                <TableHead className="font-semibold">Created</TableHead>
-                <TableHead className="font-semibold">Updated</TableHead>
-                <TableHead className="font-semibold">Status</TableHead>
-                <TableHead className="text-right font-semibold">
+                <TableHead className="font-semibold" scope="col">
+                  #
+                </TableHead>
+                <TableHead className="font-semibold" scope="col">
+                  Avatar
+                </TableHead>
+                <TableHead className="font-semibold" scope="col">
+                  Name
+                </TableHead>
+                <TableHead className="font-semibold" scope="col">
+                  Email
+                </TableHead>
+                <TableHead className="font-semibold" scope="col">
+                  Created
+                </TableHead>
+                <TableHead className="font-semibold" scope="col">
+                  Updated
+                </TableHead>
+                <TableHead className="font-semibold" scope="col">
+                  Status
+                </TableHead>
+                <TableHead className="text-right font-semibold" scope="col">
                   Actions
                 </TableHead>
               </TableRow>
@@ -162,14 +173,7 @@ export default function UsersTable({
                     {getTimeAgo(user.updated_at)}
                   </TableCell>
                   <TableCell>
-                    <StatusDropdown
-                      admin={user}
-                      onStatusChange={(updatedUser) => {
-                        onStatusChange?.(updatedUser);
-                        setError(null);
-                      }}
-                      onError={setError}
-                    />
+                    <StatusDropdown admin={user} onError={setError} />
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
@@ -178,10 +182,13 @@ export default function UsersTable({
                         variant="outline"
                         onClick={() => {
                           onEdit(user);
-                          toast.info(`Editing ${user.full_name}`);
+                          const displayName =
+                            user.full_name || user.email || 'User';
+                          toast.info(`Editing ${displayName}`);
                         }}
                         disabled={isSubmitting}
                         className="gap-1"
+                        aria-label={`Edit user ${user.full_name || user.email || 'this user'}`}
                       >
                         <Edit2 className="h-3 w-3" />
                         <span className="hidden sm:inline">Edit</span>
@@ -194,6 +201,7 @@ export default function UsersTable({
                         }
                         disabled={isSubmitting}
                         className="text-red-600 hover:text-red-700"
+                        aria-label={`Delete ${user.full_name ? `user ${user.full_name}` : user.email ? `user with email ${user.email}` : 'this user'}`}
                       >
                         <Trash2 className="h-3 w-3" />
                         <span className="hidden sm:inline">Delete</span>
@@ -208,24 +216,34 @@ export default function UsersTable({
       </div>
 
       {/* Pagination */}
-      <div className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+      <nav
+        className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
+        aria-label="Users table pagination"
+      >
         <div className="text-sm text-gray-600">
           Page <span className="font-medium">{currentPage}</span> of{' '}
           <span className="font-medium">{pagination.totalPages}</span>
           {' • '}
           <span className="font-medium">{pagination.totalItems}</span> total
+          items
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label="Pagination controls"
+        >
           <Button
             variant="outline"
             size="sm"
             onClick={() => onPageChange(1)}
             disabled={!hasPrevPage || isSubmitting}
             className="gap-1"
+            aria-label="Go to first page"
             title="Go to first page"
           >
             <ChevronsLeft className="h-4 w-4" />
+            <span className="sr-only">First</span>
           </Button>
 
           <Button
@@ -234,6 +252,8 @@ export default function UsersTable({
             onClick={() => onPageChange(currentPage - 1)}
             disabled={!hasPrevPage || isSubmitting}
             className="gap-1"
+            aria-label="Go to previous page"
+            title="Go to previous page"
           >
             <ChevronLeft className="h-4 w-4" />
             <span className="hidden sm:inline">Previous</span>
@@ -245,6 +265,8 @@ export default function UsersTable({
             onClick={() => onPageChange(currentPage + 1)}
             disabled={!hasNextPage || isSubmitting}
             className="gap-1"
+            aria-label="Go to next page"
+            title="Go to next page"
           >
             <span className="hidden sm:inline">Next</span>
             <ChevronRight className="h-4 w-4" />
@@ -256,49 +278,23 @@ export default function UsersTable({
             onClick={() => onPageChange(pagination.totalPages)}
             disabled={!hasNextPage || isSubmitting}
             className="gap-1"
+            aria-label="Go to last page"
             title="Go to last page"
           >
             <ChevronsRight className="h-4 w-4" />
+            <span className="sr-only">Last</span>
           </Button>
         </div>
-      </div>
+      </nav>
 
-      {/* Delete Confirmation Modal */}
-      <Dialog
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
         open={deleteConfirmation.open}
-        onOpenChange={(open) =>
-          setDeleteConfirmation({ ...deleteConfirmation, open })
-        }
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete User</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete{' '}
-              <span className="font-semibold">
-                {deleteConfirmation.user?.full_name}
-              </span>
-              ? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteConfirmation({ open: false, user: null })}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteConfirm}
-              disabled={isSubmitting}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        user={deleteConfirmation.user}
+        isSubmitting={isSubmitting}
+        onClose={() => setDeleteConfirmation({ open: false, user: null })}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 }

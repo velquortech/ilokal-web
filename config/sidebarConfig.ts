@@ -4,8 +4,8 @@ import {
   Building2,
   FileText,
   Lock,
-  LogOut,
   LucideIcon,
+  LogOut,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -86,6 +86,7 @@ export const userNavItems: NavItem[] = [
 
 export const logoutItem: NavItem = {
   label: 'Logout',
-  href: '#logout',
+  href: '/auth/login',
   icon: LogOut,
+  description: 'Sign out of your account',
 };

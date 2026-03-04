@@ -92,10 +92,6 @@ export function StatusDropdown({
       });
 
       toast.success(`Status updated to ${newStatus}`);
-
-      // Silently refetch in background to sync with server
-      queryClient.invalidateQueries({ queryKey: ['profiles'] });
-
       onStatusChange?.(updated);
     } catch (err) {
       // Revert optimistic update on failure
@@ -117,7 +113,7 @@ export function StatusDropdown({
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         disabled={isUpdating}
-        className="inline-flex items-center gap-2 rounded-lg px-2 py-1 transition-all duration-200 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 transition-all duration-200 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
         title="Click to change status"
       >
         {isUpdating ? (
@@ -145,7 +141,7 @@ export function StatusDropdown({
               onClick={() => setIsOpen(false)}
             />
             <div
-              className="fixed z-50 w-48 rounded-lg border border-gray-200 bg-white shadow-lg"
+              className="fixed z-50 w-48 cursor-pointer rounded-lg border border-gray-200 bg-white shadow-lg"
               style={{
                 top: `${dropdownPosition.top}px`,
                 left: `${dropdownPosition.left}px`,

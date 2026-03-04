@@ -1,25 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { Profile } from '@/lib/types/user';
-import { PaginatedResponse } from '@/lib/api/paginationService';
 import { extractErrorMessage } from '@/lib/utils/errorHandler';
 import { UserFormData } from '@/lib/schemas/userFormSchema';
 import { UserFormModal } from '../../form';
 import { UsersTable, UserSearchFilter } from '../../shared';
-import userService from '@/lib/api/userService';
-import authService from '@/lib/api/authService';
+import {
+  useCreateAdmin,
+  useUpdateAdmin,
+  useDeleteAdmin,
+} from '@/hooks/useAdminMutations';
+import { useProfilesByRole, useApplyFilters } from '@/hooks/useProfiles';
 
 export default function AdminTab() {
-  const [adminsData, setAdminsData] =
-    useState<PaginatedResponse<Profile> | null>(null);
-  const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<Profile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<
@@ -29,197 +27,106 @@ export default function AdminTab() {
 
   const ITEMS_PER_PAGE = 10;
 
-  useEffect(() => {
-    fetchAdmins(currentPage);
-  }, [currentPage, searchQuery, statusFilter, sortOrder]);
+  // Fetch admins data
+  const {
+    data: rawData,
+    isLoading,
+    error: fetchError,
+  } = useProfilesByRole('admin', {
+    page: currentPage,
+    limit: ITEMS_PER_PAGE * 3, // Fetch more for client-side filtering
+  });
 
-  const fetchAdmins = async (page: number) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const data = await userService.getProfilesByRolePaginated(
-        'admin',
-        page,
-        ITEMS_PER_PAGE,
-      );
+  // Apply filters and pagination
+  const adminsData = useApplyFilters(
+    rawData,
+    searchQuery,
+    statusFilter,
+    sortOrder,
+    currentPage,
+    ITEMS_PER_PAGE,
+  );
 
-      const filteredData = filterAdmins(data);
-      setAdminsData(filteredData);
-    } catch (err) {
-      const errorMessage = extractErrorMessage(err);
-      setError(errorMessage);
-      console.error('Error fetching admins:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Mutations
+  const createAdminMutation = useCreateAdmin(
+    () => {
+      setIsFormOpen(false);
+      setSelectedAdmin(null);
+      setCurrentPage(1);
+    },
+    (err) => {
+      console.error('Error creating admin:', err);
+    },
+  );
 
-  const filterAdmins = (
-    data: PaginatedResponse<Profile>,
-  ): PaginatedResponse<Profile> => {
-    if (!data || !data.data || data.data.length === 0) {
-      return {
-        data: [],
-        pagination: {
-          currentPage,
-          pageSize: ITEMS_PER_PAGE,
-          totalItems: 0,
-          totalPages: 0,
-        },
-      };
-    }
+  const updateAdminMutation = useUpdateAdmin(
+    () => {
+      setIsFormOpen(false);
+      setSelectedAdmin(null);
+    },
+    (err) => {
+      console.error('Error updating admin:', err);
+    },
+  );
 
-    let filtered = [...data.data];
+  const deleteAdminMutation = useDeleteAdmin(
+    () => {
+      if (adminsData && adminsData.data.length === 1 && currentPage > 1) {
+        setCurrentPage(currentPage - 1);
+      }
+    },
+    (err) => {
+      console.error('Error deleting admin:', err);
+    },
+  );
 
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(
-        (admin) =>
-          admin.full_name?.toLowerCase().includes(query) ||
-          false ||
-          admin.email.toLowerCase().includes(query),
-      );
-    }
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter((admin) => admin.status === statusFilter);
-    }
-
-    // Sort by created_at
-    filtered.sort((a, b) => {
-      const dateA = new Date(a.created_at).getTime();
-      const dateB = new Date(b.created_at).getTime();
-      return sortOrder === 'latest' ? dateB - dateA : dateA - dateB;
-    });
-
-    const totalItems = filtered.length;
-    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
-
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const paginatedFiltered = filtered.slice(
-      startIndex,
-      startIndex + ITEMS_PER_PAGE,
-    );
-
-    return {
-      data: paginatedFiltered,
-      pagination: {
-        currentPage,
-        pageSize: ITEMS_PER_PAGE,
-        totalItems,
-        totalPages,
-      },
-    };
-  };
-
-  /**
-   * Compare form data with original admin and return only changed fields
-   * Note: Password is NOT included as it should never be sent to the profiles table
-   */
   const getChangedFields = (
     original: Profile,
     formData: UserFormData,
-  ): {
-    email?: string;
-    full_name?: string;
-    phone_number?: string;
-    avatar_url?: string;
-  } => {
+  ): Record<string, unknown> => {
     const changes: Record<string, unknown> = {};
 
-    // Check if email changed
     if (formData.email !== original.email) {
       changes.email = formData.email;
     }
 
-    // Check if full_name changed
     if (formData.full_name !== (original.full_name || '')) {
       changes.full_name = formData.full_name;
     }
 
-    // Check if phone_number changed
     if ((formData.phone_number || '') !== (original.phone_number || '')) {
       changes.phone_number = formData.phone_number;
     }
 
-    // Check if avatar_url changed
     if ((formData.avatar_url || '') !== (original.avatar_url || '')) {
       changes.avatar_url = formData.avatar_url;
     }
 
-    return changes as {
-      email?: string;
-      full_name?: string;
-      phone_number?: string;
-      avatar_url?: string;
-    };
+    return changes;
   };
 
-  const handleCreateAdmin = async (
-    formData: Omit<UserFormData, 'confirm_password'> & {
-      confirm_password?: string;
-    },
-  ) => {
+  const handleCreateAdmin = async (formData: UserFormData) => {
     try {
-      setIsSubmitting(true);
-      setError(null);
-
       if (selectedAdmin) {
-        // Update existing admin - only send changed fields
-        const changedFields = getChangedFields(
-          selectedAdmin,
-          formData as UserFormData,
-        );
+        // Update mode
+        const changedFields = getChangedFields(selectedAdmin, formData);
 
-        // If nothing changed, just close the modal
         if (Object.keys(changedFields).length === 0) {
           setIsFormOpen(false);
           setSelectedAdmin(null);
           return;
         }
 
-        const updated = await userService.adminUpdateProfile(
-          selectedAdmin.id,
-          changedFields,
-        );
-
-        // Update the data in table
-        if (adminsData) {
-          setAdminsData({
-            ...adminsData,
-            data: adminsData.data.map((a) =>
-              a.id === selectedAdmin.id ? updated : a,
-            ),
-          });
-        }
-      } else {
-        // Create new admin account
-        const phoneNumber = formData.phone_number?.trim();
-        const hasPhoneNumber = phoneNumber && /\d/.test(phoneNumber);
-
-        await authService.signup({
-          email: formData.email,
-          password: formData.password,
-          confirmPassword: formData.confirm_password || '',
-          name: formData.full_name,
-          role: formData.role,
-          ...(hasPhoneNumber && { phone_number: phoneNumber }),
-          ...(formData.avatar_url && { avatar_url: formData.avatar_url }),
+        await updateAdminMutation.mutateAsync({
+          id: selectedAdmin.id,
+          changes: changedFields,
         });
-
-        // Refresh the first page to show the new admin
-        await fetchAdmins(1);
-        setCurrentPage(1);
+      } else {
+        // Create mode
+        await createAdminMutation.mutateAsync(formData);
       }
-
-      setIsFormOpen(false);
-      setSelectedAdmin(null);
     } catch (err) {
-      const errorMessage = extractErrorMessage(err);
-      setError(errorMessage);
-      console.error('Error saving admin:', err);
-    } finally {
-      setIsSubmitting(false);
+      console.error('Error in handleCreateAdmin:', err);
     }
   };
 
@@ -237,22 +144,7 @@ export default function AdminTab() {
       return;
     }
 
-    try {
-      setError(null);
-      await userService.deleteProfile(id);
-
-      if (adminsData && adminsData.data.length > 1) {
-        await fetchAdmins(currentPage);
-      } else if (currentPage > 1) {
-        setCurrentPage(currentPage - 1);
-      } else {
-        await fetchAdmins(1);
-      }
-    } catch (err) {
-      const errorMessage = extractErrorMessage(err);
-      setError(errorMessage);
-      console.error('Error deleting admin:', err);
-    }
+    await deleteAdminMutation.mutateAsync(id);
   };
 
   const handleResetFilters = () => {
@@ -263,6 +155,19 @@ export default function AdminTab() {
   };
 
   const hasActiveFilters = Boolean(searchQuery) || statusFilter !== 'all';
+  const isSubmitting =
+    createAdminMutation.isPending ||
+    updateAdminMutation.isPending ||
+    deleteAdminMutation.isPending;
+  const error = fetchError
+    ? extractErrorMessage(fetchError)
+    : createAdminMutation.error
+      ? extractErrorMessage(createAdminMutation.error)
+      : updateAdminMutation.error
+        ? extractErrorMessage(updateAdminMutation.error)
+        : deleteAdminMutation.error
+          ? extractErrorMessage(deleteAdminMutation.error)
+          : null;
 
   return (
     <div className="space-y-4">
@@ -286,6 +191,12 @@ export default function AdminTab() {
           Create Admin
         </Button>
       </div>
+
+      {error && (
+        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <p>{error}</p>
+        </div>
+      )}
 
       <UserSearchFilter
         searchQuery={searchQuery}
@@ -314,15 +225,8 @@ export default function AdminTab() {
         onPageChange={setCurrentPage}
         onEdit={handleEdit}
         onDelete={handleDelete}
-        onStatusChange={(updatedAdmin) => {
-          if (adminsData) {
-            setAdminsData({
-              ...adminsData,
-              data: adminsData.data.map((a) =>
-                a.id === updatedAdmin.id ? updatedAdmin : a,
-              ),
-            });
-          }
+        onStatusChange={(_updatedAdmin) => {
+          // The status change is handled by StatusDropdown which uses its own mutation
         }}
         isSubmitting={isSubmitting}
       />
@@ -332,11 +236,16 @@ export default function AdminTab() {
         onClose={() => {
           setIsFormOpen(false);
           setSelectedAdmin(null);
-          setError(null);
         }}
         onSubmit={handleCreateAdmin}
         userType="admin"
-        error={error}
+        error={
+          createAdminMutation.error
+            ? extractErrorMessage(createAdminMutation.error)
+            : updateAdminMutation.error
+              ? extractErrorMessage(updateAdminMutation.error)
+              : null
+        }
         initialData={
           selectedAdmin
             ? {

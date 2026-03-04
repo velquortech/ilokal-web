@@ -34,13 +34,12 @@ import { StatusDropdown } from '../form/fields/StatusDropdown';
 import { getTimeAgo } from '@/lib/utils/dateFormatter';
 
 interface UsersTableProps {
-  data: PaginatedResponse<Profile> | null;
+  data: PaginatedResponse<Profile> | null | undefined;
   isLoading: boolean;
   currentPage: number;
   onPageChange: (page: number) => void;
   onEdit: (user: Profile) => void;
   onDelete: (id: string) => void;
-  onStatusChange?: (updatedUser: Profile) => void;
   isSubmitting: boolean;
 }
 
@@ -51,7 +50,6 @@ export default function UsersTable({
   onPageChange,
   onEdit,
   onDelete,
-  onStatusChange,
   isSubmitting,
 }: UsersTableProps) {
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +70,12 @@ export default function UsersTable({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div
+        className="flex items-center justify-center py-12"
+        role="status"
+        aria-live="polite"
+        aria-label="Loading users"
+      >
         <div className="flex flex-col items-center gap-2">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
           <p className="text-gray-600">Loading users...</p>
@@ -162,14 +165,7 @@ export default function UsersTable({
                     {getTimeAgo(user.updated_at)}
                   </TableCell>
                   <TableCell>
-                    <StatusDropdown
-                      admin={user}
-                      onStatusChange={(updatedUser) => {
-                        onStatusChange?.(updatedUser);
-                        setError(null);
-                      }}
-                      onError={setError}
-                    />
+                    <StatusDropdown admin={user} onError={setError} />
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
@@ -182,6 +178,7 @@ export default function UsersTable({
                         }}
                         disabled={isSubmitting}
                         className="gap-1"
+                        aria-label={`Edit user ${user.full_name}`}
                       >
                         <Edit2 className="h-3 w-3" />
                         <span className="hidden sm:inline">Edit</span>
@@ -194,6 +191,7 @@ export default function UsersTable({
                         }
                         disabled={isSubmitting}
                         className="text-red-600 hover:text-red-700"
+                        aria-label={`Delete user ${user.full_name}`}
                       >
                         <Trash2 className="h-3 w-3" />
                         <span className="hidden sm:inline">Delete</span>

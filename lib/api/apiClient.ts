@@ -44,6 +44,14 @@ class ApiManager {
           error.message ||
           'An error occurred';
 
+        // Log the full error details for debugging
+        console.error('API Error Details:', {
+          status: error.response?.status,
+          message: errorMessage,
+          data: responseData,
+          url: error.config?.url,
+        });
+
         // Create proper error response
         const errorResponse: ApiErrorResponse = {
           message: errorMessage,

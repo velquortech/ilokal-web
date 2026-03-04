@@ -73,9 +73,13 @@ export default function AdminTab() {
   const updateAdminMutation = useUpdateAdmin(
     () => {
       toast.success('Admin account updated successfully!');
-      setIsFormOpen(false);
-      setSelectedAdmin(null);
-      setCurrentPage(1); // Reset to page 1 to ensure user appears in view
+      // Add small delay to ensure React has rendered all updates before closing modal
+      // This prevents phone number from flashing old value
+      setTimeout(() => {
+        setIsFormOpen(false);
+        setSelectedAdmin(null);
+        setCurrentPage(1);
+      }, 100);
     },
     (err) => {
       const errorMsg = extractErrorMessage(err);

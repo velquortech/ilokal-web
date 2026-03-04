@@ -18,7 +18,7 @@ export default function AdminDashboardLayout({
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex min-h-screen w-screen bg-gray-50">
       <Sidebar items={adminNavItems} onLogout={handleLogout} appName="iLokal" />
 
       {/* Main content */}
@@ -30,7 +30,7 @@ export default function AdminDashboardLayout({
           onLogout={handleLogout}
           showSearch={true}
         />
-        <div className="flex-1 overflow-auto">
+        <div className="min-h-0 flex-1 overflow-auto">
           <div className="p-8">{children}</div>
         </div>
       </div>

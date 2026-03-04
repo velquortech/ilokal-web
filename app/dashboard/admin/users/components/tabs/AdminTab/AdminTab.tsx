@@ -8,7 +8,7 @@ import { PaginatedResponse } from '@/lib/api/paginationService';
 import { extractErrorMessage } from '@/lib/utils/errorHandler';
 import { UserFormData } from '@/lib/schemas/userFormSchema';
 import { UserFormModal } from '../../form';
-import { AdminUsersTable, AdminSearchFilter } from '../../common';
+import { UsersTable, UserSearchFilter } from '../../shared';
 import userService from '@/lib/api/userService';
 import authService from '@/lib/api/authService';
 
@@ -287,7 +287,7 @@ export default function AdminTab() {
         </Button>
       </div>
 
-      <AdminSearchFilter
+      <UserSearchFilter
         searchQuery={searchQuery}
         onSearchChange={(query) => {
           setSearchQuery(query);
@@ -307,7 +307,7 @@ export default function AdminTab() {
         hasActiveFilters={hasActiveFilters}
       />
 
-      <AdminUsersTable
+      <UsersTable
         data={adminsData}
         isLoading={isLoading}
         currentPage={currentPage}

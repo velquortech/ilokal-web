@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Search, X } from 'lucide-react';
 
-interface AdminSearchFilterProps {
+interface UserSearchFilterProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   statusFilter: 'all' | 'active' | 'inactive' | 'suspended';
@@ -15,7 +15,7 @@ interface AdminSearchFilterProps {
   hasActiveFilters: boolean;
 }
 
-export function AdminSearchFilter({
+export function UserSearchFilter({
   searchQuery,
   onSearchChange,
   statusFilter,
@@ -24,7 +24,7 @@ export function AdminSearchFilter({
   onSortOrderChange,
   onReset,
   hasActiveFilters,
-}: AdminSearchFilterProps) {
+}: UserSearchFilterProps) {
   return (
     <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-end">

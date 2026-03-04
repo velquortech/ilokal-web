@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { Profile } from '@/lib/types/user';
@@ -50,32 +51,41 @@ export default function AdminTab() {
   // Mutations
   const createAdminMutation = useCreateAdmin(
     () => {
+      toast.success('Admin account created successfully!');
       setIsFormOpen(false);
       setSelectedAdmin(null);
       setCurrentPage(1);
     },
     (err) => {
+      const errorMsg = extractErrorMessage(err);
+      toast.error(`Failed to create admin: ${errorMsg}`);
       console.error('Error creating admin:', err);
     },
   );
 
   const updateAdminMutation = useUpdateAdmin(
     () => {
+      toast.success('Admin account updated successfully!');
       setIsFormOpen(false);
       setSelectedAdmin(null);
     },
     (err) => {
+      const errorMsg = extractErrorMessage(err);
+      toast.error(`Failed to update admin: ${errorMsg}`);
       console.error('Error updating admin:', err);
     },
   );
 
   const deleteAdminMutation = useDeleteAdmin(
     () => {
+      toast.success('Admin account deleted successfully!');
       if (adminsData && adminsData.data.length === 1 && currentPage > 1) {
         setCurrentPage(currentPage - 1);
       }
     },
     (err) => {
+      const errorMsg = extractErrorMessage(err);
+      toast.error(`Failed to delete admin: ${errorMsg}`);
       console.error('Error deleting admin:', err);
     },
   );
@@ -141,10 +151,16 @@ export default function AdminTab() {
         'Are you sure you want to delete this admin? This action cannot be undone.',
       )
     ) {
+      toast.info('Delete cancelled');
       return;
     }
 
-    await deleteAdminMutation.mutateAsync(id);
+    const deleteToast = toast.loading('Deleting admin account...');
+    try {
+      await deleteAdminMutation.mutateAsync(id);
+    } catch {
+      toast.dismiss(deleteToast);
+    }
   };
 
   const handleResetFilters = () => {
@@ -152,6 +168,7 @@ export default function AdminTab() {
     setStatusFilter('all');
     setSortOrder('latest');
     setCurrentPage(1);
+    toast.info('Filters reset');
   };
 
   const hasActiveFilters = Boolean(searchQuery) || statusFilter !== 'all';

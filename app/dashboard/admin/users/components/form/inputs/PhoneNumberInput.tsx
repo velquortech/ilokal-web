@@ -49,6 +49,14 @@ const validatePhoneNumber = (
   digits.length <= countryCode.maxLength &&
   countryCode.pattern.test(digits);
 
+/**
+ * Extract raw phone value for API (format: "+CODE DIGITS")
+ */
+const getRawPhoneValue = (country: CountryCode, digits: string): string => {
+  if (!digits) return '';
+  return `${country.code}${digits}`;
+};
+
 export function PhoneNumberInput({
   value,
   onChange,
@@ -62,7 +70,7 @@ export function PhoneNumberInput({
   const parsePhoneValue = (val: string) => {
     const uniqueCountries = getUniqueCountryCodes();
 
-    // Try to parse the new format: "ABBR+CODE|DIGITS"
+    // Try to parse the new format: "ABBR+CODE|DIGITS" (backwards compatibility)
     if (val.includes('|')) {
       const [countryPart, digits] = val.split('|');
       // Extract abbreviation from "ABBR+CODE" format
@@ -82,7 +90,7 @@ export function PhoneNumberInput({
       }
     }
 
-    // Fallback: try to parse old format or plain code "+CODE DIGITS"
+    // Parse standard format: "+CODE DIGITS" or "+CODEDIGITS" (e.g., "+639324234324")
     const sorted = [...uniqueCountries].sort(
       (a, b) => b.code.length - a.code.length,
     );
@@ -137,9 +145,9 @@ export function PhoneNumberInput({
     );
 
     if (newCountry) {
-      // Format: "ABBR+CODE|DIGITS" (e.g., "CA+1|1234567890")
-      const formatted = `${abbr}${code}|${digitsOnly}`;
-      onChange(formatted);
+      // Send raw phone value for API: "+CODE DIGITS" (e.g., "+639324234324")
+      const rawPhoneValue = getRawPhoneValue(newCountry, digitsOnly);
+      onChange(rawPhoneValue);
     }
   };
 
@@ -149,9 +157,9 @@ export function PhoneNumberInput({
     const newDigits = newValue.replace(/\D/g, '');
     // Limit to max length for current country
     const limitedDigits = newDigits.slice(0, currentCountry.maxLength);
-    // Format: "ABBR+CODE|DIGITS" (e.g., "CA+1|1234567890")
-    const formatted = `${currentCountry.abbreviation}${currentCountry.code}|${limitedDigits}`;
-    onChange(formatted);
+    // Send raw phone value for API: "+CODE DIGITS" (e.g., "+639324234324")
+    const rawPhoneValue = getRawPhoneValue(currentCountry, limitedDigits);
+    onChange(rawPhoneValue);
   };
 
   const selectValue = `${currentCountry.code}|${currentCountry.abbreviation}`;
@@ -195,7 +203,8 @@ export function PhoneNumberInput({
 
       {digitsOnly.length > 0 && !isValid && (
         <p className="text-xs text-red-600">
-          Invalid format. Expected: {currentCountry.format.replace(/X/g, '0')}
+          Invalid format for {currentCountry.abbreviation}. Expected:{' '}
+          {currentCountry.code} {currentCountry.format.replace(/X/g, '0')}
         </p>
       )}
 

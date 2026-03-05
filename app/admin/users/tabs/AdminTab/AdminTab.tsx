@@ -160,12 +160,11 @@ export default function AdminTab() {
 
   const handleDelete = useCallback(
     async (id: string) => {
-      const deleteToast = toast.loading('Deleting admin account...');
       try {
         await deleteAdminMutation.mutateAsync(id);
-        toast.dismiss(deleteToast);
       } catch {
-        toast.dismiss(deleteToast);
+        // Error is already handled by mutation callbacks
+        console.error('Error deleting admin');
       }
     },
     [deleteAdminMutation],

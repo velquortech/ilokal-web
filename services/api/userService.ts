@@ -30,7 +30,7 @@ export interface AdminUpdateUserInput {
 const userService = {
   async getProfilesByRole(role: UserRole): Promise<Profile[]> {
     try {
-      const response = await apiClient.get(`/profiles?role=${role}`);
+      const response = await apiClient.get(`/admin/profiles?role=${role}`);
       return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error(`Error fetching ${role} profiles:`, error);
@@ -65,7 +65,7 @@ const userService = {
       }
 
       const response = await apiClient.get<PaginatedResponse<Profile>>(
-        `/profiles?${params.toString()}`,
+        `/admin/profiles?${params.toString()}`,
       );
 
       if (
@@ -94,26 +94,22 @@ const userService = {
   },
 
   async getProfileById(id: string): Promise<Profile> {
-    return await apiClient.get(`/profiles/${id}`);
+    return await apiClient.get(`/admin/profiles/${id}`);
   },
 
   async createProfile(data: CreateUserInput): Promise<Profile> {
-    return await apiClient.post('/profiles', data);
-  },
-
-  async updateProfile(id: string, data: UpdateUserInput): Promise<Profile> {
-    return await apiClient.put(`/profiles/${id}`, data);
+    return await apiClient.post('/admin/profiles', data);
   },
 
   async adminUpdateProfile(
     id: string,
     data: AdminUpdateUserInput,
   ): Promise<Profile> {
-    return await apiClient.put(`/profiles/${id}/admin`, data);
+    return await apiClient.put(`/admin/profiles/${id}`, data);
   },
 
   async deleteProfile(id: string): Promise<{ message: string }> {
-    return await apiClient.delete(`/profiles/${id}`);
+    return await apiClient.delete(`/admin/profiles/${id}`);
   },
 };
 

@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Sidebar } from '@/app/admin/users/components/shared/Sidebar';
-import { Header } from '@/app/admin/users/components/shared/Header';
-import { adminNavItems } from '@/config/sidebarConfig';
+import { Sidebar } from '@/app/admin/components/shared/Sidebar';
+import { Header } from '@/app/admin/components/shared/Header';
+import { adminNavItems } from '@/app/admin/config/sidebarConfig';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function AdminDashboardLayout({

@@ -19,7 +19,7 @@ import {
 } from '@/app/admin/schemas/userFormSchema';
 import { UserFormModalProps } from '@/lib/types/forms';
 import { getRoleFromUserType } from '@/lib/utils/roleMapper';
-import { baseFormFields } from '../../../constants/formFields';
+import { baseFormFields } from '../../constants/formFields';
 import { InputFormFields } from './fields/FormFields';
 import { UserEditForm } from '../shared';
 import { Profile } from '@/lib/types/user';

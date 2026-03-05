@@ -7,15 +7,15 @@ import { Plus } from 'lucide-react';
 import { Profile } from '@/lib/types/user';
 import { extractErrorMessage } from '@/lib/utils/errorHandler';
 import { UserFormData } from '@/app/admin/schemas/userFormSchema';
-import { UserFormModal } from '../../forms';
-import { UsersTable, UserSearchFilter } from '../../shared';
+import { UserFormModal } from '../../../components/forms';
+import { UsersTable, UserSearchFilter } from '../../../components/shared';
 import {
   useCreateAdmin,
   useUpdateAdmin,
   useDeleteAdmin,
 } from '@/hooks/useAdminMutations';
 import { useProfilesByRole } from '@/hooks/useProfiles';
-import { ADMIN_CONFIG } from '@/config/adminConfig';
+import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
 
 export default function AdminTab() {
   const [selectedAdmin, setSelectedAdmin] = useState<Profile | null>(null);

@@ -1,5 +1,5 @@
 import { Shield, Building2, Users, LucideIcon } from 'lucide-react';
-import { AdminTab, ConsumersTab } from '../users/components';
+import { AdminTab, ConsumersTab } from '../users/tabs';
 
 export interface UserTab {
   id: string;

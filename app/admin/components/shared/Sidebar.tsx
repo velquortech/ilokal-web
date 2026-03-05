@@ -12,7 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { NavItem } from '@/config/sidebarConfig';
+import type { NavItem } from '@/app/admin/config/sidebarConfig';
 
 interface SidebarProps {
   items: NavItem[];

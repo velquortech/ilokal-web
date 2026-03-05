@@ -3,6 +3,3 @@ export * from './shared';
 
 // Form components and sub-components
 export * from './forms';
-
-// Tab components
-export * from './tabs';

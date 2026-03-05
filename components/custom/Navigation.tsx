@@ -15,6 +15,7 @@ import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import { Sun, Moon } from 'lucide-react';
 import { useState, JSX } from 'react';
+import { ROUTES } from '@/config/routesConfig';
 
 export const Navigation = (): JSX.Element => {
   const router = useRouter();
@@ -37,7 +38,7 @@ export const Navigation = (): JSX.Element => {
   const { theme, setTheme } = useTheme();
 
   const handleLoginClick = () => {
-    router.push('/auth/login');
+    router.push(ROUTES.AUTH.LOGIN);
   };
 
   return (

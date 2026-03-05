@@ -8,6 +8,7 @@ import React, {
   useRef,
 } from 'react';
 import { useRouter } from 'next/navigation';
+import { ROUTES } from '@/config/routesConfig';
 import {
   Bell,
   Settings,
@@ -151,7 +152,7 @@ export function Header({
     if (onLogout) {
       onLogout();
     } else {
-      router.push('/auth/login');
+      router.push(ROUTES.AUTH.LOGIN);
     }
   }, [onLogout, router]);
 

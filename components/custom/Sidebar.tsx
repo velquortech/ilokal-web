@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ROUTES } from '@/config/routesConfig';
 import {
   Tooltip,
   TooltipContent,
@@ -57,7 +58,7 @@ export function Sidebar({
     if (onLogout) {
       onLogout();
     } else if (logoutItem) {
-      router.push('/auth/login');
+      router.push(ROUTES.AUTH.LOGIN);
     }
   };
 

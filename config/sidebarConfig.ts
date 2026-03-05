@@ -7,6 +7,7 @@ import {
   LucideIcon,
   LogOut,
 } from 'lucide-react';
+import { ROUTES } from '@/config/routesConfig';
 
 export interface NavItem {
   label: string;
@@ -18,31 +19,31 @@ export interface NavItem {
 export const adminNavItems: NavItem[] = [
   {
     label: 'Dashboard',
-    href: '/dashboard/admin',
+    href: ROUTES.DASHBOARD.ADMIN,
     icon: LayoutDashboard,
     description: 'Overview and analytics',
   },
   {
     label: 'User Management',
-    href: '/dashboard/admin/users',
+    href: `${ROUTES.DASHBOARD.ADMIN}/users`,
     icon: Users,
     description: 'Manage system users',
   },
   {
     label: 'Business Profiles',
-    href: '/dashboard/businesses',
+    href: `${ROUTES.DASHBOARD.ADMIN}/businesses`,
     icon: Building2,
     description: 'View business details',
   },
   {
     label: 'Documents',
-    href: '/dashboard/documents',
+    href: `${ROUTES.DASHBOARD.ADMIN}/documents`,
     icon: FileText,
     description: 'Manage documents',
   },
   {
     label: 'Account Status',
-    href: '/dashboard/account-status',
+    href: `${ROUTES.DASHBOARD.ADMIN}/account-status`,
     icon: Lock,
     description: 'Account security',
   },
@@ -51,19 +52,19 @@ export const adminNavItems: NavItem[] = [
 export const businessNavItems: NavItem[] = [
   {
     label: 'Dashboard',
-    href: '/dashboard/business',
+    href: ROUTES.DASHBOARD.BUSINESS,
     icon: LayoutDashboard,
     description: 'Overview',
   },
   {
     label: 'Branches',
-    href: '/dashboard/business/branches',
+    href: `${ROUTES.DASHBOARD.BUSINESS}/branches`,
     icon: Building2,
     description: 'Manage branches',
   },
   {
     label: 'Products',
-    href: '/dashboard/business/products',
+    href: `${ROUTES.DASHBOARD.BUSINESS}/products`,
     icon: FileText,
     description: 'Manage products',
   },
@@ -86,7 +87,7 @@ export const userNavItems: NavItem[] = [
 
 export const logoutItem: NavItem = {
   label: 'Logout',
-  href: '/auth/login',
+  href: ROUTES.AUTH.LOGIN,
   icon: LogOut,
   description: 'Sign out of your account',
 };

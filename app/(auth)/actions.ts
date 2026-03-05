@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { createServerSupabaseClient } from '@/config/server';
+import { ROUTES } from '@/config/routesConfig';
 import { User } from '@/lib/types/user';
 import { SignupInput } from '@/lib/validation/auth';
 
@@ -213,13 +214,13 @@ export async function signupAction(
 export async function redirectByRole(role: string): Promise<void> {
   switch (role) {
     case 'admin':
-      redirect('/dashboard/admin');
+      redirect(ROUTES.DASHBOARD.ADMIN);
       break;
     case 'business_owner':
-      redirect('/dashboard/business');
+      redirect(ROUTES.DASHBOARD.BUSINESS);
       break;
     default:
-      redirect('/home');
+      redirect(ROUTES.DASHBOARD.HOME);
   }
 }
 
@@ -277,5 +278,5 @@ export async function verifySessionAction(): Promise<{ user: User } | null> {
 export async function logoutAction(): Promise<void> {
   const supabase = await createServerSupabaseClient();
   await supabase.auth.signOut();
-  redirect('/auth/login');
+  redirect(ROUTES.AUTH.LOGIN);
 }

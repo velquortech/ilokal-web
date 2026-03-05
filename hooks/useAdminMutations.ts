@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import userService from '@/services/api/userService';
-import authService from '@/services/api/authService';
 import { UserFormData } from '@/app/admin/schemas/userFormSchema';
 
 export function useCreateAdmin(
@@ -188,11 +187,12 @@ export function useCreateConsumer(
       const phoneNumber = data.phone_number?.trim();
       const hasPhoneNumber = phoneNumber && /\d/.test(phoneNumber);
 
-      return await authService.signup({
+      // ✅ SECURITY FIX: Use /api/admin/profiles (has verifyAdminAccess)
+      // instead of /api/auth/signup (public endpoint)
+      return await userService.createProfile({
         email: data.email,
         password: data.password,
-        confirmPassword: data.confirm_password || '',
-        name: data.full_name,
+        full_name: data.full_name,
         role: 'user',
         ...(hasPhoneNumber && { phone_number: phoneNumber }),
         ...(data.avatar_url && { avatar_url: data.avatar_url }),
@@ -313,11 +313,12 @@ export function useCreateBusinessOwner(
       const phoneNumber = data.phone_number?.trim();
       const hasPhoneNumber = phoneNumber && /\d/.test(phoneNumber);
 
-      return await authService.signup({
+      // ✅ SECURITY FIX: Use /api/admin/profiles (has verifyAdminAccess)
+      // instead of /api/auth/signup (public endpoint)
+      return await userService.createProfile({
         email: data.email,
         password: data.password,
-        confirmPassword: data.confirm_password || '',
-        name: data.full_name,
+        full_name: data.full_name,
         role: 'business_owner',
         ...(hasPhoneNumber && { phone_number: phoneNumber }),
         ...(data.avatar_url && { avatar_url: data.avatar_url }),

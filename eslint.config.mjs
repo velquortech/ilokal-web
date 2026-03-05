@@ -37,6 +37,11 @@ export default tseslint.config(
       react: reactPlugin,
       'jsx-a11y': jsxA11yPlugin,
     },
+    settings: {
+      react: {
+        version: '19.2.4',
+      },
+    },
     rules: {
       ...nextPlugin.configs.recommended.rules,
       ...nextPlugin.configs['core-web-vitals'].rules,

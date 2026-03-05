@@ -108,15 +108,21 @@ export default function UserFormModal({
     ? baseFormFields
     : baseFormFields.filter((f) => f.name !== 'avatar_url');
 
-  // Render edit form for admins
-  if (isEditMode && userType === 'admin') {
+  // Render edit form for all user types
+  if (isEditMode) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-106.25">
           <DialogHeader>
             <DialogTitle>{getTitle()}</DialogTitle>
             <DialogDescription>
-              Update the admin account details below
+              Update the{' '}
+              {userType === 'admin'
+                ? 'admin'
+                : userType === 'business_owner'
+                  ? 'business owner'
+                  : 'consumer'}{' '}
+              account details below
             </DialogDescription>
           </DialogHeader>
 

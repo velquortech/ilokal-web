@@ -1,4 +1,6 @@
 export { default as UserFormModal } from './UserFormModal';
-// NOTE: AdminEditForm has been moved to shared/UserEditForm for reusability
+// Shared reusable components
+export { UserEditForm } from '../shared';
+// Form inputs and fields
 export * from './inputs';
 export * from './fields';

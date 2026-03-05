@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useAuthStore } from '@/lib/stores/authStore';
+import { useAuthStore } from '@/services/stores/authStore';
 import { verifySessionAction, logoutAction } from '@/app/(auth)/actions';
 import {
   SESSION_CHECK_INTERVAL,

@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from '@/config/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { createPaginatedResponse } from '@/lib/api/paginationService';
+import { createPaginatedResponse } from '@/services/api/paginationService';
 
 export async function GET(request: NextRequest) {
   try {

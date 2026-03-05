@@ -17,7 +17,7 @@ import { Profile } from '@/lib/types/user';
 import {
   adminEditSchema,
   type AdminEditFormData,
-} from '@/lib/schemas/userFormSchema';
+} from '@/app/admin/schemas/userFormSchema';
 import { PhoneNumberInput } from './inputs/PhoneNumberInput';
 import { AvatarUpload } from './inputs/AvatarUpload';
 

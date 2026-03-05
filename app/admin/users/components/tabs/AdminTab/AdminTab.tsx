@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { Profile } from '@/lib/types/user';
 import { extractErrorMessage } from '@/lib/utils/errorHandler';
-import { UserFormData } from '@/lib/schemas/userFormSchema';
+import { UserFormData } from '@/app/admin/schemas/userFormSchema';
 import { UserFormModal } from '../../forms';
 import { UsersTable, UserSearchFilter } from '../../shared';
 import {

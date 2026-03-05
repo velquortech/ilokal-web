@@ -1,4 +1,4 @@
-import { UserFormData } from '@/lib/schemas/userFormSchema';
+import { UserFormData } from '@/app/admin/schemas/userFormSchema';
 
 const getDefaultValues = (
   userType: string,

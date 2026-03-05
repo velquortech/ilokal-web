@@ -16,7 +16,7 @@ import {
   userFormSchema,
   type UserFormData,
   type AdminEditFormData,
-} from '@/lib/schemas/userFormSchema';
+} from '@/app/admin/schemas/userFormSchema';
 import { UserFormModalProps } from '@/lib/types/forms';
 import { getRoleFromUserType } from '@/lib/utils/roleMapper';
 import { baseFormFields } from '../../../constants/formFields';

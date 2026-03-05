@@ -2,7 +2,7 @@
 
 import { useTransition } from 'react';
 import { useSessionMonitor } from '@/hooks/useSessionMonitor';
-import { logoutAction } from '@/app/auth/actions';
+import { logoutAction } from '@/app/(auth)/actions';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

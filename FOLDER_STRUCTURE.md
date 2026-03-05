@@ -157,11 +157,16 @@ api/
 │   ├── signup/                 # POST /api/auth/signup
 │   └── verify/                 # POST /api/auth/verify
 │
-├── profiles/                   # User profile endpoints
-│   ├── route.ts                # GET /api/profiles
-│   └── [id]/                   # Dynamic profile routes
-│       ├── route.ts            # GET/PUT: /api/profiles/[id]
-│       └── admin/              # Admin-specific profile routes
+├── admin/                      # Admin-only endpoints
+│   └── profiles/               # Admin profile management
+│       ├── route.ts            # GET/POST: /api/admin/profiles
+│       │                        # GET: List profiles (paginated, filtered)
+│       │                        # POST: Create new profile
+│       └── [id]/               # Dynamic profile operations
+│           └── route.ts        # GET/PUT/DELETE: /api/admin/profiles/[id]
+│                                # GET: Fetch single profile
+│                                # PUT: Update profile
+│                                # DELETE: Delete profile
 │
 ├── upload/                     # File upload endpoints
 │   └── avatar/                 # POST /api/upload/avatar
@@ -268,12 +273,16 @@ hooks/
 │                                # - Get user, isAuthenticated
 │                                # - logout() function
 │
-├── useAdminMutations.ts        # Admin CRUD mutations
-│                                # - useCreateAdmin()
-│                                # - useUpdateAdmin()
-│                                # - useDeleteAdmin()
-│                                # - useCreateConsumer()
-│                                # - etc.
+├── useAdminMutations.ts        # Admin CRUD mutations with optimistic updates
+│                                # - useCreateAdmin(onSuccess?, onError?)
+│                                # - useUpdateAdmin(onSuccess?, onError?)
+│                                #   ✅ Optimistic row updates (no full table refetch)
+│                                # - useDeleteAdmin(onSuccess?, onError?)
+│                                #   ✅ Removes row from cache instantly
+│                                #   ✅ Updates total item count
+│                                # - useCreateConsumer() / useUpdateConsumer() / useDeleteConsumer()
+│                                # - useUpdateAdminStatus()
+│                                # Callbacks receive updated/deleted profile data
 │
 ├── useProfiles.ts              # Profile data fetching
 │                                # - useProfilesByRole()
@@ -295,7 +304,9 @@ lib/
 ├── utils.ts                    # **Main utility functions**
 │                                # - cn() for className merging
 │
-├── api/                        # ❌ **LEGACY** (Moved to services/)
+├── api/                        # **API utilities & middleware**
+│   └── verifyAdminAccess.ts    # Shared admin authorization utility
+│                                # - verifyAdminAccess() - Check if user is admin
 │
 ├── types/                      # **TypeScript type definitions**
 │   ├── user.ts                 # User/Profile types
@@ -348,8 +359,13 @@ services/
 │   │   - verifySession()
 │   │
 │   ├── userService.ts          # User management API calls
-│   │   - getUserById(), getAllUsers()
-│   │   - updateUser(), deleteUser()
+│   │   - getProfilesByRole(role)
+│   │   - getProfilesByRolePaginated(role, page, limit, filters)
+│   │   - getProfileById(id)
+│   │   - createProfile(data)
+│   │   - adminUpdateProfile(id, changes)
+│   │   - deleteProfile(id)
+│   │   All endpoints use /api/admin/profiles/* routes
 │   │
 │   └── paginationService.ts    # Pagination utilities
 │       - Page calculation, offset handling
@@ -487,6 +503,9 @@ helpers/
 | `services/stores`               | ✅ Complete | Moved from `lib/stores`                   |
 | `lib/validation/auth.ts`        | ✅ Complete | Consolidated from multiple files          |
 | `lib/schemas/userFormSchema.ts` | ✅ Complete | User form schemas                         |
+| `lib/api/verifyAdminAccess.ts`  | ✅ Complete | Shared admin authorization utility        |
+| `/app/api/admin/profiles/`      | ✅ Complete | Admin-only endpoints with clean REST API  |
+| Optimistic Updates              | ✅ Complete | Mutations update cache (no full refetch)  |
 | API routes                      | ⏳ Legacy   | Can be removed (Server Actions preferred) |
 | Old middleware files            | ✅ Deleted  | Replaced by `proxy.ts`                    |
 

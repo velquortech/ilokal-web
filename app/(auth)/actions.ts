@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { createServerSupabaseClient } from '@/config/server';
 import { ROUTES } from '@/config/routeConfig';
 import { User } from '@/lib/types/user';
-import { SignupInput } from '@/lib/validation/auth';
+import { SignupInput } from '@/app/admin/schemas/validation/auth';
 
 /**
  * Server Action: Handle user login

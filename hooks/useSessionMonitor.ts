@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { verifySessionAction, logoutAction } from '@/app/auth/actions';
+import { verifySessionAction, logoutAction } from '@/app/(auth)/actions';
 import {
   SESSION_CHECK_INTERVAL,
   getSessionTimeout,

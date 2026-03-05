@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { ROUTES, PROTECTED_ROUTES } from '@/config/routeConfig';
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
@@ -52,8 +53,8 @@ export async function proxy(request: NextRequest) {
   }
 
   // Define protected routes by role
-  const adminRoutes = ['/admin'];
-  const businessRoutes = ['/business'];
+  const adminRoutes = [PROTECTED_ROUTES.ADMIN];
+  const businessRoutes = [PROTECTED_ROUTES.BUSINESS];
   const protectedRoutes = [...adminRoutes, ...businessRoutes];
 
   // Check if current path is protected
@@ -67,22 +68,24 @@ export async function proxy(request: NextRequest) {
 
   // Redirect unauthenticated users trying to access protected routes
   if (isProtectedRoute && !user) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL(ROUTES.AUTH.LOGIN, request.url));
   }
 
   // Role-based access control for admin routes
   if (isAdminRoute && user && userRole !== 'admin') {
-    return NextResponse.redirect(new URL('/home', request.url));
+    return NextResponse.redirect(new URL(ROUTES.DASHBOARD.HOME, request.url));
   }
 
   // Role-based access control for business routes
   if (isBusinessRoute && user && userRole !== 'business_owner') {
-    return NextResponse.redirect(new URL('/home', request.url));
+    return NextResponse.redirect(new URL(ROUTES.DASHBOARD.HOME, request.url));
   }
 
   return response;
 }
 
 export const config = {
+  // Matcher must use static strings (evaluated at build time)
+  // Maps to PROTECTED_ROUTES.ADMIN = '/admin' and PROTECTED_ROUTES.BUSINESS = '/business'
   matcher: ['/admin/:path*', '/business/:path*'],
 };

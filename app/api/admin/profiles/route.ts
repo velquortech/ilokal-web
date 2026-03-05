@@ -1,9 +1,13 @@
 import { createServerSupabaseClient } from '@/config/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { createPaginatedResponse } from '@/services/api/paginationService';
+import { verifyAdminAccess } from '@/lib/api/verifyAdminAccess';
 
 export async function GET(request: NextRequest) {
   try {
+    const { authorized, error } = await verifyAdminAccess(request);
+    if (!authorized) return error;
+
     const supabase = await createServerSupabaseClient();
     const { searchParams } = new URL(request.url);
 
@@ -125,17 +129,23 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const { authorized, error } = await verifyAdminAccess(request);
+    if (!authorized) return error;
+
     const supabase = await createServerSupabaseClient();
     const body = await request.json();
 
-    const { data, error } = await supabase
+    const { data, error: insertError } = await supabase
       .from('profiles')
       .insert(body)
       .select()
       .single();
 
-    if (error) {
-      return NextResponse.json({ message: error.message }, { status: 400 });
+    if (insertError) {
+      return NextResponse.json(
+        { message: insertError.message },
+        { status: 400 },
+      );
     }
 
     return NextResponse.json(data, { status: 201 });

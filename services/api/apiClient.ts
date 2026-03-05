@@ -78,7 +78,7 @@ class ApiManager {
             statusText: error.response?.statusText,
             message: errorMessage,
             responseData: responseData
-              ? Object.keys(responseData as any).length > 0
+              ? Object.keys(responseData as Record<string, unknown>).length > 0
                 ? responseData
                 : '(empty)'
               : '(no response)',

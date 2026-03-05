@@ -1,7 +1,7 @@
 'use client';
 
 import { Control } from 'react-hook-form';
-import { UserFormData } from '@/lib/schemas/userFormSchema';
+import { UserFormData } from '@/app/admin/schemas/userFormSchema';
 import { FormFieldConfig, SelectFieldConfig } from '@/lib/types/forms';
 import {
   FormField,

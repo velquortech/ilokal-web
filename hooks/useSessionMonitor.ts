@@ -9,7 +9,7 @@ import {
   isSessionExpired,
   isSessionExpiring,
   getTimeRemaining,
-} from '@/lib/auth/sessionConfig';
+} from '@/config/sessionConfig';
 
 interface SessionWarning {
   isExpiring: boolean;

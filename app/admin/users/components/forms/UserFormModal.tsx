@@ -20,7 +20,7 @@ import {
 import { UserFormModalProps } from '@/lib/types/forms';
 import { getRoleFromUserType } from '@/lib/utils/roleMapper';
 import { baseFormFields } from '../../../constants/formFields';
-import { InputFormFields } from '@/lib/components/FormFields';
+import { InputFormFields } from './fields/FormFields';
 import { UserEditForm } from '../shared';
 import { Profile } from '@/lib/types/user';
 

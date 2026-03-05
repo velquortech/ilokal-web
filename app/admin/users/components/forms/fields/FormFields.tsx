@@ -18,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { PhoneNumberInput } from '../inputs';
+import { AvatarUpload } from '../inputs/AvatarUpload';
 
 interface FormFieldsProps {
   control: Control<UserFormData>;
@@ -44,7 +46,20 @@ export function InputFormFields({
               <FormItem>
                 <FormLabel>{label}</FormLabel>
                 <FormControl>
-                  <Input placeholder={placeholder} type={type} {...field} />
+                  {type === 'phone' ? (
+                    <PhoneNumberInput
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      placeholder={placeholder}
+                    />
+                  ) : type === 'avatar' ? (
+                    <AvatarUpload
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                    />
+                  ) : (
+                    <Input placeholder={placeholder} type={type} {...field} />
+                  )}
                 </FormControl>
                 <FormMessage />
               </FormItem>

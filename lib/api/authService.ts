@@ -16,7 +16,7 @@ const authService = {
     const phoneNumber = data.phone_number?.trim();
     const hasPhoneNumber = phoneNumber && /\d/.test(phoneNumber);
 
-    return await apiClient.post('/signup', {
+    return await apiClient.post('/auth/signup', {
       email: data.email,
       password: data.password,
       name: data.name,
@@ -27,19 +27,19 @@ const authService = {
   },
 
   async login(data: LoginInput): Promise<AuthResponse> {
-    return await apiClient.post('/login', {
+    return await apiClient.post('/auth/login', {
       email: data.email,
       password: data.password,
     });
   },
 
   async logout(): Promise<LogoutResponse> {
-    return await apiClient.post('/logout');
+    return await apiClient.post('/auth/logout');
   },
 
   async verifySession(): Promise<{ user: User | null }> {
     try {
-      return await apiClient.get('/verify');
+      return await apiClient.get('/auth/verify');
     } catch {
       return { user: null };
     }

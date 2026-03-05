@@ -37,36 +37,66 @@ class ApiManager {
       (response) => response.data,
       (error: AxiosError) => {
         // Extract the actual error message from the response data
-        const responseData = error.response?.data as Record<string, unknown>;
-        const errorMessage =
-          (typeof responseData?.message === 'string'
-            ? responseData.message
-            : null) ||
-          error.message ||
-          'An error occurred';
+        const responseData = error.response?.data;
+        let errorMessage = 'An error occurred';
+
+        // Try multiple ways to extract error message
+        if (responseData && typeof responseData === 'object') {
+          const data = responseData as Record<string, unknown>;
+          if (typeof data.message === 'string') {
+            errorMessage = data.message;
+          } else if (typeof data.error === 'string') {
+            errorMessage = data.error;
+          } else if (data.errors && typeof data.errors === 'object') {
+            const errorObj = data.errors as Record<string, unknown>;
+            const firstError = Object.values(errorObj)[0];
+            if (typeof firstError === 'string') {
+              errorMessage = firstError;
+            }
+          }
+        }
+
+        // Fallback to axios error message
+        if (!errorMessage && error.message) {
+          errorMessage = error.message;
+        }
+
+        // For network errors without response
+        if (!error.response && error.code === 'ECONNABORTED') {
+          errorMessage = 'Request timeout - server took too long to respond';
+        } else if (!error.response && error.message) {
+          errorMessage = `Network error: ${error.message}`;
+        }
 
         // Log error details (safe fields only, redacted in production)
         if (process.env.NODE_ENV === 'development') {
           // Development: log full details for debugging
-          console.error('API Error Details:', {
-            status: error.response?.status,
-            message: errorMessage,
-            data: responseData,
+          console.error('API Error:', {
+            method: error.config?.method?.toUpperCase(),
             url: error.config?.url,
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            message: errorMessage,
+            responseData: responseData
+              ? Object.keys(responseData as any).length > 0
+                ? responseData
+                : '(empty)'
+              : '(no response)',
           });
         } else {
           // Production: log only safe fields to prevent PII leakage
           console.error('API Error:', {
+            method: error.config?.method?.toUpperCase(),
+            url: error.config?.url,
             status: error.response?.status,
             message: errorMessage,
-            url: error.config?.url,
           });
         }
 
         // Create proper error response
         const errorResponse: ApiErrorResponse = {
           message: errorMessage,
-          status: error.response?.status || 500,
+          status: error.response?.status || 0,
           data: error.response?.data,
         };
 

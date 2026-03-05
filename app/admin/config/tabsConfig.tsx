@@ -1,5 +1,5 @@
 import { Shield, Building2, Users, LucideIcon } from 'lucide-react';
-import { AdminTab, ConsumersTab } from '../users/tabs';
+import { AdminTab, BusinessOwnerTab, ConsumersTab } from '../users/tabs';
 
 export interface UserTab {
   id: string;
@@ -19,7 +19,7 @@ export const USER_MANAGEMENT_TABS: UserTab[] = [
     id: 'business-owners',
     label: 'Business Owners',
     icon: Building2,
-    component: null,
+    component: <BusinessOwnerTab />,
   },
   {
     id: 'consumers',

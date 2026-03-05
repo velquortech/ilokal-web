@@ -16,13 +16,6 @@ export const baseFormFields: FormFieldConfig[] = [
     required: true,
   },
   {
-    name: 'business_name',
-    label: 'Business Name',
-    placeholder: 'Your Business Name',
-    type: 'text',
-    showFor: ['business_owner'],
-  },
-  {
     name: 'phone_number',
     label: 'Phone Number (Optional)',
     placeholder: '(917) 000-0000',

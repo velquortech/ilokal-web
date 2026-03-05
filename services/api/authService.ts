@@ -1,5 +1,5 @@
 import apiClient from './apiClient';
-import { LoginInput, SignupInput } from '@/app/admin/schemas/validation/auth';
+import { LoginInput, SignupInput } from '@/lib/validation/auth';
 import { User } from '@/lib/types/user';
 
 export interface AuthResponse {

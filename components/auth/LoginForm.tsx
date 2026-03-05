@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { loginSchema, LoginInput } from '@/app/admin/schemas/validation/auth';
+import { loginSchema, LoginInput } from '@/lib/validation/auth';
 import { useAuthStore } from '@/services/stores/authStore';
 import { loginAction, redirectByRole } from '@/app/(auth)/actions';
 import { Button } from '@/components/ui/button';

@@ -15,9 +15,12 @@ import {
   useDeleteConsumer,
 } from '@/hooks/useAdminMutations';
 import { useProfilesByRole } from '@/hooks/useProfiles';
+import { useAuth } from '@/hooks/useAuth';
 import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
 
 export default function ConsumersTab() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [selectedConsumer, setSelectedConsumer] = useState<Profile | null>(
     null,
   );
@@ -194,6 +197,18 @@ export default function ConsumersTab() {
         : deleteConsumerMutation.error
           ? extractErrorMessage(deleteConsumerMutation.error)
           : null;
+
+  if (!isAdmin) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-6">
+        <h2 className="text-lg font-semibold text-red-900">Access Denied</h2>
+        <p className="mt-2 text-red-700">
+          You do not have permission to access consumer management. Admin
+          privileges required.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

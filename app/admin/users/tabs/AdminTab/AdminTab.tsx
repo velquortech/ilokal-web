@@ -15,9 +15,12 @@ import {
   useDeleteAdmin,
 } from '@/hooks/useAdminMutations';
 import { useProfilesByRole } from '@/hooks/useProfiles';
+import { useAuth } from '@/hooks/useAuth';
 import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
 
 export default function AdminTab() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [selectedAdmin, setSelectedAdmin] = useState<Profile | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -192,6 +195,18 @@ export default function AdminTab() {
         : deleteAdminMutation.error
           ? extractErrorMessage(deleteAdminMutation.error)
           : null;
+
+  if (!isAdmin) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-6">
+        <h2 className="text-lg font-semibold text-red-900">Access Denied</h2>
+        <p className="mt-2 text-red-700">
+          You do not have permission to access admin management. Admin
+          privileges required.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

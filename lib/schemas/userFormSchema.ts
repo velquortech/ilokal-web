@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const userFormSchema = z
   .object({
-    email: z.string().email('Invalid email address'),
+    email: z.email('Invalid email address'),
     full_name: z.string().min(1, 'Full name is required'),
     password: z.string().min(8, 'Password must be at least 8 characters'),
     confirm_password: z.string(),
@@ -33,7 +33,7 @@ export const adminEditSchema = z.object({
       (val) => !val || /^\+[1-9]\d{1,14}(\s\d+)?$/.test(val),
       'Phone number must be in international format with country code (e.g., +639324234324)',
     ),
-  email: z.string().email('Invalid email'),
+  email: z.email('Invalid email'),
   password: z
     .string()
     .optional()

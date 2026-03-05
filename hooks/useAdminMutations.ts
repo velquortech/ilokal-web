@@ -14,12 +14,13 @@ export function useCreateAdmin(
       const phoneNumber = data.phone_number?.trim();
       const hasPhoneNumber = phoneNumber && /\d/.test(phoneNumber);
 
-      return await authService.signup({
+      // ✅ SECURITY FIX: Use /api/admin/profiles (has verifyAdminAccess)
+      // instead of /api/auth/signup (public endpoint)
+      return await userService.createProfile({
         email: data.email,
         password: data.password,
-        confirmPassword: data.confirm_password || '',
-        name: data.full_name,
-        role: data.role,
+        full_name: data.full_name,
+        role: 'admin',
         ...(hasPhoneNumber && { phone_number: phoneNumber }),
         ...(data.avatar_url && { avatar_url: data.avatar_url }),
       });

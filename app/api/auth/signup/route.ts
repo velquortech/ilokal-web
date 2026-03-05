@@ -24,7 +24,11 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const { email, password, name, role } = validationResult.data;
+    const { email, password, name } = validationResult.data;
+    // ✅ SECURITY FIX: Public signup endpoint ONLY allows 'user' role
+    // Admin/BusinessOwner accounts can ONLY be created via /api/admin/profiles by admins
+    const role = 'user';
+
     const phoneNumber = body.phone_number;
     const avatarUrl = body.avatar_url;
     const supabase = await createClient();

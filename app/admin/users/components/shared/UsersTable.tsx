@@ -26,7 +26,7 @@ import {
   ChevronsRight,
 } from 'lucide-react';
 import { Profile } from '@/lib/types/user';
-import { PaginatedResponse } from '@/lib/api/paginationService';
+import { PaginatedResponse } from '@/services/api/paginationService';
 import { AvatarImage } from '@/components/custom/AvatarImage';
 import { StatusDropdown } from '../forms/fields/StatusDropdown';
 import { getTimeAgo } from '@/lib/utils/dateFormatter';

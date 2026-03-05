@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import userService from '@/lib/api/userService';
-import authService from '@/lib/api/authService';
+import userService from '@/services/api/userService';
+import authService from '@/services/api/authService';
 import { UserFormData } from '@/lib/schemas/userFormSchema';
 
 export function useCreateAdmin(

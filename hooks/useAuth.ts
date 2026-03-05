@@ -1,7 +1,7 @@
-import { useAuthStore } from '@/lib/stores/authStore';
+import { useAuthStore } from '@/services/stores/authStore';
 import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';
-import authService from '@/lib/api/authService';
+import authService from '@/services/api/authService';
 import { ROUTES } from '@/config/routeConfig';
 
 export function useAuth() {

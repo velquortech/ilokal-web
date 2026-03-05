@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, LoginInput } from '@/lib/validation/auth';
-import { useAuthStore } from '@/lib/stores/authStore';
+import { useAuthStore } from '@/services/stores/authStore';
 import { loginAction, redirectByRole } from '@/app/(auth)/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

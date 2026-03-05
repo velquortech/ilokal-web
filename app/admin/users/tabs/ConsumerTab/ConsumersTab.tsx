@@ -162,12 +162,11 @@ export default function ConsumersTab() {
 
   const handleDelete = useCallback(
     async (id: string) => {
-      const deleteToast = toast.loading('Deleting consumer account...');
       try {
         await deleteConsumerMutation.mutateAsync(id);
-        toast.dismiss(deleteToast);
       } catch {
-        toast.dismiss(deleteToast);
+        // Error is already handled by mutation callbacks
+        console.error('Error deleting consumer');
       }
     },
     [deleteConsumerMutation],

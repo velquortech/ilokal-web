@@ -34,7 +34,7 @@ export function useCreateAdmin(
 }
 
 export function useUpdateAdmin(
-  onSuccess?: () => void,
+  onSuccess?: (profile: unknown) => void,
   onError?: (err: unknown) => void,
 ) {
   const queryClient = useQueryClient();
@@ -47,26 +47,83 @@ export function useUpdateAdmin(
       id: string;
       changes: Record<string, unknown>;
     }) => userService.adminUpdateProfile(id, changes),
-    onSuccess: async () => {
-      // Invalidate all profiles queries to refetch fresh data
-      await queryClient.invalidateQueries({ queryKey: ['profiles'] });
-      onSuccess?.();
+    onSuccess: (updatedProfile) => {
+      // Update all admin profiles queries with the new data
+      queryClient.setQueriesData(
+        { queryKey: ['profiles', 'admin'], type: 'active' },
+        (oldData: unknown) => {
+          if (
+            oldData &&
+            typeof oldData === 'object' &&
+            'data' in oldData &&
+            Array.isArray((oldData as { data: unknown[] }).data)
+          ) {
+            const data = oldData as { data: unknown[]; pagination: unknown };
+            return {
+              ...data,
+              data: (data.data as unknown[]).map((profile: unknown) =>
+                typeof profile === 'object' &&
+                profile !== null &&
+                'id' in profile &&
+                (profile as { id: unknown }).id === updatedProfile.id
+                  ? updatedProfile
+                  : profile,
+              ),
+            };
+          }
+          return oldData;
+        },
+      );
+      onSuccess?.(updatedProfile);
     },
     onError,
   });
 }
 
 export function useDeleteAdmin(
-  onSuccess?: () => void,
+  onSuccess?: (id: string) => void,
   onError?: (err: unknown) => void,
 ) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (id: string) => userService.deleteProfile(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profiles'] });
-      onSuccess?.();
+    onSuccess: (_, deletedId) => {
+      // Remove deleted profile from all admin profiles queries
+      queryClient.setQueriesData(
+        { queryKey: ['profiles', 'admin'], type: 'active' },
+        (oldData: unknown) => {
+          if (
+            oldData &&
+            typeof oldData === 'object' &&
+            'data' in oldData &&
+            Array.isArray((oldData as { data: unknown[] }).data)
+          ) {
+            const data = oldData as {
+              data: unknown[];
+              pagination: { totalItems: number };
+            };
+            return {
+              ...data,
+              data: (data.data as unknown[]).filter(
+                (profile: unknown) =>
+                  !(
+                    typeof profile === 'object' &&
+                    profile !== null &&
+                    'id' in profile &&
+                    (profile as { id: unknown }).id === deletedId
+                  ),
+              ),
+              pagination: {
+                ...data.pagination,
+                totalItems: data.pagination.totalItems - 1,
+              },
+            };
+          }
+          return oldData;
+        },
+      );
+      onSuccess?.(deletedId);
     },
     onError,
   });
@@ -86,9 +143,34 @@ export function useUpdateAdminStatus(
       id: string;
       status: 'active' | 'inactive' | 'suspended';
     }) => userService.adminUpdateProfile(id, { status }),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['profiles'] });
-      onSuccess?.(data);
+    onSuccess: (updatedProfile) => {
+      // Update all admin profiles queries with the new status
+      queryClient.setQueriesData(
+        { queryKey: ['profiles', 'admin'], type: 'active' },
+        (oldData: unknown) => {
+          if (
+            oldData &&
+            typeof oldData === 'object' &&
+            'data' in oldData &&
+            Array.isArray((oldData as { data: unknown[] }).data)
+          ) {
+            const data = oldData as { data: unknown[]; pagination: unknown };
+            return {
+              ...data,
+              data: (data.data as unknown[]).map((profile: unknown) =>
+                typeof profile === 'object' &&
+                profile !== null &&
+                'id' in profile &&
+                (profile as { id: unknown }).id === updatedProfile.id
+                  ? updatedProfile
+                  : profile,
+              ),
+            };
+          }
+          return oldData;
+        },
+      );
+      onSuccess?.(updatedProfile);
     },
     onError,
   });
@@ -124,7 +206,7 @@ export function useCreateConsumer(
 }
 
 export function useUpdateConsumer(
-  onSuccess?: () => void,
+  onSuccess?: (profile: unknown) => void,
   onError?: (err: unknown) => void,
 ) {
   const queryClient = useQueryClient();
@@ -137,25 +219,83 @@ export function useUpdateConsumer(
       id: string;
       changes: Record<string, unknown>;
     }) => userService.adminUpdateProfile(id, changes),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['profiles'] });
-      onSuccess?.();
+    onSuccess: (updatedProfile) => {
+      // Update all consumer (user role) profiles queries with the new data
+      queryClient.setQueriesData(
+        { queryKey: ['profiles', 'user'], type: 'active' },
+        (oldData: unknown) => {
+          if (
+            oldData &&
+            typeof oldData === 'object' &&
+            'data' in oldData &&
+            Array.isArray((oldData as { data: unknown[] }).data)
+          ) {
+            const data = oldData as { data: unknown[]; pagination: unknown };
+            return {
+              ...data,
+              data: (data.data as unknown[]).map((profile: unknown) =>
+                typeof profile === 'object' &&
+                profile !== null &&
+                'id' in profile &&
+                (profile as { id: unknown }).id === updatedProfile.id
+                  ? updatedProfile
+                  : profile,
+              ),
+            };
+          }
+          return oldData;
+        },
+      );
+      onSuccess?.(updatedProfile);
     },
     onError,
   });
 }
 
 export function useDeleteConsumer(
-  onSuccess?: () => void,
+  onSuccess?: (id: string) => void,
   onError?: (err: unknown) => void,
 ) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (id: string) => userService.deleteProfile(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profiles'] });
-      onSuccess?.();
+    onSuccess: (_, deletedId) => {
+      // Remove deleted profile from all consumer (user role) profiles queries
+      queryClient.setQueriesData(
+        { queryKey: ['profiles', 'user'], type: 'active' },
+        (oldData: unknown) => {
+          if (
+            oldData &&
+            typeof oldData === 'object' &&
+            'data' in oldData &&
+            Array.isArray((oldData as { data: unknown[] }).data)
+          ) {
+            const data = oldData as {
+              data: unknown[];
+              pagination: { totalItems: number };
+            };
+            return {
+              ...data,
+              data: (data.data as unknown[]).filter(
+                (profile: unknown) =>
+                  !(
+                    typeof profile === 'object' &&
+                    profile !== null &&
+                    'id' in profile &&
+                    (profile as { id: unknown }).id === deletedId
+                  ),
+              ),
+              pagination: {
+                ...data.pagination,
+                totalItems: data.pagination.totalItems - 1,
+              },
+            };
+          }
+          return oldData;
+        },
+      );
+      onSuccess?.(deletedId);
     },
     onError,
   });

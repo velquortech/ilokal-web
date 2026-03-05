@@ -109,7 +109,7 @@ const userService = {
     id: string,
     data: AdminUpdateUserInput,
   ): Promise<Profile> {
-    return await apiClient.put(`/profiles/${id}`, data);
+    return await apiClient.put(`/profiles/${id}/admin`, data);
   },
 
   async deleteProfile(id: string): Promise<{ message: string }> {

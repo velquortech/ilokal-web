@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { createServerSupabaseClient } from '@/config/server';
-import { ROUTES } from '@/config/routesConfig';
+import { ROUTES } from '@/config/routeConfig';
 import { User } from '@/lib/types/user';
 import { SignupInput } from '@/lib/validation/auth';
 

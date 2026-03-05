@@ -7,7 +7,7 @@ import {
   LucideIcon,
   LogOut,
 } from 'lucide-react';
-import { ROUTES } from '@/config/routesConfig';
+import { ROUTES } from '@/config/routeConfig';
 
 export interface NavItem {
   label: string;

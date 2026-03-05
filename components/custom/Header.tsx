@@ -8,7 +8,7 @@ import React, {
   useRef,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import { ROUTES } from '@/config/routesConfig';
+import { ROUTES } from '@/config/routeConfig';
 import {
   Bell,
   Settings,

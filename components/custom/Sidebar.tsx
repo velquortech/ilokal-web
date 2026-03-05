@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ROUTES } from '@/config/routesConfig';
+import { ROUTES } from '@/config/routeConfig';
 import {
   Tooltip,
   TooltipContent,

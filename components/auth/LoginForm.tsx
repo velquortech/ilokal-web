@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, LoginInput } from '@/lib/validation/auth';
-import { useAuthStore } from '@/lib/stores/authStore';
-import { loginAction, redirectByRole } from '@/app/auth/actions';
+import { useAuthStore } from '@/services/stores/authStore';
+import { loginAction, redirectByRole } from '@/app/(auth)/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -134,7 +134,7 @@ export default function LoginForm() {
       <div className="text-center text-sm text-slate-600">
         Don't have an account?{' '}
         <Link
-          href="/auth/signup"
+          href="/signup"
           className="font-semibold text-black hover:underline"
         >
           Sign up

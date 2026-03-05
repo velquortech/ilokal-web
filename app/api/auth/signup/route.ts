@@ -9,7 +9,7 @@ import {
 import {
   validateSignupData,
   getValidationErrorMessage,
-} from '../../helpers/authValidation';
+} from '@/lib/validation/auth';
 
 export async function POST(req: NextRequest) {
   try {

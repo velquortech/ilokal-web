@@ -1,15 +1,15 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useAuthStore } from '@/lib/stores/authStore';
-import { verifySessionAction, logoutAction } from '@/app/auth/actions';
+import { useAuthStore } from '@/services/stores/authStore';
+import { verifySessionAction, logoutAction } from '@/app/(auth)/actions';
 import {
   SESSION_CHECK_INTERVAL,
   getSessionTimeout,
   isSessionExpired,
   isSessionExpiring,
   getTimeRemaining,
-} from '@/lib/auth/sessionConfig';
+} from '@/config/sessionConfig';
 
 interface SessionWarning {
   isExpiring: boolean;

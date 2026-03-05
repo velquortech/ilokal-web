@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useAuthStore } from '@/lib/stores/authStore';
+import { useAuthStore } from '@/services/stores/authStore';
 import { useSessionMonitor } from '@/hooks/useSessionMonitor';
-import { verifySessionAction } from '@/app/auth/actions';
+import { verifySessionAction } from '@/app/(auth)/actions';
 
 interface AuthProviderProps {
   children: React.ReactNode;

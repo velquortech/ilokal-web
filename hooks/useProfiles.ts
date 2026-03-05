@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import userService from '@/lib/api/userService';
+import userService from '@/services/api/userService';
 import { UserRole } from '@/lib/types/user';
-import { ADMIN_CONFIG } from '@/config/adminConfig';
+import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
 
 interface UseProfilesByRoleOptions {
   page?: number;

@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Sidebar } from '@/components/custom/Sidebar';
-import { Header } from '@/components/custom/Header';
+import { Sidebar } from '@/app/admin/users/components/shared/Sidebar';
+import { Header } from '@/app/admin/users/components/shared/Header';
 import { businessNavItems, logoutItem } from '@/config/sidebarConfig';
 import { useAuth } from '@/hooks/useAuth';
 

@@ -50,9 +50,7 @@ export function Sidebar({
 
   const activeItem = getActiveItem();
 
-  const isActive = (href: string) => {
-    return href === activeItem;
-  };
+  const isActive = (href: string) => href === activeItem;
 
   const handleLogout = () => {
     if (onLogout) {
@@ -121,7 +119,7 @@ export function Sidebar({
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
           {items.map((item) => {
             const active = isActive(item.href);
-            const Icon = item.icon;
+            const icon = item.icon;
 
             const navButton = (
               <Link
@@ -132,13 +130,14 @@ export function Sidebar({
                     : 'hover:bg-slate-700 active:scale-95'
                 }`}
               >
-                <Icon
-                  className={`h-5 w-5 shrink-0 transition-colors ${
-                    active
-                      ? 'text-blue-200'
-                      : 'text-slate-300 group-hover:text-white'
-                  }`}
-                />
+                {icon &&
+                  React.createElement(icon, {
+                    className: `h-5 w-5 shrink-0 transition-colors ${
+                      active
+                        ? 'text-blue-200'
+                        : 'text-slate-300 group-hover:text-white'
+                    }`,
+                  })}
                 {isOpen && (
                   <span
                     className={`truncate font-medium ${active ? 'text-white' : 'text-slate-200'}`}

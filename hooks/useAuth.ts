@@ -1,7 +1,8 @@
-import { useAuthStore } from '@/lib/stores/authStore';
+import { useAuthStore } from '@/services/stores/authStore';
 import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';
-import authService from '@/lib/api/authService';
+import authService from '@/services/api/authService';
+import { ROUTES } from '@/config/routeConfig';
 
 export function useAuth() {
   const router = useRouter();
@@ -22,7 +23,7 @@ export function useAuth() {
       setIsLoading(true);
       await authService.logout();
       zustandLogout();
-      router.push('/auth/login');
+      router.push(ROUTES.AUTH.LOGIN);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Failed to logout';

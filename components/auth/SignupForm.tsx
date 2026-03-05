@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signupSchema, SignupInput } from '@/lib/validation/auth';
-import { useAuthStore } from '@/lib/stores/authStore';
-import { signupAction, redirectByRole } from '@/app/auth/actions';
+import { useAuthStore } from '@/services/stores/authStore';
+import { signupAction, redirectByRole } from '@/app/(auth)/actions';
+import { ROUTES } from '@/config/routeConfig';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -350,7 +351,7 @@ export default function SignupForm() {
         <div className="text-center text-sm text-slate-600">
           Already have an account?{' '}
           <Link
-            href="/auth/login"
+            href={ROUTES.AUTH.LOGIN}
             className="font-semibold text-black hover:underline"
           >
             Sign in

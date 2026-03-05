@@ -1,7 +1,8 @@
 # 🎉 Authentication & Security Implementation Complete
 
-> Last Updated: March 2, 2026
+> Last Updated: March 6, 2026
 > Status: Production-Ready ✅
+> Folder Structure: Reorganized & Documented ✅
 
 ## Executive Summary
 
@@ -127,39 +128,69 @@ path: '/'       ← Available app-wide
 - ✅ Shows when session expiring
 - ✅ Global session management
 
-### 6.File Structure
+### 6. File Structure
 
 ```
 app/
 ├── auth/
-│   ├── actions.ts              ✅ Server Actions (NEW)
+│   ├── actions.ts              ✅ Server Actions
 │   ├── layout.tsx
 │   ├── login/page.tsx
 │   └── signup/page.tsx
+├── admin/                      ✅ Admin dashboard
+├── business/                   ✅ Business owner dashboard
+├── home/                       ✅ Public landing page
 ├── api/auth/                   (Legacy - can be removed)
-│   ├── login/route.ts
-│   └── signup/route.ts
 └── layout.tsx                  ✅ SessionWarningDialog
 
-components/auth/
-├── LoginForm.tsx               ✅ Uses Server Actions + useTransition
-├── SignupForm.tsx              ✅ Uses Server Actions + useTransition
-├── SessionWarningDialog.tsx    ✅ NEW
-└── ProtectedRoute.tsx
+components/
+├── auth/
+│   ├── LoginForm.tsx           ✅ Server Actions + useTransition
+│   ├── SignupForm.tsx          ✅ Server Actions + useTransition
+│   └── SessionWarningDialog.tsx
+├── custom/                     ✅ Custom branded components
+├── providers/
+│   ├── AuthProvider.tsx
+│   └── QueryProvider.tsx
+└── ui/                         ✅ shadcn/ui components
 
 config/
+├── routeConfig.ts              ✅ **CENTRALIZED ROUTES** (NEW)
 ├── server.ts                   ✅ Secure cookie options
-└── client.ts
+├── client.ts
+├── adminConfig.ts
+└── sidebarConfig.ts
 
-lib/auth/
-└── sessionConfig.ts            ✅ NEW (Session timeouts)
+lib/
+├── types/
+│   ├── user.ts
+│   ├── database.ts
+│   ├── forms.ts
+│   └── ...
+├── validation/
+│   └── auth.ts                 ✅ Unified auth validation
+├── schemas/
+│   └── userFormSchema.ts       ✅ Form schemas
+├── utils/
+│   └── ...
+└── auth/
+    └── sessionConfig.ts        ✅ Session timeouts
+
+services/                       ✅ **NEW - Moved from lib/**
+├── api/
+│   ├── apiClient.ts
+│   ├── authService.ts
+│   ├── userService.ts
+│   └── paginationService.ts
+└── stores/
+    ├── authStore.ts
+    └── adminStore.ts
 
 hooks/
-├── useSessionMonitor.ts        ✅ NEW (Session monitoring)
-└── useAuth.ts
-
-lib/stores/
-└── authStore.ts               (Zustand state)
+├── useSessionMonitor.ts        ✅ Session monitoring
+├── useAuth.ts
+├── useAdminMutations.ts
+└── ...
 ```
 
 ---
@@ -239,18 +270,29 @@ NEXT_IMAGE_PUBLIC_URL=https://your-storage-url
 
 | File                                                             | Purpose                          |
 | ---------------------------------------------------------------- | -------------------------------- |
+| [FOLDER_STRUCTURE.md](./FOLDER_STRUCTURE.md)                     | **NEW** - Complete folder guide  |
+| [ARCHITECTURE.md](./ARCHITECTURE.md)                             | System architecture              |
+| [AUTH_IMPLEMENTATION.md](./AUTH_IMPLEMENTATION.md)               | Authentication details           |
 | [AUTHENTICATION_SECURITY.md](./AUTHENTICATION_SECURITY.md)       | Complete auth security guide     |
 | [SESSION_MANAGEMENT.md](./SESSION_MANAGEMENT.md)                 | Session configuration & behavior |
 | [SESSION_EXPIRATION_SUMMARY.md](./SESSION_EXPIRATION_SUMMARY.md) | Expiration details & examples    |
 | [SECURITY_HARDENING.md](./SECURITY_HARDENING.md)                 | Security fixes & improvements    |
 | [SECURITY_VERIFICATION.md](./SECURITY_VERIFICATION.md)           | Testing & verification checklist |
-| [ARCHITECTURE.md](./ARCHITECTURE.md)                             | System architecture              |
-| [AUTH_IMPLEMENTATION.md](./AUTH_IMPLEMENTATION.md)               | Implementation details           |
 | [SETUP_CHECKLIST.md](./SETUP_CHECKLIST.md)                       | Initial setup                    |
 
 ---
 
 ## ✅ Production Readiness
+
+### Refactoring & Reorganization (March 6, 2026)
+
+- ✅ **Centralized Route Configuration** - Single source of truth in `config/routeConfig.ts`
+- ✅ **Services Reorganization** - Moved from `lib/api/` and `lib/stores/` to root `services/` folder
+- ✅ **Validation Consolidation** - Unified auth schemas in `lib/validation/auth.ts`
+- ✅ **Form Schemas** - Organized in `lib/schemas/userFormSchema.ts`
+- ✅ **Folder Structure Documentation** - Complete guide in `FOLDER_STRUCTURE.md`
+- ✅ **Import Path Cleanup** - Updated 15+ files with new service locations
+- ✅ **Build Validation** - Added `yarn validate` script for lint + build
 
 ### Deployed Features
 
@@ -308,7 +350,14 @@ npm run dev
 yarn dev
 ```
 
-### 3. Test Authentication
+### 3. Validate Code (Lint + Build)
+
+```bash
+yarn validate
+# Runs: yarn run lint && yarn build
+```
+
+### 4. Test Authentication
 
 - **Signup**: http://localhost:3000/auth/signup
 - **Login**: http://localhost:3000/auth/login
@@ -343,6 +392,8 @@ Login as admin and wait ~1 minute to see warning.
 
 Refer to:
 
+- [FOLDER_STRUCTURE.md](./FOLDER_STRUCTURE.md) - Complete folder guide
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture
 - [AUTHENTICATION_SECURITY.md](./AUTHENTICATION_SECURITY.md) - Auth details
 - [SESSION_MANAGEMENT.md](./SESSION_MANAGEMENT.md) - Session configuration
 - [SETUP_CHECKLIST.md](./SETUP_CHECKLIST.md) - Getting started
@@ -350,5 +401,6 @@ Refer to:
 ---
 
 **Status**: ✅ Production Ready  
-**Last Updated**: March 2, 2026  
-**Implementation Scope**: Complete auth + session + security
+**Last Updated**: March 6, 2026  
+**Implementation Scope**: Complete auth + session + security + folder structure refactoring  
+**Branch**: `30-fix-folder-structure-and-drop-unusedduplicate-files`

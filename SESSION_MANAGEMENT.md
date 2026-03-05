@@ -1,330 +1,536 @@
-# Session Management & Expiration
+# 📅 Session Management & Expiration
 
-## Overview
+> Last Updated: March 6, 2026  
+> Status: Production-Ready ✅
 
-The application now includes automatic session management with:
+Complete guide to session configuration, management, expiration, and monitoring.
 
-- ✅ Role-based session timeouts
-- ✅ Automatic session verification
-- ✅ User activity detection (auto-refresh)
-- ✅ Session expiration warnings
-- ✅ Smart logout on expiration
+---
 
-## Recommended Session Timeouts
+## 🎯 Overview
 
-Based on OWASP security standards and industry best practices:
+The application implements automatic session management with:
 
-| Role               | Timeout                | Recommended For               | Security Level |
-| ------------------ | ---------------------- | ----------------------------- | -------------- |
-| **Admin**          | **60 minutes**         | Security-sensitive operations | 🔴 Strict      |
-| **Business Owner** | **240 minutes** (4h)   | Daily business operations     | 🟡 Moderate    |
-| **Regular User**   | **1440 minutes** (24h) | Customer convenience          | 🟢 Extended    |
+- ✅ **Role-based timeouts** (Admin: 60min, Business: 4h, User: 24h)
+- ✅ **Activity detection** (auto-extends on mouse, keyboard, scroll, touch)
+- ✅ **Session verification** (every 60 seconds with server)
+- ✅ **Expiration warnings** (dialog 5 minutes before logout)
+- ✅ **Automatic logout** (clears cookies and redirects)
+- ✅ **Server-side truth** (can't be faked on client)
 
-## Configuration
+---
+
+## ⏱️ Session Timeouts
+
+### Recommended Configuration
+
+| Role               | Timeout                | Recommended For      | Security Level | Warning At |
+| ------------------ | ---------------------- | -------------------- | -------------- | ---------- |
+| **Admin**          | **60 minutes**         | Sensitive operations | 🔴 Strict      | 55 min     |
+| **Business Owner** | **240 minutes** (4h)   | Daily operations     | 🟡 Moderate    | 235 min    |
+| **Regular User**   | **1440 minutes** (24h) | Shopping & browsing  | 🟢 Extended    | 1435 min   |
+
+### Why These Timeouts?
+
+#### Admin: 60 Minutes
+
+**Risk Profile:**
+
+- Manages users, data, settings
+- Account compromise = major breach
+- Minimal daily tasks (check once per hour)
+
+**Security Trade-off:** 100% security, 0% convenience
+**Best for:** Financial/medical/critical systems
+
+#### Business Owner: 240 Minutes (4 Hours)
+
+**Risk Profile:**
+
+- Manages shop, products, orders
+- Can access customer data
+- Multiple hours of continuous work
+
+**Security Trade-off:** 80% security, 20% convenience
+**Best for:** E-commerce, SaaS platforms
+
+#### Regular User: 1440 Minutes (24 Hours)
+
+**Risk Profile:**
+
+- Limited data access (own profiles)
+- Lower privilege level
+- Extended shopping/browsing session
+
+**Security Trade-off:** 50% security, 50% convenience
+**Best for:** Consumer-facing apps (Shopify, Amazon model)
+
+---
+
+## ⚙️ Configuration
 
 ### Environment Variables
 
 Set these in `.env.local` to customize timeouts:
 
 ```bash
-# Admin session timeout (minutes)
+# Admin session timeout (minutes) - default: 60
 NEXT_PUBLIC_SESSION_ADMIN_TIMEOUT=60
 
-# Business owner session timeout (minutes)
+# Business owner session timeout (minutes) - default: 240
 NEXT_PUBLIC_SESSION_BUSINESS_TIMEOUT=240
 
-# Regular user session timeout (minutes)
+# Regular user session timeout (minutes) - default: 1440
 NEXT_PUBLIC_SESSION_USER_TIMEOUT=1440
 
-# Warning interval - show dialog this many minutes before expiration
+# Warning interval - show dialog this many minutes before expiration - default: 5
 NEXT_PUBLIC_SESSION_WARNING_INTERVAL=5
+
+# Check interval - verify session every X seconds - default: 60
+NEXT_PUBLIC_SESSION_CHECK_INTERVAL=60
 ```
 
-### Example: Production Override
+### Example: Custom Timeouts
+
+**Development (Quick Testing):**
 
 ```bash
-# More strict for production
-NEXT_PUBLIC_SESSION_ADMIN_TIMEOUT=30
-NEXT_PUBLIC_SESSION_BUSINESS_TIMEOUT=120
+NEXT_PUBLIC_SESSION_ADMIN_TIMEOUT=1
+NEXT_PUBLIC_SESSION_BUSINESS_TIMEOUT=2
+NEXT_PUBLIC_SESSION_USER_TIMEOUT=3
+NEXT_PUBLIC_SESSION_WARNING_INTERVAL=0.5
 ```
 
-## How It Works
+**Production (Strict Security):**
 
-### 1. Session Initialization
-
-When user logs in, session expiration time is calculated:
-
-```
-expiration = currentTime + role-based-timeout
-```
-
-### 2. Periodic Verification
-
-Every minute, the system:
-
-```
-✓ Verifies session is still valid with server
-✓ Checks if session has expired
-✓ Checks if session is about to expire (within warning interval)
+```bash
+NEXT_PUBLIC_SESSION_ADMIN_TIMEOUT=30       # 30 min
+NEXT_PUBLIC_SESSION_BUSINESS_TIMEOUT=120   # 2 hours
+NEXT_PUBLIC_SESSION_USER_TIMEOUT=720       # 12 hours
+NEXT_PUBLIC_SESSION_WARNING_INTERVAL=10    # Warn 10 min before
 ```
 
-### 3. Activity Detection
+**Production (User Friendly):**
 
-User interactions automatically extend session:
-
-```
-Events detected:
-- Mouse movement/click
-- Keyboard input
-- Page scrolling
-- Touch events
-
-Action:
-- Session expiration time is reset
-- Warning is dismissed
+```bash
+NEXT_PUBLIC_SESSION_ADMIN_TIMEOUT=120      # 2 hours
+NEXT_PUBLIC_SESSION_BUSINESS_TIMEOUT=480   # 8 hours
+NEXT_PUBLIC_SESSION_USER_TIMEOUT=2880      # 48 hours
+NEXT_PUBLIC_SESSION_WARNING_INTERVAL=15    # Warn 15 min before
 ```
 
-### 4. Expiration Warning
+---
 
-When session about to expire:
+## 🔄 How Session Management Works
 
-```
-Dialog appears 5 minutes before logout showing:
-- Time remaining
-- "Continue Session" button (resets timeout)
-- "Logout" button
-```
+### 1. Session Initialization (On Login)
 
-### 5. Automatic Logout
-
-On expiration:
-
-```
-- User is automatically logged out
-- Redirected to login page
-- All auth state is cleared
+```typescript
+// App/auth/actions.ts
+export async function loginAction(email: string, password: string) {
+  // ... authenticate user ...
+  // Session expiration = currentTime + role-based-timeout
+  // Stored in sessionExpiration cookie
+}
 ```
 
-## Implementation Details
+**Calculation Example (Admin):**
+
+```
+Current Time: 09:00 AM
+Role: admin
+Role Timeout: 60 minutes
+Session Expires At: 10:00 AM
+```
+
+### 2. Periodic Verification (Every 60 Seconds)
+
+```typescript
+// hooks/useSessionMonitor.ts
+useEffect(() => {
+  const interval = setInterval(async () => {
+    // Every 60 seconds:
+    const result = await verifySessionAction();
+
+    if (!result.valid) {
+      // Session expired → logout
+      logout();
+      redirect('/login');
+    } else if (isExpiringSoon()) {
+      // Within 5 minutes → show warning
+      setIsExpiring(true);
+    }
+  }, 60000);
+}, []);
+```
+
+**Timeline Example:**
+
+```
+08:00 - Login as admin (timeout: 60 min)
+08:00 - Session expires at 09:00
+08:00 - 08:59 - Working (all good)
+08:55 - Within 5 min → SessionWarningDialog appears
+08:59 - No action → Auto-logout triggered
+```
+
+### 3. Activity Detection (Mouse, Keyboard, Scroll, Touch)
+
+```typescript
+// hooks/useSessionMonitor.ts
+useEffect(() => {
+  const handleActivity = () => {
+    // On any interaction:
+    refreshSession(); // Reset expiration timer
+    setIsExpiring(false); // Dismiss warning
+  };
+
+  // Listen for activity events
+  window.addEventListener('mousemove', handleActivity);
+  window.addEventListener('keydown', handleActivity);
+  window.addEventListener('scroll', handleActivity);
+  window.addEventListener('touchstart', handleActivity);
+
+  return () => {
+    // Cleanup listeners
+  };
+}, []);
+```
+
+**Timeline Example:**
+
+```
+08:00 - Login (expires at 09:00)
+08:55 - User types something
+        └─ Activity detected → Session extended to 09:55
+09:50 - User moves mouse
+        └─ Activity detected → Session extended to 10:50
+11:00 - User still working (never logged out!)
+```
+
+### 4. Expiration Warning (5 Minutes Before)
+
+```typescript
+// When sessionExpiration - now < warningInterval:
+setIsExpiring(true); // Show dialog
+
+// Dialog renders:
+<SessionWarningDialog
+  timeRemaining={5}
+  onContinue={refreshSession} // Reset timer
+  onLogout={logoutAction}     // Logout now
+/>
+```
+
+**What User Sees:**
+
+```
+┌─────────────────────────────────┐
+│  Your session is expiring soon  │
+│                                 │
+│  Time remaining: 5 minutes      │
+│                                 │
+│  [ Continue    ] [ Logout ]     │
+└─────────────────────────────────┘
+```
+
+### 5. Automatic Logout (At Expiration)
+
+```typescript
+// When sessionExpiration <= now:
+await logoutAction(); // Clear auth
+redirect('/login'); // Go to login
+```
+
+**Timeline Example (Complete):**
+
+```
+09:00 - Login as user (24 hour timeout → 09:00 tomorrow)
+09:00 - 13:00 - Active (lots of mouse/keyboard events)
+        └─ Each activity extends session to 24h from that time
+13:00 - Goes to lunch (no activity)
+13:00 - 13:30 - Session counts down (30 min until expiration)
+13:30 - Back to work (moves mouse)
+        └─ Activity → Session extended again
+13:30 - 23:55 - Working (session keeps extending)
+23:55 - Leaves desk (no more activity)
+23:55 - 23:59 - Session counts down (dialog appears at 23:55)
+        └─ User doesn't interact
+00:00 - Auto-logout (24 hours from last activity)
+00:00 - Redirected to login page
+```
+
+---
+
+## 🛠️ Implementation Details
 
 ### Core Files
 
-1. **lib/auth/sessionConfig.ts**
-   - Session timeout constants
-   - Helper functions for expiration checks
-   - Configuration based on role
+#### lib/auth/sessionConfig.ts
 
-2. **hooks/useSessionMonitor.ts**
-   - Main session monitoring hook
-   - Periodic verification logic
-   - Activity detection
-   - Warning detection
+```typescript
+// Session timeout constants (minutes)
+export const SESSION_TIMEOUTS = {
+  ADMIN: parseInt(process.env.NEXT_PUBLIC_SESSION_ADMIN_TIMEOUT || '60', 10),
+  BUSINESS_OWNER: parseInt(
+    process.env.NEXT_PUBLIC_SESSION_BUSINESS_TIMEOUT || '240',
+    10,
+  ),
+  USER: parseInt(process.env.NEXT_PUBLIC_SESSION_USER_TIMEOUT || '1440', 10),
+};
 
-3. **components/auth/SessionWarningDialog.tsx**
-   - UI dialog for expiration warning
-   - Continue/Logout options
-   - Time remaining display
+// Helper functions
+export function getSessionTimeout(role: string): number {
+  // Returns timeout based on role
+}
 
-4. **components/providers/AuthProvider.tsx**
-   - Initializes session monitoring on app startup
-   - Verifies session on mount
+export function isSessionExpired(expirationTime: number): boolean {
+  // Checks if session is expired
+}
 
-## Usage in Components
+export function isSessionExpiring(expirationTime: number): boolean {
+  // Checks if within warning interval
+}
+```
 
-### Show Session Warning
+#### hooks/useSessionMonitor.ts
 
-The dialog automatically appears when session is expiring - no setup needed!
+```typescript
+export function useSessionMonitor() {
+  // Main session monitoring hook
+  // - Verifies session every 60 seconds
+  // - Detects activity
+  // - Auto-extends session
+  // - Triggers warning dialog
+  // - Auto-logout at expiration
 
-### Extend Session Programmatically
-
-```tsx
-'use client';
-import { useSessionMonitor } from '@/hooks/useSessionMonitor';
-
-export function MyComponent() {
-  const { refreshSession } = useSessionMonitor();
-
-  const handleImportantAction = () => {
-    refreshSession(); // Reset session timer
-    // ... perform action
+  return {
+    isExpiring: boolean,        // Session within 5 min of expiration
+    timeRemaining: number,      // Minutes until logout
+    sessionExpiration: number,  // Timestamp of expiration
+    refreshSession: () => void, // Manually extend session
   };
-
-  return <button onClick={handleImportantAction}>Do Something</button>;
 }
 ```
 
-### Check Session Status
+#### components/auth/SessionWarningDialog.tsx
 
-```tsx
-const { timeRemaining, isExpiring, sessionExpiration } = useSessionMonitor();
-
-if (isExpiring) {
-  return <div>Session expiring in {timeRemaining} minutes</div>;
+```typescript
+export function SessionWarningDialog() {
+  // Dialog shown when session expiring
+  // - Displays time remaining
+  // - "Continue Session" button (resets timeout)
+  // - "Logout" button (logout immediately)
+  // - Can't be dismissed by clicking outside
 }
 ```
 
-## Security Features
+#### app/auth/actions.ts
 
-### Activity-Based Refresh ✅
-
-Session timeout **does not** count idle time if user is active:
-
-```
-User typing → Session extends
-User inactive → Session counts down
-```
-
-### Server-Side Verification ✅
-
-Session validity is confirmed with Supabase every minute:
-
-```
-Even if client tries to fake expiration time,
-server will catch it and force logout
+```typescript
+export async function verifySessionAction() {
+  // Server-side session verification
+  // - Checks HTTP-only cookie
+  // - Verifies with Supabase backend
+  // - Fetches fresh user profile
+  // - Returns { valid: boolean; user: User | null }
+}
 ```
 
-### OWASP Compliance ✅
+---
 
-- Follows OWASP session management guidelines
-- Role-based timeout appropriate for each access level
-- Automatic logout prevents account hijacking
-- User activity detection balances security and UX
-
-### Protected Against ✅
-
-- Session hijacking (via HttpOnly cookies)
-- Session replay attacks (Supabase handles this)
-- Idle timeouts (activity detection)
-- Expired token usage (server verification)
-
-## Testing
-
-### Test Session Expiration
-
-1. **Quick Test (1min)**
-
-   ```bash
-   # .env.local
-   NEXT_PUBLIC_SESSION_ADMIN_TIMEOUT=1
-   NEXT_PUBLIC_SESSION_WARNING_INTERVAL=0.5
-   ```
-
-   Login as admin → Wait ~30 seconds for warning → Wait for logout
-
-2. **Test Activity Refresh**
-   - Login as admin
-   - Set timeout to 2 minutes
-   - Move mouse/type keyboard
-   - Warning should be dismissed
-   - Session should extend
-
-3. **Test Role-Based Timeouts**
-   - Login with different roles
-   - Verify different timeout durations
-   - Check warning appears at correct times
-
-## Behavior by Role
+## 📊 Session Timeline Examples
 
 ### Admin (60 minutes)
 
 ```
-Strict security for sensitive operations
-├─ Warning at: 55 minutes
-├─ Logout at: 60 minutes
-└─ Use case: Dashboard access, critical operations
+09:00 - Login
+        Expires at: 10:00
+        Warning at: 09:55
+
+09:00 - 09:54 - Working (all normal)
+09:55 - Dialog appears ("5 minutes remaining")
+09:57 - User clicks "Continue Session"
+        Expires at: 10:57 (reset)
+        Warning at: 10:52
+
+10:52 - Dialog appears again
+10:55 - User continues working (activity detected)
+        Expires at: 10:55 + 60min = 11:55
+        Warning at: 11:50
 ```
 
 ### Business Owner (4 hours)
 
 ```
-Moderate timeout for daily operations
-├─ Warning at: 3h 55min
-├─ Logout at: 4 hours
-└─ Use case: Shop management, order processing
+08:00 - Login
+        Expires at: 12:00 (4 hours)
+        Warning at: 11:55
+
+08:00 - 12:00 - Working (activity detected multiple times)
+        └─ Each activity resets the 4-hour timer
+        └─ As long as active, never warned
+
+12:00 - Lunch break (no activity for 30 min)
+12:30 - Back to work (activity detected)
+        └─ Session was still valid (didn't expire during break)
+        └─ Session extended to 16:30
+
+16:30 - No activity (goes home without logging out manually)
+16:30 - Session counts down...
 ```
 
-### Regular User (24 hours)
+### Regular User (24 hours - Persistent Session)
 
 ```
-Extended timeout for convenience
-├─ Warning at: 23h 55min
-├─ Logout at: 24 hours
-└─ Use case: Shopping, browsing
+10:00 Monday - Login
+               Expires at: 10:00 Tuesday
+               Warning at: 09:55 Tuesday
+
+10:00 Mon - 09:00 Tue - Shopping with breaks
+                        └─ Activity events refresh the 24h timer
+                        └─ Effectively stays logged in as long as active
+
+09:55 Tue - Dialog appears (5 min remaining)
+10:00 Tue - Auto-logout if no activity
+
+Or if active:
+09:30 Tue - Last activity event
+            └─ Session extended to 09:30 Wed
 ```
 
-## Troubleshooting
+---
 
-### Issue: Getting logged out too frequently
+## 🧪 Testing Session Expiration
 
-**Solution:**
+### Quick Test (1 Minute)
 
-- Increase `NEXT_PUBLIC_SESSION_[ROLE]_TIMEOUT`
-- Check if activity detection is working (mouse/keyboard events)
+```bash
+# Set minimal timeouts in .env.local:
+NEXT_PUBLIC_SESSION_ADMIN_TIMEOUT=1
+NEXT_PUBLIC_SESSION_WARNING_INTERVAL=0.5
 
-### Issue: Warning dialog not appearing
+# Then:
+1. npm run dev
+2. Login as admin
+3. Wait ~30 seconds
+4. SessionWarningDialog should appear
+5. Click "Continue" or wait for auto-logout
+```
 
-**Solution:**
+### Test Activity Detection
 
-- Verify `NEXT_PUBLIC_SESSION_WARNING_INTERVAL` is set
-- Default is 5 minutes before expiration
-- Check browser console for errors
+```bash
+1. Login
+2. Wait for warning dialog
+3. Move your mouse around
+4. Dialog should disappear (session extended)
+5. Wait again without moving
+6. Dialog reappears (counting down again)
+```
 
-### Issue: Can't extend session after warning
+### Test Role-Based Timeouts
 
-**Solution:**
+```bash
+1. Login multiple times with different roles
+2. Admin: Warning should appear after ~55 min
+3. Business Owner: After ~235 min
+4. User: After ~1435 min
 
-- "Continue Session" button should refresh immediately
-- If not working, your session may already be expired server-side
-- Re-login required
+Or with test timeouts:
+NEXT_PUBLIC_SESSION_ADMIN_TIMEOUT=2
+NEXT_PUBLIC_SESSION_BUSINESS_TIMEOUT=3
+NEXT_PUBLIC_SESSION_USER_TIMEOUT=4
+```
 
-### Issue: Server reports session invalid but client disagrees
+---
 
-**Solution:**
+## ✅ Session Management Checklist
 
-- This is intentional - server truth takes precedence
-- Client-side timeout is a visual guide
-- Server-side verification is authoritative
+- [ ] Environment variables configured (.env.local)
+- [ ] Dev server restarted
+- [ ] Login works (session is created)
+- [ ] Activity detection works (mouse movement extends session)
+- [ ] Verification runs every 60 seconds (check console logs)
+- [ ] Warning dialog appears 5 minutes before logout
+- [ ] "Continue Session" button extends timeout
+- [ ] "Logout" button logs out immediately
+- [ ] Auto-logout occurs at expiration (if no activity)
+- [ ] Server-side verification prevents fake expiration times
+- [ ] Role-based timeouts are different
+- [ ] Tested with all user roles
 
-## Best Practices
+---
 
-### For Admins
+## 🔒 Security Features
 
-- ✅ Monitor dashboard before expiration
-- ✅ Save important work frequently
-- ✅ Be aware of expiration warning
-- ✅ Click "Continue" to stay logged in
+### Prevents
 
-### For Business Owners
+- ✅ **Idle account exposure** - Automatic logout after timeout
+- ✅ **Session hijacking** - Server verifies every 60 seconds
+- ✅ **Fake expiration times** - Can't be set on client
+- ✅ **Interrupted workflows** - Activity auto-extends session
+- ✅ **Forgotten logout** - Automatic logout as safety net
 
-- ✅ Longer timeout reduces interruptions
-- ✅ Activity keeps you logged in
-- ✅ You have ~4 hours before logout
+### Activity Extends Session
 
-### For Developers
+```
+Inactivity (5 min) → Warning appears
+Inactivity (0 more min) → Auto-logout
 
-- ✅ Keep default timeouts unless security requires change
-- ✅ Test session expiration before deploying
-- ✅ Monitor server logs for session issues
-- ✅ Never disable session verification
+But:
+User active → Session extends → No logout
+User moves mouse → Timer resets → No warning
+```
 
-## Production Checklist
+### Server-Side Verification
 
-- [ ] Verify environment variables are set correctly
-- [ ] Test with each user role
-- [ ] Confirm activity detection works
-- [ ] Test dialog appearance and functionality
-- [ ] Verify forced logout happens at expiration
-- [ ] Check server logs for session verification
-- [ ] Test on mobile devices
-- [ ] Verify HTTPS is enforced (required for secure cookies)
+```javascript
+// Client tries to fake it:
+document.cookie = 'sessionExpiration=' + futureDate;
 
-## Related Security Features
+// Server check:
+const verifySessionAction();
+// Server queries Supabase → Authoritative truth
+// Client cookie is ignored
+// User gets logged out anyway ✅
+```
 
-This session management integrates with:
+---
 
-- ✅ HTTP-only cookie auth (no JS access)
-- ✅ CSRF protection (SameSite: Lax)
-- ✅ Server-side session verification
-- ✅ Automatic logout with redirect
+## 📈 Production Deployment
 
-See [AUTHENTICATION_SECURITY.md](./AUTHENTICATION_SECURITY.md) for complete auth architecture.
+### Before Deploying
+
+- [ ] Set appropriate timeouts for your use case
+- [ ] Test session expiration works
+- [ ] Verify activity detection on target devices
+- [ ] Test on mobile (touch events)
+- [ ] Verify warning dialog appears
+- [ ] Monitor server logs for session verification calls
+
+### Configuration for Production
+
+```bash
+# Balance security and user experience
+NEXT_PUBLIC_SESSION_ADMIN_TIMEOUT=120       # 2 hours
+NEXT_PUBLIC_SESSION_BUSINESS_TIMEOUT=480    # 8 hours
+NEXT_PUBLIC_SESSION_USER_TIMEOUT=2880       # 48 hours
+NEXT_PUBLIC_SESSION_WARNING_INTERVAL=15     # 15 min warning
+```
+
+---
+
+## 🔗 Related Files
+
+- [AUTHENTICATION.md](AUTHENTICATION.md) - Auth implementation & flows
+- [SECURITY.md](SECURITY.md) - Cookie/header security
+- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture
+
+---
+
+## 📚 OWASP References
+
+- [OWASP: Session Management](https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/06-Session_Management_Testing/README)
+- [OWASP: Idle Timeout](https://owasp.org/www-community/controls/Session_timeout)
+- [Security Cheat Sheet: Session Management](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)

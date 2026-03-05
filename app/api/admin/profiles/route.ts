@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '@/config/server';
+import { createClient } from '@/config';
 import { NextRequest, NextResponse } from 'next/server';
 import { createPaginatedResponse } from '@/services/api/paginationService';
 import { verifyAdminAccess } from '@/lib/api/verifyAdminAccess';

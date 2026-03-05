@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import { ROUTES } from '@/config/routesConfig';
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -73,7 +74,7 @@ class ApiManager {
         if (error.response?.status === 401) {
           // Unauthorized - redirect to login
           if (typeof window !== 'undefined') {
-            window.location.href = '/auth/login';
+            window.location.href = ROUTES.AUTH.LOGIN;
           }
         }
 

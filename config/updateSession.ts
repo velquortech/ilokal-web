@@ -79,7 +79,7 @@ export async function updateSession(request: NextRequest) {
   );
 
   if (!user && isProtected) {
-    return NextResponse.redirect(new URL('/auth/sign-in', request.url));
+    return NextResponse.redirect(new URL('/sign-in', request.url));
   }
 
   if (
@@ -107,7 +107,7 @@ export async function updateSession(request: NextRequest) {
     );
   }
 
-  if (user && pathname === '/auth/sign-in' && userData?.role === 'admin') {
+  if (user && pathname === '/sign-in' && userData?.role === 'admin') {
     return NextResponse.redirect(
       new URL(`${baseAdminURL}/dashboard`, request.url),
     );

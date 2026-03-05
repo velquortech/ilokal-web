@@ -15,7 +15,7 @@ import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import { Sun, Moon } from 'lucide-react';
 import { useState, JSX } from 'react';
-import { ROUTES } from '@/config/routesConfig';
+import { ROUTES } from '@/config/routeConfig';
 
 export const Navigation = (): JSX.Element => {
   const router = useRouter();

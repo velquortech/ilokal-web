@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { signupSchema, SignupInput } from '@/lib/validation/auth';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { signupAction, redirectByRole } from '@/app/(auth)/actions';
-import { ROUTES } from '@/config/routesConfig';
+import { ROUTES } from '@/config/routeConfig';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

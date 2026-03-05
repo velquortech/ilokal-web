@@ -2,7 +2,7 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';
 import authService from '@/lib/api/authService';
-import { ROUTES } from '@/config/routesConfig';
+import { ROUTES } from '@/config/routeConfig';
 
 export function useAuth() {
   const router = useRouter();

@@ -10,8 +10,16 @@ export default function BusinessLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-background flex h-screen">
-      <SidebarProvider defaultOpen>
+    <div className="bg-background font-geist flex h-screen">
+      <SidebarProvider
+        defaultOpen
+        style={
+          {
+            '--sidebar-width': '18rem',
+            '--sidebar-width-mobile': '18rem',
+          } as React.CSSProperties
+        }
+      >
         <BusinessSidebar />
         <SidebarInset className="flex flex-1 flex-col overflow-hidden">
           <BusinessHeader />

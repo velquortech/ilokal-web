@@ -20,10 +20,8 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-  SidebarFooter,
   SidebarHeader,
 } from '@/components/ui/sidebar';
-import { footerNavigation } from '@/app/business/libs/configs/config';
 
 import { LucideIcon } from 'lucide-react';
 
@@ -69,7 +67,6 @@ function isItemActive(
 }
 
 interface SectionHeaderProps {
-  icon: LucideIcon;
   title: string;
 }
 
@@ -237,24 +234,5 @@ export function NavSection({ items, label }: NavSectionProps) {
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
-  );
-}
-
-export function NavFooter() {
-  return (
-    <SidebarFooter className="border-t p-4">
-      <SidebarMenu>
-        {footerNavigation.map((item) => (
-          <SidebarMenuItem key={item.title}>
-            <SidebarMenuButton asChild tooltip={item.title}>
-              <Link href={item.href || '#'}>
-                <item.icon className="h-4 w-4" />
-                <span>{item.title}</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        ))}
-      </SidebarMenu>
-    </SidebarFooter>
   );
 }

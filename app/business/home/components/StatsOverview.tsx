@@ -17,7 +17,6 @@ export function StatsOverview({ metrics }: StatsOverviewProps) {
           value={metric.value}
           description={metric.description}
           icon={metric.icon}
-          iconClassName={metric.iconClassName}
           trend={metric.trend}
         />
       ))}

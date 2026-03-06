@@ -5,20 +5,12 @@ import { MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { GlobalSearch } from '../../../components/custom/GlobalSearch';
-import { UserMenu } from './UserMenu';
 import { BranchSelector } from './BranchSelector';
-import { useAuth } from '@/hooks/useAuth';
 import { ActionButton } from '@/components/custom/ActionButton';
 import { ThemeToggle } from '@/components/custom/ThemeTogge';
 import { DEFAULT_BRANCHES, notificationActions } from '../libs/configs/config';
 
 export function BusinessHeader() {
-  const { user, logout } = useAuth();
-
-  const handleLogout = async () => {
-    await logout();
-  };
-
   const isAdmin = true;
   const [selectedBranch, setSelectedBranch] = useState('all');
 
@@ -36,14 +28,14 @@ export function BusinessHeader() {
           <GlobalSearch />
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="hidden items-center gap-1 sm:flex">
+        <div className="flex items-center">
+          <div className="hidden items-center gap-2 sm:flex">
             {notificationActions.map((action) => (
               <ActionButton key={action.href} action={action} />
             ))}
-            <ThemeToggle />
           </div>
-          <div className="bg-border hidden h-6 w-px sm:block" />
+
+          <div className="bg-border mx-4 hidden h-9 w-px sm:block" />
 
           {isAdmin ? (
             <BranchSelector
@@ -53,17 +45,15 @@ export function BusinessHeader() {
               currentBranch={currentBranch}
             />
           ) : (
-            <Button variant="outline" className="hidden h-9 gap-2 md:flex">
+            <Button variant="outline" className="hidden h-full gap-2 md:flex">
               <MapPin className="h-4 w-4" />
               <span className="max-w-30 truncate">{currentBranch.name}</span>
             </Button>
           )}
 
-          <UserMenu
-            user={user}
-            branches={DEFAULT_BRANCHES}
-            onLogout={handleLogout}
-          />
+          <div className="ml-2">
+            <ThemeToggle />
+          </div>
         </div>
       </div>
     </header>

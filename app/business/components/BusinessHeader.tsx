@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MapPin } from 'lucide-react';
+import { MapPin, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { GlobalSearch } from '../../../components/custom/GlobalSearch';
@@ -30,6 +30,10 @@ export function BusinessHeader() {
 
         <div className="flex items-center">
           <div className="hidden items-center gap-2 sm:flex">
+            <button className="font-font-giest-mono inline-flex cursor-pointer items-center gap-1 rounded-full bg-linear-to-r from-fuchsia-600 to-pink-600 px-3 py-1.5 text-xs font-medium text-white">
+              <Sparkles className="size-4" />
+              Ask (BETA)
+            </button>
             {notificationActions.map((action) => (
               <ActionButton key={action.href} action={action} />
             ))}

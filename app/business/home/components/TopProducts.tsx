@@ -52,7 +52,7 @@ export function TopProducts({ onViewAll }: TopProductsProps) {
                 <td className="py-3">
                   <div
                     className={`flex items-center gap-1 ${
-                      product.trend >= 0 ? 'text-success' : 'text-destructive'
+                      product.trend >= 0 ? 'text-green-600' : 'text-destructive'
                     }`}
                   >
                     {product.trend >= 0 ? (

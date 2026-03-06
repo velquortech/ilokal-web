@@ -10,12 +10,12 @@ import type {
 } from './types';
 
 export const SALES_DATA: SalesData[] = [
-  { month: 'Jan', sales: 12500, orders: 145, customers: 89 },
-  { month: 'Feb', sales: 18200, orders: 198, customers: 124 },
-  { month: 'Mar', sales: 24500, orders: 267, customers: 156 },
-  { month: 'Apr', sales: 22100, orders: 234, customers: 142 },
-  { month: 'May', sales: 31200, orders: 345, customers: 198 },
-  { month: 'Jun', sales: 38700, orders: 412, customers: 245 },
+  { month: 'Jan', sales: 12500, orders: 1045, customers: 89 },
+  { month: 'Feb', sales: 18200, orders: 4298, customers: 124 },
+  { month: 'Mar', sales: 24500, orders: 12567, customers: 156 },
+  { month: 'Apr', sales: 22100, orders: 8834, customers: 142 },
+  { month: 'May', sales: 31200, orders: 14045, customers: 198 },
+  { month: 'Jun', sales: 38700, orders: 20412, customers: 245 },
 ];
 
 export const CATEGORY_DATA: CategoryData[] = [
@@ -75,14 +75,14 @@ export const RECENT_ORDERS: Order[] = [
     time: '8 hours ago',
   },
   {
-    id: '#ORD-7838',
+    id: '#ORD-78786',
     customer: 'Lisa Tan',
     amount: 2100,
     status: 'completed',
     time: '8 hours ago',
   },
   {
-    id: '#ORD-7838',
+    id: '#ORD-788767',
     customer: 'Lisa Tan',
     amount: 2100,
     status: 'completed',

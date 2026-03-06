@@ -20,8 +20,6 @@ import {
   Building,
   MapPin,
   Layers,
-  DollarSign,
-  LucideIcon,
   Home,
 } from 'lucide-react';
 import { NavItem } from '@/components/custom/Nav';
@@ -143,6 +141,16 @@ export const marketingNavigation: NavItem[] = [
       { title: 'Member List', href: '/business/loyalty/members' },
     ],
   },
+  {
+    title: 'Reviews & Ratings',
+    href: '/business/reviews',
+    icon: Star,
+    items: [
+      { title: 'All Reviews', href: '/business/reviews' },
+      { title: 'Pending Reply', href: '/business/reviews/pending' },
+      { title: 'Review Analytics', href: '/business/reviews/analytics' },
+    ],
+  },
 ];
 
 export const analyticsNavigation: NavItem[] = [
@@ -194,33 +202,6 @@ export const analyticsNavigation: NavItem[] = [
       { title: 'Customer List', href: '/business/customers' },
       { title: 'Segments', href: '/business/customers/segments' },
       { title: 'Behavior Analytics', href: '/business/customers/behavior' },
-    ],
-  },
-];
-
-export const communicationNavigation: NavItem[] = [
-  {
-    title: 'Messages',
-    href: '/business/messages',
-    icon: MessageSquare,
-    badge: '5',
-    badgeVariant: 'destructive',
-  },
-  {
-    title: 'Notifications',
-    href: '/business/notifications',
-    icon: Bell,
-    badge: '3',
-    badgeVariant: 'default',
-  },
-  {
-    title: 'Reviews & Ratings',
-    href: '/business/reviews',
-    icon: Star,
-    items: [
-      { title: 'All Reviews', href: '/business/reviews' },
-      { title: 'Pending Reply', href: '/business/reviews/pending' },
-      { title: 'Review Analytics', href: '/business/reviews/analytics' },
     ],
   },
 ];
@@ -333,7 +314,6 @@ export const notificationActions: QuickAction[] = [
 export const SIDEBAR_SECTIONS: {
   items: NavItem[];
   header?: string;
-  icon?: LucideIcon;
 }[] = [
   {
     items: mainNavigation,
@@ -341,31 +321,21 @@ export const SIDEBAR_SECTIONS: {
   {
     items: branchNavigation,
     header: 'Branch Management',
-    icon: Building2,
   },
   {
     items: storeNavigation,
     header: 'Store Management',
-    icon: Store,
   },
   {
     items: marketingNavigation,
     header: 'Marketing & Growth',
-    icon: Zap,
   },
   {
     items: analyticsNavigation,
     header: 'Analytics & Reports',
-    icon: BarChart3,
-  },
-  {
-    items: communicationNavigation,
-    header: 'Communication',
-    icon: MessageSquare,
   },
   {
     items: financeNavigation,
     header: 'Finance',
-    icon: DollarSign,
   },
 ];

@@ -1,30 +1,54 @@
 'use client';
 
-import { Sidebar, SidebarContent, SidebarRail } from '@/components/ui/sidebar';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarRail,
+} from '@/components/ui/sidebar';
 import {
   SidebarLogo,
   NavSection,
   NavSectionHeader,
-  NavFooter,
 } from '../../../components/custom/Nav';
 import { Separator } from '@/components/ui/separator';
 import { Fragment } from 'react/jsx-runtime';
-import { SIDEBAR_SECTIONS } from '../libs/configs/config';
+import { DEFAULT_BRANCHES, SIDEBAR_SECTIONS } from '../libs/configs/config';
+import { UserMenu } from './UserMenu';
+import { useAuth } from '@/hooks/useAuth';
 
 export function BusinessSidebar() {
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+  };
+
   return (
     <Sidebar collapsible="icon" variant="sidebar" className="border-r">
       <SidebarLogo />
-      <SidebarContent className="overflow-y-auto">
-        {SIDEBAR_SECTIONS.map(({ items, header, icon }, idx) => (
+      <SidebarContent className="overflow-y-auto py-3">
+        {SIDEBAR_SECTIONS.map(({ items, header }, idx) => (
           <Fragment key={idx}>
-            {header && icon && <NavSectionHeader icon={icon} title={header} />}
+            {header && <NavSectionHeader title={header} />}
             <NavSection items={items} />
             <Separator className="last:hidden" />
           </Fragment>
         ))}
       </SidebarContent>
-      <NavFooter />
+      <SidebarFooter className="border-t">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <UserMenu
+              user={user}
+              branches={DEFAULT_BRANCHES}
+              onLogout={handleLogout}
+            />
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );

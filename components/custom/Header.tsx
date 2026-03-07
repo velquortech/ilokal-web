@@ -27,6 +27,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { AvatarImage } from '@/components/custom/AvatarImage';
+import { ROUTES } from '@/config/routeConfig';
 
 interface HeaderProps {
   userEmail?: string;
@@ -143,7 +144,7 @@ export function Header({
     if (onLogout) {
       onLogout();
     } else {
-      router.push('/auth/login');
+      router.push(ROUTES.AUTH.LOGIN);
     }
   }, [onLogout, router]);
 

@@ -2,14 +2,14 @@
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, LoginInput } from '@/lib/validation/auth';
 import { useAuthStore } from '@/services/stores/authStore';
 import { loginAction, redirectByRole } from '@/app/(auth)/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
 export default function LoginForm() {
@@ -18,11 +18,7 @@ export default function LoginForm() {
   const [isPending, startTransition] = useTransition();
   const setUser = useAuthStore((state) => state.setUser);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginInput>({
+  const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
   });
 
@@ -58,10 +54,10 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="w-full max-w-md space-y-6 rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
+    <div className="w-md space-y-6">
       <div className="space-y-2 text-center">
         <h1 className="text-2xl font-bold tracking-tight">Welcome Back</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-muted-foreground text-sm">
           Sign in to your account to continue
         </p>
       </div>
@@ -80,45 +76,49 @@ export default function LoginForm() {
         </div>
       ) : null}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         {/* Email Field */}
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="you@example.com"
-            {...register('email')}
-            disabled={isPending}
-            className={errors.email ? 'border-red-500' : ''}
-          />
-          {errors.email && (
-            <p className="text-sm text-red-500">{errors.email.message}</p>
+        <Controller
+          name="email"
+          control={form.control}
+          render={({ field, fieldState }) => (
+            <Field data-invalid={fieldState.invalid}>
+              <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+              <Input
+                {...field}
+                id={field.name}
+                type="email"
+                placeholder="you@example.com"
+                disabled={isPending}
+                aria-invalid={fieldState.invalid}
+              />
+              {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+            </Field>
           )}
-        </div>
+        />
 
         {/* Password Field */}
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            placeholder="••••••••"
-            {...register('password')}
-            disabled={isPending}
-            className={errors.password ? 'border-red-500' : ''}
-          />
-          {errors.password && (
-            <p className="text-sm text-red-500">{errors.password.message}</p>
+        <Controller
+          name="password"
+          control={form.control}
+          render={({ field, fieldState }) => (
+            <Field data-invalid={fieldState.invalid}>
+              <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+              <Input
+                {...field}
+                id={field.name}
+                type="password"
+                placeholder="••••••••"
+                disabled={isPending}
+                aria-invalid={fieldState.invalid}
+              />
+              {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+            </Field>
           )}
-        </div>
+        />
 
         {/* Submit Button */}
-        <Button
-          type="submit"
-          disabled={isPending}
-          className="w-full bg-black text-white hover:bg-slate-900"
-        >
+        <Button type="submit" disabled={isPending} className="w-full">
           {isPending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -131,11 +131,11 @@ export default function LoginForm() {
       </form>
 
       {/* Signup Link */}
-      <div className="text-center text-sm text-slate-600">
+      <div className="text-muted-foreground text-center text-sm">
         Don't have an account?{' '}
         <Link
           href="/signup"
-          className="font-semibold text-black hover:underline"
+          className="hover:text-foreground underline underline-offset-2"
         >
           Sign up
         </Link>

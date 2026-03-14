@@ -5,17 +5,15 @@ import userService, {
   CreateUserInput,
   AdminUpdateUserInput,
 } from '@/services/api/userService';
+import { AdminActionResponse, AdminUser } from '@/lib/types/admin';
 
-export type ActionState<T = unknown> = {
-  success?: boolean;
-  data?: T;
-  error?: string;
-};
+// Re-export for backward compatibility
+export type ActionState<T = unknown> = AdminActionResponse<T>;
 
 // ✅ Create Admin Action
 export async function createAdminAction(
   formData: CreateUserInput,
-): Promise<ActionState> {
+): Promise<AdminActionResponse<AdminUser>> {
   try {
     const phoneNumber = formData.phone_number?.trim();
     const hasPhoneNumber = phoneNumber && /\d/.test(phoneNumber);
@@ -43,7 +41,7 @@ export async function createAdminAction(
 export async function updateAdminAction(
   id: string,
   changes: AdminUpdateUserInput,
-): Promise<ActionState> {
+): Promise<AdminActionResponse<AdminUser>> {
   try {
     const profile = await userService.adminUpdateProfile(id, changes);
     revalidatePath('/admin');
@@ -58,11 +56,13 @@ export async function updateAdminAction(
 }
 
 // ✅ Delete Admin Action
-export async function deleteAdminAction(id: string): Promise<ActionState> {
+export async function deleteAdminAction(
+  id: string,
+): Promise<AdminActionResponse> {
   try {
     await userService.deleteProfile(id);
     revalidatePath('/admin');
-    return { success: true, data: { id } };
+    return { success: true };
   } catch (error) {
     return {
       success: false,
@@ -75,7 +75,7 @@ export async function deleteAdminAction(id: string): Promise<ActionState> {
 export async function updateAdminStatusAction(
   id: string,
   status: 'active' | 'inactive' | 'suspended',
-): Promise<ActionState> {
+): Promise<AdminActionResponse<AdminUser>> {
   try {
     const profile = await userService.adminUpdateProfile(id, { status });
     revalidatePath('/admin');
@@ -95,7 +95,7 @@ export async function updateAdminStatusAction(
 // ✅ Create Consumer Action
 export async function createConsumerAction(
   formData: CreateUserInput,
-): Promise<ActionState> {
+): Promise<AdminActionResponse<AdminUser>> {
   try {
     const phoneNumber = formData.phone_number?.trim();
     const hasPhoneNumber = phoneNumber && /\d/.test(phoneNumber);
@@ -124,7 +124,7 @@ export async function createConsumerAction(
 export async function updateConsumerAction(
   id: string,
   changes: AdminUpdateUserInput,
-): Promise<ActionState> {
+): Promise<AdminActionResponse<AdminUser>> {
   try {
     const profile = await userService.adminUpdateProfile(id, changes);
     revalidatePath('/admin');
@@ -140,11 +140,13 @@ export async function updateConsumerAction(
 }
 
 // ✅ Delete Consumer Action
-export async function deleteConsumerAction(id: string): Promise<ActionState> {
+export async function deleteConsumerAction(
+  id: string,
+): Promise<AdminActionResponse> {
   try {
     await userService.deleteProfile(id);
     revalidatePath('/admin');
-    return { success: true, data: { id } };
+    return { success: true };
   } catch (error) {
     return {
       success: false,
@@ -157,7 +159,7 @@ export async function deleteConsumerAction(id: string): Promise<ActionState> {
 // ✅ Create Business Owner Action
 export async function createBusinessOwnerAction(
   formData: CreateUserInput,
-): Promise<ActionState> {
+): Promise<AdminActionResponse<AdminUser>> {
   try {
     const phoneNumber = formData.phone_number?.trim();
     const hasPhoneNumber = phoneNumber && /\d/.test(phoneNumber);
@@ -188,7 +190,7 @@ export async function createBusinessOwnerAction(
 export async function updateBusinessOwnerAction(
   id: string,
   changes: AdminUpdateUserInput,
-): Promise<ActionState> {
+): Promise<AdminActionResponse<AdminUser>> {
   try {
     const profile = await userService.adminUpdateProfile(id, changes);
     revalidatePath('/admin');
@@ -208,11 +210,11 @@ export async function updateBusinessOwnerAction(
 // ✅ Delete Business Owner Action
 export async function deleteBusinessOwnerAction(
   id: string,
-): Promise<ActionState> {
+): Promise<AdminActionResponse> {
   try {
     await userService.deleteProfile(id);
     revalidatePath('/admin');
-    return { success: true, data: { id } };
+    return { success: true };
   } catch (error) {
     return {
       success: false,

@@ -11,11 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Profile } from '@/lib/types/user';
+import { AdminUser } from '@/lib/types/admin';
 
 interface DeleteConfirmationDialogProps {
   open: boolean;
-  user: Profile | null;
+  user: AdminUser | null;
   isSubmitting: boolean;
   onClose: () => void;
   onConfirm: () => void;

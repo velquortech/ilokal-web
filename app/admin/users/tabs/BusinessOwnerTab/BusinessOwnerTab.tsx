@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { Profile } from '@/lib/types/user';
+import { AdminUser } from '@/lib/types/admin';
 import { extractErrorMessage } from '@/lib/utils/errorHandler';
 import { UserFormData } from '@/app/admin/schemas/userFormSchema';
 import { UserFormModal } from '../../../components/forms';
@@ -22,7 +22,7 @@ export default function BusinessOwnerTab() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const [selectedBusinessOwner, setSelectedBusinessOwner] =
-    useState<Profile | null>(null);
+    useState<AdminUser | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');

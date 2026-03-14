@@ -3,15 +3,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
-import { Profile } from '@/lib/types/user';
+import { AdminUser } from '@/lib/types/admin';
 import { useAdminStore } from '@/services/stores/adminStore';
 import { useUpdateAdminStatus } from '@/hooks/useAdminMutations';
 import { StatusBadge } from './StatusBadge';
 import { Loader2, ChevronDown } from 'lucide-react';
 
 export interface StatusDropdownProps {
-  admin: Profile;
-  onStatusChange?: (updatedAdmin: Profile) => void;
+  admin: AdminUser;
+  onStatusChange?: (updatedAdmin: AdminUser) => void;
   onError?: (error: string) => void;
 }
 

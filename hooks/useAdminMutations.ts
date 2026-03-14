@@ -1,429 +1,289 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import userService from '@/services/api/userService';
-import { UserFormData } from '@/app/admin/schemas/userFormSchema';
+'use client';
 
+import { useTransition } from 'react';
+import { UserFormData } from '@/app/admin/schemas/userFormSchema';
+import { AdminUpdateUserInput } from '@/services/api/userService';
+import {
+  createAdminAction,
+  updateAdminAction,
+  deleteAdminAction,
+  updateAdminStatusAction,
+  createConsumerAction,
+  updateConsumerAction,
+  deleteConsumerAction,
+  createBusinessOwnerAction,
+  updateBusinessOwnerAction,
+  deleteBusinessOwnerAction,
+} from '@/app/admin/actions';
+import { Profile } from '@/lib/types/user';
+
+// ✅ Use Create Admin Hook
 export function useCreateAdmin(
   onSuccess?: () => void,
-  onError?: (err: unknown) => void,
+  onError?: (err: string) => void,
 ) {
-  const queryClient = useQueryClient();
+  const [isPending, startTransition] = useTransition();
 
-  return useMutation({
-    mutationFn: async (data: UserFormData) => {
-      const phoneNumber = data.phone_number?.trim();
-      const hasPhoneNumber = phoneNumber && /\d/.test(phoneNumber);
-
-      // ✅ SECURITY FIX: Use /api/admin/profiles (has verifyAdminAccess)
-      // instead of /api/auth/signup (public endpoint)
-      return await userService.createProfile({
+  const mutate = (data: UserFormData) => {
+    startTransition(async () => {
+      const result = await createAdminAction({
         email: data.email,
         password: data.password,
         full_name: data.full_name,
+        phone_number: data.phone_number,
+        avatar_url: data.avatar_url,
         role: 'admin',
-        ...(hasPhoneNumber && { phone_number: phoneNumber }),
-        ...(data.avatar_url && { avatar_url: data.avatar_url }),
       });
-    },
-    onSuccess: () => {
-      // Invalidate the profiles query to refetch
-      queryClient.invalidateQueries({ queryKey: ['profiles'] });
-      onSuccess?.();
-    },
-    onError,
-  });
+
+      if (result.success) {
+        onSuccess?.();
+      } else {
+        onError?.(result.error || 'Failed to create admin');
+      }
+    });
+  };
+
+  return {
+    mutate,
+    isPending,
+  };
 }
 
+// ✅ Use Update Admin Hook
 export function useUpdateAdmin(
-  onSuccess?: (profile: unknown) => void,
-  onError?: (err: unknown) => void,
+  onSuccess?: (profile: Profile) => void,
+  onError?: (err: string) => void,
 ) {
-  const queryClient = useQueryClient();
+  const [isPending, startTransition] = useTransition();
 
-  return useMutation({
-    mutationFn: async ({
-      id,
-      changes,
-    }: {
-      id: string;
-      changes: Record<string, unknown>;
-    }) => userService.adminUpdateProfile(id, changes),
-    onSuccess: (updatedProfile) => {
-      // Update all admin profiles queries with the new data
-      queryClient.setQueriesData(
-        { queryKey: ['profiles', 'admin'], type: 'active' },
-        (oldData: unknown) => {
-          if (
-            oldData &&
-            typeof oldData === 'object' &&
-            'data' in oldData &&
-            Array.isArray((oldData as { data: unknown[] }).data)
-          ) {
-            const data = oldData as { data: unknown[]; pagination: unknown };
-            return {
-              ...data,
-              data: (data.data as unknown[]).map((profile: unknown) =>
-                typeof profile === 'object' &&
-                profile !== null &&
-                'id' in profile &&
-                (profile as { id: unknown }).id === updatedProfile.id
-                  ? updatedProfile
-                  : profile,
-              ),
-            };
-          }
-          return oldData;
-        },
-      );
-      onSuccess?.(updatedProfile);
-    },
-    onError,
-  });
+  const mutate = (id: string, changes: AdminUpdateUserInput) => {
+    startTransition(async () => {
+      const result = await updateAdminAction(id, changes);
+
+      if (result.success) {
+        onSuccess?.(result.data as Profile);
+      } else {
+        onError?.(result.error || 'Failed to update admin');
+      }
+    });
+  };
+
+  return {
+    mutate,
+    isPending,
+  };
 }
 
+// ✅ Use Delete Admin Hook
 export function useDeleteAdmin(
   onSuccess?: (id: string) => void,
-  onError?: (err: unknown) => void,
+  onError?: (err: string) => void,
 ) {
-  const queryClient = useQueryClient();
+  const [isPending, startTransition] = useTransition();
 
-  return useMutation({
-    mutationFn: (id: string) => userService.deleteProfile(id),
-    onSuccess: (_, deletedId) => {
-      // Remove deleted profile from all admin profiles queries
-      queryClient.setQueriesData(
-        { queryKey: ['profiles', 'admin'], type: 'active' },
-        (oldData: unknown) => {
-          if (
-            oldData &&
-            typeof oldData === 'object' &&
-            'data' in oldData &&
-            Array.isArray((oldData as { data: unknown[] }).data)
-          ) {
-            const data = oldData as {
-              data: unknown[];
-              pagination: { totalItems: number };
-            };
-            return {
-              ...data,
-              data: (data.data as unknown[]).filter(
-                (profile: unknown) =>
-                  !(
-                    typeof profile === 'object' &&
-                    profile !== null &&
-                    'id' in profile &&
-                    (profile as { id: unknown }).id === deletedId
-                  ),
-              ),
-              pagination: {
-                ...data.pagination,
-                totalItems: data.pagination.totalItems - 1,
-              },
-            };
-          }
-          return oldData;
-        },
-      );
-      onSuccess?.(deletedId);
-    },
-    onError,
-  });
+  const mutate = (id: string) => {
+    startTransition(async () => {
+      const result = await deleteAdminAction(id);
+
+      if (result.success) {
+        onSuccess?.(id);
+      } else {
+        onError?.(result.error || 'Failed to delete admin');
+      }
+    });
+  };
+
+  return {
+    mutate,
+    isPending,
+  };
 }
 
+// ✅ Use Update Admin Status Hook
 export function useUpdateAdminStatus(
-  onSuccess?: (data: unknown) => void,
-  onError?: (err: unknown) => void,
+  onSuccess?: (data: Profile) => void,
+  onError?: (err: string) => void,
 ) {
-  const queryClient = useQueryClient();
+  const [isPending, startTransition] = useTransition();
 
-  return useMutation({
-    mutationFn: async ({
-      id,
-      status,
-    }: {
-      id: string;
-      status: 'active' | 'inactive' | 'suspended';
-    }) => userService.adminUpdateProfile(id, { status }),
-    onSuccess: (updatedProfile) => {
-      // Update all admin profiles queries with the new status
-      queryClient.setQueriesData(
-        { queryKey: ['profiles', 'admin'], type: 'active' },
-        (oldData: unknown) => {
-          if (
-            oldData &&
-            typeof oldData === 'object' &&
-            'data' in oldData &&
-            Array.isArray((oldData as { data: unknown[] }).data)
-          ) {
-            const data = oldData as { data: unknown[]; pagination: unknown };
-            return {
-              ...data,
-              data: (data.data as unknown[]).map((profile: unknown) =>
-                typeof profile === 'object' &&
-                profile !== null &&
-                'id' in profile &&
-                (profile as { id: unknown }).id === updatedProfile.id
-                  ? updatedProfile
-                  : profile,
-              ),
-            };
-          }
-          return oldData;
-        },
-      );
-      onSuccess?.(updatedProfile);
-    },
-    onError,
-  });
+  const mutate = (id: string, status: 'active' | 'inactive' | 'suspended') => {
+    startTransition(async () => {
+      const result = await updateAdminStatusAction(id, status);
+
+      if (result.success) {
+        onSuccess?.(result.data as Profile);
+      } else {
+        onError?.(result.error || 'Failed to update admin status');
+      }
+    });
+  };
+
+  return {
+    mutate,
+    isPending,
+  };
 }
 
+// ✅ Use Create Consumer Hook
 export function useCreateConsumer(
   onSuccess?: () => void,
-  onError?: (err: unknown) => void,
+  onError?: (err: string) => void,
 ) {
-  const queryClient = useQueryClient();
+  const [isPending, startTransition] = useTransition();
 
-  return useMutation({
-    mutationFn: async (data: UserFormData) => {
-      const phoneNumber = data.phone_number?.trim();
-      const hasPhoneNumber = phoneNumber && /\d/.test(phoneNumber);
-
-      // ✅ SECURITY FIX: Use /api/admin/profiles (has verifyAdminAccess)
-      // instead of /api/auth/signup (public endpoint)
-      return await userService.createProfile({
+  const mutate = (data: UserFormData) => {
+    startTransition(async () => {
+      const result = await createConsumerAction({
         email: data.email,
         password: data.password,
         full_name: data.full_name,
+        phone_number: data.phone_number,
+        avatar_url: data.avatar_url,
         role: 'user',
-        ...(hasPhoneNumber && { phone_number: phoneNumber }),
-        ...(data.avatar_url && { avatar_url: data.avatar_url }),
       });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profiles'] });
-      onSuccess?.();
-    },
-    onError,
-  });
+
+      if (result.success) {
+        onSuccess?.();
+      } else {
+        onError?.(result.error || 'Failed to create consumer');
+      }
+    });
+  };
+
+  return {
+    mutate,
+    isPending,
+  };
 }
 
+// ✅ Use Update Consumer Hook
 export function useUpdateConsumer(
-  onSuccess?: (profile: unknown) => void,
-  onError?: (err: unknown) => void,
+  onSuccess?: (profile: Profile) => void,
+  onError?: (err: string) => void,
 ) {
-  const queryClient = useQueryClient();
+  const [isPending, startTransition] = useTransition();
 
-  return useMutation({
-    mutationFn: async ({
-      id,
-      changes,
-    }: {
-      id: string;
-      changes: Record<string, unknown>;
-    }) => userService.adminUpdateProfile(id, changes),
-    onSuccess: (updatedProfile) => {
-      // Update all consumer (user role) profiles queries with the new data
-      queryClient.setQueriesData(
-        { queryKey: ['profiles', 'user'], type: 'active' },
-        (oldData: unknown) => {
-          if (
-            oldData &&
-            typeof oldData === 'object' &&
-            'data' in oldData &&
-            Array.isArray((oldData as { data: unknown[] }).data)
-          ) {
-            const data = oldData as { data: unknown[]; pagination: unknown };
-            return {
-              ...data,
-              data: (data.data as unknown[]).map((profile: unknown) =>
-                typeof profile === 'object' &&
-                profile !== null &&
-                'id' in profile &&
-                (profile as { id: unknown }).id === updatedProfile.id
-                  ? updatedProfile
-                  : profile,
-              ),
-            };
-          }
-          return oldData;
-        },
-      );
-      onSuccess?.(updatedProfile);
-    },
-    onError,
-  });
+  const mutate = (id: string, changes: AdminUpdateUserInput) => {
+    startTransition(async () => {
+      const result = await updateConsumerAction(id, changes);
+
+      if (result.success) {
+        onSuccess?.(result.data as Profile);
+      } else {
+        onError?.(result.error || 'Failed to update consumer');
+      }
+    });
+  };
+
+  return {
+    mutate,
+    isPending,
+  };
 }
 
+// ✅ Use Delete Consumer Hook
 export function useDeleteConsumer(
   onSuccess?: (id: string) => void,
-  onError?: (err: unknown) => void,
+  onError?: (err: string) => void,
 ) {
-  const queryClient = useQueryClient();
+  const [isPending, startTransition] = useTransition();
 
-  return useMutation({
-    mutationFn: (id: string) => userService.deleteProfile(id),
-    onSuccess: (_, deletedId) => {
-      // Remove deleted profile from all consumer (user role) profiles queries
-      queryClient.setQueriesData(
-        { queryKey: ['profiles', 'user'], type: 'active' },
-        (oldData: unknown) => {
-          if (
-            oldData &&
-            typeof oldData === 'object' &&
-            'data' in oldData &&
-            Array.isArray((oldData as { data: unknown[] }).data)
-          ) {
-            const data = oldData as {
-              data: unknown[];
-              pagination: { totalItems: number };
-            };
-            return {
-              ...data,
-              data: (data.data as unknown[]).filter(
-                (profile: unknown) =>
-                  !(
-                    typeof profile === 'object' &&
-                    profile !== null &&
-                    'id' in profile &&
-                    (profile as { id: unknown }).id === deletedId
-                  ),
-              ),
-              pagination: {
-                ...data.pagination,
-                totalItems: data.pagination.totalItems - 1,
-              },
-            };
-          }
-          return oldData;
-        },
-      );
-      onSuccess?.(deletedId);
-    },
-    onError,
-  });
+  const mutate = (id: string) => {
+    startTransition(async () => {
+      const result = await deleteConsumerAction(id);
+
+      if (result.success) {
+        onSuccess?.(id);
+      } else {
+        onError?.(result.error || 'Failed to delete consumer');
+      }
+    });
+  };
+
+  return {
+    mutate,
+    isPending,
+  };
 }
 
+// ✅ Use Create Business Owner Hook
 export function useCreateBusinessOwner(
   onSuccess?: () => void,
-  onError?: (err: unknown) => void,
+  onError?: (err: string) => void,
 ) {
-  const queryClient = useQueryClient();
+  const [isPending, startTransition] = useTransition();
 
-  return useMutation({
-    mutationFn: async (data: UserFormData) => {
-      const phoneNumber = data.phone_number?.trim();
-      const hasPhoneNumber = phoneNumber && /\d/.test(phoneNumber);
-
-      // ✅ SECURITY FIX: Use /api/admin/profiles (has verifyAdminAccess)
-      // instead of /api/auth/signup (public endpoint)
-      return await userService.createProfile({
+  const mutate = (data: UserFormData) => {
+    startTransition(async () => {
+      const result = await createBusinessOwnerAction({
         email: data.email,
         password: data.password,
         full_name: data.full_name,
+        phone_number: data.phone_number,
+        avatar_url: data.avatar_url,
         role: 'business_owner',
-        ...(hasPhoneNumber && { phone_number: phoneNumber }),
-        ...(data.avatar_url && { avatar_url: data.avatar_url }),
       });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profiles'] });
-      onSuccess?.();
-    },
-    onError,
-  });
+
+      if (result.success) {
+        onSuccess?.();
+      } else {
+        onError?.(result.error || 'Failed to create business owner');
+      }
+    });
+  };
+
+  return {
+    mutate,
+    isPending,
+  };
 }
 
+// ✅ Use Update Business Owner Hook
 export function useUpdateBusinessOwner(
-  onSuccess?: (profile: unknown) => void,
-  onError?: (err: unknown) => void,
+  onSuccess?: (profile: Profile) => void,
+  onError?: (err: string) => void,
 ) {
-  const queryClient = useQueryClient();
+  const [isPending, startTransition] = useTransition();
 
-  return useMutation({
-    mutationFn: async ({
-      id,
-      changes,
-    }: {
-      id: string;
-      changes: Record<string, unknown>;
-    }) => userService.adminUpdateProfile(id, changes),
-    onSuccess: (updatedProfile) => {
-      // Update all business_owner profiles queries with the new data
-      queryClient.setQueriesData(
-        { queryKey: ['profiles', 'business_owner'], type: 'active' },
-        (oldData: unknown) => {
-          if (
-            oldData &&
-            typeof oldData === 'object' &&
-            'data' in oldData &&
-            Array.isArray((oldData as { data: unknown[] }).data)
-          ) {
-            const data = oldData as { data: unknown[]; pagination: unknown };
-            return {
-              ...data,
-              data: (data.data as unknown[]).map((profile: unknown) =>
-                typeof profile === 'object' &&
-                profile !== null &&
-                'id' in profile &&
-                (profile as { id: unknown }).id === updatedProfile.id
-                  ? updatedProfile
-                  : profile,
-              ),
-            };
-          }
-          return oldData;
-        },
-      );
-      onSuccess?.(updatedProfile);
-    },
-    onError,
-  });
+  const mutate = (id: string, changes: AdminUpdateUserInput) => {
+    startTransition(async () => {
+      const result = await updateBusinessOwnerAction(id, changes);
+
+      if (result.success) {
+        onSuccess?.(result.data as Profile);
+      } else {
+        onError?.(result.error || 'Failed to update business owner');
+      }
+    });
+  };
+
+  return {
+    mutate,
+    isPending,
+  };
 }
 
+// ✅ Use Delete Business Owner Hook
 export function useDeleteBusinessOwner(
   onSuccess?: (id: string) => void,
-  onError?: (err: unknown) => void,
+  onError?: (err: string) => void,
 ) {
-  const queryClient = useQueryClient();
+  const [isPending, startTransition] = useTransition();
 
-  return useMutation({
-    mutationFn: (id: string) => userService.deleteProfile(id),
-    onSuccess: (_, deletedId) => {
-      // Remove deleted profile from all business_owner profiles queries
-      queryClient.setQueriesData(
-        { queryKey: ['profiles', 'business_owner'], type: 'active' },
-        (oldData: unknown) => {
-          if (
-            oldData &&
-            typeof oldData === 'object' &&
-            'data' in oldData &&
-            Array.isArray((oldData as { data: unknown[] }).data)
-          ) {
-            const data = oldData as {
-              data: unknown[];
-              pagination: { totalItems: number };
-            };
-            return {
-              ...data,
-              data: (data.data as unknown[]).filter(
-                (profile: unknown) =>
-                  !(
-                    typeof profile === 'object' &&
-                    profile !== null &&
-                    'id' in profile &&
-                    (profile as { id: unknown }).id === deletedId
-                  ),
-              ),
-              pagination: {
-                ...data.pagination,
-                totalItems: data.pagination.totalItems - 1,
-              },
-            };
-          }
-          return oldData;
-        },
-      );
-      onSuccess?.(deletedId);
-    },
-    onError,
-  });
+  const mutate = (id: string) => {
+    startTransition(async () => {
+      const result = await deleteBusinessOwnerAction(id);
+
+      if (result.success) {
+        onSuccess?.(id);
+      } else {
+        onError?.(result.error || 'Failed to delete business owner');
+      }
+    });
+  };
+
+  return {
+    mutate,
+    isPending,
+  };
 }

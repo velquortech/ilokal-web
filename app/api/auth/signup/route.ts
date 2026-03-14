@@ -25,9 +25,9 @@ export async function POST(req: NextRequest) {
     }
 
     const { email, password, name } = validationResult.data;
-    // ✅ SECURITY FIX: Public signup endpoint ONLY allows 'user' role
+    // ✅ SECURITY FIX: Public signup endpoint ONLY allows 'app_user' role
     // Admin/BusinessOwner accounts can ONLY be created via /api/admin/profiles by admins
-    const role = 'user';
+    const role = 'app_user';
 
     const phoneNumber = body.phone_number;
     const avatarUrl = body.avatar_url;

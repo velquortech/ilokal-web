@@ -139,7 +139,7 @@ export function useCreateConsumer(
         full_name: data.full_name,
         phone_number: data.phone_number,
         avatar_url: data.avatar_url,
-        role: 'user',
+        role: 'app_user',
       });
 
       if (result.success) {

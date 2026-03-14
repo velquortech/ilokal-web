@@ -104,7 +104,7 @@ export async function createConsumerAction(
       email: formData.email,
       password: formData.password,
       full_name: formData.full_name,
-      role: 'user',
+      role: 'app_user',
       ...(hasPhoneNumber && { phone_number: phoneNumber }),
       ...(formData.avatar_url && { avatar_url: formData.avatar_url }),
     });

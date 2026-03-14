@@ -108,7 +108,7 @@ export default function ConsumersTab() {
   );
 
   const getChangedFields = (
-    original: Profile,
+    original: AdminUser,
     formData: UserFormData,
   ): Record<string, unknown> => {
     const changes: Record<string, unknown> = {};
@@ -144,13 +144,10 @@ export default function ConsumersTab() {
           return;
         }
 
-        await updateConsumerMutation.mutateAsync({
-          id: selectedConsumer.id,
-          changes: changedFields,
-        });
+        updateConsumerMutation.mutate(selectedConsumer.id, changedFields);
       } else {
         // Create mode
-        await createConsumerMutation.mutateAsync(formData);
+        createConsumerMutation.mutate(formData);
       }
     } catch (err) {
       // Error is already handled by mutation callbacks
@@ -158,15 +155,15 @@ export default function ConsumersTab() {
     }
   };
 
-  const handleEdit = useCallback((consumer: Profile) => {
+  const handleEdit = useCallback((consumer: AdminUser) => {
     setSelectedConsumer(consumer);
     setIsFormOpen(true);
   }, []);
 
   const handleDelete = useCallback(
-    async (id: string) => {
+    (id: string) => {
       try {
-        await deleteConsumerMutation.mutateAsync(id);
+        deleteConsumerMutation.mutate(id);
       } catch {
         // Error is already handled by mutation callbacks
         console.error('Error deleting consumer');
@@ -188,15 +185,7 @@ export default function ConsumersTab() {
     createConsumerMutation.isPending ||
     updateConsumerMutation.isPending ||
     deleteConsumerMutation.isPending;
-  const error = fetchError
-    ? extractErrorMessage(fetchError)
-    : createConsumerMutation.error
-      ? extractErrorMessage(createConsumerMutation.error)
-      : updateConsumerMutation.error
-        ? extractErrorMessage(updateConsumerMutation.error)
-        : deleteConsumerMutation.error
-          ? extractErrorMessage(deleteConsumerMutation.error)
-          : null;
+  const error = fetchError ? extractErrorMessage(fetchError) : null;
 
   if (!isAdmin) {
     return (
@@ -277,14 +266,8 @@ export default function ConsumersTab() {
           setSelectedConsumer(null);
         }}
         onSubmit={handleCreateConsumer}
-        userType="user"
-        error={
-          createConsumerMutation.error
-            ? extractErrorMessage(createConsumerMutation.error)
-            : updateConsumerMutation.error
-              ? extractErrorMessage(updateConsumerMutation.error)
-              : null
-        }
+        userType="app_user"
+        error={null}
         initialData={
           selectedConsumer
             ? {

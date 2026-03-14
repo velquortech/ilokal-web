@@ -1,31 +1,57 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import userService, {
-  CreateUserInput,
-  AdminUpdateUserInput,
-} from '@/services/api/userService';
+import { CreateUserInput } from '@/services/api/userService';
 import { AdminActionResponse, AdminUser } from '@/lib/types/admin';
+import {
+  AdminUpdateUserInput,
+  verifyCurrentUserIsAdmin,
+  createAuthUser,
+  deleteAuthUser,
+  updateAuthUser,
+  buildProfileUpdateData,
+  createProfile,
+  updateProfile,
+  updateProfileStatus,
+} from '@/lib/api/adminActionHelpers';
 
 // Re-export for backward compatibility
 export type ActionState<T = unknown> = AdminActionResponse<T>;
 
-// ✅ Create Admin Action
+// ============================================================================
+// ADMIN MUTATIONS
+// ============================================================================
+
 export async function createAdminAction(
   formData: CreateUserInput,
 ): Promise<AdminActionResponse<AdminUser>> {
   try {
-    const phoneNumber = formData.phone_number?.trim();
-    const hasPhoneNumber = phoneNumber && /\d/.test(phoneNumber);
+    const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
+    if (!authorized) return { success: false, error: authError };
 
-    const profile = await userService.createProfile({
-      email: formData.email,
-      password: formData.password,
-      full_name: formData.full_name,
-      role: 'admin',
-      ...(hasPhoneNumber && { phone_number: phoneNumber }),
-      ...(formData.avatar_url && { avatar_url: formData.avatar_url }),
-    });
+    const { userId, error: userError } = await createAuthUser(
+      formData.email,
+      formData.password,
+    );
+    if (userError || !userId) {
+      return {
+        success: false,
+        error: userError || 'Failed to create auth user',
+      };
+    }
+
+    const formDataWithRole = { ...formData, role: 'admin' as const };
+    const { profile, error: profileError } = await createProfile(
+      userId,
+      formDataWithRole,
+    );
+    if (profileError || !profile) {
+      await deleteAuthUser(userId);
+      return {
+        success: false,
+        error: profileError || 'Failed to create profile',
+      };
+    }
 
     revalidatePath('/admin');
     return { success: true, data: profile };
@@ -37,13 +63,35 @@ export async function createAdminAction(
   }
 }
 
-// ✅ Update Admin Action
 export async function updateAdminAction(
   id: string,
   changes: AdminUpdateUserInput,
 ): Promise<AdminActionResponse<AdminUser>> {
   try {
-    const profile = await userService.adminUpdateProfile(id, changes);
+    const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
+    if (!authorized) return { success: false, error: authError };
+
+    const updateData = buildProfileUpdateData(changes);
+    const { profile, error: profileError } = await updateProfile(
+      id,
+      updateData,
+    );
+    if (profileError || !profile) {
+      return {
+        success: false,
+        error: profileError || 'Failed to update profile',
+      };
+    }
+
+    if ('email' in changes || 'password' in changes) {
+      const { error: authError } = await updateAuthUser(
+        id,
+        changes.email,
+        changes.password,
+      );
+      if (authError) return { success: false, error: authError };
+    }
+
     revalidatePath('/admin');
     revalidatePath(`/admin/${id}`);
     return { success: true, data: profile };
@@ -55,12 +103,16 @@ export async function updateAdminAction(
   }
 }
 
-// ✅ Delete Admin Action
 export async function deleteAdminAction(
   id: string,
 ): Promise<AdminActionResponse> {
   try {
-    await userService.deleteProfile(id);
+    const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
+    if (!authorized) return { success: false, error: authError };
+
+    const { error } = await deleteAuthUser(id);
+    if (error) return { success: false, error };
+
     revalidatePath('/admin');
     return { success: true };
   } catch (error) {
@@ -71,13 +123,19 @@ export async function deleteAdminAction(
   }
 }
 
-// ✅ Update Admin Status Action
 export async function updateAdminStatusAction(
   id: string,
   status: 'active' | 'inactive' | 'suspended',
 ): Promise<AdminActionResponse<AdminUser>> {
   try {
-    const profile = await userService.adminUpdateProfile(id, { status });
+    const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
+    if (!authorized) return { success: false, error: authError };
+
+    const { profile, error } = await updateProfileStatus(id, status);
+    if (error || !profile) {
+      return { success: false, error: error || 'Failed to update status' };
+    }
+
     revalidatePath('/admin');
     revalidatePath(`/admin/${id}`);
     return { success: true, data: profile };
@@ -92,22 +150,40 @@ export async function updateAdminStatusAction(
   }
 }
 
-// ✅ Create Consumer Action
+// ============================================================================
+// CONSUMER MUTATIONS
+// ============================================================================
+
 export async function createConsumerAction(
   formData: CreateUserInput,
 ): Promise<AdminActionResponse<AdminUser>> {
   try {
-    const phoneNumber = formData.phone_number?.trim();
-    const hasPhoneNumber = phoneNumber && /\d/.test(phoneNumber);
+    const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
+    if (!authorized) return { success: false, error: authError };
 
-    const profile = await userService.createProfile({
-      email: formData.email,
-      password: formData.password,
-      full_name: formData.full_name,
-      role: 'app_user',
-      ...(hasPhoneNumber && { phone_number: phoneNumber }),
-      ...(formData.avatar_url && { avatar_url: formData.avatar_url }),
-    });
+    const { userId, error: userError } = await createAuthUser(
+      formData.email,
+      formData.password,
+    );
+    if (userError || !userId) {
+      return {
+        success: false,
+        error: userError || 'Failed to create auth user',
+      };
+    }
+
+    const formDataWithRole = { ...formData, role: 'app_user' as const };
+    const { profile, error: profileError } = await createProfile(
+      userId,
+      formDataWithRole,
+    );
+    if (profileError || !profile) {
+      await deleteAuthUser(userId);
+      return {
+        success: false,
+        error: profileError || 'Failed to create profile',
+      };
+    }
 
     revalidatePath('/admin');
     return { success: true, data: profile };
@@ -120,13 +196,35 @@ export async function createConsumerAction(
   }
 }
 
-// ✅ Update Consumer Action
 export async function updateConsumerAction(
   id: string,
   changes: AdminUpdateUserInput,
 ): Promise<AdminActionResponse<AdminUser>> {
   try {
-    const profile = await userService.adminUpdateProfile(id, changes);
+    const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
+    if (!authorized) return { success: false, error: authError };
+
+    const updateData = buildProfileUpdateData(changes);
+    const { profile, error: profileError } = await updateProfile(
+      id,
+      updateData,
+    );
+    if (profileError || !profile) {
+      return {
+        success: false,
+        error: profileError || 'Failed to update profile',
+      };
+    }
+
+    if ('email' in changes || 'password' in changes) {
+      const { error: authError } = await updateAuthUser(
+        id,
+        changes.email,
+        changes.password,
+      );
+      if (authError) return { success: false, error: authError };
+    }
+
     revalidatePath('/admin');
     revalidatePath(`/admin/${id}`);
     return { success: true, data: profile };
@@ -139,12 +237,16 @@ export async function updateConsumerAction(
   }
 }
 
-// ✅ Delete Consumer Action
 export async function deleteConsumerAction(
   id: string,
 ): Promise<AdminActionResponse> {
   try {
-    await userService.deleteProfile(id);
+    const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
+    if (!authorized) return { success: false, error: authError };
+
+    const { error } = await deleteAuthUser(id);
+    if (error) return { success: false, error };
+
     revalidatePath('/admin');
     return { success: true };
   } catch (error) {
@@ -156,22 +258,40 @@ export async function deleteConsumerAction(
   }
 }
 
-// ✅ Create Business Owner Action
+// ============================================================================
+// BUSINESS OWNER MUTATIONS
+// ============================================================================
+
 export async function createBusinessOwnerAction(
   formData: CreateUserInput,
 ): Promise<AdminActionResponse<AdminUser>> {
   try {
-    const phoneNumber = formData.phone_number?.trim();
-    const hasPhoneNumber = phoneNumber && /\d/.test(phoneNumber);
+    const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
+    if (!authorized) return { success: false, error: authError };
 
-    const profile = await userService.createProfile({
-      email: formData.email,
-      password: formData.password,
-      full_name: formData.full_name,
-      role: 'business_owner',
-      ...(hasPhoneNumber && { phone_number: phoneNumber }),
-      ...(formData.avatar_url && { avatar_url: formData.avatar_url }),
-    });
+    const { userId, error: userError } = await createAuthUser(
+      formData.email,
+      formData.password,
+    );
+    if (userError || !userId) {
+      return {
+        success: false,
+        error: userError || 'Failed to create auth user',
+      };
+    }
+
+    const formDataWithRole = { ...formData, role: 'business_owner' as const };
+    const { profile, error: profileError } = await createProfile(
+      userId,
+      formDataWithRole,
+    );
+    if (profileError || !profile) {
+      await deleteAuthUser(userId);
+      return {
+        success: false,
+        error: profileError || 'Failed to create profile',
+      };
+    }
 
     revalidatePath('/admin');
     return { success: true, data: profile };
@@ -186,13 +306,35 @@ export async function createBusinessOwnerAction(
   }
 }
 
-// ✅ Update Business Owner Action
 export async function updateBusinessOwnerAction(
   id: string,
   changes: AdminUpdateUserInput,
 ): Promise<AdminActionResponse<AdminUser>> {
   try {
-    const profile = await userService.adminUpdateProfile(id, changes);
+    const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
+    if (!authorized) return { success: false, error: authError };
+
+    const updateData = buildProfileUpdateData(changes);
+    const { profile, error: profileError } = await updateProfile(
+      id,
+      updateData,
+    );
+    if (profileError || !profile) {
+      return {
+        success: false,
+        error: profileError || 'Failed to update profile',
+      };
+    }
+
+    if ('email' in changes || 'password' in changes) {
+      const { error: authError } = await updateAuthUser(
+        id,
+        changes.email,
+        changes.password,
+      );
+      if (authError) return { success: false, error: authError };
+    }
+
     revalidatePath('/admin');
     revalidatePath(`/admin/${id}`);
     return { success: true, data: profile };
@@ -207,12 +349,16 @@ export async function updateBusinessOwnerAction(
   }
 }
 
-// ✅ Delete Business Owner Action
 export async function deleteBusinessOwnerAction(
   id: string,
 ): Promise<AdminActionResponse> {
   try {
-    await userService.deleteProfile(id);
+    const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
+    if (!authorized) return { success: false, error: authError };
+
+    const { error } = await deleteAuthUser(id);
+    if (error) return { success: false, error };
+
     revalidatePath('/admin');
     return { success: true };
   } catch (error) {

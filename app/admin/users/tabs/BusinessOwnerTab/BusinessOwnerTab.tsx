@@ -111,7 +111,7 @@ export default function BusinessOwnerTab() {
   );
 
   const getChangedFields = (
-    original: Profile,
+    original: AdminUser,
     formData: UserFormData,
   ): Record<string, unknown> => {
     const changes: Record<string, unknown> = {};
@@ -147,13 +147,13 @@ export default function BusinessOwnerTab() {
           return;
         }
 
-        await updateBusinessOwnerMutation.mutateAsync({
-          id: selectedBusinessOwner.id,
-          changes: changedFields,
-        });
+        updateBusinessOwnerMutation.mutate(
+          selectedBusinessOwner.id,
+          changedFields,
+        );
       } else {
         // Create mode
-        await createBusinessOwnerMutation.mutateAsync(formData);
+        createBusinessOwnerMutation.mutate(formData);
       }
     } catch (err) {
       // Error is already handled by mutation callbacks
@@ -161,15 +161,15 @@ export default function BusinessOwnerTab() {
     }
   };
 
-  const handleEdit = useCallback((businessOwner: Profile) => {
+  const handleEdit = useCallback((businessOwner: AdminUser) => {
     setSelectedBusinessOwner(businessOwner);
     setIsFormOpen(true);
   }, []);
 
   const handleDelete = useCallback(
-    async (id: string) => {
+    (id: string) => {
       try {
-        await deleteBusinessOwnerMutation.mutateAsync(id);
+        deleteBusinessOwnerMutation.mutate(id);
       } catch {
         // Error is already handled by mutation callbacks
         console.error('Error deleting business owner');
@@ -191,15 +191,7 @@ export default function BusinessOwnerTab() {
     createBusinessOwnerMutation.isPending ||
     updateBusinessOwnerMutation.isPending ||
     deleteBusinessOwnerMutation.isPending;
-  const error = fetchError
-    ? extractErrorMessage(fetchError)
-    : createBusinessOwnerMutation.error
-      ? extractErrorMessage(createBusinessOwnerMutation.error)
-      : updateBusinessOwnerMutation.error
-        ? extractErrorMessage(updateBusinessOwnerMutation.error)
-        : deleteBusinessOwnerMutation.error
-          ? extractErrorMessage(deleteBusinessOwnerMutation.error)
-          : null;
+  const error = fetchError ? extractErrorMessage(fetchError) : null;
 
   if (!isAdmin) {
     return (
@@ -282,13 +274,7 @@ export default function BusinessOwnerTab() {
         }}
         onSubmit={handleCreateBusinessOwner}
         userType="business_owner"
-        error={
-          createBusinessOwnerMutation.error
-            ? extractErrorMessage(createBusinessOwnerMutation.error)
-            : updateBusinessOwnerMutation.error
-              ? extractErrorMessage(updateBusinessOwnerMutation.error)
-              : null
-        }
+        error={null}
         initialData={
           selectedBusinessOwner
             ? {

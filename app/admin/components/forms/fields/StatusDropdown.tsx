@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { AdminUser } from '@/lib/types/admin';
-import { useAdminStore } from '@/services/stores/adminStore';
 import { useUpdateAdminStatus } from '@/hooks/useAdminMutations';
 import { StatusBadge } from './StatusBadge';
 import { Loader2, ChevronDown } from 'lucide-react';
@@ -30,18 +29,15 @@ export function StatusDropdown({
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
 
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const { setUpdatingId } = useAdminStore();
 
   const { mutate, isPending } = useUpdateAdminStatus(
     (updatedProfile) => {
       toast.success(`Status updated to ${updatedProfile.status}`);
       onStatusChange?.(updatedProfile);
-      setUpdatingId(null);
     },
     (error) => {
       toast.error(`Failed to update status: ${error}`);
       onError?.(error);
-      setUpdatingId(null);
     },
   );
 
@@ -63,8 +59,6 @@ export function StatusDropdown({
       return;
     }
     setIsOpen(false);
-    setUpdatingId(admin.id);
-
     mutate(admin.id, newStatus);
   };
 

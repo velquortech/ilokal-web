@@ -21,7 +21,7 @@ import {
  * Create mutations hook with typed action function
  */
 export function useCreateAdmin(
-  onSuccess?: () => void,
+  onSuccess?: (profile: AdminUser) => void,
   onError?: (err: string) => void,
 ) {
   const [isPending, startTransition] = useTransition();
@@ -38,8 +38,8 @@ export function useCreateAdmin(
           role: 'admin',
         });
 
-        if (result.success) {
-          onSuccess?.();
+        if (result.success && result.data) {
+          onSuccess?.(result.data);
         } else {
           onError?.(result.error || 'Failed to create admin');
         }
@@ -137,7 +137,7 @@ export function useUpdateAdminStatus(
 // ============================================================================
 
 export function useCreateConsumer(
-  onSuccess?: () => void,
+  onSuccess?: (profile: AdminUser) => void,
   onError?: (err: string) => void,
 ) {
   const [isPending, startTransition] = useTransition();
@@ -154,8 +154,12 @@ export function useCreateConsumer(
           role: 'app_user',
         });
 
-        if (result.success) {
-          onSuccess?.();
+        if (result.success && result.data) {
+          console.log(
+            '[useCreateConsumer] Calling onSuccess with:',
+            result.data,
+          );
+          onSuccess?.(result.data);
         } else {
           onError?.(result.error || 'Failed to create consumer');
         }
@@ -220,7 +224,7 @@ export function useDeleteConsumer(
 // ============================================================================
 
 export function useCreateBusinessOwner(
-  onSuccess?: () => void,
+  onSuccess?: (profile: AdminUser) => void,
   onError?: (err: string) => void,
 ) {
   const [isPending, startTransition] = useTransition();
@@ -237,8 +241,12 @@ export function useCreateBusinessOwner(
           role: 'business_owner',
         });
 
-        if (result.success) {
-          onSuccess?.();
+        if (result.success && result.data) {
+          console.log(
+            '[useCreateBusinessOwner] Calling onSuccess with:',
+            result.data,
+          );
+          onSuccess?.(result.data);
         } else {
           onError?.(result.error || 'Failed to create business owner');
         }

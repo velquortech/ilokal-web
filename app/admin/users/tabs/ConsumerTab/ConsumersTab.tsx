@@ -17,6 +17,7 @@ import {
 import { useProfilesByRole } from '@/hooks/useProfiles';
 import { useAuth } from '@/hooks/useAuth';
 import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
+import { PaginatedResponse } from '@/services/api/paginationService';
 
 export default function ConsumersTab() {
   const { user } = useAuth();
@@ -32,6 +33,8 @@ export default function ConsumersTab() {
     'all' | 'active' | 'inactive' | 'suspended'
   >('all');
   const [sortOrder, setSortOrder] = useState<'latest' | 'oldest'>('latest');
+  const [consumersDataCache, setConsumersDataCache] =
+    useState<PaginatedResponse<AdminUser> | null>(null);
 
   // Reset to page 1 immediately when the search query changes
   useEffect(() => {
@@ -60,51 +63,181 @@ export default function ConsumersTab() {
     sortOrder,
   });
 
-  // Mutations
-  const createConsumerMutation = useCreateConsumer(
-    () => {
+  // Sync fetched data to cache
+  useEffect(() => {
+    if (consumersData) {
+      setConsumersDataCache(consumersData);
+    }
+  }, [consumersData]);
+
+  /**
+   * Patch a single user record in the cached data with only the changed fields
+   * This provides instant UI updates without re-fetching the entire list
+   */
+  const patchConsumerInCache = useCallback((updatedConsumer: AdminUser) => {
+    setConsumersDataCache((prevData) => {
+      if (!prevData) return prevData;
+
+      // Find and update the specific consumer in the current page
+      const updatedData = {
+        ...prevData,
+        data: prevData.data.map((consumer) =>
+          consumer.id === updatedConsumer.id
+            ? {
+                ...consumer,
+                ...updatedConsumer,
+              }
+            : consumer,
+        ),
+      };
+
+      return updatedData;
+    });
+  }, []);
+
+  /**
+   * Add a newly created user to the top of the cache
+   * This provides instant UI updates when a new user is created
+   */
+  const addConsumerToCache = useCallback((newConsumer: AdminUser) => {
+    setConsumersDataCache((prevData) => {
+      if (!prevData) {
+        // If no cache exists, create initial data with just the new consumer
+        return {
+          data: [newConsumer],
+          pagination: {
+            currentPage: 1,
+            pageSize: ADMIN_CONFIG.ITEMS_PER_PAGE,
+            totalItems: 1,
+            totalPages: 1,
+          },
+        };
+      }
+
+      // Add new consumer to the beginning of the list
+      const updatedData = {
+        ...prevData,
+        data: [newConsumer, ...prevData.data.slice(0, -1)], // Add at top, remove last if exceeds limit
+        pagination: {
+          ...prevData.pagination,
+          totalItems: prevData.pagination.totalItems + 1,
+          totalPages: Math.ceil(
+            (prevData.pagination.totalItems + 1) / ADMIN_CONFIG.ITEMS_PER_PAGE,
+          ),
+        },
+      };
+
+      return updatedData;
+    });
+  }, []);
+
+  /**
+   * Remove a deleted user from the cache
+   * This provides instant UI removal without re-fetching the entire list
+   */
+  const removeConsumerFromCache = useCallback((deletedConsumerId: string) => {
+    setConsumersDataCache((prevData) => {
+      if (!prevData) return prevData;
+
+      // Remove the deleted consumer from the list
+      const updatedData = {
+        ...prevData,
+        data: prevData.data.filter(
+          (consumer) => consumer.id !== deletedConsumerId,
+        ),
+        pagination: {
+          ...prevData.pagination,
+          totalItems: Math.max(0, prevData.pagination.totalItems - 1),
+          totalPages: Math.max(
+            1,
+            Math.ceil(
+              (prevData.pagination.totalItems - 1) /
+                ADMIN_CONFIG.ITEMS_PER_PAGE,
+            ),
+          ),
+        },
+      };
+
+      return updatedData;
+    });
+  }, []);
+
+  // Memoized mutation callbacks to ensure stable references
+  const handleCreateConsumerSuccess = useCallback(
+    (newConsumer: AdminUser) => {
+      // Optimistic update: add new consumer to the top of the table
+      addConsumerToCache(newConsumer);
       toast.success('Consumer account created successfully!');
       setIsFormOpen(false);
       setSelectedConsumer(null);
-      setCurrentPage(1);
+      // Don't reset to page 1 - keep user on current page to see the new user at top
     },
-    (err) => {
-      const errorMsg = extractErrorMessage(err);
-      toast.error(`Failed to create consumer: ${errorMsg}`);
-      console.error('Error creating consumer:', err);
-    },
+    [addConsumerToCache],
   );
 
-  const updateConsumerMutation = useUpdateConsumer(
-    () => {
+  const handleCreateConsumerError = useCallback((err: string) => {
+    const errorMsg = extractErrorMessage(err);
+    toast.error(`Failed to create consumer: ${errorMsg}`);
+    console.error('Error creating consumer:', err);
+  }, []);
+
+  const handleUpdateConsumerSuccess = useCallback(
+    (updatedConsumer: AdminUser) => {
+      // Optimistic update: patch only the changed values in the table
+      // This updates the UI instantly without re-rendering the whole component
+      patchConsumerInCache(updatedConsumer);
+
       toast.success('Consumer account updated successfully!');
-      // Add small delay to ensure React has rendered all updates before closing modal
-      // This prevents phone number from flashing old value
-      setTimeout(() => {
-        setIsFormOpen(false);
-        setSelectedConsumer(null);
-        setCurrentPage(1);
-      }, 100);
+      // Close modal immediately without delay since data is already updated
+      setIsFormOpen(false);
+      setSelectedConsumer(null);
     },
-    (err) => {
-      const errorMsg = extractErrorMessage(err);
-      toast.error(`Failed to update consumer: ${errorMsg}`);
-      console.error('Error updating consumer:', err);
-    },
+    [patchConsumerInCache],
   );
 
-  const deleteConsumerMutation = useDeleteConsumer(
-    () => {
+  const handleUpdateConsumerError = useCallback((err: string) => {
+    const errorMsg = extractErrorMessage(err);
+    toast.error(`Failed to update consumer: ${errorMsg}`);
+    console.error('Error updating consumer:', err);
+  }, []);
+
+  const handleDeleteConsumerSuccess = useCallback(
+    (deletedConsumerId: string) => {
+      // Optimistic update: remove consumer from cache
+      removeConsumerFromCache(deletedConsumerId);
       toast.success('Consumer account deleted successfully!');
-      if (consumersData && consumersData.data.length === 1 && currentPage > 1) {
+      // Refetch or adjust current page
+      if (
+        consumersDataCache &&
+        consumersDataCache.data.length === 1 &&
+        currentPage > 1
+      ) {
         setCurrentPage(currentPage - 1);
       }
     },
-    (err) => {
-      const errorMsg = extractErrorMessage(err);
-      toast.error(`Failed to delete consumer: ${errorMsg}`);
-      console.error('Error deleting consumer:', err);
-    },
+    [consumersDataCache, currentPage, removeConsumerFromCache],
+  );
+
+  const handleDeleteConsumerError = useCallback((err: string) => {
+    const errorMsg = extractErrorMessage(err);
+    toast.error(`Failed to delete consumer: ${errorMsg}`);
+    console.error('Error deleting consumer:', err);
+  }, []);
+
+  // Mutations
+  const createConsumerMutation = useCreateConsumer(
+    handleCreateConsumerSuccess,
+    handleCreateConsumerError,
+  );
+
+  const updateConsumerMutation = useUpdateConsumer(
+    handleUpdateConsumerSuccess,
+    handleUpdateConsumerError,
+  );
+
+  const deleteConsumerMutation = useDeleteConsumer(
+    handleDeleteConsumerSuccess,
+    handleDeleteConsumerError,
   );
 
   const getChangedFields = (
@@ -207,7 +340,7 @@ export default function ConsumersTab() {
             Consumer Accounts
           </h2>
           <p className="mt-1 text-sm text-gray-600">
-            Total consumers: {consumersData?.pagination.totalItems || 0}
+            Total consumers: {consumersDataCache?.pagination.totalItems || 0}
           </p>
         </div>
         <Button
@@ -250,12 +383,13 @@ export default function ConsumersTab() {
       />
 
       <UsersTable
-        data={consumersData}
+        data={consumersDataCache}
         isLoading={isLoading}
         currentPage={currentPage}
         onPageChange={setCurrentPage}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onStatusChange={patchConsumerInCache}
         isSubmitting={isSubmitting}
       />
 

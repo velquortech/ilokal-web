@@ -28,6 +28,7 @@ interface UsersTableProps {
   onPageChange: (page: number) => void;
   onEdit: (user: AdminUser) => void;
   onDelete: (id: string) => void;
+  onStatusChange?: (updatedUser: AdminUser) => void;
   isSubmitting: boolean;
 }
 
@@ -38,6 +39,7 @@ export default function UsersTable({
   onPageChange,
   onEdit,
   onDelete,
+  onStatusChange,
   isSubmitting,
 }: UsersTableProps) {
   const [error, setError] = useState<string | null>(null);
@@ -64,10 +66,11 @@ export default function UsersTable({
       onDelete: (user) => {
         setDeleteConfirmation({ open: true, user });
       },
+      onStatusChange,
       onError: setError,
     };
     return createUsersTableColumns(columnsProps);
-  }, [currentPage, isSubmitting, onEdit]);
+  }, [currentPage, isSubmitting, onEdit, onStatusChange]);
 
   // Initialize table instance
   const table = useReactTable({

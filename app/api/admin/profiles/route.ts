@@ -1,5 +1,4 @@
 import { createServerSupabaseClient } from '@/config/server';
-import { createClient } from '@/config';
 import { NextRequest, NextResponse } from 'next/server';
 import { createPaginatedResponse } from '@/services/api/paginationService';
 import { verifyAdminAccess } from '@/lib/api/verifyAdminAccess';
@@ -128,88 +127,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const { authorized, error } = await verifyAdminAccess(request);
-    if (!authorized) return error;
-
-    const supabase = await createServerSupabaseClient();
-    const adminSupabase = await createClient();
-    const body = await request.json();
-
-    const { email, password, full_name, role, phone_number, avatar_url } = body;
-
-    // Validate required fields for user creation
-    if (!email || !password || !full_name || !role) {
-      return NextResponse.json(
-        {
-          message: 'Missing required fields: email, password, full_name, role',
-        },
-        { status: 400 },
-      );
-    }
-
-    // Create auth user first with admin client
-    const { data: authData, error: authError } =
-      await adminSupabase.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true, // Auto-confirm email
-      });
-
-    if (authError) {
-      return NextResponse.json({ message: authError.message }, { status: 400 });
-    }
-
-    if (!authData.user) {
-      return NextResponse.json(
-        { message: 'Failed to create auth user' },
-        { status: 400 },
-      );
-    }
-
-    // Create profile record
-    const profileData: Record<string, unknown> = {
-      id: authData.user.id,
-      email,
-      full_name,
-      role,
-      status: 'active',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    if (phone_number) {
-      profileData.phone_number = phone_number;
-    }
-
-    if (avatar_url) {
-      profileData.avatar_url = avatar_url;
-    }
-
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .insert(profileData)
-      .select()
-      .single();
-
-    if (profileError) {
-      // Clean up auth user if profile creation fails
-      await adminSupabase.auth.admin.deleteUser(authData.user.id).catch(() => {
-        // Silently ignore cleanup errors
-      });
-      return NextResponse.json(
-        { message: profileError.message },
-        { status: 400 },
-      );
-    }
-
-    return NextResponse.json(profile, { status: 201 });
-  } catch (error) {
-    console.error('Profile creation error:', error);
-    return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 },
-    );
-  }
-}
+/**
+ * NOTE: POST/PUT/DELETE mutations are handled via Server Actions in `/app/admin/actions.ts`
+ * This endpoint is read-only for data fetching only.
+ * Server Actions provide better security context and error handling for mutations.
+ */

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { AdminUser } from '@/lib/types/admin';
+import { Profile } from '@/lib/types/user';
 import { extractErrorMessage } from '@/lib/utils/errorHandler';
 import { UserFormData } from '@/app/admin/schemas/userFormSchema';
 import { UserFormModal } from '../../../components/forms';
@@ -104,9 +105,8 @@ export default function AdminTab() {
       console.error('Error deleting admin:', err);
     },
   );
-
   const getChangedFields = (
-    original: Profile,
+    original: AdminUser,
     formData: UserFormData,
   ): Record<string, unknown> => {
     const changes: Record<string, unknown> = {};
@@ -142,13 +142,10 @@ export default function AdminTab() {
           return;
         }
 
-        await updateAdminMutation.mutateAsync({
-          id: selectedAdmin.id,
-          changes: changedFields,
-        });
+        updateAdminMutation.mutate(selectedAdmin.id, changedFields);
       } else {
         // Create mode
-        await createAdminMutation.mutateAsync(formData);
+        createAdminMutation.mutate(formData);
       }
     } catch (err) {
       // Error is already handled by mutation callbacks
@@ -156,15 +153,15 @@ export default function AdminTab() {
     }
   };
 
-  const handleEdit = useCallback((admin: Profile) => {
+  const handleEdit = useCallback((admin: AdminUser) => {
     setSelectedAdmin(admin);
     setIsFormOpen(true);
   }, []);
 
   const handleDelete = useCallback(
-    async (id: string) => {
+    (id: string) => {
       try {
-        await deleteAdminMutation.mutateAsync(id);
+        deleteAdminMutation.mutate(id);
       } catch {
         // Error is already handled by mutation callbacks
         console.error('Error deleting admin');
@@ -186,15 +183,7 @@ export default function AdminTab() {
     createAdminMutation.isPending ||
     updateAdminMutation.isPending ||
     deleteAdminMutation.isPending;
-  const error = fetchError
-    ? extractErrorMessage(fetchError)
-    : createAdminMutation.error
-      ? extractErrorMessage(createAdminMutation.error)
-      : updateAdminMutation.error
-        ? extractErrorMessage(updateAdminMutation.error)
-        : deleteAdminMutation.error
-          ? extractErrorMessage(deleteAdminMutation.error)
-          : null;
+  const error = fetchError ? extractErrorMessage(fetchError) : null;
 
   if (!isAdmin) {
     return (
@@ -276,13 +265,7 @@ export default function AdminTab() {
         }}
         onSubmit={handleCreateAdmin}
         userType="admin"
-        error={
-          createAdminMutation.error
-            ? extractErrorMessage(createAdminMutation.error)
-            : updateAdminMutation.error
-              ? extractErrorMessage(updateAdminMutation.error)
-              : null
-        }
+        error={null}
         initialData={
           selectedAdmin
             ? {

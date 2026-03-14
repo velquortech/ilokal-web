@@ -1,6 +1,4 @@
 'use client';
-
-import React from 'react';
 import { HeaderGroup } from '@tanstack/react-table';
 import { TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { flexRender } from '@tanstack/react-table';

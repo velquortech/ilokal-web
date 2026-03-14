@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import userService from '@/services/api/userService';
 import { UserRole, Profile } from '@/lib/types/user';
 import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
@@ -37,7 +37,8 @@ export function useProfilesByRole(
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchProfiles = async () => {
+  // Memoized fetch function to prevent recreation on every render
+  const fetchProfiles = useCallback(async () => {
     if (!enabled) return;
 
     setIsLoading(true);
@@ -56,17 +57,19 @@ export function useProfilesByRole(
       );
       setData(result);
     } catch (err) {
-      setError(
-        err instanceof Error ? err : new Error('Failed to fetch profiles'),
-      );
+      const error =
+        err instanceof Error ? err : new Error('Failed to fetch profiles');
+      setError(error);
+      console.error('Error fetching profiles:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [role, page, limit, enabled, searchQuery, statusFilter, sortOrder]);
 
+  // Use effect with proper dependency management
   useEffect(() => {
     fetchProfiles();
-  }, [role, page, limit, searchQuery, statusFilter, sortOrder, enabled]);
+  }, [fetchProfiles]);
 
   return {
     data,

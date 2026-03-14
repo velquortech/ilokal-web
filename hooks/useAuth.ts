@@ -1,46 +1,43 @@
+'use client';
+
+import { useTransition, useCallback } from 'react';
 import { useAuthStore } from '@/services/stores/authStore';
 import { useRouter } from 'next/navigation';
-import { useCallback } from 'react';
-import authService from '@/services/api/authService';
+import { logoutAction } from '@/app/(auth)/actions';
 import { ROUTES } from '@/config/routeConfig';
 
 export function useAuth() {
   const router = useRouter();
-  const {
-    user,
-    isLoading,
-    isAuthenticated,
-    error,
-    setUser,
-    setIsLoading,
-    setError,
-    logout: zustandLogout,
-    clearError,
-  } = useAuthStore((state) => state);
+  const [isPending, startTransition] = useTransition();
+  const { user, isAuthenticated, setUser, setError, clearError } = useAuthStore(
+    (state) => state,
+  );
 
-  const logout = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      await authService.logout();
-      zustandLogout();
-      router.push(ROUTES.AUTH.LOGIN);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to logout';
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [setIsLoading, zustandLogout, router, setError]);
+  // Use useTransition for better server action handling
+  const logout = useCallback(() => {
+    startTransition(async () => {
+      try {
+        // Clear Zustand store on client side
+        useAuthStore.getState().logout();
+        // Execute server action to clear session
+        await logoutAction();
+        // Redirect after successful logout
+        router.push(ROUTES.AUTH.LOGIN);
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Failed to logout';
+        setError(errorMessage);
+      }
+    });
+  }, [router, setError]);
 
   return {
     user,
-    isLoading,
     isAuthenticated,
-    error,
     setUser,
     setError,
     clearError,
     logout,
+    isLoading: isPending,
   };
 }

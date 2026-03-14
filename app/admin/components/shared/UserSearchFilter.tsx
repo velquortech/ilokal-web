@@ -22,8 +22,6 @@ export function UserSearchFilter({
   onSearchChange,
   statusFilter,
   onStatusFilterChange,
-  sortOrder,
-  onSortOrderChange,
   onReset,
   hasActiveFilters,
 }: UserSearchFilterProps) {
@@ -78,28 +76,6 @@ export function UserSearchFilter({
           </select>
         </div>
 
-        {/* Sort Filter Dropdown */}
-        <div className="md:w-48">
-          <label
-            htmlFor="sort-filter"
-            className="mb-1 block text-sm font-medium text-gray-700"
-          >
-            Sort by
-          </label>
-          <select
-            id="sort-filter"
-            value={sortOrder}
-            onChange={(e) =>
-              onSortOrderChange(e.target.value as 'latest' | 'oldest')
-            }
-            suppressHydrationWarning
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-          >
-            <option value="latest">Latest</option>
-            <option value="oldest">Oldest</option>
-          </select>
-        </div>
-
         {/* Reset Button */}
         {hasActiveFilters && (
           <Button variant="outline" onClick={onReset} className="gap-2">
@@ -118,9 +94,6 @@ export function UserSearchFilter({
           )}
           {statusFilter !== 'all' && (
             <span className="ml-2 font-medium">Status: {statusFilter}</span>
-          )}
-          {sortOrder !== 'latest' && (
-            <span className="ml-2 font-medium">Sort: {sortOrder}</span>
           )}
         </div>
       )}

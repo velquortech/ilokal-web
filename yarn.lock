@@ -1487,21 +1487,9 @@
   dependencies:
     remove-accents "0.5.0"
 
-"@tanstack/query-core@5.90.20":
-  version "5.90.20"
-  resolved "https://registry.npmjs.org/@tanstack/query-core/-/query-core-5.90.20.tgz"
-  integrity sha512-OMD2HLpNouXEfZJWcKeVKUgQ5n+n3A2JFmBaScpNDUqSrQSjiveC7dKMe53uJUg1nDG16ttFPz2xfilz6i2uVg==
-
-"@tanstack/react-query@^5.90.21":
-  version "5.90.21"
-  resolved "https://registry.npmjs.org/@tanstack/react-query/-/react-query-5.90.21.tgz"
-  integrity sha512-0Lu6y5t+tvlTJMTO7oh5NSpJfpg/5D41LlThfepTixPYkJ0sE2Jj0m0f6yYqujBwIXlId87e234+MxG3D3g7kg==
-  dependencies:
-    "@tanstack/query-core" "5.90.20"
-
 "@tanstack/react-table@^8.21.3":
   version "8.21.3"
-  resolved "https://registry.npmjs.org/@tanstack/react-table/-/react-table-8.21.3.tgz"
+  resolved "https://registry.yarnpkg.com/@tanstack/react-table/-/react-table-8.21.3.tgz#2c38c747a5731c1a07174fda764b9c2b1fb5e91b"
   integrity sha512-5nNMTSETP4ykGegmVkhjcS8tTLW6Vl4axfEGQN3v0zdHYbK4UfoqfPChclTrJ4EoK9QynqAu9oUf8VEmrpZ5Ww==
   dependencies:
     "@tanstack/table-core" "8.21.3"
@@ -4093,11 +4081,7 @@ react-dom@19.2.3:
 
 react-hook-form@^7.71.2:
   version "7.71.2"
-<<<<<<< HEAD
-  resolved "https://registry.npmjs.org/react-hook-form/-/react-hook-form-7.71.2.tgz"
-=======
   resolved "https://registry.yarnpkg.com/react-hook-form/-/react-hook-form-7.71.2.tgz#a5f1d2b855be9ecf1af6e74df9b80f54beae7e35"
->>>>>>> origin
   integrity sha512-1CHvcDYzuRUNOflt4MOq3ZM46AronNJtQ1S7tnX6YN4y72qhgiUItpacZUAQ0TyWYci3yz1X+rXaSxiuEm86PA==
 
 react-intersection-observer@^10.0.2:

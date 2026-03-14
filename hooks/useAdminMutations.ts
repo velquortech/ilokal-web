@@ -1,8 +1,9 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useTransition, useCallback } from 'react';
 import { UserFormData } from '@/app/admin/schemas/userFormSchema';
 import { AdminUpdateUserInput } from '@/services/api/userService';
+import { AdminUser } from '@/lib/types/admin';
 import {
   createAdminAction,
   updateAdminAction,
@@ -15,275 +16,284 @@ import {
   updateBusinessOwnerAction,
   deleteBusinessOwnerAction,
 } from '@/app/admin/actions';
-import { Profile } from '@/lib/types/user';
 
-// ✅ Use Create Admin Hook
+/**
+ * Create mutations hook with typed action function
+ */
 export function useCreateAdmin(
   onSuccess?: () => void,
   onError?: (err: string) => void,
 ) {
   const [isPending, startTransition] = useTransition();
 
-  const mutate = (data: UserFormData) => {
-    startTransition(async () => {
-      const result = await createAdminAction({
-        email: data.email,
-        password: data.password,
-        full_name: data.full_name,
-        phone_number: data.phone_number,
-        avatar_url: data.avatar_url,
-        role: 'admin',
+  const mutate = useCallback(
+    (data: UserFormData) => {
+      startTransition(async () => {
+        const result = await createAdminAction({
+          email: data.email,
+          password: data.password,
+          full_name: data.full_name,
+          phone_number: data.phone_number,
+          avatar_url: data.avatar_url,
+          role: 'admin',
+        });
+
+        if (result.success) {
+          onSuccess?.();
+        } else {
+          onError?.(result.error || 'Failed to create admin');
+        }
       });
+    },
+    [onSuccess, onError],
+  );
 
-      if (result.success) {
-        onSuccess?.();
-      } else {
-        onError?.(result.error || 'Failed to create admin');
-      }
-    });
-  };
-
-  return {
-    mutate,
-    isPending,
-  };
+  return { mutate, isPending };
 }
 
-// ✅ Use Update Admin Hook
+/**
+ * Update mutations hook with typed action function
+ */
 export function useUpdateAdmin(
-  onSuccess?: (profile: Profile) => void,
+  onSuccess?: (profile: AdminUser) => void,
   onError?: (err: string) => void,
 ) {
   const [isPending, startTransition] = useTransition();
 
-  const mutate = (id: string, changes: AdminUpdateUserInput) => {
-    startTransition(async () => {
-      const result = await updateAdminAction(id, changes);
+  const mutate = useCallback(
+    (id: string, changes: AdminUpdateUserInput) => {
+      startTransition(async () => {
+        const result = await updateAdminAction(id, changes);
 
-      if (result.success) {
-        onSuccess?.(result.data as Profile);
-      } else {
-        onError?.(result.error || 'Failed to update admin');
-      }
-    });
-  };
+        if (result.success && result.data) {
+          onSuccess?.(result.data);
+        } else {
+          onError?.(result.error || 'Failed to update admin');
+        }
+      });
+    },
+    [onSuccess, onError],
+  );
 
-  return {
-    mutate,
-    isPending,
-  };
+  return { mutate, isPending };
 }
 
-// ✅ Use Delete Admin Hook
+/**
+ * Delete mutations hook
+ */
 export function useDeleteAdmin(
   onSuccess?: (id: string) => void,
   onError?: (err: string) => void,
 ) {
   const [isPending, startTransition] = useTransition();
 
-  const mutate = (id: string) => {
-    startTransition(async () => {
-      const result = await deleteAdminAction(id);
+  const mutate = useCallback(
+    (id: string) => {
+      startTransition(async () => {
+        const result = await deleteAdminAction(id);
 
-      if (result.success) {
-        onSuccess?.(id);
-      } else {
-        onError?.(result.error || 'Failed to delete admin');
-      }
-    });
-  };
+        if (result.success) {
+          onSuccess?.(id);
+        } else {
+          onError?.(result.error || 'Failed to delete admin');
+        }
+      });
+    },
+    [onSuccess, onError],
+  );
 
-  return {
-    mutate,
-    isPending,
-  };
+  return { mutate, isPending };
 }
 
-// ✅ Use Update Admin Status Hook
+/**
+ * Status update hook
+ */
 export function useUpdateAdminStatus(
-  onSuccess?: (data: Profile) => void,
+  onSuccess?: (data: AdminUser) => void,
   onError?: (err: string) => void,
 ) {
   const [isPending, startTransition] = useTransition();
 
-  const mutate = (id: string, status: 'active' | 'inactive' | 'suspended') => {
-    startTransition(async () => {
-      const result = await updateAdminStatusAction(id, status);
+  const mutate = useCallback(
+    (id: string, status: 'active' | 'inactive' | 'suspended') => {
+      startTransition(async () => {
+        const result = await updateAdminStatusAction(id, status);
 
-      if (result.success) {
-        onSuccess?.(result.data as Profile);
-      } else {
-        onError?.(result.error || 'Failed to update admin status');
-      }
-    });
-  };
+        if (result.success && result.data) {
+          onSuccess?.(result.data);
+        } else {
+          onError?.(result.error || 'Failed to update admin status');
+        }
+      });
+    },
+    [onSuccess, onError],
+  );
 
-  return {
-    mutate,
-    isPending,
-  };
+  return { mutate, isPending };
 }
 
-// ✅ Use Create Consumer Hook
+// ============================================================================
+// CONSUMER MUTATIONS
+// ============================================================================
+
 export function useCreateConsumer(
   onSuccess?: () => void,
   onError?: (err: string) => void,
 ) {
   const [isPending, startTransition] = useTransition();
 
-  const mutate = (data: UserFormData) => {
-    startTransition(async () => {
-      const result = await createConsumerAction({
-        email: data.email,
-        password: data.password,
-        full_name: data.full_name,
-        phone_number: data.phone_number,
-        avatar_url: data.avatar_url,
-        role: 'app_user',
+  const mutate = useCallback(
+    (data: UserFormData) => {
+      startTransition(async () => {
+        const result = await createConsumerAction({
+          email: data.email,
+          password: data.password,
+          full_name: data.full_name,
+          phone_number: data.phone_number,
+          avatar_url: data.avatar_url,
+          role: 'app_user',
+        });
+
+        if (result.success) {
+          onSuccess?.();
+        } else {
+          onError?.(result.error || 'Failed to create consumer');
+        }
       });
+    },
+    [onSuccess, onError],
+  );
 
-      if (result.success) {
-        onSuccess?.();
-      } else {
-        onError?.(result.error || 'Failed to create consumer');
-      }
-    });
-  };
-
-  return {
-    mutate,
-    isPending,
-  };
+  return { mutate, isPending };
 }
 
-// ✅ Use Update Consumer Hook
 export function useUpdateConsumer(
-  onSuccess?: (profile: Profile) => void,
+  onSuccess?: (profile: AdminUser) => void,
   onError?: (err: string) => void,
 ) {
   const [isPending, startTransition] = useTransition();
 
-  const mutate = (id: string, changes: AdminUpdateUserInput) => {
-    startTransition(async () => {
-      const result = await updateConsumerAction(id, changes);
+  const mutate = useCallback(
+    (id: string, changes: AdminUpdateUserInput) => {
+      startTransition(async () => {
+        const result = await updateConsumerAction(id, changes);
 
-      if (result.success) {
-        onSuccess?.(result.data as Profile);
-      } else {
-        onError?.(result.error || 'Failed to update consumer');
-      }
-    });
-  };
+        if (result.success && result.data) {
+          onSuccess?.(result.data);
+        } else {
+          onError?.(result.error || 'Failed to update consumer');
+        }
+      });
+    },
+    [onSuccess, onError],
+  );
 
-  return {
-    mutate,
-    isPending,
-  };
+  return { mutate, isPending };
 }
 
-// ✅ Use Delete Consumer Hook
 export function useDeleteConsumer(
   onSuccess?: (id: string) => void,
   onError?: (err: string) => void,
 ) {
   const [isPending, startTransition] = useTransition();
 
-  const mutate = (id: string) => {
-    startTransition(async () => {
-      const result = await deleteConsumerAction(id);
+  const mutate = useCallback(
+    (id: string) => {
+      startTransition(async () => {
+        const result = await deleteConsumerAction(id);
 
-      if (result.success) {
-        onSuccess?.(id);
-      } else {
-        onError?.(result.error || 'Failed to delete consumer');
-      }
-    });
-  };
+        if (result.success) {
+          onSuccess?.(id);
+        } else {
+          onError?.(result.error || 'Failed to delete consumer');
+        }
+      });
+    },
+    [onSuccess, onError],
+  );
 
-  return {
-    mutate,
-    isPending,
-  };
+  return { mutate, isPending };
 }
 
-// ✅ Use Create Business Owner Hook
+// ============================================================================
+// BUSINESS OWNER MUTATIONS
+// ============================================================================
+
 export function useCreateBusinessOwner(
   onSuccess?: () => void,
   onError?: (err: string) => void,
 ) {
   const [isPending, startTransition] = useTransition();
 
-  const mutate = (data: UserFormData) => {
-    startTransition(async () => {
-      const result = await createBusinessOwnerAction({
-        email: data.email,
-        password: data.password,
-        full_name: data.full_name,
-        phone_number: data.phone_number,
-        avatar_url: data.avatar_url,
-        role: 'business_owner',
+  const mutate = useCallback(
+    (data: UserFormData) => {
+      startTransition(async () => {
+        const result = await createBusinessOwnerAction({
+          email: data.email,
+          password: data.password,
+          full_name: data.full_name,
+          phone_number: data.phone_number,
+          avatar_url: data.avatar_url,
+          role: 'business_owner',
+        });
+
+        if (result.success) {
+          onSuccess?.();
+        } else {
+          onError?.(result.error || 'Failed to create business owner');
+        }
       });
+    },
+    [onSuccess, onError],
+  );
 
-      if (result.success) {
-        onSuccess?.();
-      } else {
-        onError?.(result.error || 'Failed to create business owner');
-      }
-    });
-  };
-
-  return {
-    mutate,
-    isPending,
-  };
+  return { mutate, isPending };
 }
 
-// ✅ Use Update Business Owner Hook
 export function useUpdateBusinessOwner(
-  onSuccess?: (profile: Profile) => void,
+  onSuccess?: (profile: AdminUser) => void,
   onError?: (err: string) => void,
 ) {
   const [isPending, startTransition] = useTransition();
 
-  const mutate = (id: string, changes: AdminUpdateUserInput) => {
-    startTransition(async () => {
-      const result = await updateBusinessOwnerAction(id, changes);
+  const mutate = useCallback(
+    (id: string, changes: AdminUpdateUserInput) => {
+      startTransition(async () => {
+        const result = await updateBusinessOwnerAction(id, changes);
 
-      if (result.success) {
-        onSuccess?.(result.data as Profile);
-      } else {
-        onError?.(result.error || 'Failed to update business owner');
-      }
-    });
-  };
+        if (result.success && result.data) {
+          onSuccess?.(result.data);
+        } else {
+          onError?.(result.error || 'Failed to update business owner');
+        }
+      });
+    },
+    [onSuccess, onError],
+  );
 
-  return {
-    mutate,
-    isPending,
-  };
+  return { mutate, isPending };
 }
 
-// ✅ Use Delete Business Owner Hook
 export function useDeleteBusinessOwner(
   onSuccess?: (id: string) => void,
   onError?: (err: string) => void,
 ) {
   const [isPending, startTransition] = useTransition();
 
-  const mutate = (id: string) => {
-    startTransition(async () => {
-      const result = await deleteBusinessOwnerAction(id);
+  const mutate = useCallback(
+    (id: string) => {
+      startTransition(async () => {
+        const result = await deleteBusinessOwnerAction(id);
 
-      if (result.success) {
-        onSuccess?.(id);
-      } else {
-        onError?.(result.error || 'Failed to delete business owner');
-      }
-    });
-  };
+        if (result.success) {
+          onSuccess?.(id);
+        } else {
+          onError?.(result.error || 'Failed to delete business owner');
+        }
+      });
+    },
+    [onSuccess, onError],
+  );
 
-  return {
-    mutate,
-    isPending,
-  };
+  return { mutate, isPending };
 }

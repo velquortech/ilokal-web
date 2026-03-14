@@ -25,7 +25,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from 'lucide-react';
-import { Profile } from '@/lib/types/user';
+import { AdminUser } from '@/lib/types/admin';
 import { PaginatedResponse } from '@/services/api/paginationService';
 import { AvatarImage } from '@/components/custom/AvatarImage';
 import { StatusDropdown } from '../forms/fields/StatusDropdown';
@@ -33,11 +33,11 @@ import { getTimeAgo } from '@/lib/utils/dateFormatter';
 import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
 
 interface UsersTableProps {
-  data: PaginatedResponse<Profile> | null | undefined;
+  data: PaginatedResponse<AdminUser> | null | undefined;
   isLoading: boolean;
   currentPage: number;
   onPageChange: (page: number) => void;
-  onEdit: (user: Profile) => void;
+  onEdit: (user: AdminUser) => void;
   onDelete: (id: string) => void;
   isSubmitting: boolean;
 }
@@ -54,7 +54,7 @@ export default function UsersTable({
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     open: boolean;
-    user: Profile | null;
+    user: AdminUser | null;
   }>({
     open: false,
     user: null,

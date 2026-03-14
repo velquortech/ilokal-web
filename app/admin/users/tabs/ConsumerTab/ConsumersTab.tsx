@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { Profile } from '@/lib/types/user';
+import { AdminUser } from '@/lib/types/admin';
 import { extractErrorMessage } from '@/lib/utils/errorHandler';
 import { UserFormData } from '@/app/admin/schemas/userFormSchema';
 import { UserFormModal } from '../../../components/forms';
@@ -21,7 +21,7 @@ import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
 export default function ConsumersTab() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const [selectedConsumer, setSelectedConsumer] = useState<Profile | null>(
+  const [selectedConsumer, setSelectedConsumer] = useState<AdminUser | null>(
     null,
   );
   const [isFormOpen, setIsFormOpen] = useState(false);

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Table as UITable } from '@/components/ui/table';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {

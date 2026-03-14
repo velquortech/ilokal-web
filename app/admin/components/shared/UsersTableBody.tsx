@@ -1,6 +1,4 @@
 'use client';
-
-import React from 'react';
 import { Row } from '@tanstack/react-table';
 import { TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { flexRender } from '@tanstack/react-table';

@@ -20,6 +20,7 @@ export interface UsersTableColumnsProps {
   isSubmitting: boolean;
   onEdit: (user: AdminUser) => void;
   onDelete: (user: AdminUser) => void;
+  onStatusChange?: (updatedUser: AdminUser) => void;
   onError: (error: string | null) => void;
 }
 
@@ -28,6 +29,7 @@ export const createUsersTableColumns = ({
   isSubmitting,
   onEdit,
   onDelete,
+  onStatusChange,
   onError,
 }: UsersTableColumnsProps) => [
   columnHelper.display({
@@ -87,6 +89,16 @@ export const createUsersTableColumns = ({
       ),
     enableSorting: true,
   }),
+  columnHelper.accessor('phone_number', {
+    header: 'Phone',
+    cell: (info) =>
+      React.createElement(
+        'span',
+        { className: 'text-sm text-gray-600' },
+        info.getValue() || '-',
+      ),
+    enableSorting: true,
+  }),
   columnHelper.accessor('created_at', {
     header: 'Created',
     cell: (info) =>
@@ -113,6 +125,7 @@ export const createUsersTableColumns = ({
     cell: (info) =>
       React.createElement(StatusDropdown, {
         admin: info.row.original,
+        onStatusChange,
         onError,
       }),
     enableSorting: false,
@@ -201,6 +214,7 @@ export const createUsersTableColumns = ({
 export const columnNames: Record<string, string> = {
   full_name: 'Name',
   email: 'Email',
+  phone_number: 'Phone',
   created_at: 'Created',
   updated_at: 'Updated',
   status: 'Status',

@@ -37,7 +37,6 @@ export function UsersTableColumnVisibility({
                 onClick={() => column.toggleVisibility()}
                 className="gap-2"
                 aria-label={`Toggle ${displayName} column visibility`}
-                title={`${column.getIsVisible() ? 'Hide' : 'Show'} ${displayName}`}
               >
                 {column.getIsVisible() ? (
                   <Eye className="h-4 w-4" />

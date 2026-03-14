@@ -37,7 +37,7 @@ export default function SignupForm() {
   } = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
-      role: 'user',
+      role: 'app_user',
     },
   });
 
@@ -157,17 +157,17 @@ export default function SignupForm() {
                         className="flex cursor-pointer items-start space-x-4 rounded-lg border-2 border-slate-200 p-4 transition-all hover:border-slate-300 hover:bg-slate-50"
                         style={{
                           borderColor:
-                            field.value === 'user'
+                            field.value === 'app_user'
                               ? 'rgb(0, 0, 0)'
                               : 'rgb(226, 232, 240)',
                           backgroundColor:
-                            field.value === 'user'
+                            field.value === 'app_user'
                               ? 'rgb(245, 245, 245)'
                               : undefined,
                         }}
                       >
                         <RadioGroupItem
-                          value="user"
+                          value="app_user"
                           id="customer"
                           className="mt-1"
                         />

@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     const offset = (validPage - 1) * validLimit;
 
     // Validate role parameter if provided
-    const validRoles = ['admin', 'business_owner', 'user'];
+    const validRoles = ['admin', 'business_owner', 'app_user'];
     if (role && !validRoles.includes(role)) {
       return NextResponse.json(
         { message: 'Invalid role parameter' },

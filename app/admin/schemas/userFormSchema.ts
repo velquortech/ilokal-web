@@ -6,7 +6,7 @@ export const userFormSchema = z
     full_name: z.string().min(1, 'Full name is required'),
     password: z.string().min(8, 'Password must be at least 8 characters'),
     confirm_password: z.string(),
-    role: z.enum(['admin', 'business_owner', 'user'] as const),
+    role: z.enum(['admin', 'business_owner', 'app_user'] as const),
     status: z.enum(['active', 'inactive', 'suspended'] as const).optional(),
     phone_number: z
       .string()

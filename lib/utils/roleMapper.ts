@@ -4,7 +4,8 @@ export const getRoleFromUserType = (userType: string): UserRole => {
   const roleMap: Record<string, UserRole> = {
     admin: 'admin',
     business_owner: 'business_owner',
-    user: 'user',
+    app_user: 'app_user',
+    user: 'app_user', // Legacy support
   };
-  return roleMap[userType] || 'user';
+  return roleMap[userType] || 'app_user';
 };

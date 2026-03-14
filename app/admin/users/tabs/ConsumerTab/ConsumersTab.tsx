@@ -52,7 +52,7 @@ export default function ConsumersTab() {
     data: consumersData,
     isLoading,
     error: fetchError,
-  } = useProfilesByRole('user', {
+  } = useProfilesByRole('app_user', {
     page: currentPage,
     limit: ADMIN_CONFIG.ITEMS_PER_PAGE,
     searchQuery: debouncedSearchQuery,

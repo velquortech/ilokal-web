@@ -2,13 +2,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Profile } from '@/lib/types/user';
 import { useAdminStore } from '@/services/stores/adminStore';
-import userService from '@/services/api/userService';
-import { PaginatedResponse } from '@/services/api/paginationService';
-import { extractErrorMessage } from '@/lib/utils/errorHandler';
+import { useUpdateAdminStatus } from '@/hooks/useAdminMutations';
 import { StatusBadge } from './StatusBadge';
 import { Loader2, ChevronDown } from 'lucide-react';
 
@@ -31,10 +28,22 @@ export function StatusDropdown({
 }: StatusDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
-  const [isUpdating, setIsUpdating] = useState(false);
+
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const queryClient = useQueryClient();
   const { setUpdatingId } = useAdminStore();
+
+  const { mutate, isPending } = useUpdateAdminStatus(
+    (updatedProfile) => {
+      toast.success(`Status updated to ${updatedProfile.status}`);
+      onStatusChange?.(updatedProfile);
+      setUpdatingId(null);
+    },
+    (error) => {
+      toast.error(`Failed to update status: ${error}`);
+      onError?.(error);
+      setUpdatingId(null);
+    },
+  );
 
   useEffect(() => {
     if (isOpen && buttonRef.current) {
@@ -46,65 +55,17 @@ export function StatusDropdown({
     }
   }, [isOpen]);
 
-  // Helper to optimistically update the profile status in all matching query caches
-  const updateCachedStatus = (
-    newStatus: 'active' | 'inactive' | 'suspended',
-  ) => {
-    queryClient.setQueriesData<PaginatedResponse<Profile>>(
-      { queryKey: ['profiles'] },
-      (oldData) => {
-        if (!oldData) return oldData;
-        return {
-          ...oldData,
-          data: oldData.data.map((profile) =>
-            profile.id === admin.id
-              ? {
-                  ...profile,
-                  status: newStatus,
-                  updated_at: new Date().toISOString(),
-                }
-              : profile,
-          ),
-        };
-      },
-    );
-  };
-
-  const handleStatusChange = async (
+  const handleStatusChange = (
     newStatus: 'active' | 'inactive' | 'suspended',
   ) => {
     if (newStatus === admin.status) {
       setIsOpen(false);
       return;
     }
-
-    const previousStatus = admin.status;
     setIsOpen(false);
-    setIsUpdating(true);
     setUpdatingId(admin.id);
 
-    // Optimistically update the cache immediately — row stays in place
-    updateCachedStatus(newStatus);
-
-    try {
-      const updated = await userService.adminUpdateProfile(admin.id, {
-        status: newStatus,
-      });
-
-      toast.success(`Status updated to ${newStatus}`);
-      onStatusChange?.(updated);
-    } catch (err) {
-      // Revert optimistic update on failure
-      updateCachedStatus(previousStatus);
-
-      const errorMessage = extractErrorMessage(err);
-      toast.error(`Failed to update status: ${errorMessage}`);
-      onError?.(errorMessage);
-      console.error('Error updating status:', err);
-    } finally {
-      setIsUpdating(false);
-      setUpdatingId(null);
-    }
+    mutate(admin.id, newStatus);
   };
 
   return (
@@ -112,11 +73,11 @@ export function StatusDropdown({
       <button
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
-        disabled={isUpdating}
+        disabled={isPending}
         className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 transition-all duration-200 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
         title="Click to change status"
       >
-        {isUpdating ? (
+        {isPending ? (
           <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
         ) : (
           <>
@@ -133,7 +94,7 @@ export function StatusDropdown({
       </button>
 
       {isOpen &&
-        !isUpdating &&
+        !isPending &&
         createPortal(
           <>
             <div

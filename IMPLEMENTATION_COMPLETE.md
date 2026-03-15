@@ -1,8 +1,127 @@
 # 🎉 Authentication & Security Implementation Complete
 
-> Last Updated: March 6, 2026
-> Status: Production-Ready ✅
-> Folder Structure: Reorganized & Documented ✅
+> Last Updated: March 15, 2026  
+> Status: **Modernized with useActionState & React Context** ✅  
+> Auth Pattern: Server Actions + useActionState + React Context  
+> Zustand: UI state only (no sensitive auth data)
+
+---
+
+## 🔄 Recent Modernization (March 15, 2026)
+
+### What Changed
+
+#### **1. Form Submission Pattern: useTransition → useActionState**
+
+**Before:**
+
+```tsx
+const [isPending, startTransition] = useTransition();
+const handleSubmit = (data) => startTransition(() => loginAction(data));
+```
+
+**After:**
+
+```tsx
+const [state, formAction, isPending] = useActionState(
+  handleLogin,
+  initialState,
+);
+// form action={formAction}
+```
+
+**Benefits:**
+
+- Automatic form state management
+- Cleaner separation of concerns
+- Server returns form state (errors, messages)
+- Better UX integration
+
+#### **2. Auth State Management: Zustand → React Context + Server Components**
+
+**Before:**
+
+```tsx
+// userStore stored user, isAuthenticated, isLoading, error
+const { user, setUser } = useAuthStore();
+```
+
+**After:**
+
+```tsx
+// User data passed as props from Server Components
+// useUser() hook via React Context (only in protected sections)
+const user = useUser();
+
+// Zustand only for UI state (filters, toggles, error messages)
+const { error, setError } = useAuthStore();
+```
+
+**Benefits:**
+
+- No sensitive auth data on client
+- Better SSR/SSG compatibility
+- Zustand only handles UI concerns
+- Clearer separation: Server = auth, Client = UI
+
+#### **3. Session Tracking: Zustand → localStorage**
+
+**Before:**
+
+```tsx
+// useSessionMonitor read user from Zustand
+const user = useAuthStore((state) => state.user);
+```
+
+**After:**
+
+```tsx
+// SessionTracker stores expiration in localStorage on mount
+localStorage.setItem('sessionExpiration', timestamp);
+
+// useSessionMonitor reads from localStorage (no Zustand dependency)
+const storedExpiration = localStorage.getItem('sessionExpiration');
+```
+
+**Benefits:**
+
+- Hook no longer depends on Zustand
+- Works even if user data isn't in Zustand
+- Proper separation of concerns
+
+#### **4. User Data Accessibility: useAuth → useUser + UserContext**
+
+**Before:**
+
+```tsx
+const { user, setUser } = useAuth(); // Returns everything
+```
+
+**After:**
+
+```tsx
+// In protected sections:
+const user = useUser(); // Via React Context
+
+// In any client component:
+const { logout } = useAuth(); // Only logout function
+```
+
+**Files Added:**
+
+- `components/SessionTracker.tsx` - Initializes session on mount
+- `providers/UserContext.tsx` - Provides user data via context
+
+**Files Modified:**
+
+- `components/auth/LoginForm.tsx` - Now uses useActionState
+- `components/auth/SignupForm.tsx` - Now uses useActionState
+- `hooks/useAuth.ts` - Now only exports logout
+- `hooks/useSessionMonitor.ts` - Uses localStorage instead of Zustand
+- `providers/AuthProvider.tsx` - Simplified to include SessionTracker
+- `services/stores/authStore.ts` - UI state only
+
+---
 
 ## Executive Summary
 
@@ -19,7 +138,7 @@ Ilokal-web now has a **complete, production-ready authentication system** featur
 
 ---
 
-## ✅ What Was Implemented
+## ✅ What Was Implemented (Core August 2025)
 
 ### 1. Server Actions Architecture
 
@@ -67,21 +186,21 @@ Ilokal-web now has a **complete, production-ready authentication system** featur
 
 #### LoginForm (components/auth/LoginForm.tsx)
 
-- ✅ Uses Server Action `loginAction()`
-- ✅ Uses `useTransition()` for pending state
-- ✅ Email/password validation
-- ✅ Error handling
-- ✅ Loading spinner
-- ✅ Role-based redirect
+- ✅ Uses Server Action `loginAction()` via `useActionState`
+- ✅ Server returns form state (errors, messages)
+- ✅ Email/password validation with Zod (server-side)
+- ✅ Error handling via state object
+- ✅ Loading spinner using isPending
+- ✅ Role-based redirect (redirectByRole)
 
 #### SignupForm (components/auth/SignupForm.tsx)
 
-- ✅ Uses Server Action `signupAction()`
+- ✅ Uses Server Action `signupAction()` via `useActionState`
 - ✅ Two-step form (role selection → details)
-- ✅ Input validation with Zod
+- ✅ Input validation with Zod (server-side)
 - ✅ Optional phone number
 - ✅ Success message before redirect
-- ✅ Activity detection integration
+- ✅ Form state managed by useActionState
 
 ### 4. Security Hardening
 

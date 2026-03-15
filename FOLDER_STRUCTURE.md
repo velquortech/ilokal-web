@@ -195,9 +195,10 @@ Reusable components used across the entire application.
 ```
 components/
 ├── auth/                       # Authentication-specific components
-│   ├── LoginForm.tsx           # Login form with validation
-│   ├── SignupForm.tsx          # Signup form with validation
-│   └── SessionWarningDialog.tsx # Session expiration dialog
+│   ├── LoginForm.tsx           # Login form with useActionState
+│   ├── SignupForm.tsx          # Signup form with useActionState
+│   ├── SessionWarningDialog.tsx # Session expiration dialog
+│   └── SessionTracker.tsx       # Initialize session from Supabase
 │
 ├── custom/                     # Custom branded components
 │   ├── Header.tsx              # Global header/navbar
@@ -213,8 +214,9 @@ components/
 │   └── ...
 │
 ├── providers/                  # React Context & Provider Wrappers
-│   ├── AuthProvider.tsx        # Auth context with Zustand
-│   └── QueryProvider.tsx       # TanStack React Query setup
+│   ├── AuthProvider.tsx        # Session monitoring + SessionTracker
+│   ├── UserContext.tsx         # Provides user data via React Context
+│   ├── QueryProvider.tsx       # TanStack React Query setup
 │   └── SonnerProvider.tsx       # Toast notification provider
 │
 ├── ui/                         # shadcn/ui & Radix UI components
@@ -269,7 +271,7 @@ Custom hooks for authentication, data fetching, and state management.
 
 ```
 hooks/
-├── useAuth.ts                  # Authentication hook
+├── useAuth.ts                  # Logout only (no auth state)
 │                                # - Get user, isAuthenticated
 │                                # - logout() function
 │

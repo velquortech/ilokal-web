@@ -1,25 +1,22 @@
 'use client';
 
-import { useTransition, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useAuthStore } from '@/services/stores/authStore';
 import { logoutAction } from '@/app/(auth)/actions';
 
 export function useAuth() {
-  const [isPending, startTransition] = useTransition();
   const { user, isAuthenticated, setUser, setError, clearError } = useAuthStore(
     (state) => state,
   );
 
-  // Use useTransition for better server action handling
-  const logout = useCallback(() => {
-    startTransition(async () => {
-      // Clear Zustand store on client side
-      useAuthStore.getState().logout();
-      // Execute server action to clear session and redirect
-      // logoutAction() calls redirect() which useTransition handles automatically
-      // Don't wrap in try-catch - let useTransition handle the redirect
-      await logoutAction();
-    });
+  // Logout without useTransition - let the server action's redirect() work directly
+  const logout = useCallback(async () => {
+    // Clear Zustand store on client side first
+    useAuthStore.getState().logout();
+    // Call logout action which will sign out and redirect
+    // The redirect() call in logoutAction is handled automatically by Next.js
+    // Do not wrap in try-catch as redirect() throws intentional error for navigation
+    await logoutAction();
   }, []);
 
   return {
@@ -29,6 +26,5 @@ export function useAuth() {
     setError,
     clearError,
     logout,
-    isLoading: isPending,
   };
 }

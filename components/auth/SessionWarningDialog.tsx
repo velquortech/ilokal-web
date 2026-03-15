@@ -25,15 +25,19 @@ export function SessionWarningDialog() {
   const [isPending, startTransition] = useTransition();
 
   const handleContinue = () => {
-    refreshSession();
+    startTransition(() => {
+      refreshSession();
+    });
   };
 
   const handleLogout = () => {
-    startTransition(async () => {
-      try {
-        await logoutAction();
-      } catch {
-        // Logout error - user will see error on next action
+    // Call logoutAction which will redirect after signing out
+    // The server action's redirect() throws an error that Next.js handles internally
+    logoutAction().catch((error) => {
+      // Redirect errors are expected and handled by Next.js
+      // Only log actual runtime errors
+      if (!error?.message?.includes('NEXT_REDIRECT')) {
+        console.error('[SessionWarningDialog] Logout error:', error);
       }
     });
   };

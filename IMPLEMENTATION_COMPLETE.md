@@ -63,13 +63,49 @@ const user = useUser(); // Hook provides user from Context
 ```tsx
 // SessionTracker initializes monitoring on mount
 export function SessionTracker() {
-  useSessionMonitor(); // Starts periodic verification
-  // ...
+  // Initialize useSessionMonitor hook
+  // This starts:
+  // 1. Activity detection (mouse, keyboard, scroll, touch)
+  // 2. Verification loop (every 60s calls verifySessionAction)
+  // 3. Countdown timer (every 1s, shows warning at 5 min)
+  // 4. Session expiration tracking (via localStorage)
+  useSessionMonitor();
+
+  return null; // No UI, just initialization
 }
 
-// useSessionMonitor calculates expiration from role-based timeout
-const timeoutMinutes = getSessionTimeout(user.role);
-const expirationTime = calculateSessionExpiration(timeoutMinutes);
+// useSessionMonitor implementation:
+export function useSessionMonitor() {
+  // Periodic verification (60s)
+  const verify = async () => {
+    const result = await verifySessionAction();
+    if (!result.user) {
+      // Session invalid → auto-logout
+      await logoutAction();
+      redirect('/login');
+    } else {
+      // Recalculate expiration from role
+      const timeout = getSessionTimeout(result.role);
+      const expiration = Date.now() + timeout * 60 * 1000;
+      localStorage.setItem('sessionExpiration', expiration.toString());
+    }
+  };
+
+  // Activity detection (debounced 5s)
+  const debouncedRefresh = debounce(() => verify(), 5000);
+
+  // Countdown check (every 1s)
+  const checkExpiration = () => {
+    const exp = parseInt(localStorage.getItem('sessionExpiration') || '0', 10);
+    if (exp <= Date.now()) {
+      logoutAction(); // Auto-logout
+    } else if (exp - Date.now() < 5 * 60 * 1000) {
+      setIsExpiring(true); // Show warning
+    }
+  };
+
+  return { isExpiring, timeRemaining, refreshSession };
+}
 ```
 
 **Benefits:**
@@ -101,8 +137,8 @@ const { logout } = useAuth(); // Only logout function
 - `components/auth/LoginForm.tsx` - Now uses useActionState
 - `components/auth/SignupForm.tsx` - Now uses useActionState
 - `hooks/useAuth.ts` - Now only exports logout
-- `hooks/useSessionMonitor.ts` - Uses localStorage instead of Zustand
-- `providers/AuthProvider.tsx` - Simplified to include SessionTracker
+- `hooks/useSessionMonitor.ts` - Session monitoring (debounced activity, verification, countdown)
+- `providers/AuthProvider.tsx` - Wraps SessionTracker + initializes monitoring
 - `services/stores/authStore.ts` - UI state only
 
 ---

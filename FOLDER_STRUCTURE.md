@@ -197,8 +197,8 @@ components/
 ├── auth/                       # Authentication-specific components
 │   ├── LoginForm.tsx           # Login form with useActionState
 │   ├── SignupForm.tsx          # Signup form with useActionState
-│   ├── SessionWarningDialog.tsx # Session expiration dialog
-│   └── SessionTracker.tsx       # Initialize session from Supabase
+│   ├── SessionWarningDialog.tsx # Session expiration warning (5 min before logout)
+│   └── SessionTracker.tsx       # Initializes useSessionMonitor hook on mount
 │
 ├── custom/                     # Custom branded components
 │   ├── Header.tsx              # Global header/navbar
@@ -214,9 +214,8 @@ components/
 │   └── ...
 │
 ├── providers/                  # React Context & Provider Wrappers
-│   ├── AuthProvider.tsx        # Session monitoring + SessionTracker
+│   ├── AuthProvider.tsx        # Wraps SessionTracker + UserContext
 │   ├── UserContext.tsx         # Provides user data via React Context
-│   ├── QueryProvider.tsx       # TanStack React Query setup
 │   └── SonnerProvider.tsx       # Toast notification provider
 │
 ├── ui/                         # shadcn/ui & Radix UI components
@@ -275,22 +274,26 @@ hooks/
 │                                # - Get user, isAuthenticated
 │                                # - logout() function
 │
-├── useAdminMutations.ts        # Admin CRUD mutations with optimistic updates
+├── useAdminMutations.ts        # Admin CRUD operations with Server Actions
 │                                # - useCreateAdmin(onSuccess?, onError?)
 │                                # - useUpdateAdmin(onSuccess?, onError?)
-│                                #   ✅ Optimistic row updates (no full table refetch)
 │                                # - useDeleteAdmin(onSuccess?, onError?)
-│                                #   ✅ Removes row from cache instantly
-│                                #   ✅ Updates total item count
 │                                # - useCreateConsumer() / useUpdateConsumer() / useDeleteConsumer()
+│                                # - useCreateBusinessOwner() / useUpdateBusinessOwner() / useDeleteBusinessOwner()
 │                                # - useUpdateAdminStatus()
+│                                # Uses useTransition for pending state
 │                                # Callbacks receive updated/deleted profile data
 │
-├── useProfiles.ts              # Profile data fetching
-│                                # - useProfilesByRole()
+├── useProfiles.ts              # Profile data fetching (manual state management)
+│                                # - useProfilesByRole(role, options?)
+│                                #   Pagination, search, filtering, sorting
+│                                #   Returns: { data, isLoading, error, refetch }
 │
 ├── useSessionMonitor.ts        # Session expiration monitoring
-│                                # - Tracks session timeout
+│                                # - Periodic verification (every 60s)
+│                                # - Activity detection (debounced 5s)
+│                                # - Expiration warning (5 min before logout)
+│                                # - Auto-logout on expiration
 │
 └── ...
 ```
@@ -351,34 +354,26 @@ Core services for API calls and state management (moved from lib/).
 ```
 services/
 ├── api/                        # **API service layer**
-│   ├── apiClient.ts            # Axios instance with interceptors
+│   ├── apiClient.ts            # Fetch wrapper with request/response handling
 │   │   - Enhanced error handling
-│   │   - Auth token injection
+│   │   - Generic error messages (prevents enumeration)
 │   │   - Response transformation
 │   │
-│   ├── authService.ts          # Authentication API calls
-│   │   - signup(), login(), logout()
-│   │   - verifySession()
-│   │
-│   ├── userService.ts          # User management API calls
-│   │   - getProfilesByRole(role)
-│   │   - getProfilesByRolePaginated(role, page, limit, filters)
+│   ├── userService.ts          # User profile API calls
+│   │   - getProfilesByRole(role, pagination, filters)
 │   │   - getProfileById(id)
-│   │   - createProfile(data)
-│   │   - adminUpdateProfile(id, changes)
-│   │   - deleteProfile(id)
-│   │   All endpoints use /api/admin/profiles/* routes
+│   │   - Works with useProfiles() hook
+│   │   - All endpoints use /api/admin/profiles/* routes
+│   │
+│   ├── authService.ts          # Auth API calls (mostly legacy)
+│   │   - Now handled via Server Actions primarily
 │   │
 │   └── paginationService.ts    # Pagination utilities
-│       - Page calculation, offset handling
+│       - Page calculation, offset handling, types
 │
-└── stores/                     # **State management with Zustand**
-    ├── authStore.ts            # Auth state
-    │   - user, isAuthenticated, sessionExpiry
-    │   - setUser(), logout(), setSessionExpiry()
-    │
-    └── adminStore.ts           # Admin feature state
-        - Users list, filters, etc.
+└── stores/                     # **Legacy state management** (mostly removed)
+    └── authStore.ts            # Legacy - Mostly deprecated
+        - Some UI state remains (not sensitive auth data)
 ```
 
 ---
@@ -396,14 +391,15 @@ public/
     └── ... (partner logos, screenshots, etc.)
 ```
 
-## 🌍 `/providers` - React Provider Components
+## 🌍 `/providers` - Legacy Providers
 
-**Note:** Most providers are in `/components/providers/`. This folder may be legacy.
+**Note:** Providers are now in `/components/providers/` (AuthProvider, UserContext, SonnerProvider).
 
 ```
 providers/
-├── QueryProvider.tsx           # TanStack React Query provider
-└── SonnerProvider.tsx          # Toast notification provider
+├── AuthProvider.tsx            # (Moved to components/providers/)
+├── UserContext.tsx             # (Moved to components/providers/)
+└── SonnerProvider.tsx          # (Moved to components/providers/)
 ```
 
 ---

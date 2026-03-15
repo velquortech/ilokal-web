@@ -17,8 +17,8 @@ Complete guide to the authentication and authorization system for Ilokal, built 
 - **TypeScript** - Full type safety
 - **Zod** - Schema validation (client & server)
 - **React Hook Form** - Form management (validation only)
-- **Zustand** - UI state only (error messages, toggles, filters) - no sensitive auth data
-- **React Context** - User data via `UserContext` (replaces Zustand for auth data)
+- **React Context** - User data via `UserContext` (provides authenticated user info)
+- **Zustand** - UI state only (error messages, toggles, filters) - legacy, minimal use
 - **shadcn/ui & Radix UI** - UI components
 
 ### Project Structure
@@ -41,13 +41,15 @@ app/
 ├── business/                 # Business owner dashboard
 └── layout.tsx                # Root layout with SessionWarningDialog
 
+config/
+├── sessionConfig.ts          # ✅ Session timeouts & verification config
+├── routeConfig.ts            # ✅ Centralized route definitions
+├── server.ts                 # Secure server-side Supabase config
+└── client.ts                 # Client-side Supabase config
+
 lib/
-├── auth/
-│   └── sessionConfig.ts      # ✅ Session timeout configuration
 ├── api/
 │   └── verifyAdminAccess.ts  # ✅ Shared admin authorization utility
-├── stores/
-│   └── authStore.ts          # ✅ UI state only (errors, toggles, filters)
 └── validation/
     └── auth.ts               # Zod validation schemas
 
@@ -56,14 +58,16 @@ components/
 │   ├── LoginForm.tsx         # ✅ Uses useActionState for Server Actions
 │   ├── SignupForm.tsx        # ✅ Uses useActionState for Server Actions
 │   ├── SessionWarningDialog.tsx # ✅ Session expiration warning
-│   └── SessionTracker.tsx    # ✅ NEW: Initializes session in localStorage
+│   └── SessionTracker.tsx    # ✅ Initializes session monitoring on mount
 └── providers/
-    ├── AuthProvider.tsx      # ✅ Simplified: Only initializes monitors
-    └── UserContext.tsx       # ✅ NEW: Provides user data via React Context
+    ├── AuthProvider.tsx      # ✅ Sets up SessionTracker + monitoring
+    └── UserContext.tsx       # ✅ Provides user data via React Context
 
 hooks/
-├── useSessionMonitor.ts      # ✅ Session monitoring (uses localStorage)
-└── useAuth.ts                # ✅ Logout only (no auth state)
+├── useSessionMonitor.ts      # ✅ Session monitoring (debounced 5s, role-based verification)
+├── useAuth.ts                # ✅ useAuth() hook for logout functionality
+├── useAdminMutations.ts      # ✅ Admin CRUD Server Actions
+└── useProfiles.ts            # ✅ Manual profile data fetching with pagination
 ```
 
 ---
@@ -79,16 +83,16 @@ hooks/
         ↓
 3. Form validates client-side with Zod schema
         ↓
-4. handleSubmit triggers: startTransition(signupAction(data))
+4. handleSubmit triggers: formAction (useActionState)
         ↓
-5. signupAction() on server:
+5. signupAction() on server (via Server Action):
    ├─ Validates input again (server-side Zod validation)
    ├─ Creates Supabase auth user via signUp()
    ├─ Creates profile record in database
-   ├─ Sets HTTP-only secure cookie
+   ├─ Sets HTTP-only secure cookie (automatic)
    └─ Returns { user, message, error }
         ↓
-4. Form updates via useActionState (isPending, form state from server response)
+6. Form updates via useActionState (isPending, form state)
         ↓
 7. On success: redirectByRole(user.role) called
         ↓
@@ -107,7 +111,7 @@ hooks/
         ↓
 3. Form validates with Zod schema (client-side)
         ↓
-4. handleSubmit triggers: startTransition(loginAction(email, pwd))
+4. handleSubmit triggers: formAction (useActionState with loginAction)
         ↓
 5. loginAction() on server:
    ├─ Validates inputs (server-side)
@@ -126,27 +130,32 @@ hooks/
 ### Session Verification Flow
 
 ```
-Every 60 seconds:
+On mount (SessionTracker):
+1. useSessionMonitor() initializes session
+        ↓
+Periodic verification (every 60 seconds):
 1. useSessionMonitor() calls verifySessionAction()
         ↓
 2. verifySessionAction() on server:
    ├─ Checks if HTTP-only cookie exists
    ├─ Verifies with Supabase backend
-   ├─ Fetches fresh user profile
-   └─ Returns { valid: boolean, user: User | null }
+   ├─ Fetches fresh user profile & role
+   └─ Returns { user: User, role: string }
         ↓
-3. If expired:
-   ├─ Clear auth store
+3. Client calculates expiration based on role-specific timeout
+        ↓
+4. If expired:
+   ├─ Call logoutAction()
    ├─ Redirect to /login
-   └─ Show logout message
+   └─ Clear session state
         ↓
-4. If valid but expiring soon (within 5 min):
+5. If valid but expiring soon (within 5 min):
    ├─ Set isExpiring = true
    ├─ Show SessionWarningDialog
-   └─ Allow user to click "Continue" to extend session
+   └─ Allow user to click "Continue" to refresh session
         ↓
-5. If user active (mouse, keyboard, scroll, touch):
-   └─ Call refreshSession() → resets expiration timer
+6. If user active (mouse, keyboard, scroll, touch) [DEBOUNCED 5s]:
+   └─ Call refreshSession() → calls verifySessionAction() & recalculates expiration
 ```
 
 ### Logout Flow
@@ -154,15 +163,16 @@ Every 60 seconds:
 ```
 1. User clicks logout button
         ↓
-2. Calls: startTransition(logoutAction())
+2. Calls: logoutAction() (via useAuth hook)
         ↓
 3. logoutAction() on server:
    ├─ Calls Supabase signOut()
-   ├─ Clears HTTP-only cookie
-   ├─ Clears localStorage sessionExpiration
-   └─ Returns redirect to /login
+   ├─ Clears HTTP-only auth cookie (automatic)
+   ├─ Sets redirect to /login
+   └─ Throws NEXT_REDIRECT (framework handles)
         ↓
 4. User redirected to login page
+   └─ Client-side session state cleared
 ```
 
 ---

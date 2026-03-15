@@ -15,12 +15,12 @@ import {
   useDeleteBusinessOwner,
 } from '@/hooks/useAdminMutations';
 import { useProfilesByRole } from '@/hooks/useProfiles';
-import { useAuth } from '@/hooks/useAuth';
+import { useUser } from '@/providers/UserContext';
 import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
 import { PaginatedResponse } from '@/services/api/paginationService';
 
 export default function BusinessOwnerTab() {
-  const { user } = useAuth();
+  const user = useUser();
   const isAdmin = user?.role === 'admin';
   const [selectedBusinessOwner, setSelectedBusinessOwner] =
     useState<AdminUser | null>(null);

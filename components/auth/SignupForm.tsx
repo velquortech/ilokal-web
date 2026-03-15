@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useActionState, useState } from 'react';
 import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signupSchema, SignupInput } from '@/lib/validation/auth';
-import { useAuthStore } from '@/services/stores/authStore';
 import { signupAction, redirectByRole } from '@/app/(auth)/actions';
 import { ROUTES } from '@/config/routeConfig';
 import { Button } from '@/components/ui/button';
@@ -21,20 +20,60 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { AlertCircle, Loader2, Store, User } from 'lucide-react';
 
-export default function SignupForm() {
-  const [apiError, setApiError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [step, setStep] = useState<'role' | 'details'>('role');
-  const [isPending, startTransition] = useTransition();
-  const setUser = useAuthStore((state) => state.setUser);
+interface SignupFormState {
+  message?: string;
+  error?: string;
+}
 
+async function handleSignup(
+  _state: SignupFormState,
+  formData: FormData,
+): Promise<SignupFormState> {
+  const data = {
+    name: formData.get('name') as string,
+    email: formData.get('email') as string,
+    password: formData.get('password') as string,
+    phone_number: (formData.get('phone_number') as string) || null,
+    role: formData.get('role') as string,
+    avatar_url: (formData.get('avatar_url') as string) || null,
+  };
+
+  try {
+    // Validate with zod schema
+    const validationResult = signupSchema.safeParse(data);
+    if (!validationResult.success) {
+      return { error: validationResult.error.issues[0].message };
+    }
+
+    // Call server action
+    const response = await signupAction(validationResult.data);
+
+    // Redirect - let it throw (expected)
+    await redirectByRole(response.user.role);
+
+    return { message: response.message };
+  } catch (error) {
+    // Handle redirect() which is expected and handled by Next.js
+    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
+      return { message: 'Account created! Redirecting...' };
+    }
+
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : 'Failed to sign up. Please try again.';
+    return { error: errorMessage };
+  }
+}
+
+export default function SignupForm() {
+  // useForm for form state management (role selection UI)
+  // useActionState for form submission with server validation
   const {
+    control,
     register,
-    handleSubmit,
     formState: { errors },
     watch,
-    control,
-    reset,
   } = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
@@ -44,44 +83,11 @@ export default function SignupForm() {
 
   const selectedRole = watch('role');
 
-  const onSubmit = (data: SignupInput) => {
-    // Clear previous errors when starting new submission
-    setApiError(null);
-    setSuccessMessage(null);
-
-    startTransition(async () => {
-      try {
-        // Call Server Action for secure signup
-        const response = await signupAction(data);
-
-        // Update local auth state
-        setUser(response.user);
-        setSuccessMessage(response.message);
-
-        // Reset form state
-        reset();
-        setStep('role');
-
-        // Redirect after brief delay to show success message
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        // Redirect - let it throw (expected)
-        await redirectByRole(response.user.role);
-      } catch (error) {
-        // Handle redirect() which the framework throws internally - expected
-        if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
-          return;
-        }
-
-        // Set error from actual auth failures
-        const errorMessage =
-          error instanceof Error
-            ? error.message
-            : 'Failed to sign up. Please try again.';
-        setApiError(errorMessage);
-      }
-    });
-  };
+  const [state, formAction, isPending] = useActionState(handleSignup, {
+    message: '',
+    error: '',
+  });
+  const [step, setStep] = useState<'role' | 'details'>('role');
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center px-4 py-12">
@@ -95,17 +101,17 @@ export default function SignupForm() {
         </div>
 
         {/* Success Alert */}
-        {successMessage && (
+        {state.message && (
           <div className="flex gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            <p>{successMessage}</p>
+            <p>{state.message}</p>
           </div>
         )}
 
         {/* Error Alert */}
-        {apiError && (
+        {state.error && (
           <div className="flex gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             <AlertCircle className="h-5 w-5 shrink-0" />
-            <p>{apiError}</p>
+            <p>{state.error}</p>
           </div>
         )}
 
@@ -230,7 +236,7 @@ export default function SignupForm() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+              <form action={formAction} className="space-y-5">
                 {/* Name Field */}
                 <div className="space-y-2">
                   <Label htmlFor="name" className="text-slate-700">
@@ -249,9 +255,6 @@ export default function SignupForm() {
                     className={`text-base transition-colors ${
                       errors.name ? 'border-red-500 focus:border-red-500' : ''
                     }`}
-                    onFocus={() => {
-                      if (apiError) setApiError(null);
-                    }}
                   />
                   {errors.name && (
                     <p className="text-sm text-red-500">
@@ -274,9 +277,6 @@ export default function SignupForm() {
                     className={`text-base transition-colors ${
                       errors.email ? 'border-red-500 focus:border-red-500' : ''
                     }`}
-                    onFocus={() => {
-                      if (apiError) setApiError(null);
-                    }}
                   />
                   {errors.email && (
                     <p className="text-sm text-red-500">
@@ -301,9 +301,6 @@ export default function SignupForm() {
                         ? 'border-red-500 focus:border-red-500'
                         : ''
                     }`}
-                    onFocus={() => {
-                      if (apiError) setApiError(null);
-                    }}
                   />
                   {errors.password && (
                     <p className="text-sm text-red-500">
@@ -331,9 +328,6 @@ export default function SignupForm() {
                         ? 'border-red-500 focus:border-red-500'
                         : ''
                     }`}
-                    onFocus={() => {
-                      if (apiError) setApiError(null);
-                    }}
                   />
                   {errors.confirmPassword && (
                     <p className="text-sm text-red-500">
@@ -356,7 +350,7 @@ export default function SignupForm() {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={isPending || !!successMessage}
+                    disabled={isPending}
                     className="flex-1 bg-black text-white hover:bg-slate-900 disabled:cursor-not-allowed"
                     size="lg"
                   >
@@ -365,8 +359,6 @@ export default function SignupForm() {
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Creating account...
                       </>
-                    ) : successMessage ? (
-                      'Redirecting...'
                     ) : (
                       'Create Account'
                     )}

@@ -1,9 +1,9 @@
 # 🔐 Authentication Implementation & Security Guide
 
-> Last Updated: March 6, 2026  
-> Status: Production-Ready ✅
+> Last Updated: March 15, 2026  
+> Status: **Modernized with useActionState & React Context** ✅
 
-Complete guide to the authentication and authorization system for Ilokal, built with Next.js Server Actions, Supabase SSR, and TypeScript.
+Complete guide to the authentication and authorization system for Ilokal, built with Next.js Server Actions, Supabase SSR, and modern React patterns.
 
 ---
 
@@ -13,11 +13,12 @@ Complete guide to the authentication and authorization system for Ilokal, built 
 
 - **Next.js 16.1.6** - App Router and Server Actions
 - **Supabase SSR** - Backend with HTTP-only cookies and RLS
-- **React 19+** - `useTransition` hook for pending states
+- **React 19+** - `useActionState` for Server Action state management
 - **TypeScript** - Full type safety
 - **Zod** - Schema validation (client & server)
-- **React Hook Form** - Form management
-- **Zustand** - Client-side state management
+- **React Hook Form** - Form management (validation only)
+- **Zustand** - UI state only (error messages, toggles, filters) - no sensitive auth data
+- **React Context** - User data via `UserContext` (replaces Zustand for auth data)
 - **shadcn/ui & Radix UI** - UI components
 
 ### Project Structure
@@ -46,21 +47,23 @@ lib/
 ├── api/
 │   └── verifyAdminAccess.ts  # ✅ Shared admin authorization utility
 ├── stores/
-│   └── authStore.ts          # Zustand auth state
+│   └── authStore.ts          # ✅ UI state only (errors, toggles, filters)
 └── validation/
     └── auth.ts               # Zod validation schemas
 
 components/
 ├── auth/
-│   ├── LoginForm.tsx         # ✅ Uses Server Actions + useTransition
-│   ├── SignupForm.tsx        # ✅ Uses Server Actions + useTransition
-│   └── SessionWarningDialog.tsx # ✅ Session expiration warning
+│   ├── LoginForm.tsx         # ✅ Uses useActionState for Server Actions
+│   ├── SignupForm.tsx        # ✅ Uses useActionState for Server Actions
+│   ├── SessionWarningDialog.tsx # ✅ Session expiration warning
+│   └── SessionTracker.tsx    # ✅ NEW: Initializes session in localStorage
 └── providers/
-    └── AuthProvider.tsx      # ✅ Session monitoring initialization
+    ├── AuthProvider.tsx      # ✅ Simplified: Only initializes monitors
+    └── UserContext.tsx       # ✅ NEW: Provides user data via React Context
 
 hooks/
-├── useSessionMonitor.ts      # ✅ Session monitoring hook
-└── useAuth.ts                # Auth hook from Zustand store
+├── useSessionMonitor.ts      # ✅ Session monitoring (uses localStorage)
+└── useAuth.ts                # ✅ Logout only (no auth state)
 ```
 
 ---
@@ -85,7 +88,7 @@ hooks/
    ├─ Sets HTTP-only secure cookie
    └─ Returns { user, message, error }
         ↓
-6. Form updates via useTransition (isPending, error states)
+4. Form updates via useActionState (isPending, form state from server response)
         ↓
 7. On success: redirectByRole(user.role) called
         ↓
@@ -156,7 +159,7 @@ Every 60 seconds:
 3. logoutAction() on server:
    ├─ Calls Supabase signOut()
    ├─ Clears HTTP-only cookie
-   ├─ Clears Zustand auth store
+   ├─ Clears localStorage sessionExpiration
    └─ Returns redirect to /login
         ↓
 4. User redirected to login page

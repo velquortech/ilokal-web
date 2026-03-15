@@ -1,7 +1,7 @@
 # 📅 Session Management & Expiration
 
-> Last Updated: March 6, 2026  
-> Status: Production-Ready ✅
+> Last Updated: March 15, 2026  
+> Status: **Modernized with localStorage & SessionTracker** ✅
 
 Complete guide to session configuration, management, expiration, and monitoring.
 
@@ -29,6 +29,8 @@ The application implements automatic session management with:
 | **Admin**          | **60 minutes**         | Sensitive operations | 🔴 Strict      | 55 min     |
 | **Business Owner** | **240 minutes** (4h)   | Daily operations     | 🟡 Moderate    | 235 min    |
 | **Regular User**   | **1440 minutes** (24h) | Shopping & browsing  | 🟢 Extended    | 1435 min   |
+
+> **Note (March 15, 2026):** Session expiration time is now stored in `localStorage['sessionExpiration']` (timestamp in ms) via the `SessionTracker` component, instead of being tracked in Zustand. This allows the session monitor to work without accessing Zustand, following SSR best practices.
 
 ### Why These Timeouts?
 

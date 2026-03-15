@@ -149,11 +149,11 @@ export function Header({
   );
 
   // Handle logout with callback
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
     if (onLogout) {
       onLogout();
     } else {
-      logout(); // Use logout from useAuth hook
+      await logout(); // Await the async logout action
     }
   }, [onLogout, logout]);
 

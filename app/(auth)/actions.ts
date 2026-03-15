@@ -295,7 +295,21 @@ export async function verifySessionAction(): Promise<{ user: User } | null> {
  * Clears session and redirects to home
  */
 export async function logoutAction(): Promise<void> {
-  const supabase = await createServerSupabaseClient();
-  await supabase.auth.signOut();
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error('[logoutAction] Sign out error:', error.message);
+      throw new Error('Failed to sign out');
+    }
+
+    console.info('[logoutAction] User signed out successfully');
+  } catch (error) {
+    console.error('[logoutAction] Error during logout:', error);
+    // Still redirect even if signout had issues
+  }
+
+  // Always redirect to home after logout attempt
   redirect(ROUTES.DASHBOARD.HOME);
 }

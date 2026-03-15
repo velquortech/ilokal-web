@@ -1,6 +1,9 @@
 import { getBusinessUserOrRedirect } from '@/lib/api/getAdminUser';
 import { BusinessLayoutClient } from './components/BusinessLayoutClient';
 
+// This route uses cookies for authentication, must be dynamic
+export const dynamic = 'force-dynamic';
+
 /**
  * Business Layout - Server Component
  *

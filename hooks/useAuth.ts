@@ -13,25 +13,14 @@ export function useAuth() {
   // Use useTransition for better server action handling
   const logout = useCallback(() => {
     startTransition(async () => {
-      try {
-        // Clear Zustand store on client side
-        useAuthStore.getState().logout();
-        // Execute server action to clear session and redirect
-        // logoutAction() will call redirect() which throws internally
-        // This is expected Next.js behavior and will navigate automatically
-        await logoutAction();
-      } catch (error) {
-        // Handle any actual errors (redirect() throws but that's expected)
-        if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
-          // Expected redirect exception - navigation handled automatically
-          return;
-        }
-        const errorMessage =
-          error instanceof Error ? error.message : 'Failed to logout';
-        setError(errorMessage);
-      }
+      // Clear Zustand store on client side
+      useAuthStore.getState().logout();
+      // Execute server action to clear session and redirect
+      // logoutAction() calls redirect() which useTransition handles automatically
+      // Don't wrap in try-catch - let useTransition handle the redirect
+      await logoutAction();
     });
-  }, [setError]);
+  }, []);
 
   return {
     user,

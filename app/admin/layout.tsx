@@ -1,6 +1,9 @@
 import { getAdminUserOrRedirect } from '@/lib/api/getAdminUser';
 import { AdminLayoutClient } from '@/app/admin/components/AdminLayoutClient';
 
+// This route uses cookies for authentication, must be dynamic
+export const dynamic = 'force-dynamic';
+
 /**
  * Admin Layout - Server Component
  *

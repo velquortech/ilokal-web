@@ -19,10 +19,10 @@
 │ │          AuthProvider Component                              │ │
 │ │  (components/providers/AuthProvider.tsx)                    │ │
 │ │                                                             │ │
-│ │  - Verifies session on mount                               │ │
-│ │  - Initializes useSessionMonitor hook                      │ │
-│ │  - Manages user state with Zustand                         │ │
-│ │  - Provides auth context to children                       │ │
+│ │  - Wraps SessionTracker (initializes session on mount)      │ │
+│ │  - Initializes useSessionMonitor hook for monitoring        │ │
+│ │  - User data managed via React Context (UserContext)       │ │
+│ │  - No sensitive auth data stored on client                 │ │
 │ └─────────────────────────────────────────────────────────────┘ │
 │                          │                                        │
 │                          ▼                                        │
@@ -39,32 +39,17 @@
 │                          │                                        │
 │                          ▼                                        │
 │ ┌─────────────────────────────────────────────────────────────┐ │
-│ │    Session Configuration (lib/auth/sessionConfig.ts)        │ │
+│ │    Session Configuration (config/sessionConfig.ts)          │ │
 │ │                                                             │ │
 │ │  Role-Based Timeouts:                                      │ │
 │ │  ├─ Admin: 60 minutes                                      │ │
 │ │  ├─ Business Owner: 240 minutes (4 hours)                  │ │
-│ │  └─ Regular User: 1440 minutes (24 hours)                  │ │
+│ │  └─ App User: 1440 minutes (24 hours)                      │ │
 │ │                                                             │ │
-│ │  Warning Interval: 5 minutes before logout                 │ │
-│ │  Check Interval: Every 60 seconds                          │ │
-│ └─────────────────────────────────────────────────────────────┘ │
-│                          │                                        │
-│                          ▼                                        │
-│ ┌─────────────────────────────────────────────────────────────┐ │
-│ │      Zustand Auth Store (lib/stores/authStore.ts)          │ │
-│ │                                                             │ │
-│ │  State:                                                     │ │
-│ │  ├─ user: User | null                                      │ │
-│ │  ├─ isAuthenticated: boolean                               │ │
-│ │  ├─ isLoading: boolean                                     │ │
-│ │  └─ error: string | null                                   │ │
-│ │                                                             │ │
-│ │  Actions:                                                   │ │
-│ │  ├─ setUser(user)                                          │ │
-│ │  ├─ logout()                                               │ │
-│ │  ├─ setError(error)                                        │ │
-│ │  └─ clearError()                                           │ │
+│ │  Config:                                                   │ │
+│ │  ├─ SESSION_CHECK_INTERVAL: 60 seconds                     │ │
+│ │  ├─ ACTIVITY_DEBOUNCE_DELAY: 5 seconds                     │ │
+│ │  └─ SESSION_WARNING_THRESHOLD: 5 minutes                   │ │
 │ └─────────────────────────────────────────────────────────────┘ │
 │                          │                                        │
 │     ┌────────────────────┼────────────────────────┐             │
@@ -79,14 +64,14 @@
 │                  │                                              │
 │                  ▼                                              │
 │ ┌─────────────────────────────────────────────────────────────┐ │
-│ │    Form Components + useTransition                           │ │
+│ │    Form Components + useActionState                          │ │
 │ │                                                             │ │
 │ │  Forms:                                                     │ │
 │ │  ├─ LoginForm.tsx (Server Action: loginAction)            │ │
 │ │  └─ SignupForm.tsx (Server Action: signupAction)          │ │
 │ │                                                             │ │
 │ │  Features:                                                  │ │
-│ │  ├─ useTransition() for pending state (React 19+)        │ │
+│ │  ├─ useActionState() for Server Action state (React 19+)  │ │
 │ │  ├─ React Hook Form for form management                   │ │
 │ │  ├─ Zod validation schemas (client-side)                  │ │
 │ │  └─ Error handling & loading states                       │ │

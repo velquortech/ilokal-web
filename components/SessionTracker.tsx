@@ -1,56 +1,43 @@
 'use client';
 
 import { useEffect } from 'react';
-import {
-  verifySessionAction,
-  setSessionExpirationCookie,
-  clearSessionExpirationCookie,
-} from '@/app/(auth)/actions';
+import { verifySessionAction } from '@/app/(auth)/actions';
+import { useSessionMonitor } from '@/hooks/useSessionMonitor';
 
 /**
  * SessionTracker Component
  *
- * Tracks user session and stores expiration time in an app cookie.
- * This allows useSessionMonitor hook to check session expiration
- * without needing access to user data from Zustand.
+ * Initializes session monitoring on app mount.
+ * Triggers useSessionMonitor hook to start periodic session verification
+ * and activity-based session refresh.
  *
- * How it works:
- * 1. On mount, calls verifySessionAction to check if user is logged in
- * 2. If user exists, stores session expiration time in app cookie (non-httpOnly)
- * 3. Session expiration is set to 30 minutes from current time
- * 4. useSessionMonitor reads this via getSessionExpirationCookie
- * 5. On logout, clearSessionExpirationCookie removes it
- *
- * Benefits:
- * - Secure: Managed by Next.js, not vulnerable like localStorage
- * - Server-managed: Can be set/cleared from Server Actions
- * - Standard: Uses HTTP cookie mechanism
- * - Automatic cleanup: Can set maxAge for automatic expiration
+ * Security Model:
+ * - Verifies HTTP-only auth cookie with server
+ * - Middleware already checks auth on route changes
+ * - useSessionMonitor handles client-side expiration logic
+ * - No sensitive data stored on client (non-httpOnly session cookie removed)
  */
 export function SessionTracker() {
+  // Initialize session monitor (starts periodic verification and activity listeners)
+  useSessionMonitor();
+
   useEffect(() => {
     async function initializeSession() {
       try {
         const result = await verifySessionAction();
-
-        if (result?.user) {
-          // Session is valid, set expiration time via server action
-          // Default timeout is 30 minutes (same as getSessionTimeout in config)
-          const expirationTime = Date.now() + 30 * 60 * 1000;
-          await setSessionExpirationCookie(expirationTime);
-        } else {
-          // No valid session, clear expiration cookie
-          await clearSessionExpirationCookie();
+        // Session verification happens in useSessionMonitor hook instead
+        // This just ensures server has verified user on initial load
+        if (!result?.user) {
+          // Session initialization complete
         }
-      } catch {
-        // Error during verification, clear expiration
-        await clearSessionExpirationCookie();
+      } catch (error) {
+        console.error('[SessionTracker] Session initialization error:', error);
       }
     }
 
     initializeSession();
   }, []);
 
-  // This component doesn't render anything, just manages session state
+  // This component doesn't render anything, just initializes session monitoring
   return null;
 }

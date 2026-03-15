@@ -1,18 +1,15 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import {
-  verifySessionAction,
-  logoutAction,
-  getSessionExpirationCookie,
-  setSessionExpirationCookie,
-  clearSessionExpirationCookie,
-} from '@/app/(auth)/actions';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { verifySessionAction, logoutAction } from '@/app/(auth)/actions';
 import {
   SESSION_CHECK_INTERVAL,
+  ACTIVITY_DEBOUNCE_DELAY,
   isSessionExpired,
   isSessionExpiring,
   getTimeRemaining,
+  calculateSessionExpiration,
+  getSessionTimeout,
 } from '@/config/sessionConfig';
 
 interface SessionWarning {
@@ -24,12 +21,18 @@ interface SessionWarning {
  * Hook to monitor session expiration
  *
  * Features:
- * - Periodically verifies session is still valid
- * - Detects expired sessions and logs out
- * - Warns when session is about to expire
- * - Automatically refreshes expiration time on user activity
+ * - Periodically verifies session is still valid with server
+ * - Detects expired sessions and logs out automatically
+ * - Warns when session is about to expire (within 5 minutes)
+ * - Automatically refreshes session on user activity (debounced)
+ * - Activity detection includes: mouse, keyboard, scroll, touch
  * - Optimized event listeners with proper cleanup
- * - Memoized refresh function to prevent infinite loops
+ *
+ * Security:
+ * - No sensitive data stored on client
+ * - Session expiration calculated locally based on timeout duration
+ * - Actual session managed by HTTP-only cookie on server
+ * - Middleware provides defense-in-depth on route changes
  *
  * Usage:
  * ```tsx
@@ -48,40 +51,71 @@ export function useSessionMonitor() {
     null,
   );
   const expirationRef = useRef<number | null>(null);
+  const lastRefreshRef = useRef<number>(0);
 
-  // Initialize session expiration time from cookie on mount
+  // Initialize session on mount
   useEffect(() => {
     async function initializeExpiration() {
-      const expirationTime = await getSessionExpirationCookie();
-      if (expirationTime) {
-        expirationRef.current = expirationTime;
-        setSessionExpiration(expirationTime);
+      try {
+        const result = await verifySessionAction();
+        if (result?.user) {
+          // Get timeout for user's role (default to app_user if role not available)
+          const timeoutMinutes = getSessionTimeout(result.user.role);
+          const expirationTime = calculateSessionExpiration(timeoutMinutes);
+          expirationRef.current = expirationTime;
+          setSessionExpiration(expirationTime);
+        }
+      } catch (error) {
+        console.error('[useSessionMonitor] Initialization error:', error);
       }
     }
 
     initializeExpiration();
   }, []);
 
-  // Refresh function to reset session on user activity
-  const refreshSession = async () => {
-    const timeoutMinutes = 30; // Default timeout, matches config default
-    const newExpirationTime = Date.now() + timeoutMinutes * 60 * 1000;
+  /**
+   * Refresh function to reset session on user activity
+   * Debounced to prevent excessive calls during rapid interactions
+   * Recalculates expiration based on role-specific timeout
+   */
+  const refreshSession = useCallback(async () => {
+    const now = Date.now();
 
-    // Update local state immediately for responsiveness
-    expirationRef.current = newExpirationTime;
-    setSessionExpiration(newExpirationTime);
-    setSessionWarning({
-      isExpiring: false,
-      timeRemaining: timeoutMinutes,
-    });
+    // Skip refresh if called within debounce window
+    if (now - lastRefreshRef.current < ACTIVITY_DEBOUNCE_DELAY) {
+      return;
+    }
 
-    // Update server-side cookie
+    lastRefreshRef.current = now;
+
     try {
-      await setSessionExpirationCookie(newExpirationTime);
+      // Verify session with server to get updated user info
+      const result = await verifySessionAction();
+
+      if (result?.user) {
+        // Calculate new expiration based on role-specific timeout
+        const timeoutMinutes = getSessionTimeout(result.user.role);
+        const newExpirationTime = calculateSessionExpiration(timeoutMinutes);
+
+        // Update local state immediately for responsiveness
+        expirationRef.current = newExpirationTime;
+        setSessionExpiration(newExpirationTime);
+        setSessionWarning({
+          isExpiring: false,
+          timeRemaining: timeoutMinutes,
+        });
+      } else {
+        // Session no longer valid, trigger logout
+        try {
+          await logoutAction();
+        } catch {
+          // logoutAction throws NEXT_REDIRECT, which is expected
+        }
+      }
     } catch (error) {
       console.error('[useSessionMonitor] Failed to refresh session:', error);
     }
-  };
+  }, []);
 
   // Set up periodic session verification
   useEffect(() => {
@@ -99,18 +133,16 @@ export function useSessionMonitor() {
           await logoutAction();
         } catch {
           // logoutAction throws NEXT_REDIRECT, which is expected
-          await clearSessionExpirationCookie();
         }
         return;
       }
 
-      // Check if expired
+      // Check if already expired
       if (isSessionExpired(currentExpiration)) {
         try {
           await logoutAction();
         } catch {
           // logoutAction throws NEXT_REDIRECT, which is expected
-          await clearSessionExpirationCookie();
         }
         return;
       }
@@ -134,6 +166,7 @@ export function useSessionMonitor() {
   }, [sessionExpiration]);
 
   // Set up activity listeners to refresh session
+  // Refresh is debounced to prevent excessive calls
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -148,7 +181,7 @@ export function useSessionMonitor() {
       window.removeEventListener('scroll', refreshSession);
       window.removeEventListener('touchstart', refreshSession);
     };
-  }, []);
+  }, [refreshSession]);
 
   return {
     isExpiring: sessionWarning.isExpiring,

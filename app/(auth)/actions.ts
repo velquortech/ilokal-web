@@ -1,7 +1,6 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 import { createServerSupabaseClient } from '@/config/server';
 import { ROUTES } from '@/config/routeConfig';
 import { User } from '@/lib/types/user';
@@ -235,7 +234,6 @@ export async function redirectByRole(role: string): Promise<void> {
       redirect(ROUTES.DASHBOARD.HOME);
   }
 }
-
 /**
  * Server Action: Verify and refresh session
  *
@@ -316,69 +314,4 @@ export async function logoutAction(): Promise<void> {
 
   // Redirect to login page after logout (moved inside to ensure it executes)
   redirect(ROUTES.AUTH.LOGIN);
-}
-
-/**
- * Server Action: Set session expiration cookie
- *
- * Stores session expiration timestamp in a non-httpOnly cookie
- * so client-side can read it for session monitoring.
- *
- * @param expirationTime - Millisecond timestamp of expiration
- */
-export async function setSessionExpirationCookie(
-  expirationTime: number,
-): Promise<void> {
-  try {
-    const cookieStore = await cookies();
-    cookieStore.set('sessionExpiration', expirationTime.toString(), {
-      httpOnly: false, // ← Allow JavaScript to read
-      secure: process.env.NODE_ENV === 'production', // HTTPS in production
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 24 * 60 * 60, // 24 hours
-    });
-  } catch (error) {
-    console.error('[setSessionExpirationCookie] Error:', error);
-    throw new Error('Failed to set session cookie');
-  }
-}
-
-/**
- * Server Action: Clear session expiration cookie
- *
- * Called on logout to remove the session expiration cookie.
- */
-export async function clearSessionExpirationCookie(): Promise<void> {
-  try {
-    const cookieStore = await cookies();
-    cookieStore.delete('sessionExpiration');
-  } catch (error) {
-    console.error('[clearSessionExpirationCookie] Error:', error);
-    // Don't throw - clearing cookie on logout is best-effort
-  }
-}
-
-/**
- * Server Action: Get session expiration from cookie
- *
- * Called from client-side session monitor to check expiration time.
- *
- * @returns Millisecond timestamp of expiration, or null if not set
- */
-export async function getSessionExpirationCookie(): Promise<number | null> {
-  try {
-    const cookieStore = await cookies();
-    const value = cookieStore.get('sessionExpiration')?.value;
-
-    if (!value) {
-      return null;
-    }
-
-    const expirationTime = parseInt(value, 10);
-    return Number.isNaN(expirationTime) ? null : expirationTime;
-  } catch (error) {
-    console.error('[getSessionExpirationCookie] Error:', error);
-    return null;
-  }
 }

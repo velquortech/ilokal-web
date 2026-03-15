@@ -1,22 +1,31 @@
 'use client';
 
 import { useEffect } from 'react';
-import { verifySessionAction } from '@/app/(auth)/actions';
+import {
+  verifySessionAction,
+  setSessionExpirationCookie,
+  clearSessionExpirationCookie,
+} from '@/app/(auth)/actions';
 
 /**
  * SessionTracker Component
  *
- * Tracks user session and stores expiration time in localStorage.
+ * Tracks user session and stores expiration time in an app cookie.
  * This allows useSessionMonitor hook to check session expiration
- * without needing access to user data from Zustand (which no longer exists).
+ * without needing access to user data from Zustand.
  *
  * How it works:
  * 1. On mount, calls verifySessionAction to check if user is logged in
- * 2. If user exists, stores session expiration time in localStorage
+ * 2. If user exists, stores session expiration time in app cookie (non-httpOnly)
  * 3. Session expiration is set to 30 minutes from current time
- * 4. useSessionMonitor reads this value and uses it to warn/logout
+ * 4. useSessionMonitor reads this via getSessionExpirationCookie
+ * 5. On logout, clearSessionExpirationCookie removes it
  *
- * localStorage key: 'sessionExpiration' (numeric timestamp in milliseconds)
+ * Benefits:
+ * - Secure: Managed by Next.js, not vulnerable like localStorage
+ * - Server-managed: Can be set/cleared from Server Actions
+ * - Standard: Uses HTTP cookie mechanism
+ * - Automatic cleanup: Can set maxAge for automatic expiration
  */
 export function SessionTracker() {
   useEffect(() => {
@@ -25,17 +34,17 @@ export function SessionTracker() {
         const result = await verifySessionAction();
 
         if (result?.user) {
-          // Session is valid, set expiration time
+          // Session is valid, set expiration time via server action
           // Default timeout is 30 minutes (same as getSessionTimeout in config)
           const expirationTime = Date.now() + 30 * 60 * 1000;
-          localStorage.setItem('sessionExpiration', expirationTime.toString());
+          await setSessionExpirationCookie(expirationTime);
         } else {
-          // No valid session, clear expiration
-          localStorage.removeItem('sessionExpiration');
+          // No valid session, clear expiration cookie
+          await clearSessionExpirationCookie();
         }
       } catch {
         // Error during verification, clear expiration
-        localStorage.removeItem('sessionExpiration');
+        await clearSessionExpirationCookie();
       }
     }
 

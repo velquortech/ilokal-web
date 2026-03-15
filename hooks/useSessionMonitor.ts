@@ -1,7 +1,13 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { verifySessionAction, logoutAction } from '@/app/(auth)/actions';
+import {
+  verifySessionAction,
+  logoutAction,
+  getSessionExpirationCookie,
+  setSessionExpirationCookie,
+  clearSessionExpirationCookie,
+} from '@/app/(auth)/actions';
 import {
   SESSION_CHECK_INTERVAL,
   isSessionExpired,
@@ -43,40 +49,42 @@ export function useSessionMonitor() {
   );
   const expirationRef = useRef<number | null>(null);
 
-  // Initialize session expiration time from localStorage on mount
+  // Initialize session expiration time from cookie on mount
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const storedExpiration = localStorage.getItem('sessionExpiration');
-    if (storedExpiration) {
-      const expirationTime = parseInt(storedExpiration, 10);
-      expirationRef.current = expirationTime;
-      setSessionExpiration(expirationTime);
+    async function initializeExpiration() {
+      const expirationTime = await getSessionExpirationCookie();
+      if (expirationTime) {
+        expirationRef.current = expirationTime;
+        setSessionExpiration(expirationTime);
+      }
     }
+
+    initializeExpiration();
   }, []);
 
-  // Memoized refresh function to reset session on user activity
-  const refreshSession = () => {
-    if (typeof window === 'undefined') return;
-
-    const storedExpiration = localStorage.getItem('sessionExpiration');
-    if (!storedExpiration) return;
-
+  // Refresh function to reset session on user activity
+  const refreshSession = async () => {
     const timeoutMinutes = 30; // Default timeout, matches config default
-
     const newExpirationTime = Date.now() + timeoutMinutes * 60 * 1000;
+
+    // Update local state immediately for responsiveness
     expirationRef.current = newExpirationTime;
-    localStorage.setItem('sessionExpiration', newExpirationTime.toString());
     setSessionExpiration(newExpirationTime);
     setSessionWarning({
       isExpiring: false,
       timeRemaining: timeoutMinutes,
     });
+
+    // Update server-side cookie
+    try {
+      await setSessionExpirationCookie(newExpirationTime);
+    } catch (error) {
+      console.error('[useSessionMonitor] Failed to refresh session:', error);
+    }
   };
 
   // Set up periodic session verification
   useEffect(() => {
-    if (typeof window === 'undefined') return;
     if (!sessionExpiration) return;
 
     const verificationInterval = setInterval(async () => {
@@ -91,7 +99,7 @@ export function useSessionMonitor() {
           await logoutAction();
         } catch {
           // logoutAction throws NEXT_REDIRECT, which is expected
-          localStorage.removeItem('sessionExpiration');
+          await clearSessionExpirationCookie();
         }
         return;
       }
@@ -102,7 +110,7 @@ export function useSessionMonitor() {
           await logoutAction();
         } catch {
           // logoutAction throws NEXT_REDIRECT, which is expected
-          localStorage.removeItem('sessionExpiration');
+          await clearSessionExpirationCookie();
         }
         return;
       }

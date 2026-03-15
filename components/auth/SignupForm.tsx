@@ -34,6 +34,7 @@ export default function SignupForm() {
     formState: { errors },
     watch,
     control,
+    reset,
   } = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
@@ -44,11 +45,12 @@ export default function SignupForm() {
   const selectedRole = watch('role');
 
   const onSubmit = (data: SignupInput) => {
+    // Clear previous errors when starting new submission
+    setApiError(null);
+    setSuccessMessage(null);
+
     startTransition(async () => {
       try {
-        setApiError(null);
-        setSuccessMessage(null);
-
         // Call Server Action for secure signup
         const response = await signupAction(data);
 
@@ -56,10 +58,22 @@ export default function SignupForm() {
         setUser(response.user);
         setSuccessMessage(response.message);
 
+        // Reset form state
+        reset();
+        setStep('role');
+
         // Redirect after brief delay to show success message
         await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        // Redirect - let it throw (expected)
         await redirectByRole(response.user.role);
       } catch (error) {
+        // Handle redirect() which the framework throws internally - expected
+        if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
+          return;
+        }
+
+        // Set error from actual auth failures
         const errorMessage =
           error instanceof Error
             ? error.message
@@ -80,18 +94,18 @@ export default function SignupForm() {
           </p>
         </div>
 
+        {/* Success Alert */}
+        {successMessage && (
+          <div className="flex gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            <p>{successMessage}</p>
+          </div>
+        )}
+
         {/* Error Alert */}
         {apiError && (
           <div className="flex gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             <AlertCircle className="h-5 w-5 shrink-0" />
             <p>{apiError}</p>
-          </div>
-        )}
-
-        {/* Success Alert */}
-        {successMessage && (
-          <div className="flex gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            <p>{successMessage}</p>
           </div>
         )}
 
@@ -235,6 +249,9 @@ export default function SignupForm() {
                     className={`text-base transition-colors ${
                       errors.name ? 'border-red-500 focus:border-red-500' : ''
                     }`}
+                    onFocus={() => {
+                      if (apiError) setApiError(null);
+                    }}
                   />
                   {errors.name && (
                     <p className="text-sm text-red-500">
@@ -257,6 +274,9 @@ export default function SignupForm() {
                     className={`text-base transition-colors ${
                       errors.email ? 'border-red-500 focus:border-red-500' : ''
                     }`}
+                    onFocus={() => {
+                      if (apiError) setApiError(null);
+                    }}
                   />
                   {errors.email && (
                     <p className="text-sm text-red-500">
@@ -281,13 +301,18 @@ export default function SignupForm() {
                         ? 'border-red-500 focus:border-red-500'
                         : ''
                     }`}
+                    onFocus={() => {
+                      if (apiError) setApiError(null);
+                    }}
                   />
                   {errors.password && (
                     <p className="text-sm text-red-500">
                       {errors.password.message}
                     </p>
                   )}
-                  <p className="text-xs text-slate-500">Minimum 6 characters</p>
+                  <p className="text-xs text-slate-500">
+                    Minimum 6 characters, use mix of upper/lowercase and numbers
+                  </p>
                 </div>
 
                 {/* Confirm Password Field */}
@@ -306,6 +331,9 @@ export default function SignupForm() {
                         ? 'border-red-500 focus:border-red-500'
                         : ''
                     }`}
+                    onFocus={() => {
+                      if (apiError) setApiError(null);
+                    }}
                   />
                   {errors.confirmPassword && (
                     <p className="text-sm text-red-500">
@@ -328,8 +356,8 @@ export default function SignupForm() {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={isPending}
-                    className="flex-1 bg-black text-white hover:bg-slate-900"
+                    disabled={isPending || !!successMessage}
+                    className="flex-1 bg-black text-white hover:bg-slate-900 disabled:cursor-not-allowed"
                     size="lg"
                   >
                     {isPending ? (
@@ -337,6 +365,8 @@ export default function SignupForm() {
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Creating account...
                       </>
+                    ) : successMessage ? (
+                      'Redirecting...'
                     ) : (
                       'Create Account'
                     )}

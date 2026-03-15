@@ -22,16 +22,18 @@ export default function LoginForm() {
     register,
     handleSubmit,
     formState: { errors },
+    reset,
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
   });
 
   const onSubmit = (data: LoginInput) => {
+    // Clear any previous errors when starting new submission
+    setApiError(null);
+    setSuccessMessage(null);
+
     startTransition(async () => {
       try {
-        setApiError(null);
-        setSuccessMessage(null);
-
         // Call Server Action for secure authentication
         const response = await loginAction(data.email, data.password);
 
@@ -41,13 +43,19 @@ export default function LoginForm() {
         // Show success message briefly before redirect
         setSuccessMessage('Login successful! Redirecting...');
 
-        // Redirect based on user role (Server Action)
-        // Note: redirect() from Next.js uses internal mechanism, don't catch its error
-        redirectByRole(response.user.role).catch(() => {
-          // Silently ignore redirect errors - they're expected
-        });
+        // Reset form state
+        reset();
+
+        // Redirect based on user role - let redirect() throw (expected behavior)
+        await redirectByRole(response.user.role);
       } catch (error) {
-        // Only set error if we haven't already shown success
+        // Handle redirect() which the framework throws internally - expected
+        if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
+          // This is expected - redirect() throws internally in Next.js
+          return;
+        }
+
+        // Set error from actual auth failures
         const errorMessage =
           error instanceof Error
             ? error.message
@@ -66,19 +74,21 @@ export default function LoginForm() {
         </p>
       </div>
 
-      {successMessage ? (
+      {successMessage && (
         <div className="flex gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
           <div className="flex h-5 w-5 shrink-0 items-center justify-center">
             <div className="h-2 w-2 rounded-full bg-green-600" />
           </div>
           <p>{successMessage}</p>
         </div>
-      ) : apiError ? (
+      )}
+
+      {apiError && (
         <div className="flex gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <p>{apiError}</p>
         </div>
-      ) : null}
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {/* Email Field */}
@@ -90,7 +100,12 @@ export default function LoginForm() {
             placeholder="you@example.com"
             {...register('email')}
             disabled={isPending}
-            className={errors.email ? 'border-red-500' : ''}
+            className={`transition-colors ${
+              errors.email ? 'border-red-500 focus:border-red-500' : ''
+            }`}
+            onFocus={() => {
+              if (apiError) setApiError(null);
+            }}
           />
           {errors.email && (
             <p className="text-sm text-red-500">{errors.email.message}</p>
@@ -106,7 +121,12 @@ export default function LoginForm() {
             placeholder="••••••••"
             {...register('password')}
             disabled={isPending}
-            className={errors.password ? 'border-red-500' : ''}
+            className={`transition-colors ${
+              errors.password ? 'border-red-500 focus:border-red-500' : ''
+            }`}
+            onFocus={() => {
+              if (apiError) setApiError(null);
+            }}
           />
           {errors.password && (
             <p className="text-sm text-red-500">{errors.password.message}</p>
@@ -116,14 +136,16 @@ export default function LoginForm() {
         {/* Submit Button */}
         <Button
           type="submit"
-          disabled={isPending}
-          className="w-full bg-black text-white hover:bg-slate-900"
+          disabled={isPending || !!successMessage}
+          className="w-full bg-black text-white hover:bg-slate-900 disabled:cursor-not-allowed"
         >
           {isPending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Signing in...
             </>
+          ) : successMessage ? (
+            'Redirecting...'
           ) : (
             'Sign In'
           )}

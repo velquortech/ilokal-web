@@ -2,12 +2,9 @@
 
 import { useTransition, useCallback } from 'react';
 import { useAuthStore } from '@/services/stores/authStore';
-import { useRouter } from 'next/navigation';
 import { logoutAction } from '@/app/(auth)/actions';
-import { ROUTES } from '@/config/routeConfig';
 
 export function useAuth() {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { user, isAuthenticated, setUser, setError, clearError } = useAuthStore(
     (state) => state,
@@ -19,17 +16,22 @@ export function useAuth() {
       try {
         // Clear Zustand store on client side
         useAuthStore.getState().logout();
-        // Execute server action to clear session
+        // Execute server action to clear session and redirect
+        // logoutAction() will call redirect() which throws internally
+        // This is expected Next.js behavior and will navigate automatically
         await logoutAction();
-        // Redirect after successful logout
-        router.push(ROUTES.AUTH.LOGIN);
       } catch (error) {
+        // Handle any actual errors (redirect() throws but that's expected)
+        if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
+          // Expected redirect exception - navigation handled automatically
+          return;
+        }
         const errorMessage =
           error instanceof Error ? error.message : 'Failed to logout';
         setError(errorMessage);
       }
     });
-  }, [router, setError]);
+  }, [setError]);
 
   return {
     user,

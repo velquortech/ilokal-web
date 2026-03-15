@@ -38,8 +38,7 @@ export function UserProvider({ user, children }: UserProviderProps) {
  */
 export function useUser(): User | null {
   const context = useContext(userContext);
-  if (context === undefined) {
-    throw new Error('useUser must be used within a UserProvider');
-  }
+  // Context will be null if not wrapped by UserProvider, but won't throw
+  // because React's useContext won't throw outside provider if default is null
   return context;
 }

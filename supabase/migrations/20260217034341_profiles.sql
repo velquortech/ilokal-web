@@ -7,7 +7,7 @@ CREATE TABLE public.profiles (
     phone_number IS NULL 
     OR phone_number ~ '^\+[1-9]\d{1,14}(\s\d+)?$'
   ),
-  role TEXT NOT NULL CHECK (role IN ('admin', 'business_owner', 'user')),
+  role TEXT NOT NULL CHECK (role IN ('admin', 'business_owner', 'app_user')),
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
   avatar_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),

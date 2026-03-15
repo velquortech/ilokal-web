@@ -18,6 +18,7 @@ import { Fragment } from 'react/jsx-runtime';
 import { DEFAULT_BRANCHES, SIDEBAR_SECTIONS } from '../libs/configs/config';
 import { UserMenu } from './UserMenu';
 import { useAuth } from '@/hooks/useAuth';
+import { ProCard } from './ProCard';
 
 export function BusinessSidebar() {
   const { user, logout } = useAuth();
@@ -38,6 +39,9 @@ export function BusinessSidebar() {
           </Fragment>
         ))}
       </SidebarContent>
+      <div className="mt-auto p-3">
+        <ProCard />
+      </div>
       <SidebarFooter className="border-t">
         <SidebarMenu>
           <SidebarMenuItem>

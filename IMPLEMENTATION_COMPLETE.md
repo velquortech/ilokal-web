@@ -39,65 +39,49 @@ const [state, formAction, isPending] = useActionState(
 
 #### **2. Auth State Management: Zustand → React Context + Server Components**
 
-**Before:**
+**Implementation:**
 
 ```tsx
-// userStore stored user, isAuthenticated, isLoading, error
-const { user, setUser } = useAuthStore();
-```
+// User data provided via React Context (only in protected sections)
+const user = useUser(); // Hook provides user from Context
 
-**After:**
-
-```tsx
-// User data passed as props from Server Components
-// useUser() hook via React Context (only in protected sections)
-const user = useUser();
-
-// Zustand only for UI state (filters, toggles, error messages)
-const { error, setError } = useAuthStore();
+// Default state uses Server Components + Middleware for initial verification
+// No auth store for user data - HTTP-only cookies handle session
 ```
 
 **Benefits:**
 
-- No sensitive auth data on client
-- Better SSR/SSG compatibility
-- Zustand only handles UI concerns
-- Clearer separation: Server = auth, Client = UI
+- ✅ No sensitive auth data stored on client
+- ✅ Better SSR/SSG compatibility with Server Components
+- ✅ HTTP-only Supabase cookies provide security
+- ✅ Clearer separation: Server = auth, Client = UI state only
 
-#### **3. Session Tracking: Zustand → localStorage**
+#### **3. Session Tracking: App Cookies with Server Actions**
 
-**Before:**
-
-```tsx
-// useSessionMonitor read user from Zustand
-const user = useAuthStore((state) => state.user);
-```
-
-**After:**
+**Implementation:**
 
 ```tsx
-// SessionTracker stores expiration in localStorage on mount
-localStorage.setItem('sessionExpiration', timestamp);
+// SessionTracker initializes monitoring on mount
+export function SessionTracker() {
+  useSessionMonitor(); // Starts periodic verification
+  // ...
+}
 
-// useSessionMonitor reads from localStorage (no Zustand dependency)
-const storedExpiration = localStorage.getItem('sessionExpiration');
+// useSessionMonitor calculates expiration from role-based timeout
+const timeoutMinutes = getSessionTimeout(user.role);
+const expirationTime = calculateSessionExpiration(timeoutMinutes);
 ```
 
 **Benefits:**
 
-- Hook no longer depends on Zustand
-- Works even if user data isn't in Zustand
-- Proper separation of concerns
+- ✅ Role-specific session timeouts (Admin: 60m, Business: 240m, User: 1440m)
+- ✅ Activity debouncing (5s window prevents excessive server calls)
+- ✅ Server-verified session validity (not client-determined)
+- ✅ Proper separation of concerns
 
 #### **4. User Data Accessibility: useAuth → useUser + UserContext**
 
-**Before:**
-
-```tsx
-const { user, setUser } = useAuth(); // Returns everything
-```
-
-**After:**
+**Implementation:**
 
 ```tsx
 // In protected sections:

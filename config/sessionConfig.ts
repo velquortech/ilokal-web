@@ -1,78 +1,122 @@
 /**
- * Session Configuration and Timeouts
+ * Session Configuration & Utilities
  *
- * Security recommendations based on OWASP standards:
- * - Admin: Short timeout (sensitive operations)
- * - Business Owner: Standard timeout
- * - User: Extended timeout
+ * Defines session timeout behavior for different user roles and provides utilities
+ * for session expiration validation on the client side.
+ *
+ * Security Model:
+ * - HTTP-only auth cookie managed by Supabase (cannot be accessed/forged by JavaScript)
+ * - Middleware verifies auth on every route change
+ * - Client-side monitoring provides user feedback and warning dialogs
+ * - Session expiration is tracked server-side, not in client cookies
  */
 
-// Session timeout in minutes
-export const SESSION_TIMEOUTS = {
-  // Admin: 1 hour - strict for security-sensitive access
-  admin: parseInt(process.env.NEXT_PUBLIC_SESSION_ADMIN_TIMEOUT || '60', 10),
-
-  // Business Owner: 4 hours - moderate for business operations
-  business_owner: parseInt(
-    process.env.NEXT_PUBLIC_SESSION_BUSINESS_TIMEOUT || '240',
-    10,
-  ),
-
-  // Regular User: 24 hours - long for customer convenience
-  user: parseInt(process.env.NEXT_PUBLIC_SESSION_USER_TIMEOUT || '1440', 10),
-} as const;
-
-// Warning interval in minutes (show popup when session about to expire)
-export const SESSION_WARNING_INTERVAL = parseInt(
-  process.env.NEXT_PUBLIC_SESSION_WARNING_INTERVAL || '5',
-  10,
-);
-
-// Check interval in milliseconds (how often to check session validity)
-export const SESSION_CHECK_INTERVAL = 60000; // 1 minute
+// ============================================================================
+// SESSION TIMEOUT CONFIGURATION BY ROLE
+// ============================================================================
 
 /**
- * Get session timeout for a specific user role
- * Returns timeout in minutes
+ * Session timeout durations in minutes based on user role
+ * These control how long a session remains valid with no activity
  */
-export function getSessionTimeout(role: string | undefined): number {
-  if (!role) return SESSION_TIMEOUTS.user;
+export const SESSION_TIMEOUTS: Record<string, number> = {
+  admin: 60, // 1 hour - admins often perform rapid operations
+  business_owner: 240, // 4 hours - business users may work longer sessions
+  app_user: 1440, // 24 hours - casual users get extended sessions
+  default: 30, // 30 minutes - fallback if role is unknown
+};
 
-  // Type-safe role check
-  if (role === 'admin') return SESSION_TIMEOUTS.admin;
-  if (role === 'business_owner') return SESSION_TIMEOUTS.business_owner;
-
-  return SESSION_TIMEOUTS.user;
+/**
+ * Get session timeout in minutes for a specific role
+ * @param role - User role (admin, business_owner, app_user)
+ * @returns Timeout in minutes
+ */
+export function getSessionTimeout(role?: string): number {
+  if (!role) return SESSION_TIMEOUTS.default;
+  return SESSION_TIMEOUTS[role] ?? SESSION_TIMEOUTS.default;
 }
 
 /**
- * Calculate expiration time in milliseconds
+ * Convert timeout from minutes to milliseconds
+ * @param minutes - Timeout duration in minutes
+ * @returns Timeout in milliseconds
  */
-export function getExpirationTime(timeoutMinutes: number): number {
-  return Date.now() + timeoutMinutes * 60 * 1000;
+export function minutesToMs(minutes: number): number {
+  return minutes * 60 * 1000;
 }
 
+// ============================================================================
+// SESSION VERIFICATION INTERVALS & WARNINGS
+// ============================================================================
+
 /**
- * Check if session has expired
+ * How often to check if session is still valid (in milliseconds)
+ * Interval between calls to verifySessionAction()
+ * Set to 60 seconds for reasonable balance between responsiveness and server load
+ */
+export const SESSION_CHECK_INTERVAL = 60 * 1000; // 60 seconds
+
+/**
+ * How long before session expires to show warning dialog (in minutes)
+ * Warning appears when time remaining < this threshold
+ * Example: If timeout is 30 minutes, warning appears at 5 minutes remaining
+ */
+export const SESSION_WARNING_THRESHOLD = 5; // minutes
+
+/**
+ * Debounce delay for activity detection (in milliseconds)
+ * Prevents excessive session refresh calls from rapid user interactions
+ * Example: Scrolling won't trigger refresh more than once per 5 seconds
+ */
+export const ACTIVITY_DEBOUNCE_DELAY = 5000; // 5 seconds
+
+// ============================================================================
+// SESSION STATE VALIDATION UTILITIES
+// ============================================================================
+
+/**
+ * Check if a session has expired based on expiration timestamp
+ * Used on client-side to determine if session is completely invalid
+ *
+ * @param expirationTime - Millisecond timestamp when session expires
+ * @returns true if current time is past expiration time
  */
 export function isSessionExpired(expirationTime: number): boolean {
   return Date.now() > expirationTime;
 }
 
 /**
- * Check if session is about to expire (within warning interval)
+ * Check if a session is expiring soon (within warning threshold)
+ * Used to trigger warning dialog for user
+ *
+ * @param expirationTime - Millisecond timestamp when session expires
+ * @returns true if time remaining is less than warning threshold
  */
 export function isSessionExpiring(expirationTime: number): boolean {
-  const warningTimeMs = SESSION_WARNING_INTERVAL * 60 * 1000;
-  return (
-    Date.now() > expirationTime - warningTimeMs && Date.now() <= expirationTime
-  );
+  const warningThresholdMs = SESSION_WARNING_THRESHOLD * 60 * 1000;
+  const timeRemaining = expirationTime - Date.now();
+  return timeRemaining > 0 && timeRemaining < warningThresholdMs;
 }
 
 /**
- * Get time remaining in minutes
+ * Calculate how many minutes remain until session expires
+ * Used to display "Time remaining: X minutes" in warning dialog
+ *
+ * @param expirationTime - Millisecond timestamp when session expires
+ * @returns Time remaining in minutes (rounded down)
  */
 export function getTimeRemaining(expirationTime: number): number {
-  const remaining = Math.floor((expirationTime - Date.now()) / 60000);
-  return Math.max(0, remaining);
+  const msRemaining = Math.max(0, expirationTime - Date.now());
+  return Math.floor(msRemaining / (60 * 1000));
+}
+
+/**
+ * Calculate session expiration time based on timeout duration
+ * Commonly used when initializing or refreshing session
+ *
+ * @param timeoutMinutes - Session timeout in minutes
+ * @returns Millisecond timestamp of expiration
+ */
+export function calculateSessionExpiration(timeoutMinutes: number): number {
+  return Date.now() + minutesToMs(timeoutMinutes);
 }

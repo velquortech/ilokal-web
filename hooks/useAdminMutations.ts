@@ -155,7 +155,7 @@ export function useCreateConsumer(
         });
 
         if (result.success && result.data) {
-          console.log(
+          console.info(
             '[useCreateConsumer] Calling onSuccess with:',
             result.data,
           );
@@ -242,7 +242,7 @@ export function useCreateBusinessOwner(
         });
 
         if (result.success && result.data) {
-          console.log(
+          console.info(
             '[useCreateBusinessOwner] Calling onSuccess with:',
             result.data,
           );

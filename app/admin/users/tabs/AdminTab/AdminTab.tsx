@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -181,7 +181,7 @@ export default function AdminTab() {
     (updatedAdmin: AdminUser) => {
       // Optimistic update: patch only the changed values in the table
       // This updates the UI instantly without re-rendering the whole component
-      console.log(
+      console.info(
         '[AdminTab] Update success callback triggered with:',
         updatedAdmin,
       );

@@ -53,7 +53,7 @@ export async function loginAction(
     // Uses authenticated session from cookie
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, email, full_name, phone_number, role, avatar_url')
+      .select('id, email, full_name, phone_number, role, avatar_url, status')
       .eq('id', authData.user.id)
       .single();
 
@@ -63,6 +63,16 @@ export async function loginAction(
         profileError?.message,
       );
       throw new Error('Failed to load user profile');
+    }
+
+    // Verify user account is active (not suspended or inactive)
+    if (profile.status !== 'active') {
+      console.warn(
+        `[loginAction] Login attempt by inactive user ${authData.user.id} with status: ${profile.status}`,
+      );
+      throw new Error(
+        `Your account is ${profile.status}. Please contact support.`,
+      );
     }
 
     // Return only necessary user data to client
@@ -147,12 +157,13 @@ export async function signupAction(
       throw new Error(authError?.message || 'Failed to create account');
     }
 
-    // Prepare profile data
+    // Prepare profile data - set initial status to active
     const profileData: Record<string, unknown> = {
       id: authData.user.id,
       email: data.email.trim(),
       full_name: data.name.trim(),
       role: data.role,
+      status: 'active',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -228,7 +239,7 @@ export async function redirectByRole(role: string): Promise<void> {
  * Server Action: Verify and refresh session
  *
  * Security: Checks if current session is still valid
- * If session is about to expire or expired, attempts to refresh it
+ * Also checks that user is still active (not suspended or inactive)
  * Returns null if session is invalid and cannot be refreshed
  */
 export async function verifySessionAction(): Promise<{ user: User } | null> {
@@ -244,14 +255,22 @@ export async function verifySessionAction(): Promise<{ user: User } | null> {
       return null;
     }
 
-    // Fetch fresh profile data
+    // Fetch fresh profile data including status
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, email, full_name, phone_number, role, avatar_url')
+      .select('id, email, full_name, phone_number, role, avatar_url, status')
       .eq('id', user.id)
       .single();
 
     if (profileError || !profile) {
+      return null;
+    }
+
+    // Check if user is still active (not suspended or inactive)
+    if (profile.status !== 'active') {
+      console.warn(
+        `[verifySessionAction] User ${user.id} has status: ${profile.status}`,
+      );
       return null;
     }
 
@@ -273,10 +292,10 @@ export async function verifySessionAction(): Promise<{ user: User } | null> {
 
 /**
  * Server Action: Logout user
- * Clears session and redirects
+ * Clears session and redirects to home
  */
 export async function logoutAction(): Promise<void> {
   const supabase = await createServerSupabaseClient();
   await supabase.auth.signOut();
-  redirect(ROUTES.AUTH.LOGIN);
+  redirect(ROUTES.DASHBOARD.HOME);
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Sidebar } from '@/app/admin/components/shared/Sidebar';
 import { Header } from '@/app/admin/components/shared/Header';
 import { adminNavItems } from '@/app/admin/config/sidebarConfig';
@@ -25,17 +25,12 @@ interface AdminLayoutClientProps {
 export function AdminLayoutClient({ user, children }: AdminLayoutClientProps) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  const handleLogout = useCallback(async () => {
-    // Logout is handled via logoutAction in Header component
-    // This callback is just for consistency
-  }, []);
-
   return (
     <UserProvider user={user}>
       <div className="flex min-h-screen w-screen bg-gray-50">
         <Sidebar
           items={adminNavItems}
-          onLogout={handleLogout}
+          onLogout={undefined}
           appName="iLokal"
           isMobileSidebarOpen={isMobileSidebarOpen}
           setIsMobileSidebarOpen={setIsMobileSidebarOpen}
@@ -47,7 +42,7 @@ export function AdminLayoutClient({ user, children }: AdminLayoutClientProps) {
             userEmail={user.email}
             userFullName={user.full_name || 'User'}
             userAvatar={user.avatar_url || undefined}
-            onLogout={handleLogout}
+            onLogout={undefined}
             showSearch={true}
             onMobileMenuClick={() =>
               setIsMobileSidebarOpen(!isMobileSidebarOpen)

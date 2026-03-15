@@ -292,7 +292,10 @@ export async function verifySessionAction(): Promise<{ user: User } | null> {
 
 /**
  * Server Action: Logout user
- * Clears session and redirects to home
+ * Clears session and redirects to login page
+ *
+ * Note: redirect() must be called inside try block or after error handling
+ * because it throws NEXT_REDIRECT error that Next.js framework catches
  */
 export async function logoutAction(): Promise<void> {
   try {
@@ -307,9 +310,9 @@ export async function logoutAction(): Promise<void> {
     console.info('[logoutAction] User signed out successfully');
   } catch (error) {
     console.error('[logoutAction] Error during logout:', error);
-    // Still redirect even if signout had issues
+    // Continue to redirect even if signout had issues
   }
 
-  // Always redirect to home after logout attempt
-  redirect(ROUTES.DASHBOARD.HOME);
+  // Redirect to login page after logout (moved inside to ensure it executes)
+  redirect(ROUTES.AUTH.LOGIN);
 }

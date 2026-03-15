@@ -1,42 +1,30 @@
 import { create } from 'zustand';
-import { User } from '@/lib/types/user';
 
-interface AuthState {
-  user: User | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
+/**
+ * Zustand store for CLIENT-SIDE UI STATE ONLY
+ *
+ * ⚠️ IMPORTANT: Do NOT store sensitive data (user info, auth tokens, etc.)
+ * Use Server Components and useActionState for auth state instead.
+ *
+ * This store is for temporary UI state:
+ * - Form errors from Server Actions
+ * - Loading states for client-side operations
+ * - UI toggles, filters, etc.
+ */
+
+interface AuthUIState {
+  // Form errors from Server Actions (temporary)
   error: string | null;
 
   // Actions
-  setUser: (user: User | null) => void;
-  setIsLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
-  logout: () => void;
   clearError: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  isLoading: false,
-  isAuthenticated: false,
+export const useAuthStore = create<AuthUIState>((set) => ({
   error: null,
 
-  setUser: (user) =>
-    set({
-      user,
-      isAuthenticated: !!user,
-    }),
-
-  setIsLoading: (isLoading) => set({ isLoading }),
-
   setError: (error) => set({ error }),
-
-  logout: () =>
-    set({
-      user: null,
-      isAuthenticated: false,
-      error: null,
-    }),
 
   clearError: () => set({ error: null }),
 }));

@@ -1,11 +1,9 @@
 'use client';
 
-import { useEffect, useState, useRef, useMemo } from 'react';
-import { useAuthStore } from '@/services/stores/authStore';
+import { useEffect, useState, useRef } from 'react';
 import { verifySessionAction, logoutAction } from '@/app/(auth)/actions';
 import {
   SESSION_CHECK_INTERVAL,
-  getSessionTimeout,
   isSessionExpired,
   isSessionExpiring,
   getTimeRemaining,
@@ -36,7 +34,6 @@ interface SessionWarning {
  * ```
  */
 export function useSessionMonitor() {
-  const user = useAuthStore((state) => state.user);
   const [sessionWarning, setSessionWarning] = useState<SessionWarning>({
     isExpiring: false,
     timeRemaining: 0,
@@ -44,66 +41,68 @@ export function useSessionMonitor() {
   const [sessionExpiration, setSessionExpiration] = useState<number | null>(
     null,
   );
-
-  // Use ref to track the current expiration without creating new closures
   const expirationRef = useRef<number | null>(null);
 
-  // Initialize session expiration time on user login
+  // Initialize session expiration time from localStorage on mount
   useEffect(() => {
-    if (user) {
-      const timeoutMinutes = getSessionTimeout(user.role);
-      const expirationTime = Date.now() + timeoutMinutes * 60 * 1000;
+    if (typeof window === 'undefined') return;
+
+    const storedExpiration = localStorage.getItem('sessionExpiration');
+    if (storedExpiration) {
+      const expirationTime = parseInt(storedExpiration, 10);
       expirationRef.current = expirationTime;
       setSessionExpiration(expirationTime);
-    } else {
-      expirationRef.current = null;
-      setSessionExpiration(null);
     }
-  }, [user?.id]);
+  }, []);
 
-  // Memoized refresh function to prevent new function creation on every render
-  const refreshSession = useMemo(
-    () => () => {
-      if (!user) return;
+  // Memoized refresh function to reset session on user activity
+  const refreshSession = () => {
+    if (typeof window === 'undefined') return;
 
-      const timeoutMinutes = getSessionTimeout(user.role);
-      const newExpirationTime = Date.now() + timeoutMinutes * 60 * 1000;
-      expirationRef.current = newExpirationTime;
-      setSessionExpiration(newExpirationTime);
-      setSessionWarning({
-        isExpiring: false,
-        timeRemaining: timeoutMinutes,
-      });
-    },
-    [user],
-  );
+    const storedExpiration = localStorage.getItem('sessionExpiration');
+    if (!storedExpiration) return;
+
+    const timeoutMinutes = 30; // Default timeout, matches config default
+
+    const newExpirationTime = Date.now() + timeoutMinutes * 60 * 1000;
+    expirationRef.current = newExpirationTime;
+    localStorage.setItem('sessionExpiration', newExpirationTime.toString());
+    setSessionExpiration(newExpirationTime);
+    setSessionWarning({
+      isExpiring: false,
+      timeRemaining: timeoutMinutes,
+    });
+  };
 
   // Set up periodic session verification
   useEffect(() => {
-    if (!user || !sessionExpiration) return;
+    if (typeof window === 'undefined') return;
+    if (!sessionExpiration) return;
 
     const verificationInterval = setInterval(async () => {
       const currentExpiration = expirationRef.current;
       if (!currentExpiration) return;
 
-      // Check session validity
+      // Check session validity with server
       const sessionValid = await verifySessionAction();
 
       if (!sessionValid) {
         try {
           await logoutAction();
         } catch {
-          useAuthStore.getState().logout();
+          // logoutAction throws NEXT_REDIRECT, which is expected
+          localStorage.removeItem('sessionExpiration');
         }
         return;
       }
 
-      // Check if expired or expiring
+      // Check if expired
       if (isSessionExpired(currentExpiration)) {
         try {
           await logoutAction();
         } catch {
-          useAuthStore.getState().logout();
+          // logoutAction throws NEXT_REDIRECT, which is expected
+          localStorage.removeItem('sessionExpiration');
         }
         return;
       }
@@ -124,13 +123,12 @@ export function useSessionMonitor() {
     }, SESSION_CHECK_INTERVAL);
 
     return () => clearInterval(verificationInterval);
-  }, [user, sessionExpiration]);
+  }, [sessionExpiration]);
 
-  // Set up activity listeners to refresh session - memoized handler
+  // Set up activity listeners to refresh session
   useEffect(() => {
-    if (!user) return;
+    if (typeof window === 'undefined') return;
 
-    // Use memoized refreshSession from above
     window.addEventListener('mousedown', refreshSession);
     window.addEventListener('keydown', refreshSession);
     window.addEventListener('scroll', refreshSession, { passive: true });
@@ -142,7 +140,7 @@ export function useSessionMonitor() {
       window.removeEventListener('scroll', refreshSession);
       window.removeEventListener('touchstart', refreshSession);
     };
-  }, [user, refreshSession]);
+  }, []);
 
   return {
     isExpiring: sessionWarning.isExpiring,

@@ -15,12 +15,12 @@ import {
   useDeleteConsumer,
 } from '@/hooks/useAdminMutations';
 import { useProfilesByRole } from '@/hooks/useProfiles';
-import { useAuth } from '@/hooks/useAuth';
+import { useUser } from '@/providers/UserContext';
 import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
 import { PaginatedResponse } from '@/services/api/paginationService';
 
 export default function ConsumersTab() {
-  const { user } = useAuth();
+  const user = useUser();
   const isAdmin = user?.role === 'admin';
   const [selectedConsumer, setSelectedConsumer] = useState<AdminUser | null>(
     null,

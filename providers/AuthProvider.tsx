@@ -1,43 +1,32 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useAuthStore } from '@/services/stores/authStore';
 import { useSessionMonitor } from '@/hooks/useSessionMonitor';
-import { verifySessionAction } from '@/app/(auth)/actions';
+import { SessionTracker } from '@/components/SessionTracker';
 
 interface AuthProviderProps {
   children: React.ReactNode;
 }
 
+/**
+ * AuthProvider - Minimal setup for monitoring session
+ *
+ * Auth state is now handled by:
+ * - Server Components using verifySessionAction()
+ * - useActionState for form handling
+ * - Zustand only for UI state (no sensitive auth data)
+ *
+ * Session tracking:
+ * - SessionTracker: Initializes session expiration in localStorage on mount
+ * - useSessionMonitor: Monitors session validity and shows warnings
+ */
 export function AuthProvider({ children }: AuthProviderProps) {
-  const setUser = useAuthStore((state) => state.setUser);
-  const setIsLoading = useAuthStore((state) => state.setIsLoading);
-
-  // Initialize session monitoring hook
+  // Initialize session monitoring hook for auto-logout on expiration
   useSessionMonitor();
 
-  useEffect(() => {
-    // Verify session on mount
-    const verifySession = async () => {
-      setIsLoading(true);
-      try {
-        const response = await verifySessionAction();
-        if (response?.user) {
-          setUser(response.user);
-        } else {
-          // Session is not valid
-          setUser(null);
-        }
-      } catch {
-        // Session verification failed, user will need to login
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    verifySession();
-  }, [setUser, setIsLoading]);
-
-  return <>{children}</>;
+  return (
+    <>
+      <SessionTracker />
+      {children}
+    </>
+  );
 }

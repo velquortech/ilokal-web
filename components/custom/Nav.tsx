@@ -40,7 +40,6 @@ export interface NavItem {
   icon: LucideIcon;
   badge?: string;
   badgeVariant?: BadgeVariant;
-  highlight?: boolean;
   adminOnly?: boolean;
   items?: NavSubItem[];
 }

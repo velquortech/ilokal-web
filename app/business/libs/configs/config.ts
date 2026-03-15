@@ -1,7 +1,5 @@
 import {
   Store,
-  Package,
-  ShoppingCart,
   TrendingUp,
   BarChart3,
   Megaphone,
@@ -14,13 +12,13 @@ import {
   Sparkles,
   Zap,
   Users,
-  CreditCard,
   Bell,
   Building2,
-  Building,
+  // Building,
   MapPin,
   Layers,
   Home,
+  ShoppingBasket,
 } from 'lucide-react';
 import { NavItem } from '@/components/custom/Nav';
 import { QuickAction } from '@/components/custom/ActionButton';
@@ -33,38 +31,38 @@ export const mainNavigation: NavItem[] = [
   },
 ];
 
-export const branchNavigation: NavItem[] = [
-  {
-    title: 'All Branches',
-    href: '/business/branches',
-    icon: Building2,
-    adminOnly: true,
-  },
-  {
-    title: 'Branch Management',
-    icon: Building,
-    adminOnly: true,
-    items: [
-      { title: 'Create Branch', href: '/business/branches/create' },
-      {
-        title: 'Branch List',
-        href: '/business/branches/list',
-        adminOnly: true,
-      },
-      { title: 'Branch Settings', href: '/business/branches/settings' },
-      { title: 'Staff & Roles', href: '/business/branches/staff' },
-    ],
-  },
-  {
-    title: 'Current Branch',
-    icon: MapPin,
-    items: [
-      { title: 'Overview', href: '/business/branch/overview' },
-      { title: 'Performance', href: '/business/branch/performance' },
-      { title: 'Staff', href: '/business/branch/staff' },
-    ],
-  },
-];
+// export const branchNavigation: NavItem[] = [
+//   {
+//     title: 'All Branches',
+//     href: '/business/branches',
+//     icon: Building2,
+//     adminOnly: true,
+//   },
+//   {
+//     title: 'Branch Management',
+//     icon: Building,
+//     adminOnly: true,
+//     items: [
+//       { title: 'Create Branch', href: '/business/branches/create' },
+//       {
+//         title: 'Branch List',
+//         href: '/business/branches/list',
+//         adminOnly: true,
+//       },
+//       { title: 'Branch Settings', href: '/business/branches/settings' },
+//       { title: 'Staff & Roles', href: '/business/branches/staff' },
+//     ],
+//   },
+//   {
+//     title: 'Current Branch',
+//     icon: MapPin,
+//     items: [
+//       { title: 'Overview', href: '/business/branch/overview' },
+//       { title: 'Performance', href: '/business/branch/performance' },
+//       { title: 'Staff', href: '/business/branch/staff' },
+//     ],
+//   },
+// ];
 
 export const storeNavigation: NavItem[] = [
   {
@@ -73,27 +71,12 @@ export const storeNavigation: NavItem[] = [
     icon: Store,
   },
   {
-    title: 'Products',
-    icon: Package,
+    title: 'Store Management',
+    icon: ShoppingBasket,
     items: [
-      { title: 'All Products', href: '/business/products' },
-      { title: 'Categories', href: '/business/products/categories' },
-      { title: 'Inventory', href: '/business/products/inventory' },
-      { title: 'Import/Export', href: '/business/products/import' },
-    ],
-  },
-  {
-    title: 'Orders',
-    icon: ShoppingCart,
-    badge: '12',
-    badgeVariant: 'destructive',
-    items: [
-      { title: 'All Orders', href: '/business/orders' },
-      { title: 'Pending', href: '/business/orders/pending' },
-      { title: 'Processing', href: '/business/orders/processing' },
-      { title: 'Shipped', href: '/business/orders/shipped' },
-      { title: 'Completed', href: '/business/orders/completed' },
-      { title: 'Returns', href: '/business/orders/returns' },
+      { title: 'Menu & Services', href: '/store/menu' },
+      { title: 'Operating Hours', href: '/store/hours' },
+      { title: 'Settings', href: '/store/settings' },
     ],
   },
 ];
@@ -102,18 +85,16 @@ export const marketingNavigation: NavItem[] = [
   {
     title: 'Marketing Hub',
     icon: Sparkles,
-    highlight: true,
+
     items: [
       { title: 'Overview', href: '/business/marketing' },
       { title: 'Promotions', href: '/business/marketing/promotions' },
-      { title: 'Flash Sales', href: '/business/marketing/flash-sales' },
-      { title: 'Product Boost', href: '/business/marketing/boost' },
     ],
   },
   {
     title: 'Vouchers & Coupons',
     icon: Ticket,
-    highlight: true,
+
     items: [
       { title: 'All Vouchers', href: '/business/vouchers' },
       { title: 'Create Voucher', href: '/business/vouchers/create' },
@@ -124,7 +105,7 @@ export const marketingNavigation: NavItem[] = [
   {
     title: 'Campaigns',
     icon: Megaphone,
-    highlight: true,
+
     items: [
       { title: 'Active Campaigns', href: '/business/campaigns' },
       { title: 'Create Campaign', href: '/business/campaigns/create' },
@@ -158,12 +139,11 @@ export const analyticsNavigation: NavItem[] = [
     title: 'Analytics Dashboard',
     href: '/business/analytics',
     icon: TrendingUp,
-    highlight: true,
   },
   {
     title: 'Reports',
     icon: BarChart3,
-    highlight: true,
+
     items: [
       { title: 'Sales Reports', href: '/business/reports/sales' },
       { title: 'Product Reports', href: '/business/reports/products' },
@@ -206,19 +186,6 @@ export const analyticsNavigation: NavItem[] = [
   },
 ];
 
-export const financeNavigation: NavItem[] = [
-  {
-    title: 'Payments & Billing',
-    icon: CreditCard,
-    items: [
-      { title: 'Transactions', href: '/business/finance/transactions' },
-      { title: 'Payouts', href: '/business/finance/payouts' },
-      { title: 'Invoices', href: '/business/finance/invoices' },
-      { title: 'Payment Methods', href: '/business/finance/payment-methods' },
-    ],
-  },
-];
-
 export const footerNavigation: NavItem[] = [
   {
     title: 'Settings',
@@ -245,7 +212,7 @@ export const branchManagerNavigation: NavItem[] = [
   },
 ];
 
-export const sectionLabels = {
+export const sectionheaders = {
   store: 'Store Management',
   communication: 'Communication',
   finance: 'Finance',
@@ -259,6 +226,31 @@ export const sectionIcons = {
   branch: Building2,
   currentBranch: MapPin,
 };
+
+export const SIDEBAR_SECTIONS: {
+  items: NavItem[];
+  header?: string;
+}[] = [
+  {
+    items: mainNavigation,
+  },
+  // {
+  //   items: branchNavigation,
+  //   header: 'Branch Management',
+  // },
+  {
+    items: storeNavigation,
+    header: 'Store Management',
+  },
+  {
+    items: marketingNavigation,
+    header: 'Marketing & Growth',
+  },
+  {
+    items: analyticsNavigation,
+    header: 'Analytics & Reports',
+  },
+];
 
 export interface Branch {
   id: string;
@@ -308,34 +300,5 @@ export const notificationActions: QuickAction[] = [
     badge: 3,
     badgeVariant: 'default',
     label: 'Notifications',
-  },
-];
-
-export const SIDEBAR_SECTIONS: {
-  items: NavItem[];
-  header?: string;
-}[] = [
-  {
-    items: mainNavigation,
-  },
-  {
-    items: branchNavigation,
-    header: 'Branch Management',
-  },
-  {
-    items: storeNavigation,
-    header: 'Store Management',
-  },
-  {
-    items: marketingNavigation,
-    header: 'Marketing & Growth',
-  },
-  {
-    items: analyticsNavigation,
-    header: 'Analytics & Reports',
-  },
-  {
-    items: financeNavigation,
-    header: 'Finance',
   },
 ];

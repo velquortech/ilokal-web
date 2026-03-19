@@ -2,18 +2,25 @@ import {
   LayoutDashboard,
   Users,
   Building2,
-  FileText,
   Lock,
   LucideIcon,
   LogOut,
+  MapPin,
+  ShoppingCart,
+  Ticket,
+  CreditCard,
+  Package,
+  BarChart3,
 } from 'lucide-react';
 import { ROUTES } from '@/config/routeConfig';
 
 export interface NavItem {
   label: string;
-  href: string;
+  href?: string;
   icon: LucideIcon;
   description?: string;
+  children?: NavItem[];
+  isSection?: boolean; // True if this is a group title
 }
 
 export const adminNavItems: NavItem[] = [
@@ -24,64 +31,76 @@ export const adminNavItems: NavItem[] = [
     description: 'Overview and analytics',
   },
   {
+    label: 'Business Management',
+    icon: Building2,
+    description: 'Manage businesses and their content',
+    isSection: true,
+  },
+  {
+    label: 'Business Profiles',
+    href: `${ROUTES.DASHBOARD.ADMIN}/businesses`,
+    icon: Building2,
+    description: 'Verify & manage business requests',
+  },
+  {
+    label: 'Branches',
+    href: `${ROUTES.DASHBOARD.ADMIN}/branches`,
+    icon: MapPin,
+    description: 'Manage business locations',
+  },
+  {
+    label: 'Products',
+    href: `${ROUTES.DASHBOARD.ADMIN}/products`,
+    icon: ShoppingCart,
+    description: 'View & manage products',
+  },
+  {
+    label: 'Coupons & Deals',
+    href: `${ROUTES.DASHBOARD.ADMIN}/coupons`,
+    icon: Ticket,
+    description: 'Manage promotions',
+  },
+  {
+    label: 'Revenue & Billing',
+    icon: CreditCard,
+    description: 'Track payments and subscriptions',
+    isSection: true,
+  },
+  {
+    label: 'Payments',
+    href: `${ROUTES.DASHBOARD.ADMIN}/payments`,
+    icon: CreditCard,
+    description: 'Track all transactions',
+  },
+  {
+    label: 'Subscriptions',
+    href: `${ROUTES.DASHBOARD.ADMIN}/subscriptions`,
+    icon: Package,
+    description: 'Manage subscription plans',
+  },
+  {
+    label: 'Analytics',
+    href: `${ROUTES.DASHBOARD.ADMIN}/analytics`,
+    icon: BarChart3,
+    description: 'View reports & metrics',
+  },
+  {
+    label: 'System Management',
+    icon: Users,
+    description: 'Manage users and security',
+    isSection: true,
+  },
+  {
     label: 'User Management',
     href: `${ROUTES.DASHBOARD.ADMIN}/users`,
     icon: Users,
     description: 'Manage system users',
   },
   {
-    label: 'Business Profiles',
-    href: `${ROUTES.DASHBOARD.ADMIN}/businesses`,
-    icon: Building2,
-    description: 'View business details',
-  },
-  {
-    label: 'Documents',
-    href: `${ROUTES.DASHBOARD.ADMIN}/documents`,
-    icon: FileText,
-    description: 'Manage documents',
-  },
-  {
     label: 'Account Status',
     href: `${ROUTES.DASHBOARD.ADMIN}/account-status`,
     icon: Lock,
     description: 'Account security',
-  },
-];
-
-export const businessNavItems: NavItem[] = [
-  {
-    label: 'Dashboard',
-    href: ROUTES.DASHBOARD.BUSINESS,
-    icon: LayoutDashboard,
-    description: 'Overview',
-  },
-  {
-    label: 'Branches',
-    href: `${ROUTES.DASHBOARD.BUSINESS}/branches`,
-    icon: Building2,
-    description: 'Manage branches',
-  },
-  {
-    label: 'Products',
-    href: `${ROUTES.DASHBOARD.BUSINESS}/products`,
-    icon: FileText,
-    description: 'Manage products',
-  },
-];
-
-export const userNavItems: NavItem[] = [
-  {
-    label: 'Dashboard',
-    href: '/dashboard/user',
-    icon: LayoutDashboard,
-    description: 'Overview',
-  },
-  {
-    label: 'My Profile',
-    href: '/dashboard/user/profile',
-    icon: Users,
-    description: 'Profile settings',
   },
 ];
 

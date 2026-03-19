@@ -11,6 +11,7 @@ import {
   updateUser,
   updateUserStatus,
   deleteUser,
+  restoreUser,
 } from '@/lib/api/admin/userAPIClient';
 import { AdminUpdateUserInput } from '@/lib/api/admin/adminActionHelpers';
 
@@ -268,6 +269,37 @@ export async function deleteBusinessOwnerAction(
         error instanceof Error
           ? error.message
           : 'Failed to delete business owner',
+    };
+  }
+}
+
+// ============================================================================
+// RESTORE/RECOVERY ACTIONS
+// ============================================================================
+
+/**
+ * Restore an archived user (soft delete recovery)
+ * Re-activates the user and allows them to login again
+ */
+export async function restoreUserAction(
+  id: string,
+): Promise<AdminActionResponse<AdminUser>> {
+  try {
+    const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
+    if (!authorized) return { success: false, error: authError };
+
+    const { data, error } = await restoreUser(id);
+
+    if (error) {
+      return { success: false, error };
+    }
+
+    revalidatePath('/admin');
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to restore user',
     };
   }
 }

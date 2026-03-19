@@ -147,7 +147,7 @@ BEGIN
       crypt('sample123', gen_salt('bf')),
       NOW(), NOW(), NOW(),
       jsonb_build_object('provider', 'email', 'providers', array['email']),
-      jsonb_build_object('role', 'user'),
+      jsonb_build_object('role', 'app_user'),
       false, false, false,
       '', '', '',
       '', '', ''
@@ -168,7 +168,7 @@ BEGIN
       _user_id, _email,
       'User ' || _num::text,
       '+345678' || LPAD(_num::text, 4, '0'),
-      'user', 'active', NOW(), NOW()
+      'app_user', 'active', NOW(), NOW()
     );
   END LOOP;
 END $$;
@@ -182,9 +182,9 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 -- SUMMARY
 -- ============================================================================
 -- Total users created: 60 (all visible in Supabase Authentication dashboard)
--- - 20 Admins:          admin1@test.local   ... admin20@test.local
--- - 20 Business Owners: business_owner1@test.local ... business_owner20@test.local
--- - 20 Users:           user1@test.local    ... user20@test.local
+-- - 20 Admins:          admin1@test.local   ... admin20@test.local (role: 'admin')
+-- - 20 Business Owners: business_owner1@test.local ... business_owner20@test.local (role: 'business_owner')
+-- - 20 Consumers:       user1@test.local    ... user20@test.local (role: 'app_user')
 --
 -- Password for ALL accounts: sample123
 -- Status: All profiles 'active', all emails confirmed

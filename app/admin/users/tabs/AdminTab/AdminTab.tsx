@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { Profile } from '@/lib/types/user';
+import { AdminUser } from '@/lib/types/admin';
 import { extractErrorMessage } from '@/lib/utils/errorHandler';
 import { UserFormData } from '@/app/admin/schemas/userFormSchema';
 import { UserFormModal } from '../../../components/forms';
@@ -15,13 +15,14 @@ import {
   useDeleteAdmin,
 } from '@/hooks/useAdminMutations';
 import { useProfilesByRole } from '@/hooks/useProfiles';
-import { useAuth } from '@/hooks/useAuth';
+import { useUser } from '@/providers/UserContext';
 import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
+import { PaginatedResponse } from '@/services/api/paginationService';
 
 export default function AdminTab() {
-  const { user } = useAuth();
+  const user = useUser();
   const isAdmin = user?.role === 'admin';
-  const [selectedAdmin, setSelectedAdmin] = useState<Profile | null>(null);
+  const [selectedAdmin, setSelectedAdmin] = useState<AdminUser | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,6 +31,8 @@ export default function AdminTab() {
     'all' | 'active' | 'inactive' | 'suspended'
   >('all');
   const [sortOrder, setSortOrder] = useState<'latest' | 'oldest'>('latest');
+  const [adminsDataCache, setAdminsDataCache] =
+    useState<PaginatedResponse<AdminUser> | null>(null);
 
   // Reset to page 1 immediately when the search query changes
   useEffect(() => {
@@ -58,55 +61,186 @@ export default function AdminTab() {
     sortOrder,
   });
 
-  // Mutations
-  const createAdminMutation = useCreateAdmin(
-    () => {
+  // Sync fetched data to cache
+  useEffect(() => {
+    if (adminsData) {
+      setAdminsDataCache(adminsData);
+    }
+  }, [adminsData]);
+
+  /**
+   * Patch a single user record in the cached data with only the changed fields
+   * This provides instant UI updates without re-fetching the entire list
+   */
+  const patchAdminInCache = useCallback((updatedAdmin: AdminUser) => {
+    setAdminsDataCache((prevData) => {
+      if (!prevData) return prevData;
+
+      // Find and update the specific admin in the current page
+      const updatedData = {
+        ...prevData,
+        data: prevData.data.map((admin) =>
+          admin.id === updatedAdmin.id
+            ? {
+                ...admin,
+                ...updatedAdmin,
+              }
+            : admin,
+        ),
+      };
+
+      return updatedData;
+    });
+  }, []);
+
+  /**
+   * Add a newly created user to the top of the cache
+   * This provides instant UI updates when a new user is created
+   */
+  const addAdminToCache = useCallback((newAdmin: AdminUser) => {
+    setAdminsDataCache((prevData) => {
+      if (!prevData) {
+        // If no cache exists, create initial data with just the new admin
+        return {
+          data: [newAdmin],
+          pagination: {
+            currentPage: 1,
+            pageSize: ADMIN_CONFIG.ITEMS_PER_PAGE,
+            totalItems: 1,
+            totalPages: 1,
+          },
+        };
+      }
+
+      // Add new admin to the beginning of the list
+      const updatedData = {
+        ...prevData,
+        data: [newAdmin, ...prevData.data.slice(0, -1)], // Add at top, remove last if exceeds limit
+        pagination: {
+          ...prevData.pagination,
+          totalItems: prevData.pagination.totalItems + 1,
+          totalPages: Math.ceil(
+            (prevData.pagination.totalItems + 1) / ADMIN_CONFIG.ITEMS_PER_PAGE,
+          ),
+        },
+      };
+
+      return updatedData;
+    });
+  }, []);
+
+  /**
+   * Remove a deleted user from the cache
+   * This provides instant UI removal without re-fetching the entire list
+   */
+  const removeAdminFromCache = useCallback((deletedAdminId: string) => {
+    setAdminsDataCache((prevData) => {
+      if (!prevData) return prevData;
+
+      // Remove the deleted admin from the list
+      const updatedData = {
+        ...prevData,
+        data: prevData.data.filter((admin) => admin.id !== deletedAdminId),
+        pagination: {
+          ...prevData.pagination,
+          totalItems: Math.max(0, prevData.pagination.totalItems - 1),
+          totalPages: Math.max(
+            1,
+            Math.ceil(
+              (prevData.pagination.totalItems - 1) /
+                ADMIN_CONFIG.ITEMS_PER_PAGE,
+            ),
+          ),
+        },
+      };
+
+      return updatedData;
+    });
+  }, []);
+
+  // Memoized mutation callbacks to ensure stable references
+  const handleCreateAdminSuccess = useCallback(
+    (newAdmin: AdminUser) => {
+      // Optimistic update: add new admin to the top of the table
+      addAdminToCache(newAdmin);
       toast.success('Admin account created successfully!');
       setIsFormOpen(false);
       setSelectedAdmin(null);
-      setCurrentPage(1);
+      // Don't reset to page 1 - keep user on current page to see the new user at top
     },
-    (err) => {
-      const errorMsg = extractErrorMessage(err);
-      toast.error(`Failed to create admin: ${errorMsg}`);
-      console.error('Error creating admin:', err);
-    },
+    [addAdminToCache],
   );
 
-  const updateAdminMutation = useUpdateAdmin(
-    () => {
+  const handleCreateAdminError = useCallback((err: string) => {
+    const errorMsg = extractErrorMessage(err);
+    toast.error(`Failed to create admin: ${errorMsg}`);
+    console.error('Error creating admin:', err);
+  }, []);
+
+  const handleUpdateAdminSuccess = useCallback(
+    (updatedAdmin: AdminUser) => {
+      // Optimistic update: patch only the changed values in the table
+      // This updates the UI instantly without re-rendering the whole component
+      console.info(
+        '[AdminTab] Update success callback triggered with:',
+        updatedAdmin,
+      );
+      patchAdminInCache(updatedAdmin);
+
       toast.success('Admin account updated successfully!');
-      // Add small delay to ensure React has rendered all updates before closing modal
-      // This prevents phone number from flashing old value
-      setTimeout(() => {
-        setIsFormOpen(false);
-        setSelectedAdmin(null);
-        setCurrentPage(1);
-      }, 100);
+      // Close modal immediately without delay since data is already updated
+      setIsFormOpen(false);
+      setSelectedAdmin(null);
     },
-    (err) => {
-      const errorMsg = extractErrorMessage(err);
-      toast.error(`Failed to update admin: ${errorMsg}`);
-      console.error('Error updating admin:', err);
-    },
+    [patchAdminInCache],
   );
 
-  const deleteAdminMutation = useDeleteAdmin(
-    () => {
+  const handleUpdateAdminError = useCallback((err: string) => {
+    const errorMsg = extractErrorMessage(err);
+    toast.error(`Failed to update admin: ${errorMsg}`);
+    console.error('Error updating admin:', err);
+  }, []);
+
+  const handleDeleteAdminSuccess = useCallback(
+    (deletedAdminId: string) => {
+      // Optimistic update: remove admin from cache
+      removeAdminFromCache(deletedAdminId);
       toast.success('Admin account deleted successfully!');
-      if (adminsData && adminsData.data.length === 1 && currentPage > 1) {
+      // Refetch or adjust current page
+      if (
+        adminsDataCache &&
+        adminsDataCache.data.length === 1 &&
+        currentPage > 1
+      ) {
         setCurrentPage(currentPage - 1);
       }
     },
-    (err) => {
-      const errorMsg = extractErrorMessage(err);
-      toast.error(`Failed to delete admin: ${errorMsg}`);
-      console.error('Error deleting admin:', err);
-    },
+    [adminsDataCache, currentPage, removeAdminFromCache],
   );
 
+  const handleDeleteAdminError = useCallback((err: string) => {
+    const errorMsg = extractErrorMessage(err);
+    toast.error(`Failed to delete admin: ${errorMsg}`);
+    console.error('Error deleting admin:', err);
+  }, []);
+
+  // Mutations
+  const createAdminMutation = useCreateAdmin(
+    handleCreateAdminSuccess,
+    handleCreateAdminError,
+  );
+
+  const updateAdminMutation = useUpdateAdmin(
+    handleUpdateAdminSuccess,
+    handleUpdateAdminError,
+  );
+
+  const deleteAdminMutation = useDeleteAdmin(
+    handleDeleteAdminSuccess,
+    handleDeleteAdminError,
+  );
   const getChangedFields = (
-    original: Profile,
+    original: AdminUser,
     formData: UserFormData,
   ): Record<string, unknown> => {
     const changes: Record<string, unknown> = {};
@@ -142,13 +276,10 @@ export default function AdminTab() {
           return;
         }
 
-        await updateAdminMutation.mutateAsync({
-          id: selectedAdmin.id,
-          changes: changedFields,
-        });
+        updateAdminMutation.mutate(selectedAdmin.id, changedFields);
       } else {
         // Create mode
-        await createAdminMutation.mutateAsync(formData);
+        createAdminMutation.mutate(formData);
       }
     } catch (err) {
       // Error is already handled by mutation callbacks
@@ -156,15 +287,15 @@ export default function AdminTab() {
     }
   };
 
-  const handleEdit = useCallback((admin: Profile) => {
+  const handleEdit = useCallback((admin: AdminUser) => {
     setSelectedAdmin(admin);
     setIsFormOpen(true);
   }, []);
 
   const handleDelete = useCallback(
-    async (id: string) => {
+    (id: string) => {
       try {
-        await deleteAdminMutation.mutateAsync(id);
+        deleteAdminMutation.mutate(id);
       } catch {
         // Error is already handled by mutation callbacks
         console.error('Error deleting admin');
@@ -186,15 +317,7 @@ export default function AdminTab() {
     createAdminMutation.isPending ||
     updateAdminMutation.isPending ||
     deleteAdminMutation.isPending;
-  const error = fetchError
-    ? extractErrorMessage(fetchError)
-    : createAdminMutation.error
-      ? extractErrorMessage(createAdminMutation.error)
-      : updateAdminMutation.error
-        ? extractErrorMessage(updateAdminMutation.error)
-        : deleteAdminMutation.error
-          ? extractErrorMessage(deleteAdminMutation.error)
-          : null;
+  const error = fetchError ? extractErrorMessage(fetchError) : null;
 
   if (!isAdmin) {
     return (
@@ -216,7 +339,7 @@ export default function AdminTab() {
             Admin Accounts
           </h2>
           <p className="mt-1 text-sm text-gray-600">
-            Total admins: {adminsData?.pagination.totalItems || 0}
+            Total admins: {adminsDataCache?.pagination.totalItems || 0}
           </p>
         </div>
         <Button
@@ -259,12 +382,13 @@ export default function AdminTab() {
       />
 
       <UsersTable
-        data={adminsData}
+        data={adminsDataCache}
         isLoading={isLoading}
         currentPage={currentPage}
         onPageChange={setCurrentPage}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onStatusChange={patchAdminInCache}
         isSubmitting={isSubmitting}
       />
 
@@ -276,13 +400,7 @@ export default function AdminTab() {
         }}
         onSubmit={handleCreateAdmin}
         userType="admin"
-        error={
-          createAdminMutation.error
-            ? extractErrorMessage(createAdminMutation.error)
-            : updateAdminMutation.error
-              ? extractErrorMessage(updateAdminMutation.error)
-              : null
-        }
+        error={null}
         initialData={
           selectedAdmin
             ? {

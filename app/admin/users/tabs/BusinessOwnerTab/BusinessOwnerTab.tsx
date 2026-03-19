@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { Profile } from '@/lib/types/user';
+import { AdminUser } from '@/lib/types/admin';
 import { extractErrorMessage } from '@/lib/utils/errorHandler';
 import { UserFormData } from '@/app/admin/schemas/userFormSchema';
 import { UserFormModal } from '../../../components/forms';
@@ -15,14 +15,15 @@ import {
   useDeleteBusinessOwner,
 } from '@/hooks/useAdminMutations';
 import { useProfilesByRole } from '@/hooks/useProfiles';
-import { useAuth } from '@/hooks/useAuth';
+import { useUser } from '@/providers/UserContext';
 import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
+import { PaginatedResponse } from '@/services/api/paginationService';
 
 export default function BusinessOwnerTab() {
-  const { user } = useAuth();
+  const user = useUser();
   const isAdmin = user?.role === 'admin';
   const [selectedBusinessOwner, setSelectedBusinessOwner] =
-    useState<Profile | null>(null);
+    useState<AdminUser | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,6 +32,8 @@ export default function BusinessOwnerTab() {
     'all' | 'active' | 'inactive' | 'suspended'
   >('all');
   const [sortOrder, setSortOrder] = useState<'latest' | 'oldest'>('latest');
+  const [businessOwnersDataCache, setBusinessOwnersDataCache] =
+    useState<PaginatedResponse<AdminUser> | null>(null);
 
   // Reset to page 1 immediately when the search query changes
   useEffect(() => {
@@ -59,59 +62,191 @@ export default function BusinessOwnerTab() {
     sortOrder,
   });
 
-  // Mutations
-  const createBusinessOwnerMutation = useCreateBusinessOwner(
-    () => {
+  // Sync fetched data to cache
+  useEffect(() => {
+    if (businessOwnersData) {
+      setBusinessOwnersDataCache(businessOwnersData);
+    }
+  }, [businessOwnersData]);
+
+  /**
+   * Patch a single user record in the cached data with only the changed fields
+   * This provides instant UI updates without re-fetching the entire list
+   */
+  const patchBusinessOwnerInCache = useCallback(
+    (updatedBusinessOwner: AdminUser) => {
+      setBusinessOwnersDataCache((prevData) => {
+        if (!prevData) return prevData;
+
+        // Find and update the specific business owner in the current page
+        const updatedData = {
+          ...prevData,
+          data: prevData.data.map((businessOwner) =>
+            businessOwner.id === updatedBusinessOwner.id
+              ? {
+                  ...businessOwner,
+                  ...updatedBusinessOwner,
+                }
+              : businessOwner,
+          ),
+        };
+
+        return updatedData;
+      });
+    },
+    [],
+  );
+
+  /**
+   * Add a newly created user to the top of the cache
+   * This provides instant UI updates when a new user is created
+   */
+  const addBusinessOwnerToCache = useCallback((newBusinessOwner: AdminUser) => {
+    setBusinessOwnersDataCache((prevData) => {
+      if (!prevData) {
+        // If no cache exists, create initial data with just the new business owner
+        return {
+          data: [newBusinessOwner],
+          pagination: {
+            currentPage: 1,
+            pageSize: ADMIN_CONFIG.ITEMS_PER_PAGE,
+            totalItems: 1,
+            totalPages: 1,
+          },
+        };
+      }
+
+      // Add new business owner to the beginning of the list
+      const updatedData = {
+        ...prevData,
+        data: [newBusinessOwner, ...prevData.data.slice(0, -1)], // Add at top, remove last if exceeds limit
+        pagination: {
+          ...prevData.pagination,
+          totalItems: prevData.pagination.totalItems + 1,
+          totalPages: Math.ceil(
+            (prevData.pagination.totalItems + 1) / ADMIN_CONFIG.ITEMS_PER_PAGE,
+          ),
+        },
+      };
+
+      return updatedData;
+    });
+  }, []);
+
+  /**
+   * Remove a deleted user from the cache
+   * This provides instant UI removal without re-fetching the entire list
+   */
+  const removeBusinessOwnerFromCache = useCallback(
+    (deletedBusinessOwnerId: string) => {
+      setBusinessOwnersDataCache((prevData) => {
+        if (!prevData) return prevData;
+
+        // Remove the deleted business owner from the list
+        const updatedData = {
+          ...prevData,
+          data: prevData.data.filter(
+            (businessOwner) => businessOwner.id !== deletedBusinessOwnerId,
+          ),
+          pagination: {
+            ...prevData.pagination,
+            totalItems: Math.max(0, prevData.pagination.totalItems - 1),
+            totalPages: Math.max(
+              1,
+              Math.ceil(
+                (prevData.pagination.totalItems - 1) /
+                  ADMIN_CONFIG.ITEMS_PER_PAGE,
+              ),
+            ),
+          },
+        };
+
+        return updatedData;
+      });
+    },
+    [],
+  );
+
+  // Memoized mutation callbacks to ensure stable references
+  const handleCreateBusinessOwnerSuccess = useCallback(
+    (newBusinessOwner: AdminUser) => {
+      // Optimistic update: add new business owner to the top of the table
+      addBusinessOwnerToCache(newBusinessOwner);
       toast.success('Business owner account created successfully!');
       setIsFormOpen(false);
       setSelectedBusinessOwner(null);
-      setCurrentPage(1);
+      // Don't reset to page 1 - keep user on current page to see the new user at top
     },
-    (err) => {
-      const errorMsg = extractErrorMessage(err);
-      toast.error(`Failed to create business owner: ${errorMsg}`);
-      console.error('Error creating business owner:', err);
-    },
+    [addBusinessOwnerToCache],
   );
 
-  const updateBusinessOwnerMutation = useUpdateBusinessOwner(
-    () => {
+  const handleCreateBusinessOwnerError = useCallback((err: string) => {
+    const errorMsg = extractErrorMessage(err);
+    toast.error(`Failed to create business owner: ${errorMsg}`);
+    console.error('Error creating business owner:', err);
+  }, []);
+
+  const handleUpdateBusinessOwnerSuccess = useCallback(
+    (updatedBusinessOwner: AdminUser) => {
+      // Optimistic update: patch only the changed values in the table
+      // This updates the UI instantly without re-rendering the whole component
+      patchBusinessOwnerInCache(updatedBusinessOwner);
+
       toast.success('Business owner account updated successfully!');
-      // Add small delay to ensure React has rendered all updates before closing modal
-      // This prevents phone number from flashing old value
-      setTimeout(() => {
-        setIsFormOpen(false);
-        setSelectedBusinessOwner(null);
-        setCurrentPage(1);
-      }, 100);
+      // Close modal immediately without delay since data is already updated
+      setIsFormOpen(false);
+      setSelectedBusinessOwner(null);
     },
-    (err) => {
-      const errorMsg = extractErrorMessage(err);
-      toast.error(`Failed to update business owner: ${errorMsg}`);
-      console.error('Error updating business owner:', err);
-    },
+    [patchBusinessOwnerInCache],
   );
 
-  const deleteBusinessOwnerMutation = useDeleteBusinessOwner(
-    () => {
+  const handleUpdateBusinessOwnerError = useCallback((err: string) => {
+    const errorMsg = extractErrorMessage(err);
+    toast.error(`Failed to update business owner: ${errorMsg}`);
+    console.error('Error updating business owner:', err);
+  }, []);
+
+  const handleDeleteBusinessOwnerSuccess = useCallback(
+    (deletedBusinessOwnerId: string) => {
+      // Optimistic update: remove business owner from cache
+      removeBusinessOwnerFromCache(deletedBusinessOwnerId);
       toast.success('Business owner account deleted successfully!');
+      // Refetch or adjust current page
       if (
-        businessOwnersData &&
-        businessOwnersData.data.length === 1 &&
+        businessOwnersDataCache &&
+        businessOwnersDataCache.data.length === 1 &&
         currentPage > 1
       ) {
         setCurrentPage(currentPage - 1);
       }
     },
-    (err) => {
-      const errorMsg = extractErrorMessage(err);
-      toast.error(`Failed to delete business owner: ${errorMsg}`);
-      console.error('Error deleting business owner:', err);
-    },
+    [businessOwnersDataCache, currentPage, removeBusinessOwnerFromCache],
+  );
+
+  const handleDeleteBusinessOwnerError = useCallback((err: string) => {
+    const errorMsg = extractErrorMessage(err);
+    toast.error(`Failed to delete business owner: ${errorMsg}`);
+    console.error('Error deleting business owner:', err);
+  }, []);
+
+  // Mutations
+  const createBusinessOwnerMutation = useCreateBusinessOwner(
+    handleCreateBusinessOwnerSuccess,
+    handleCreateBusinessOwnerError,
+  );
+
+  const updateBusinessOwnerMutation = useUpdateBusinessOwner(
+    handleUpdateBusinessOwnerSuccess,
+    handleUpdateBusinessOwnerError,
+  );
+
+  const deleteBusinessOwnerMutation = useDeleteBusinessOwner(
+    handleDeleteBusinessOwnerSuccess,
+    handleDeleteBusinessOwnerError,
   );
 
   const getChangedFields = (
-    original: Profile,
+    original: AdminUser,
     formData: UserFormData,
   ): Record<string, unknown> => {
     const changes: Record<string, unknown> = {};
@@ -147,13 +282,13 @@ export default function BusinessOwnerTab() {
           return;
         }
 
-        await updateBusinessOwnerMutation.mutateAsync({
-          id: selectedBusinessOwner.id,
-          changes: changedFields,
-        });
+        updateBusinessOwnerMutation.mutate(
+          selectedBusinessOwner.id,
+          changedFields,
+        );
       } else {
         // Create mode
-        await createBusinessOwnerMutation.mutateAsync(formData);
+        createBusinessOwnerMutation.mutate(formData);
       }
     } catch (err) {
       // Error is already handled by mutation callbacks
@@ -161,15 +296,15 @@ export default function BusinessOwnerTab() {
     }
   };
 
-  const handleEdit = useCallback((businessOwner: Profile) => {
+  const handleEdit = useCallback((businessOwner: AdminUser) => {
     setSelectedBusinessOwner(businessOwner);
     setIsFormOpen(true);
   }, []);
 
   const handleDelete = useCallback(
-    async (id: string) => {
+    (id: string) => {
       try {
-        await deleteBusinessOwnerMutation.mutateAsync(id);
+        deleteBusinessOwnerMutation.mutate(id);
       } catch {
         // Error is already handled by mutation callbacks
         console.error('Error deleting business owner');
@@ -191,15 +326,7 @@ export default function BusinessOwnerTab() {
     createBusinessOwnerMutation.isPending ||
     updateBusinessOwnerMutation.isPending ||
     deleteBusinessOwnerMutation.isPending;
-  const error = fetchError
-    ? extractErrorMessage(fetchError)
-    : createBusinessOwnerMutation.error
-      ? extractErrorMessage(createBusinessOwnerMutation.error)
-      : updateBusinessOwnerMutation.error
-        ? extractErrorMessage(updateBusinessOwnerMutation.error)
-        : deleteBusinessOwnerMutation.error
-          ? extractErrorMessage(deleteBusinessOwnerMutation.error)
-          : null;
+  const error = fetchError ? extractErrorMessage(fetchError) : null;
 
   if (!isAdmin) {
     return (
@@ -222,7 +349,7 @@ export default function BusinessOwnerTab() {
           </h2>
           <p className="mt-1 text-sm text-gray-600">
             Total business owners:{' '}
-            {businessOwnersData?.pagination.totalItems || 0}
+            {businessOwnersDataCache?.pagination.totalItems || 0}
           </p>
         </div>
         <Button
@@ -265,12 +392,13 @@ export default function BusinessOwnerTab() {
       />
 
       <UsersTable
-        data={businessOwnersData}
+        data={businessOwnersDataCache}
         isLoading={isLoading}
         currentPage={currentPage}
         onPageChange={setCurrentPage}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onStatusChange={patchBusinessOwnerInCache}
         isSubmitting={isSubmitting}
       />
 
@@ -282,13 +410,7 @@ export default function BusinessOwnerTab() {
         }}
         onSubmit={handleCreateBusinessOwner}
         userType="business_owner"
-        error={
-          createBusinessOwnerMutation.error
-            ? extractErrorMessage(createBusinessOwnerMutation.error)
-            : updateBusinessOwnerMutation.error
-              ? extractErrorMessage(updateBusinessOwnerMutation.error)
-              : null
-        }
+        error={null}
         initialData={
           selectedBusinessOwner
             ? {

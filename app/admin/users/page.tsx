@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { USER_MANAGEMENT_TABS } from '../config/tabsConfig';
+import { AdminErrorBoundary } from '../components/shared/AdminErrorBoundary';
 
 export default function UserManagementHub() {
   const [activeTab, setActiveTab] = useState('admins');
@@ -46,7 +47,7 @@ export default function UserManagementHub() {
             activeTab === tab.id &&
             tab.component && (
               <div key={tab.id} className="mt-4 space-y-4">
-                {tab.component}
+                <AdminErrorBoundary>{tab.component}</AdminErrorBoundary>
               </div>
             ),
         )}

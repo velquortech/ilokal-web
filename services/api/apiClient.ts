@@ -1,13 +1,15 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { ROUTES } from '@/config/routeConfig';
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-
 export interface ApiErrorResponse {
   message?: string;
   data?: unknown;
   status: number;
+}
+
+export interface ApiError extends Error {
+  status: number;
+  data?: unknown;
 }
 
 class ApiManager {
@@ -15,7 +17,7 @@ class ApiManager {
 
   constructor() {
     this.instance = axios.create({
-      baseURL: API_BASE_URL,
+      baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -108,11 +110,10 @@ class ApiManager {
           }
         }
 
-        // Throw as Error to maintain instanceof Error check in error handling
-        //eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const err: any = new Error(errorMessage);
+        // Create typed error response with proper error interface
+        const err: ApiError = new Error(errorMessage) as ApiError;
+        err.status = error.response?.status || 0;
         err.data = errorResponse.data;
-        err.status = errorResponse.status;
 
         return Promise.reject(err);
       },

@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useAuthStore } from '@/services/stores/authStore';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { verifySessionAction, logoutAction } from '@/app/(auth)/actions';
 import {
   SESSION_CHECK_INTERVAL,
-  getSessionTimeout,
+  ACTIVITY_DEBOUNCE_DELAY,
   isSessionExpired,
   isSessionExpiring,
   getTimeRemaining,
+  calculateSessionExpiration,
+  getSessionTimeout,
 } from '@/config/sessionConfig';
 
 interface SessionWarning {
@@ -20,10 +21,18 @@ interface SessionWarning {
  * Hook to monitor session expiration
  *
  * Features:
- * - Periodically verifies session is still valid
- * - Detects expired sessions and logs out
- * - Warns when session is about to expire
- * - Automatically refreshes expiration time on user activity
+ * - Periodically verifies session is still valid with server
+ * - Detects expired sessions and logs out automatically
+ * - Warns when session is about to expire (within 5 minutes)
+ * - Automatically refreshes session on user activity (debounced)
+ * - Activity detection includes: mouse, keyboard, scroll, touch
+ * - Optimized event listeners with proper cleanup
+ *
+ * Security:
+ * - No sensitive data stored on client
+ * - Session expiration calculated locally based on timeout duration
+ * - Actual session managed by HTTP-only cookie on server
+ * - Middleware provides defense-in-depth on route changes
  *
  * Usage:
  * ```tsx
@@ -34,7 +43,6 @@ interface SessionWarning {
  * ```
  */
 export function useSessionMonitor() {
-  const user = useAuthStore((state) => state.user);
   const [sessionWarning, setSessionWarning] = useState<SessionWarning>({
     isExpiring: false,
     timeRemaining: 0,
@@ -42,101 +50,138 @@ export function useSessionMonitor() {
   const [sessionExpiration, setSessionExpiration] = useState<number | null>(
     null,
   );
+  const expirationRef = useRef<number | null>(null);
+  const lastRefreshRef = useRef<number>(0);
 
-  // Initialize session expiration time on user login
+  // Initialize session on mount
   useEffect(() => {
-    if (user) {
-      const timeoutMinutes = getSessionTimeout(user.role);
-      const expirationTime = Date.now() + timeoutMinutes * 60 * 1000;
-      setSessionExpiration(expirationTime);
-    } else {
-      setSessionExpiration(null);
+    async function initializeExpiration() {
+      try {
+        const result = await verifySessionAction();
+        if (result?.user) {
+          // Get timeout for user's role (default to app_user if role not available)
+          const timeoutMinutes = getSessionTimeout(result.user.role);
+          const expirationTime = calculateSessionExpiration(timeoutMinutes);
+          expirationRef.current = expirationTime;
+          setSessionExpiration(expirationTime);
+        }
+      } catch (error) {
+        console.error('[useSessionMonitor] Initialization error:', error);
+      }
     }
-  }, [user?.id]); // Depend on user ID to detect login changes
+
+    initializeExpiration();
+  }, []);
+
+  /**
+   * Refresh function to reset session on user activity
+   * Debounced to prevent excessive calls during rapid interactions
+   * Recalculates expiration based on role-specific timeout
+   */
+  const refreshSession = useCallback(async () => {
+    const now = Date.now();
+
+    // Skip refresh if called within debounce window
+    if (now - lastRefreshRef.current < ACTIVITY_DEBOUNCE_DELAY) {
+      return;
+    }
+
+    lastRefreshRef.current = now;
+
+    try {
+      // Verify session with server to get updated user info
+      const result = await verifySessionAction();
+
+      if (result?.user) {
+        // Calculate new expiration based on role-specific timeout
+        const timeoutMinutes = getSessionTimeout(result.user.role);
+        const newExpirationTime = calculateSessionExpiration(timeoutMinutes);
+
+        // Update local state immediately for responsiveness
+        expirationRef.current = newExpirationTime;
+        setSessionExpiration(newExpirationTime);
+        setSessionWarning({
+          isExpiring: false,
+          timeRemaining: timeoutMinutes,
+        });
+      } else {
+        // Session no longer valid, trigger logout
+        try {
+          await logoutAction();
+        } catch {
+          // logoutAction throws NEXT_REDIRECT, which is expected
+        }
+      }
+    } catch (error) {
+      console.error('[useSessionMonitor] Failed to refresh session:', error);
+    }
+  }, []);
 
   // Set up periodic session verification
   useEffect(() => {
-    if (!user || !sessionExpiration) return;
+    if (!sessionExpiration) return;
 
-    const unsubscribe = setInterval(async () => {
-      // Check session validity
+    const verificationInterval = setInterval(async () => {
+      const currentExpiration = expirationRef.current;
+      if (!currentExpiration) return;
+
+      // Check session validity with server
       const sessionValid = await verifySessionAction();
 
       if (!sessionValid) {
-        // Session is no longer valid, logout immediately
         try {
           await logoutAction();
         } catch {
-          // Fallback: Clear auth state if logout fails
-          useAuthStore.getState().logout();
+          // logoutAction throws NEXT_REDIRECT, which is expected
         }
         return;
       }
 
-      // Check if expired or expiring
-      if (isSessionExpired(sessionExpiration)) {
-        // Session has expired, logout
+      // Check if already expired
+      if (isSessionExpired(currentExpiration)) {
         try {
           await logoutAction();
         } catch {
-          useAuthStore.getState().logout();
+          // logoutAction throws NEXT_REDIRECT, which is expected
         }
         return;
       }
 
-      // Check if expiring soon
-      if (isSessionExpiring(sessionExpiration)) {
-        const remaining = getTimeRemaining(sessionExpiration);
+      // Update warning state
+      if (isSessionExpiring(currentExpiration)) {
+        const remaining = getTimeRemaining(currentExpiration);
         setSessionWarning({
           isExpiring: true,
           timeRemaining: remaining,
         });
       } else {
-        // Session still has plenty of time
         setSessionWarning({
           isExpiring: false,
-          timeRemaining: getTimeRemaining(sessionExpiration),
+          timeRemaining: getTimeRemaining(currentExpiration),
         });
       }
     }, SESSION_CHECK_INTERVAL);
 
-    return () => clearInterval(unsubscribe);
-  }, [user, sessionExpiration]);
-
-  // Handle user activity to refresh session
-  const refreshSession = useCallback(() => {
-    if (user && sessionExpiration) {
-      const timeoutMinutes = getSessionTimeout(user.role);
-      const newExpirationTime = Date.now() + timeoutMinutes * 60 * 1000;
-      setSessionExpiration(newExpirationTime);
-      setSessionWarning({
-        isExpiring: false,
-        timeRemaining: timeoutMinutes,
-      });
-    }
-  }, [user, sessionExpiration]);
+    return () => clearInterval(verificationInterval);
+  }, [sessionExpiration]);
 
   // Set up activity listeners to refresh session
+  // Refresh is debounced to prevent excessive calls
   useEffect(() => {
-    if (!user) return;
+    if (typeof window === 'undefined') return;
 
-    const handleActivity = () => {
-      refreshSession();
-    };
-
-    // Listen for user interactions
-    window.addEventListener('mousedown', handleActivity);
-    window.addEventListener('keydown', handleActivity);
-    window.addEventListener('scroll', handleActivity, { passive: true });
-    window.addEventListener('touchstart', handleActivity);
+    window.addEventListener('mousedown', refreshSession);
+    window.addEventListener('keydown', refreshSession);
+    window.addEventListener('scroll', refreshSession, { passive: true });
+    window.addEventListener('touchstart', refreshSession);
 
     return () => {
-      window.removeEventListener('mousedown', handleActivity);
-      window.removeEventListener('keydown', handleActivity);
-      window.removeEventListener('scroll', handleActivity);
-      window.removeEventListener('touchstart', handleActivity);
+      window.removeEventListener('mousedown', refreshSession);
+      window.removeEventListener('keydown', refreshSession);
+      window.removeEventListener('scroll', refreshSession);
+      window.removeEventListener('touchstart', refreshSession);
     };
-  }, [user, refreshSession]);
+  }, [refreshSession]);
 
   return {
     isExpiring: sessionWarning.isExpiring,

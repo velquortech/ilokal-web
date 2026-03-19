@@ -6,7 +6,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Eye, EyeOff, Settings2, ChevronUp } from 'lucide-react';
+import { Eye, EyeOff, Settings2 } from 'lucide-react';
 import { useState } from 'react';
 import { columnNames } from './UsersTableColumns';
 
@@ -56,7 +56,7 @@ export function UsersTableColumnVisibility<TRow>({
             size="sm"
             variant="outline"
             onClick={() => setIsCollapsed(false)}
-            className="h-9 w-9 rounded-lg border border-gray-200 bg-white p-0 shadow-sm transition-all duration-200 hover:bg-slate-50 hover:shadow-md"
+            className="h-9 w-9 cursor-pointer rounded-lg border border-gray-200 bg-white p-0 shadow-sm transition-all duration-200"
             aria-label="Expand column visibility settings"
             aria-expanded="false"
           >
@@ -77,11 +77,18 @@ export function UsersTableColumnVisibility<TRow>({
     <div className="overflow-x-auto rounded-lg border border-gray-200 bg-linear-to-br from-slate-50 to-slate-100 shadow-sm transition-all duration-200">
       {/* Header Section */}
       <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shadow-sm">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsCollapsed(true)}
+          className="-ml-2 flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 text-sm font-medium text-slate-700 hover:bg-white hover:text-slate-900"
+          aria-label="Collapse column visibility settings"
+          aria-expanded="true"
+        >
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shadow-sm transition-shadow hover:shadow-md">
             <Settings2 className="h-4 w-4 text-slate-600" />
           </div>
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-0.5 text-left">
             <h3 className="text-sm font-semibold text-slate-900">
               Column Visibility
             </h3>
@@ -90,13 +97,13 @@ export function UsersTableColumnVisibility<TRow>({
               {hiddenCount > 0 && ` • ${hiddenCount} hidden`}
             </p>
           </div>
-        </div>
+        </Button>
 
         {/* Actions */}
         <div className="flex items-center gap-1.5">
           {/* Quick Actions */}
           {visibleCount > 0 && hiddenCount > 0 && (
-            <div className="flex gap-1.5 border-r border-gray-300 pr-1.5">
+            <div className="flex gap-1.5">
               <Tooltip delayDuration={200}>
                 <TooltipTrigger asChild>
                   <Button
@@ -132,25 +139,6 @@ export function UsersTableColumnVisibility<TRow>({
               </Tooltip>
             </div>
           )}
-
-          {/* Collapse Button */}
-          <Tooltip delayDuration={200}>
-            <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setIsCollapsed(true)}
-                className="h-7 w-7 p-0 text-slate-600 hover:bg-white hover:text-slate-900"
-                aria-label="Collapse column visibility settings"
-                aria-expanded="true"
-              >
-                <ChevronUp className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              Collapse
-            </TooltipContent>
-          </Tooltip>
         </div>
       </div>
 

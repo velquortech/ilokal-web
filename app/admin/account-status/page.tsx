@@ -1,17 +1,17 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from 'sonner';
-import {
-  restoreUserAction,
-  updateAdminStatusAction,
-} from '@/app/admin/actions';
+import { useEffect, useState, useMemo } from 'react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Profile } from '@/lib/types/user';
 import { PaginatedResponse } from '@/services/api/paginationService';
-import UsersTable from '@/app/admin/components/shared/UsersTable';
-import { createAccountStatusColumns } from './components/columns';
+import { useAccountStatusData } from './hooks/useAccountStatusData';
+import { useAccountStatusActions } from './hooks/useAccountStatusActions';
 import { StatusCards, AccountLifecycleInfo } from './components';
+import {
+  ArchivedUsersTab,
+  SuspendedUsersTab,
+  InactiveUsersTab,
+} from './components';
 
 /**
  * Account Status Page
@@ -24,161 +24,24 @@ import { StatusCards, AccountLifecycleInfo } from './components';
  * This is separate from "Users" page which is for active user management
  */
 export default function AccountStatusPage() {
-  const [archivedUsers, setArchivedUsers] = useState<Profile[]>([]);
-  const [suspendedUsers, setSuspendedUsers] = useState<Profile[]>([]);
-  const [inactiveUsers, setInactiveUsers] = useState<Profile[]>([]);
-  const [counts, setCounts] = useState({
-    active: 0,
-    archived: 0,
-    suspended: 0,
-    inactive: 0,
-  });
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('archived');
   const [currentPage, setCurrentPage] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const {
+    archivedUsers,
+    suspendedUsers,
+    inactiveUsers,
+    counts,
+    loading,
+    loadAccountStatusData,
+  } = useAccountStatusData();
+
+  const { isSubmitting, handleRestore, handleReactivate } =
+    useAccountStatusActions(loadAccountStatusData);
 
   useEffect(() => {
     loadAccountStatusData();
-  }, []);
-
-  const loadAccountStatusData = async () => {
-    try {
-      setLoading(true);
-
-      // Fetch all data in parallel
-      await Promise.all([
-        fetchAndSetCounts(),
-        fetchArchivedUsers(),
-        fetchSuspendedUsers(),
-        fetchInactiveUsers(),
-      ]);
-    } catch (error) {
-      console.error('Failed to load account status data:', error);
-      toast.error('Failed to load account status data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchAndSetCounts = async () => {
-    const [activeCount, archivedCount, suspendedCount, inactiveCount] =
-      await Promise.all([
-        fetchCount('active'),
-        fetchCount('archived'),
-        fetchCount('suspended'),
-        fetchCount('inactive'),
-      ]);
-
-    setCounts({
-      active: activeCount,
-      archived: archivedCount,
-      suspended: suspendedCount,
-      inactive: inactiveCount,
-    });
-  };
-
-  const fetchCount = async (
-    filter: 'active' | 'archived' | 'suspended' | 'inactive',
-  ): Promise<number> => {
-    try {
-      let url = '/api/admin/profiles?limit=1';
-
-      if (filter === 'active') {
-        url += '&filter=active';
-      } else if (filter === 'archived') {
-        url += '&filter=archived';
-      } else if (filter === 'suspended') {
-        url += '&filter=all&status=suspended';
-      } else if (filter === 'inactive') {
-        url += '&filter=inactive';
-      }
-
-      const res = await fetch(url);
-      if (res.ok) {
-        const data: PaginatedResponse<Profile> = await res.json();
-        return data.pagination.totalItems;
-      }
-      return 0;
-    } catch (error) {
-      console.error(`Failed to fetch ${filter} count:`, error);
-      return 0;
-    }
-  };
-
-  const fetchArchivedUsers = async () => {
-    try {
-      const res = await fetch('/api/admin/profiles?filter=archived&limit=100');
-      if (res.ok) {
-        const data: PaginatedResponse<Profile> = await res.json();
-        setArchivedUsers(data.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch archived users:', error);
-    }
-  };
-
-  const fetchSuspendedUsers = async () => {
-    try {
-      const res = await fetch(
-        '/api/admin/profiles?filter=all&status=suspended&limit=100',
-      );
-      if (res.ok) {
-        const data: PaginatedResponse<Profile> = await res.json();
-        setSuspendedUsers(data.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch suspended users:', error);
-    }
-  };
-
-  const fetchInactiveUsers = async () => {
-    try {
-      const res = await fetch('/api/admin/profiles?filter=inactive&limit=100');
-      if (res.ok) {
-        const data: PaginatedResponse<Profile> = await res.json();
-        setInactiveUsers(data.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch inactive users:', error);
-    }
-  };
-
-  const handleRestore = async (userId: string, userName: string) => {
-    try {
-      setIsSubmitting(true);
-      const result = await restoreUserAction(userId);
-      if (result.success) {
-        toast.success(`${userName} has been restored to active status`);
-        loadAccountStatusData();
-      } else {
-        toast.error(result.error || 'Failed to restore user');
-      }
-    } catch (error) {
-      console.error('Error restoring user:', error);
-      toast.error('Error restoring user');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleReactivate = async (userId: string, userName: string) => {
-    try {
-      setIsSubmitting(true);
-      const result = await updateAdminStatusAction(userId, 'active');
-      if (result.success) {
-        toast.success(`${userName} has been reactivated`);
-        loadAccountStatusData();
-      } else {
-        toast.error(result.error || 'Failed to reactivate user');
-      }
-    } catch (error) {
-      console.error('Error reactivating user:', error);
-      toast.error('Error reactivating user');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  }, [loadAccountStatusData]);
 
   // Create paginated response objects for the table
   const archivedPaginatedData: PaginatedResponse<Profile> = useMemo(
@@ -220,40 +83,6 @@ export default function AccountStatusPage() {
     [inactiveUsers, currentPage, counts.inactive],
   );
 
-  // Create columns for each account type
-  const archivedColumns = useMemo(
-    () =>
-      createAccountStatusColumns({
-        currentPage,
-        isSubmitting,
-        onRestore: handleRestore,
-        accountType: 'archived',
-      }),
-    [currentPage, isSubmitting],
-  );
-
-  const suspendedColumns = useMemo(
-    () =>
-      createAccountStatusColumns({
-        currentPage,
-        isSubmitting,
-        onReactivate: handleReactivate,
-        accountType: 'suspended',
-      }),
-    [currentPage, isSubmitting],
-  );
-
-  const inactiveColumns = useMemo(
-    () =>
-      createAccountStatusColumns({
-        currentPage,
-        isSubmitting,
-        onReactivate: handleReactivate,
-        accountType: 'inactive',
-      }),
-    [currentPage, isSubmitting],
-  );
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -275,44 +104,33 @@ export default function AccountStatusPage() {
           <TabsTrigger value="inactive">Inactive Users</TabsTrigger>
         </TabsList>
 
-        {/* Archived Users Tab */}
-        <TabsContent value="archived" className="space-y-4">
-          <UsersTable<Profile>
-            data={archivedPaginatedData}
-            isLoading={loading}
-            currentPage={currentPage}
-            onPageChange={setCurrentPage}
-            columns={archivedColumns}
-            isSubmitting={isSubmitting}
-            showDeleteConfirmation={false}
-          />
-        </TabsContent>
+        {/* Tab Content */}
+        <ArchivedUsersTab
+          data={archivedPaginatedData}
+          isLoading={loading}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          isSubmitting={isSubmitting}
+          onRestore={handleRestore}
+        />
 
-        {/* Suspended Users Tab */}
-        <TabsContent value="suspended" className="space-y-4">
-          <UsersTable<Profile>
-            data={suspendedPaginatedData}
-            isLoading={loading}
-            currentPage={currentPage}
-            onPageChange={setCurrentPage}
-            columns={suspendedColumns}
-            isSubmitting={isSubmitting}
-            showDeleteConfirmation={false}
-          />
-        </TabsContent>
+        <SuspendedUsersTab
+          data={suspendedPaginatedData}
+          isLoading={loading}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          isSubmitting={isSubmitting}
+          onReactivate={handleReactivate}
+        />
 
-        {/* Inactive Users Tab */}
-        <TabsContent value="inactive" className="space-y-4">
-          <UsersTable<Profile>
-            data={inactivePaginatedData}
-            isLoading={loading}
-            currentPage={currentPage}
-            onPageChange={setCurrentPage}
-            columns={inactiveColumns}
-            isSubmitting={isSubmitting}
-            showDeleteConfirmation={false}
-          />
-        </TabsContent>
+        <InactiveUsersTab
+          data={inactivePaginatedData}
+          isLoading={loading}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          isSubmitting={isSubmitting}
+          onReactivate={handleReactivate}
+        />
       </Tabs>
 
       {/* Account Lifecycle Info */}

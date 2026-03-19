@@ -76,6 +76,8 @@ export interface BusinessFilters {
   search?: string; // Search by name or owner email
   sortBy?: 'created' | 'updated' | 'name';
   sortOrder?: 'asc' | 'desc';
+  page?: number; // Pagination: page number (default 1)
+  pageSize?: number; // Pagination: items per page (default 10)
 }
 
 /**

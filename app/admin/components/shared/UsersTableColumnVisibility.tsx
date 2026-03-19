@@ -7,16 +7,15 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Eye, EyeOff } from 'lucide-react';
-import { AdminUser } from '@/lib/types/admin';
 import { columnNames } from './UsersTableColumns';
 
-interface UsersTableColumnVisibilityProps {
-  table: Table<AdminUser>;
+interface UsersTableColumnVisibilityProps<TRow> {
+  table: Table<TRow>;
 }
 
-export function UsersTableColumnVisibility({
+export function UsersTableColumnVisibility<TRow>({
   table,
-}: UsersTableColumnVisibilityProps) {
+}: UsersTableColumnVisibilityProps<TRow>) {
   return (
     <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
       {table.getAllLeafColumns().map((column) => {

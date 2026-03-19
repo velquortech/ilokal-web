@@ -6,12 +6,7 @@
  */
 
 import { createServerSupabaseClient } from '@/config/server';
-import {
-  Business,
-  AdminBusiness,
-  BusinessFilters,
-  PaginatedBusinessResponse,
-} from '@/lib/types/business';
+import { Business, AdminBusiness, BusinessFilters } from '@/lib/types/business';
 
 // ============================================================================
 // FETCH OPERATIONS
@@ -76,8 +71,8 @@ export async function getBusinessesPaginated(
   try {
     const supabase = await createServerSupabaseClient();
 
-    const page = (filters as any).page || 1;
-    const pageSize = (filters as any).pageSize || 10;
+    const page = filters.page || 1;
+    const pageSize = filters.pageSize || 10;
     const offset = (page - 1) * pageSize;
 
     // Build query with filters
@@ -273,7 +268,8 @@ export async function updateBusinessProfile(
   try {
     const supabase = await createServerSupabaseClient();
 
-    // Remove restricted fields
+    // Remove restricted fields that cannot be updated directly
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id, owner_id, created_at, archived_at, ...allowedUpdates } =
       updates;
 

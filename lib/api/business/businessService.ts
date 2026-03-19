@@ -15,8 +15,6 @@ import {
 } from './businessQuery';
 import {
   AdminUpdateBusinessInput,
-  VerifyBusinessInput,
-  SuspendBusinessInput,
   BusinessActionResponse,
   AdminBusiness,
   Business,
@@ -36,10 +34,7 @@ export async function verifyBusiness(
 ): Promise<BusinessActionResponse<AdminBusiness>> {
   try {
     // Update business status to verified
-    const { business, error } = await updateBusinessStatus(
-      businessId,
-      'verified',
-    );
+    const { error } = await updateBusinessStatus(businessId, 'verified');
 
     if (error) {
       return {
@@ -78,13 +73,11 @@ export async function verifyBusiness(
  */
 export async function rejectBusiness(
   businessId: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   reason?: string, // For audit trail
 ): Promise<BusinessActionResponse<AdminBusiness>> {
   try {
-    const { business, error } = await updateBusinessStatus(
-      businessId,
-      'rejected',
-    );
+    const { error } = await updateBusinessStatus(businessId, 'rejected');
 
     if (error) {
       return {
@@ -126,13 +119,11 @@ export async function rejectBusiness(
  */
 export async function suspendBusiness(
   businessId: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   reason?: string,
 ): Promise<BusinessActionResponse<AdminBusiness>> {
   try {
-    const { business, error } = await updateBusinessStatus(
-      businessId,
-      'suspended',
-    );
+    const { error } = await updateBusinessStatus(businessId, 'suspended');
 
     if (error) {
       return {
@@ -190,10 +181,7 @@ export async function reactivateBusiness(
     }
 
     // Reactivate to verified status
-    const { business, error } = await updateBusinessStatus(
-      businessId,
-      'verified',
-    );
+    const { error } = await updateBusinessStatus(businessId, 'verified');
 
     if (error) {
       return {
@@ -306,7 +294,7 @@ export async function archiveBusiness(
   businessId: string,
 ): Promise<BusinessActionResponse<void>> {
   try {
-    const { success, error } = await archiveBusinessById(businessId);
+    const { error } = await archiveBusinessById(businessId);
 
     if (error) {
       return {
@@ -346,7 +334,7 @@ export async function permanentlyDeleteBusiness(
     }
 
     // Perform deletion
-    const { success, error } = await deleteBusinessById(businessId);
+    const { error } = await deleteBusinessById(businessId);
 
     if (error) {
       return {

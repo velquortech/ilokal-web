@@ -94,11 +94,11 @@ export default function UsersTable<TRow extends { id: string } = AdminUser>({
       const columnsProps: UsersTableColumnsProps = {
         currentPage,
         isSubmitting,
-        onEdit: onEdit as any,
+        onEdit: onEdit as unknown as (user: AdminUser) => void,
         onDelete: (user: AdminUser) => {
           setDeleteConfirmation({ open: true, user });
         },
-        onStatusChange: onStatusChange as any,
+        onStatusChange: onStatusChange as unknown as (user: AdminUser) => void,
         onError: setError,
       };
       return createUsersTableColumns(columnsProps) as ColumnDef<TRow>[];

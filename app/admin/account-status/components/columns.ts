@@ -32,8 +32,8 @@ export const createAccountStatusColumns = ({
   onRestore,
   onReactivate,
   accountType,
-}: AccountStatusColumnsProps): ColumnDef<Profile>[] => {
-  return [
+}: AccountStatusColumnsProps): ColumnDef<Profile>[] =>
+  [
     columnHelper.display({
       id: 'index',
       header: '#',
@@ -44,12 +44,11 @@ export const createAccountStatusColumns = ({
     columnHelper.display({
       id: 'avatar',
       header: 'Avatar',
-      cell: (info) => {
-        const user = info.row.original;
-        return user.avatar_url
+      cell: (info) =>
+        info.row.original.avatar_url
           ? React.createElement(AvatarImage, {
-              src: user.avatar_url,
-              alt: user.full_name || 'Avatar',
+              src: info.row.original.avatar_url,
+              alt: info.row.original.full_name || 'Avatar',
               width: 40,
               height: 40,
               className: 'h-10 w-10 rounded-full object-cover',
@@ -60,14 +59,13 @@ export const createAccountStatusColumns = ({
                 className:
                   'flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-xs font-medium text-gray-600',
               },
-              user.full_name
+              info.row.original.full_name
                 ?.split(' ')
                 .map((n) => n[0])
                 .join('')
                 .toUpperCase()
                 .slice(0, 2) || 'N/A',
-            );
-      },
+            ),
       enableSorting: false,
       size: 60,
     }),
@@ -224,7 +222,6 @@ export const createAccountStatusColumns = ({
       size: 120,
     }),
   ] as const as unknown as ColumnDef<Profile>[];
-};
 
 export const columnNames: Record<string, string> = {
   full_name: 'Name',

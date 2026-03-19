@@ -70,9 +70,9 @@ export async function POST(
 
       // Validate reason if provided
       if (reason) {
-        const validated = suspendBusinessSchema.parse({ reason });
+        suspendBusinessSchema.parse({ reason });
       }
-    } catch (err) {
+    } catch {
       if (requiredReason) {
         return NextResponse.json(
           { error: 'Reason for suspension is required' },

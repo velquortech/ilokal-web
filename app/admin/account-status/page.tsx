@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import {
@@ -9,13 +9,9 @@ import {
 } from '@/app/admin/actions';
 import type { Profile } from '@/lib/types/user';
 import { PaginatedResponse } from '@/services/api/paginationService';
-import {
-  StatusCards,
-  ArchivedUsersTab,
-  SuspendedUsersTab,
-  InactiveUsersTab,
-  AccountLifecycleInfo,
-} from './components';
+import UsersTable from '@/app/admin/components/shared/UsersTable';
+import { createAccountStatusColumns } from './components/columns';
+import { StatusCards, AccountLifecycleInfo } from './components';
 
 /**
  * Account Status Page
@@ -39,6 +35,8 @@ export default function AccountStatusPage() {
   });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('archived');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     loadAccountStatusData();
@@ -148,6 +146,7 @@ export default function AccountStatusPage() {
 
   const handleRestore = async (userId: string, userName: string) => {
     try {
+      setIsSubmitting(true);
       const result = await restoreUserAction(userId);
       if (result.success) {
         toast.success(`${userName} has been restored to active status`);
@@ -158,11 +157,14 @@ export default function AccountStatusPage() {
     } catch (error) {
       console.error('Error restoring user:', error);
       toast.error('Error restoring user');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleReactivate = async (userId: string, userName: string) => {
     try {
+      setIsSubmitting(true);
       const result = await updateAdminStatusAction(userId, 'active');
       if (result.success) {
         toast.success(`${userName} has been reactivated`);
@@ -173,8 +175,84 @@ export default function AccountStatusPage() {
     } catch (error) {
       console.error('Error reactivating user:', error);
       toast.error('Error reactivating user');
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  // Create paginated response objects for the table
+  const archivedPaginatedData: PaginatedResponse<Profile> = useMemo(
+    () => ({
+      data: archivedUsers,
+      pagination: {
+        currentPage,
+        pageSize: 10,
+        totalItems: counts.archived,
+        totalPages: Math.ceil(counts.archived / 10),
+      },
+    }),
+    [archivedUsers, currentPage, counts.archived],
+  );
+
+  const suspendedPaginatedData: PaginatedResponse<Profile> = useMemo(
+    () => ({
+      data: suspendedUsers,
+      pagination: {
+        currentPage,
+        pageSize: 10,
+        totalItems: counts.suspended,
+        totalPages: Math.ceil(counts.suspended / 10),
+      },
+    }),
+    [suspendedUsers, currentPage, counts.suspended],
+  );
+
+  const inactivePaginatedData: PaginatedResponse<Profile> = useMemo(
+    () => ({
+      data: inactiveUsers,
+      pagination: {
+        currentPage,
+        pageSize: 10,
+        totalItems: counts.inactive,
+        totalPages: Math.ceil(counts.inactive / 10),
+      },
+    }),
+    [inactiveUsers, currentPage, counts.inactive],
+  );
+
+  // Create columns for each account type
+  const archivedColumns = useMemo(
+    () =>
+      createAccountStatusColumns({
+        currentPage,
+        isSubmitting,
+        onRestore: handleRestore,
+        accountType: 'archived',
+      }),
+    [currentPage, isSubmitting],
+  );
+
+  const suspendedColumns = useMemo(
+    () =>
+      createAccountStatusColumns({
+        currentPage,
+        isSubmitting,
+        onReactivate: handleReactivate,
+        accountType: 'suspended',
+      }),
+    [currentPage, isSubmitting],
+  );
+
+  const inactiveColumns = useMemo(
+    () =>
+      createAccountStatusColumns({
+        currentPage,
+        isSubmitting,
+        onReactivate: handleReactivate,
+        accountType: 'inactive',
+      }),
+    [currentPage, isSubmitting],
+  );
 
   return (
     <div className="space-y-6">
@@ -199,28 +277,40 @@ export default function AccountStatusPage() {
 
         {/* Archived Users Tab */}
         <TabsContent value="archived" className="space-y-4">
-          <ArchivedUsersTab
-            users={archivedUsers}
-            loading={loading}
-            onRestore={handleRestore}
+          <UsersTable<Profile>
+            data={archivedPaginatedData}
+            isLoading={loading}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            columns={archivedColumns}
+            isSubmitting={isSubmitting}
+            showDeleteConfirmation={false}
           />
         </TabsContent>
 
         {/* Suspended Users Tab */}
         <TabsContent value="suspended" className="space-y-4">
-          <SuspendedUsersTab
-            users={suspendedUsers}
-            loading={loading}
-            onReactivate={handleReactivate}
+          <UsersTable<Profile>
+            data={suspendedPaginatedData}
+            isLoading={loading}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            columns={suspendedColumns}
+            isSubmitting={isSubmitting}
+            showDeleteConfirmation={false}
           />
         </TabsContent>
 
         {/* Inactive Users Tab */}
         <TabsContent value="inactive" className="space-y-4">
-          <InactiveUsersTab
-            users={inactiveUsers}
-            loading={loading}
-            onReactivate={handleReactivate}
+          <UsersTable<Profile>
+            data={inactivePaginatedData}
+            isLoading={loading}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            columns={inactiveColumns}
+            isSubmitting={isSubmitting}
+            showDeleteConfirmation={false}
           />
         </TabsContent>
       </Tabs>

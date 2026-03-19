@@ -2,14 +2,16 @@
 import { Row } from '@tanstack/react-table';
 import { TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { flexRender } from '@tanstack/react-table';
-import { AdminUser } from '@/lib/types/admin';
 
-interface UsersTableBodyProps {
-  rows: Row<AdminUser>[];
+interface UsersTableBodyProps<TRow> {
+  rows: Row<TRow>[];
   columnsLength: number;
 }
 
-export function UsersTableBody({ rows, columnsLength }: UsersTableBodyProps) {
+export function UsersTableBody<TRow>({
+  rows,
+  columnsLength,
+}: UsersTableBodyProps<TRow>) {
   return (
     <TableBody>
       {rows.length > 0 ? (

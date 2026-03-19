@@ -1,46 +1,25 @@
-import { useAuthStore } from '@/services/stores/authStore';
-import { useRouter } from 'next/navigation';
+'use client';
+
 import { useCallback } from 'react';
-import authService from '@/services/api/authService';
-import { ROUTES } from '@/config/routeConfig';
+import { logoutAction } from '@/app/(auth)/actions';
 
+/**
+ * useAuth - Minimal hook for logout functionality
+ *
+ * Auth state should come from:
+ * - Server Components (passing user as prop)
+ * - useActionState for form handling
+ * - NOT from global state (Zustand)
+ */
 export function useAuth() {
-  const router = useRouter();
-  const {
-    user,
-    isLoading,
-    isAuthenticated,
-    error,
-    setUser,
-    setIsLoading,
-    setError,
-    logout: zustandLogout,
-    clearError,
-  } = useAuthStore((state) => state);
-
   const logout = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      await authService.logout();
-      zustandLogout();
-      router.push(ROUTES.AUTH.LOGIN);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to logout';
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [setIsLoading, zustandLogout, router, setError]);
+    // Call logout action which will sign out and redirect
+    // The redirect() call in logoutAction is handled automatically by Next.js
+    // Do not wrap in try-catch as redirect() throws intentional error for navigation
+    await logoutAction();
+  }, []);
 
   return {
-    user,
-    isLoading,
-    isAuthenticated,
-    error,
-    setUser,
-    setError,
-    clearError,
     logout,
   };
 }

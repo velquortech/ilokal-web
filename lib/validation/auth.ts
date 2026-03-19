@@ -7,6 +7,24 @@ import { z } from 'zod';
  */
 
 // ============================================================================
+// PASSWORD VALIDATION HELPER
+// ============================================================================
+
+/**
+ * Validate password strength requirements
+ * - Minimum 6 characters
+ * - At least one uppercase letter
+ * - At least one lowercase letter
+ * - At least one number
+ */
+function validatePasswordStrength(password: string): boolean {
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  return hasUppercase && hasLowercase && hasNumber;
+}
+
+// ============================================================================
 // LOGIN VALIDATION
 // ============================================================================
 
@@ -30,10 +48,17 @@ export const signupSchema = z
     password: z
       .string()
       .min(6, 'Password must be at least 6 characters')
-      .max(100, 'Password must not exceed 100 characters'),
+      .max(100, 'Password must not exceed 100 characters')
+      .refine(
+        validatePasswordStrength,
+        'Password must contain uppercase, lowercase, and numbers',
+      ),
     confirmPassword: z.string(),
-    name: z.string().min(1, 'Name is required').max(100, 'Name is too long'),
-    role: z.enum(['admin', 'business_owner', 'user'], {
+    name: z
+      .string()
+      .min(2, 'Name must be at least 2 characters')
+      .max(100, 'Name is too long'),
+    role: z.enum(['admin', 'business_owner', 'app_user'], {
       message: 'Please select a role',
     }),
     phone_number: z.string().optional().or(z.literal('')),
@@ -55,7 +80,7 @@ export const serverSignupSchema = z.object({
   email: z.email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   name: z.string().min(1, 'Name is required'),
-  role: z.enum(['admin', 'business_owner', 'user'], {
+  role: z.enum(['admin', 'business_owner', 'app_user'], {
     message: 'Invalid role',
   }),
   phone_number: z.string().optional().or(z.literal('')),

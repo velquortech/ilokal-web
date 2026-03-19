@@ -1,8 +1,147 @@
 # 🎉 Authentication & Security Implementation Complete
 
-> Last Updated: March 6, 2026
-> Status: Production-Ready ✅
-> Folder Structure: Reorganized & Documented ✅
+> Last Updated: March 15, 2026  
+> Status: **Modernized with useActionState & React Context** ✅  
+> Auth Pattern: Server Actions + useActionState + React Context  
+> Zustand: UI state only (no sensitive auth data)
+
+---
+
+## 🔄 Recent Modernization (March 15, 2026)
+
+### What Changed
+
+#### **1. Form Submission Pattern: useTransition → useActionState**
+
+**Before:**
+
+```tsx
+const [isPending, startTransition] = useTransition();
+const handleSubmit = (data) => startTransition(() => loginAction(data));
+```
+
+**After:**
+
+```tsx
+const [state, formAction, isPending] = useActionState(
+  handleLogin,
+  initialState,
+);
+// form action={formAction}
+```
+
+**Benefits:**
+
+- Automatic form state management
+- Cleaner separation of concerns
+- Server returns form state (errors, messages)
+- Better UX integration
+
+#### **2. Auth State Management: Zustand → React Context + Server Components**
+
+**Implementation:**
+
+```tsx
+// User data provided via React Context (only in protected sections)
+const user = useUser(); // Hook provides user from Context
+
+// Default state uses Server Components + Middleware for initial verification
+// No auth store for user data - HTTP-only cookies handle session
+```
+
+**Benefits:**
+
+- ✅ No sensitive auth data stored on client
+- ✅ Better SSR/SSG compatibility with Server Components
+- ✅ HTTP-only Supabase cookies provide security
+- ✅ Clearer separation: Server = auth, Client = UI state only
+
+#### **3. Session Tracking: App Cookies with Server Actions**
+
+**Implementation:**
+
+```tsx
+// SessionTracker initializes monitoring on mount
+export function SessionTracker() {
+  // Initialize useSessionMonitor hook
+  // This starts:
+  // 1. Activity detection (mouse, keyboard, scroll, touch)
+  // 2. Verification loop (every 60s calls verifySessionAction)
+  // 3. Countdown timer (every 1s, shows warning at 5 min)
+  // 4. Session expiration tracking (via localStorage)
+  useSessionMonitor();
+
+  return null; // No UI, just initialization
+}
+
+// useSessionMonitor implementation:
+export function useSessionMonitor() {
+  // Periodic verification (60s)
+  const verify = async () => {
+    const result = await verifySessionAction();
+    if (!result.user) {
+      // Session invalid → auto-logout
+      await logoutAction();
+      redirect('/login');
+    } else {
+      // Recalculate expiration from role
+      const timeout = getSessionTimeout(result.role);
+      const expiration = Date.now() + timeout * 60 * 1000;
+      localStorage.setItem('sessionExpiration', expiration.toString());
+    }
+  };
+
+  // Activity detection (debounced 5s)
+  const debouncedRefresh = debounce(() => verify(), 5000);
+
+  // Countdown check (every 1s)
+  const checkExpiration = () => {
+    const exp = parseInt(localStorage.getItem('sessionExpiration') || '0', 10);
+    if (exp <= Date.now()) {
+      logoutAction(); // Auto-logout
+    } else if (exp - Date.now() < 5 * 60 * 1000) {
+      setIsExpiring(true); // Show warning
+    }
+  };
+
+  return { isExpiring, timeRemaining, refreshSession };
+}
+```
+
+**Benefits:**
+
+- ✅ Role-specific session timeouts (Admin: 60m, Business: 240m, User: 1440m)
+- ✅ Activity debouncing (5s window prevents excessive server calls)
+- ✅ Server-verified session validity (not client-determined)
+- ✅ Proper separation of concerns
+
+#### **4. User Data Accessibility: useAuth → useUser + UserContext**
+
+**Implementation:**
+
+```tsx
+// In protected sections:
+const user = useUser(); // Via React Context
+
+// In any client component:
+const { logout } = useAuth(); // Only logout function
+```
+
+**Files Added:**
+
+- `components/SessionTracker.tsx` - Initializes session on mount
+- `providers/UserContext.tsx` - Provides user data via context
+
+**Files Modified:**
+
+- `components/auth/LoginForm.tsx` - Now uses useActionState
+- `components/auth/SignupForm.tsx` - Now uses useActionState
+- `hooks/useAuth.ts` - Now only exports logout
+- `hooks/useSessionMonitor.ts` - Session monitoring (debounced activity, verification, countdown)
+- `providers/AuthProvider.tsx` - Wraps SessionTracker + initializes monitoring
+- `services/stores/authStore.ts` - UI state only
+
+---
 
 ## Executive Summary
 
@@ -19,7 +158,7 @@ Ilokal-web now has a **complete, production-ready authentication system** featur
 
 ---
 
-## ✅ What Was Implemented
+## ✅ What Was Implemented (Core August 2025)
 
 ### 1. Server Actions Architecture
 
@@ -67,21 +206,21 @@ Ilokal-web now has a **complete, production-ready authentication system** featur
 
 #### LoginForm (components/auth/LoginForm.tsx)
 
-- ✅ Uses Server Action `loginAction()`
-- ✅ Uses `useTransition()` for pending state
-- ✅ Email/password validation
-- ✅ Error handling
-- ✅ Loading spinner
-- ✅ Role-based redirect
+- ✅ Uses Server Action `loginAction()` via `useActionState`
+- ✅ Server returns form state (errors, messages)
+- ✅ Email/password validation with Zod (server-side)
+- ✅ Error handling via state object
+- ✅ Loading spinner using isPending
+- ✅ Role-based redirect (redirectByRole)
 
 #### SignupForm (components/auth/SignupForm.tsx)
 
-- ✅ Uses Server Action `signupAction()`
+- ✅ Uses Server Action `signupAction()` via `useActionState`
 - ✅ Two-step form (role selection → details)
-- ✅ Input validation with Zod
+- ✅ Input validation with Zod (server-side)
 - ✅ Optional phone number
 - ✅ Success message before redirect
-- ✅ Activity detection integration
+- ✅ Form state managed by useActionState
 
 ### 4. Security Hardening
 

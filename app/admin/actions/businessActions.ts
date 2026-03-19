@@ -15,13 +15,13 @@ import { businessFiltersSchema } from '@/lib/validation/business';
 import {
   getBusinessesList,
   getBusiness,
-  verifyBusiness as apiVerifyBusiness,
-  rejectBusiness as apiRejectBusiness,
-  suspendBusiness as apiSuspendBusiness,
-  reactivateBusiness as apiReactivateBusiness,
-  updateBusiness as apiUpdateBusiness,
-  archiveBusiness as apiArchiveBusiness,
-  deleteBusinessPermanently as apiDeleteBusiness,
+  verifyBusiness,
+  rejectBusiness,
+  suspendBusiness,
+  reactivateBusiness,
+  updateBusiness,
+  archiveBusiness,
+  deleteBusinessPermanently,
 } from '@/lib/api/business/businessAPIClient';
 import {
   BusinessActionResponse,
@@ -151,10 +151,7 @@ export async function verifyBusinessAction(
       return { success: false, error: error || 'Unauthorized' };
     }
 
-    const { data, error: apiError } = await apiVerifyBusiness(
-      businessId,
-      notes,
-    );
+    const { data, error: apiError } = await verifyBusiness(businessId, notes);
 
     if (apiError) {
       return { success: false, error: apiError };
@@ -185,10 +182,7 @@ export async function rejectBusinessAction(
       return { success: false, error: error || 'Unauthorized' };
     }
 
-    const { data, error: apiError } = await apiRejectBusiness(
-      businessId,
-      reason,
-    );
+    const { data, error: apiError } = await rejectBusiness(businessId, reason);
 
     if (apiError) {
       return { success: false, error: apiError };
@@ -223,10 +217,7 @@ export async function suspendBusinessAction(
       return { success: false, error: error || 'Unauthorized' };
     }
 
-    const { data, error: apiError } = await apiSuspendBusiness(
-      businessId,
-      reason,
-    );
+    const { data, error: apiError } = await suspendBusiness(businessId, reason);
 
     if (apiError) {
       return { success: false, error: apiError };
@@ -256,7 +247,7 @@ export async function reactivateBusinessAction(
       return { success: false, error: error || 'Unauthorized' };
     }
 
-    const { data, error: apiError } = await apiReactivateBusiness(businessId);
+    const { data, error: apiError } = await reactivateBusiness(businessId);
 
     if (apiError) {
       return { success: false, error: apiError };
@@ -292,10 +283,7 @@ export async function updateBusinessAction(
       return { success: false, error: error || 'Unauthorized' };
     }
 
-    const { data, error: apiError } = await apiUpdateBusiness(
-      businessId,
-      updates,
-    );
+    const { data, error: apiError } = await updateBusiness(businessId, updates);
 
     if (apiError) {
       return { success: false, error: apiError };
@@ -330,7 +318,7 @@ export async function archiveBusinessAction(
       return { success: false, error: error || 'Unauthorized' };
     }
 
-    const { error: apiError } = await apiArchiveBusiness(businessId);
+    const { error: apiError } = await archiveBusiness(businessId);
 
     if (apiError) {
       return { success: false, error: apiError };
@@ -360,7 +348,7 @@ export async function deleteBusinessAction(
       return { success: false, error: error || 'Unauthorized' };
     }
 
-    const { error: apiError } = await apiDeleteBusiness(businessId);
+    const { error: apiError } = await deleteBusinessPermanently(businessId);
 
     if (apiError) {
       return { success: false, error: apiError };

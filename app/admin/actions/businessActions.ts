@@ -10,7 +10,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { verifyCurrentUserIsAdmin } from '@/lib/api/adminActionHelpers';
+import { verifyCurrentUserIsAdmin } from '@/lib/api/admin/adminActionHelpers';
 import { businessFiltersSchema } from '@/lib/validation/business';
 import {
   getBusinessesList,

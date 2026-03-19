@@ -17,6 +17,7 @@ export {
   createBusinessOwnerAction,
   updateBusinessOwnerAction,
   deleteBusinessOwnerAction,
+  restoreUserAction,
   type ActionState,
 } from './userActions';
 

@@ -53,7 +53,9 @@ export async function loginAction(
     // Uses authenticated session from cookie
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, email, full_name, phone_number, role, avatar_url, status')
+      .select(
+        'id, email, full_name, phone_number, role, avatar_url, status, archived_at',
+      )
       .eq('id', authData.user.id)
       .single();
 
@@ -63,6 +65,16 @@ export async function loginAction(
         profileError?.message,
       );
       throw new Error('Failed to load user profile');
+    }
+
+    // Verify user account is not archived
+    if (profile.archived_at) {
+      console.warn(
+        `[loginAction] Login attempt by archived user ${authData.user.id}`,
+      );
+      throw new Error(
+        'Your account has been archived. Please contact support.',
+      );
     }
 
     // Verify user account is active (not suspended or inactive)

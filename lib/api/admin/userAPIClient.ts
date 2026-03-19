@@ -10,6 +10,8 @@ import { AdminUser } from '@/lib/types/admin';
 import {
   createAuthUser,
   deleteAuthUser,
+  archiveUser,
+  unarchiveUser,
   updateAuthUser,
   buildProfileUpdateData,
   createProfile,
@@ -225,13 +227,14 @@ export async function updateUserStatus(
 // ============================================================================
 
 /**
- * Delete a user
+ * Delete a user (soft delete via archived_at)
+ * Marks the user account as archived instead of permanently deleting
  */
 export async function deleteUser(
   userId: string,
 ): Promise<UserOperationResult<void>> {
   try {
-    const { error } = await deleteAuthUser(userId);
+    const { error } = await archiveUser(userId);
 
     if (error) {
       return { error };
@@ -241,6 +244,30 @@ export async function deleteUser(
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : 'Failed to delete user',
+    };
+  }
+}
+
+/**
+ * Restore an archived user
+ * Clears archived_at and sets status back to 'active'
+ */
+export async function restoreUser(
+  userId: string,
+): Promise<UserOperationResult<AdminUser>> {
+  try {
+    const { error } = await unarchiveUser(userId);
+
+    if (error) {
+      return { error };
+    }
+
+    // Re-fetch the updated profile
+    const updateResult = await updateUserStatus(userId, 'active');
+    return updateResult;
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : 'Failed to restore user',
     };
   }
 }

@@ -1,9 +1,15 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { Profile } from '@/lib/types/user';
-import { PaginatedResponse } from '@/services/api/paginationService';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import type { UserRole } from '@/lib/types/user';
 import { useAccountStatusData } from './hooks/useAccountStatusData';
 import { useAccountStatusActions } from './hooks/useAccountStatusActions';
 import { StatusCards, AccountLifecycleInfo } from './components';
@@ -24,64 +30,52 @@ import {
  * This is separate from "Users" page which is for active user management
  */
 export default function AccountStatusPage() {
-  const [activeTab, setActiveTab] = useState('archived');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [activeTab, setActiveTab] = useState<
+    'archived' | 'suspended' | 'inactive'
+  >('archived');
+  const [selectedRole, setSelectedRole] = useState<UserRole | 'all'>('all');
+
+  // Separate pagination for each tab
+  const [archivedPage, setArchivedPage] = useState(1);
+  const [suspendedPage, setSuspendedPage] = useState(1);
+  const [inactivePage, setInactivePage] = useState(1);
 
   const {
-    archivedUsers,
-    suspendedUsers,
-    inactiveUsers,
+    archivedData,
+    suspendedData,
+    inactiveData,
     counts,
     loading,
+    tabLoading,
     loadAccountStatusData,
-  } = useAccountStatusData();
+  } = useAccountStatusData(
+    selectedRole,
+    archivedPage,
+    suspendedPage,
+    inactivePage,
+    activeTab,
+  );
 
   const { isSubmitting, handleRestore, handleReactivate } =
     useAccountStatusActions(loadAccountStatusData);
 
-  useEffect(() => {
-    loadAccountStatusData();
-  }, [loadAccountStatusData]);
+  // Handle tab switch
+  const handleTabChange = (tab: string) => {
+    const newTab = tab as 'archived' | 'suspended' | 'inactive';
+    setActiveTab(newTab);
+    // The lazy load effect in the hook will automatically fetch data when activeTab changes
+  };
 
-  // Create paginated response objects for the table
-  const archivedPaginatedData: PaginatedResponse<Profile> = useMemo(
-    () => ({
-      data: archivedUsers,
-      pagination: {
-        currentPage,
-        pageSize: 10,
-        totalItems: counts.archived,
-        totalPages: Math.ceil(counts.archived / 10),
-      },
-    }),
-    [archivedUsers, currentPage, counts.archived],
-  );
-
-  const suspendedPaginatedData: PaginatedResponse<Profile> = useMemo(
-    () => ({
-      data: suspendedUsers,
-      pagination: {
-        currentPage,
-        pageSize: 10,
-        totalItems: counts.suspended,
-        totalPages: Math.ceil(counts.suspended / 10),
-      },
-    }),
-    [suspendedUsers, currentPage, counts.suspended],
-  );
-
-  const inactivePaginatedData: PaginatedResponse<Profile> = useMemo(
-    () => ({
-      data: inactiveUsers,
-      pagination: {
-        currentPage,
-        pageSize: 10,
-        totalItems: counts.inactive,
-        totalPages: Math.ceil(counts.inactive / 10),
-      },
-    }),
-    [inactiveUsers, currentPage, counts.inactive],
-  );
+  // Determine current page based on active tab
+  const handlePageChange = (page: number) => {
+    if (activeTab === 'archived') {
+      setArchivedPage(page);
+    } else if (activeTab === 'suspended') {
+      setSuspendedPage(page);
+    } else if (activeTab === 'inactive') {
+      setInactivePage(page);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -93,11 +87,42 @@ export default function AccountStatusPage() {
         </p>
       </div>
 
+      {/* Role Filter */}
+      <div className="flex items-center gap-3">
+        <label htmlFor="role-filter" className="text-sm font-medium">
+          Filter by Role:
+        </label>
+        <Select
+          value={selectedRole}
+          onValueChange={(value) => {
+            setSelectedRole(value as UserRole | 'all');
+            // Reset all pagination to 1 when role filter changes
+            setArchivedPage(1);
+            setSuspendedPage(1);
+            setInactivePage(1);
+          }}
+        >
+          <SelectTrigger id="role-filter" className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Roles</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="business_owner">Business Owner</SelectItem>
+            <SelectItem value="app_user">App User</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Status Cards */}
       <StatusCards counts={counts} loading={loading} />
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={handleTabChange}
+        className="w-full"
+      >
         <TabsList>
           <TabsTrigger value="archived">Archived Users</TabsTrigger>
           <TabsTrigger value="suspended">Suspended Users</TabsTrigger>
@@ -106,28 +131,28 @@ export default function AccountStatusPage() {
 
         {/* Tab Content */}
         <ArchivedUsersTab
-          data={archivedPaginatedData}
-          isLoading={loading}
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
+          data={archivedData}
+          isLoading={tabLoading.archived}
+          currentPage={archivedPage}
+          onPageChange={handlePageChange}
           isSubmitting={isSubmitting}
           onRestore={handleRestore}
         />
 
         <SuspendedUsersTab
-          data={suspendedPaginatedData}
-          isLoading={loading}
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
+          data={suspendedData}
+          isLoading={tabLoading.suspended}
+          currentPage={suspendedPage}
+          onPageChange={handlePageChange}
           isSubmitting={isSubmitting}
           onReactivate={handleReactivate}
         />
 
         <InactiveUsersTab
-          data={inactivePaginatedData}
-          isLoading={loading}
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
+          data={inactiveData}
+          isLoading={tabLoading.inactive}
+          currentPage={inactivePage}
+          onPageChange={handlePageChange}
           isSubmitting={isSubmitting}
           onReactivate={handleReactivate}
         />

@@ -12,13 +12,10 @@ import {
   MobileNavMenu,
 } from '@/components/ui/resizable-navbar';
 import { useTheme } from 'next-themes';
-import { useRouter } from 'next/navigation';
 import { Sun, Moon } from 'lucide-react';
 import { useState, JSX } from 'react';
-import { ROUTES } from '@/config/routeConfig';
 
 export const Navigation = (): JSX.Element => {
-  const router = useRouter();
   const navItems = [
     {
       name: 'Features',
@@ -37,33 +34,21 @@ export const Navigation = (): JSX.Element => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const { theme, setTheme } = useTheme();
 
-  const handleLoginClick = () => {
-    router.push(ROUTES.AUTH.LOGIN);
-  };
-
   return (
     <Navbar>
       {/* Desktop Navigation */}
       <NavBody>
         <NavbarLogo logo={null} title="iLokal" />
         <NavItems items={navItems} />
-        <div className="relative z-20 flex items-center gap-4">
+        <div className="flex items-center gap-4">
           <button
             className="z-50 cursor-pointer"
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           >
             {theme === 'dark' ? <Sun /> : <Moon />}
           </button>
-          <NavbarButton
-            as="button"
-            variant="secondary"
-            onClick={handleLoginClick}
-          >
-            Login
-          </NavbarButton>
-          <NavbarButton as="button" variant="primary">
-            Book a call
-          </NavbarButton>
+          <NavbarButton variant="secondary">Login</NavbarButton>
+          <NavbarButton variant="primary">Book a call</NavbarButton>
         </div>
       </NavBody>
 
@@ -93,18 +78,13 @@ export const Navigation = (): JSX.Element => {
           ))}
           <div className="flex w-full flex-col gap-4">
             <NavbarButton
-              as="button"
-              onClick={() => {
-                handleLoginClick();
-                setIsMobileMenuOpen(false);
-              }}
+              onClick={() => setIsMobileMenuOpen(false)}
               variant="primary"
               className="w-full"
             >
               Login
             </NavbarButton>
             <NavbarButton
-              as="button"
               onClick={() => setIsMobileMenuOpen(false)}
               variant="primary"
               className="w-full"

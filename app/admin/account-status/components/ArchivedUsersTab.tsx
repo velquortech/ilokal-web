@@ -8,7 +8,7 @@ import UsersTable from '@/app/admin/components/shared/UsersTable';
 import { createAccountStatusColumns } from './columns';
 
 interface ArchivedUsersTabProps {
-  data: PaginatedResponse<Profile>;
+  data: PaginatedResponse<Profile> | null;
   isLoading: boolean;
   currentPage: number;
   onPageChange: (page: number) => void;

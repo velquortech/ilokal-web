@@ -29,6 +29,10 @@ const imageRemotePatterns: Array<{
     hostname: '127.0.0.1',
     port: '54321',
   },
+  {
+    protocol: 'https',
+    hostname: 'images.unsplash.com',
+  },
 ];
 
 // Add production Supabase storage if configured
@@ -42,7 +46,7 @@ if (prodImageUrl) {
 
 // Build CSP image sources that match remote patterns
 const buildCSPImageSources = (): string => {
-  const sources = ["'self'", 'data:'];
+  const sources = ["'self'", 'data:', 'blob:'];
 
   // Always allow local Supabase storage for development
   sources.push('http://127.0.0.1:54321');
@@ -135,7 +139,17 @@ const nextConfig: NextConfig = {
           // Content-Security-Policy - dynamically built to include all image sources
           {
             key: 'Content-Security-Policy',
-            value: `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src ${buildCSPImageSources()}; connect-src 'self' http://127.0.0.1:54321${process.env.NEXT_PUBLIC_SUPABASE_URL ? ' ' + process.env.NEXT_PUBLIC_SUPABASE_URL : ''}; font-src 'self' data:`,
+            value: `
+                  default-src 'self';
+                  script-src 'self' 'unsafe-eval' 'unsafe-inline' https://maps.googleapis.com;
+                  style-src 'self' 'unsafe-inline';
+                  img-src ${buildCSPImageSources()};
+                  frame-src 'self' https://www.google.com;
+                  connect-src 'self' https://maps.googleapis.com http://127.0.0.1:54321 ${process.env.NEXT_PUBLIC_SUPABASE_URL || ''};
+                  font-src 'self' data:;
+                `
+              .replace(/\s{2,}/g, ' ')
+              .trim(),
           },
         ],
       },

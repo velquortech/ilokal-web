@@ -14,6 +14,10 @@ export const ROUTES = {
     business_owner: '/business',
     user: '/home',
   },
+  BUSINESS: {
+    home: '/business',
+    registration: '/business-registration',
+  },
 } as const;
 
 // For middleware matcher

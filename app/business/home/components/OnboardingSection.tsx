@@ -45,9 +45,9 @@ export function OnboardingSection({
               </div>
             </div>
             <p className="text-muted-foreground mt-6 max-w-lg">
-              Your shop is not yet registered. Complete the registration to
-              unlock full dashboard features, start selling products, and reach
-              thousands of customers in your area.
+              Register your shop today to unlock full dashboard features, manage
+              branches and services, and grow your visibility among local
+              customers and tourists.
             </p>
             <div className="text-muted-foreground mt-6 flex flex-wrap gap-4 text-sm">
               <div className="flex items-center gap-2">

@@ -2,15 +2,15 @@
 
 import { Search } from 'lucide-react';
 
+import { AdminStatusFilter, AdminSortOrder } from '@/lib/types/admin';
+
 interface UserSearchFilterProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  statusFilter: 'all' | 'active' | 'inactive' | 'suspended';
-  onStatusFilterChange: (
-    status: 'all' | 'active' | 'inactive' | 'suspended',
-  ) => void;
-  sortOrder: 'latest' | 'oldest';
-  onSortOrderChange: (order: 'latest' | 'oldest') => void;
+  statusFilter: AdminStatusFilter;
+  onStatusFilterChange: (status: AdminStatusFilter) => void;
+  sortOrder: AdminSortOrder;
+  onSortOrderChange: (order: AdminSortOrder) => void;
   onReset: () => void;
   hasActiveFilters: boolean;
 }

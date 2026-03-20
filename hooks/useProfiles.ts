@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import userService from '@/services/api/userService';
 import { UserRole, Profile } from '@/lib/types/user';
+import { AdminStatusFilter, AdminSortOrder } from '@/lib/types/admin';
 import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
 import { PaginatedResponse } from '@/services/api/paginationService';
 
@@ -11,8 +12,8 @@ interface UseProfilesByRoleOptions {
   limit?: number;
   enabled?: boolean;
   searchQuery?: string;
-  statusFilter?: 'all' | 'active' | 'inactive' | 'suspended';
-  sortOrder?: 'latest' | 'oldest';
+  statusFilter?: AdminStatusFilter;
+  sortOrder?: AdminSortOrder;
 }
 
 interface UseProfilesByRoleResult {

@@ -61,6 +61,27 @@ export type AdminUserRole = Exclude<UserRole, never>; // All roles visible to ad
  */
 export type AdminUserStatus = 'active' | 'inactive' | 'suspended';
 
+/**
+ * Status filter options including "all" for filtering
+ */
+export type AdminStatusFilter = 'all' | AdminUserStatus;
+
+/**
+ * Sort order enum for admin lists
+ */
+export type AdminSortOrder = 'latest' | 'oldest';
+
+/**
+ * Filter state for admin user lists and tables
+ * Single source of truth for pagination and filtering
+ */
+export interface AdminTabFilterState {
+  page: number;
+  searchQuery: string;
+  statusFilter: AdminStatusFilter;
+  sortOrder: AdminSortOrder;
+}
+
 // ============================================================================
 // ADMIN MUTATIONS & ACTIONS
 // ============================================================================

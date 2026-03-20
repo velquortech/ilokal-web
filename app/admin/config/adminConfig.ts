@@ -19,5 +19,6 @@ export const ADMIN_CONFIG = {
   SORT_OPTIONS: ['latest', 'oldest'] as const,
 } as const;
 
-export type StatusFilter = (typeof ADMIN_CONFIG.STATUS_FILTERS)[number];
-export type SortOrder = (typeof ADMIN_CONFIG.SORT_OPTIONS)[number];
+// NOTE: Type definitions have been consolidated in lib/types/admin.ts
+// Use AdminStatusFilter, AdminSortOrder, and AdminTabFilterState from there
+// to avoid duplication and maintain single source of truth

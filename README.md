@@ -102,3 +102,5 @@ Make sure the following are installed on your machine:
 
 - Replace `[file-name]` with a descriptive name for the migration.
 - Ensure Docker is running before executing any Supabase-related commands.
+
+---

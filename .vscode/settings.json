@@ -1,0 +1,16 @@
+{
+    "cSpell.words": [
+        "Ilokal",
+        "Supabase"
+    ],
+    "chat.tools.terminal.autoApprove": {
+        "yarn add": true,
+        "npx supabase": true,
+        "docker exec": true,
+        "npx tsx": true,
+        "/^node test-phone-input\\.js$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

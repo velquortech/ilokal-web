@@ -3,8 +3,12 @@ CREATE TABLE public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   full_name TEXT,
-  phone_number TEXT,
-  role TEXT NOT NULL CHECK (role IN ('admin', 'business_owner', 'user')),
+  phone_number TEXT CHECK (
+    phone_number IS NULL 
+    OR phone_number ~ '^\+[1-9]\d{1,14}(\s\d+)?$'
+  ),
+  role TEXT NOT NULL CHECK (role IN ('admin', 'business_owner', 'app_user')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
   avatar_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),

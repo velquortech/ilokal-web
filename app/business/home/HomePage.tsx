@@ -19,6 +19,7 @@ import {
   getStatMetrics,
 } from './lib';
 import { TourDialog } from './components/TourDialog';
+import { ROUTES } from '@/config/routeConfig';
 
 export default function BusinessHome() {
   const router = useRouter();
@@ -33,7 +34,7 @@ export default function BusinessHome() {
 
   const handleStartRegistration = () => {
     dismissTour();
-    router.push('/business/register');
+    router.push(ROUTES.BUSINESS.registration);
   };
 
   const metrics = calculateDashboardMetrics(SALES_DATA);

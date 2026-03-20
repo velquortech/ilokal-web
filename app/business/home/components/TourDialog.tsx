@@ -12,7 +12,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Rocket, CheckCircle, ImageIcon } from 'lucide-react';
+import { Rocket, CheckCircle } from 'lucide-react';
+import Image from 'next/image';
 
 interface TourDialogProps {
   isOpen: boolean;
@@ -44,11 +45,16 @@ export function TourDialog({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="flex h-140 max-w-6xl! flex-row gap-8"
+        className="flex h-140 max-w-5xl! flex-row gap-8"
         showCloseButton={false}
       >
-        <div className="bg-primary/20 flex w-3/5 items-center justify-center rounded-xl">
-          <ImageIcon className="stroke-primary size-20 opacity-20" />
+        <div className="bg-primary/10 flex w-1/2 items-center justify-center rounded-xl">
+          <Image
+            alt="document-icon"
+            src={'/document.svg'}
+            width={200}
+            height={200}
+          />
         </div>
         <div className="flex flex-1 flex-col">
           <DialogHeader>

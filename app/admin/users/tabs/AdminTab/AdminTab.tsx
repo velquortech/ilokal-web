@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { AdminUser } from '@/lib/types/admin';
+import { AdminUser, AdminTabFilterState } from '@/lib/types/admin';
 import { extractErrorMessage } from '@/lib/utils/errorHandler';
 import { UserFormData } from '@/app/admin/schemas/userFormSchema';
 import { UserFormModal } from '../../../components/forms';
@@ -14,59 +14,36 @@ import {
   useUpdateAdmin,
   useDeleteAdmin,
 } from '@/hooks/useAdminMutations';
-import { useProfilesByRole } from '@/hooks/useProfiles';
 import { useUser } from '@/providers/UserContext';
 import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
 import { PaginatedResponse } from '@/services/api/paginationService';
 
-export default function AdminTab() {
+interface AdminTabProps {
+  data: PaginatedResponse<AdminUser> | null;
+  isLoading: boolean;
+  filters: AdminTabFilterState;
+  onFiltersChange: (filters: AdminTabFilterState) => void;
+  _onRefetch?: () => void; // Available for future explicit refresh functionality
+}
+
+export default function AdminTab({
+  data: adminData,
+  isLoading,
+  filters,
+  onFiltersChange,
+  _onRefetch,
+}: AdminTabProps) {
   const user = useUser();
   const isAdmin = user?.role === 'admin';
   const [selectedAdmin, setSelectedAdmin] = useState<AdminUser | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<
-    'all' | 'active' | 'inactive' | 'suspended'
-  >('all');
-  const [sortOrder, setSortOrder] = useState<'latest' | 'oldest'>('latest');
   const [adminsDataCache, setAdminsDataCache] =
-    useState<PaginatedResponse<AdminUser> | null>(null);
+    useState<PaginatedResponse<AdminUser> | null>(adminData);
 
-  // Reset to page 1 immediately when the search query changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
-
-  // Debounce search input value used for querying
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, ADMIN_CONFIG.SEARCH_DEBOUNCE_MS);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  // Fetch admins data with server-side pagination and filtering
-  const {
-    data: adminsData,
-    isLoading,
-    error: fetchError,
-  } = useProfilesByRole('admin', {
-    page: currentPage,
-    limit: ADMIN_CONFIG.ITEMS_PER_PAGE,
-    searchQuery: debouncedSearchQuery,
-    statusFilter,
-    sortOrder,
-  });
-
-  // Sync fetched data to cache
-  useEffect(() => {
-    if (adminsData) {
-      setAdminsDataCache(adminsData);
-    }
-  }, [adminsData]);
+  // Update cache when data changes
+  if (adminData && adminsDataCache !== adminData) {
+    setAdminsDataCache(adminData);
+  }
 
   /**
    * Patch a single user record in the cached data with only the changed fields
@@ -210,12 +187,15 @@ export default function AdminTab() {
       if (
         adminsDataCache &&
         adminsDataCache.data.length === 1 &&
-        currentPage > 1
+        filters.page > 1
       ) {
-        setCurrentPage(currentPage - 1);
+        onFiltersChange({
+          ...filters,
+          page: filters.page - 1,
+        });
       }
     },
-    [adminsDataCache, currentPage, removeAdminFromCache],
+    [adminsDataCache, filters, onFiltersChange, removeAdminFromCache],
   );
 
   const handleDeleteAdminError = useCallback((err: string) => {
@@ -305,19 +285,19 @@ export default function AdminTab() {
   );
 
   const handleResetFilters = useCallback(() => {
-    setSearchQuery('');
-    setDebouncedSearchQuery('');
-    setStatusFilter('all');
-    setSortOrder('latest');
-    setCurrentPage(1);
+    onFiltersChange({
+      page: 1,
+      searchQuery: '',
+      statusFilter: 'all',
+      sortOrder: 'latest',
+    });
     toast.info('Filters reset');
-  }, []);
+  }, [onFiltersChange]);
 
   const isSubmitting =
     createAdminMutation.isPending ||
     updateAdminMutation.isPending ||
     deleteAdminMutation.isPending;
-  const error = fetchError ? extractErrorMessage(fetchError) : null;
 
   if (!isAdmin) {
     return (
@@ -354,38 +334,49 @@ export default function AdminTab() {
         </Button>
       </div>
 
-      {error && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-          <p>{error}</p>
-        </div>
-      )}
-
       <UserSearchFilter
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        statusFilter={statusFilter}
-        onStatusFilterChange={(status) => {
-          setStatusFilter(status);
-          setCurrentPage(1);
+        searchQuery={filters.searchQuery}
+        onSearchChange={(query) => {
+          onFiltersChange({
+            ...filters,
+            searchQuery: query,
+            page: 1, // Reset to page 1 on search change
+          });
         }}
-        sortOrder={sortOrder}
+        statusFilter={filters.statusFilter}
+        onStatusFilterChange={(status) => {
+          onFiltersChange({
+            ...filters,
+            statusFilter: status,
+            page: 1,
+          });
+        }}
+        sortOrder={filters.sortOrder}
         onSortOrderChange={(order) => {
-          setSortOrder(order);
-          setCurrentPage(1);
+          onFiltersChange({
+            ...filters,
+            sortOrder: order,
+            page: 1,
+          });
         }}
         onReset={handleResetFilters}
         hasActiveFilters={
-          Boolean(searchQuery || debouncedSearchQuery) ||
-          statusFilter !== 'all' ||
-          sortOrder !== 'latest'
+          Boolean(filters.searchQuery) ||
+          filters.statusFilter !== 'all' ||
+          filters.sortOrder !== 'latest'
         }
       />
 
       <UsersTable
         data={adminsDataCache}
         isLoading={isLoading}
-        currentPage={currentPage}
-        onPageChange={setCurrentPage}
+        currentPage={filters.page}
+        onPageChange={(page) => {
+          onFiltersChange({
+            ...filters,
+            page,
+          });
+        }}
         onEdit={handleEdit}
         onDelete={handleDelete}
         onStatusChange={patchAdminInCache}

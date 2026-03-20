@@ -1,5 +1,6 @@
 import apiClient from './apiClient';
 import { Profile, UserRole } from '@/lib/types/user';
+import { AdminStatusFilter, AdminSortOrder } from '@/lib/types/admin';
 import { PaginatedResponse } from './paginationService';
 
 export interface CreateUserInput {
@@ -45,8 +46,8 @@ const userService = {
     limit: number = 10,
     filters?: {
       searchQuery?: string;
-      statusFilter?: 'all' | 'active' | 'inactive' | 'suspended';
-      sortOrder?: 'latest' | 'oldest';
+      statusFilter?: AdminStatusFilter;
+      sortOrder?: AdminSortOrder;
     },
   ): Promise<PaginatedResponse<Profile>> {
     try {

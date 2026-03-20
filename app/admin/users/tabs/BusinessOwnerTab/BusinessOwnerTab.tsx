@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { AdminUser } from '@/lib/types/admin';
+import { AdminUser, AdminTabFilterState } from '@/lib/types/admin';
 import { extractErrorMessage } from '@/lib/utils/errorHandler';
 import { UserFormData } from '@/app/admin/schemas/userFormSchema';
 import { UserFormModal } from '../../../components/forms';
@@ -14,60 +14,37 @@ import {
   useUpdateBusinessOwner,
   useDeleteBusinessOwner,
 } from '@/hooks/useAdminMutations';
-import { useProfilesByRole } from '@/hooks/useProfiles';
 import { useUser } from '@/providers/UserContext';
 import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
 import { PaginatedResponse } from '@/services/api/paginationService';
 
-export default function BusinessOwnerTab() {
+interface BusinessOwnerTabProps {
+  data: PaginatedResponse<AdminUser> | null;
+  isLoading: boolean;
+  filters: AdminTabFilterState;
+  onFiltersChange: (filters: AdminTabFilterState) => void;
+  _onRefetch?: () => void; // Available for future explicit refresh functionality
+}
+
+export default function BusinessOwnerTab({
+  data: businessOwnerData,
+  isLoading,
+  filters,
+  onFiltersChange,
+  _onRefetch,
+}: BusinessOwnerTabProps) {
   const user = useUser();
   const isAdmin = user?.role === 'admin';
   const [selectedBusinessOwner, setSelectedBusinessOwner] =
     useState<AdminUser | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<
-    'all' | 'active' | 'inactive' | 'suspended'
-  >('all');
-  const [sortOrder, setSortOrder] = useState<'latest' | 'oldest'>('latest');
   const [businessOwnersDataCache, setBusinessOwnersDataCache] =
-    useState<PaginatedResponse<AdminUser> | null>(null);
+    useState<PaginatedResponse<AdminUser> | null>(businessOwnerData);
 
-  // Reset to page 1 immediately when the search query changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
-
-  // Debounce search input value used for querying
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, ADMIN_CONFIG.SEARCH_DEBOUNCE_MS);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  // Fetch business owners data with server-side pagination and filtering
-  const {
-    data: businessOwnersData,
-    isLoading,
-    error: fetchError,
-  } = useProfilesByRole('business_owner', {
-    page: currentPage,
-    limit: ADMIN_CONFIG.ITEMS_PER_PAGE,
-    searchQuery: debouncedSearchQuery,
-    statusFilter,
-    sortOrder,
-  });
-
-  // Sync fetched data to cache
-  useEffect(() => {
-    if (businessOwnersData) {
-      setBusinessOwnersDataCache(businessOwnersData);
-    }
-  }, [businessOwnersData]);
+  // Update cache when data changes
+  if (businessOwnerData && businessOwnersDataCache !== businessOwnerData) {
+    setBusinessOwnersDataCache(businessOwnerData);
+  }
 
   /**
    * Patch a single user record in the cached data with only the changed fields
@@ -215,12 +192,20 @@ export default function BusinessOwnerTab() {
       if (
         businessOwnersDataCache &&
         businessOwnersDataCache.data.length === 1 &&
-        currentPage > 1
+        filters.page > 1
       ) {
-        setCurrentPage(currentPage - 1);
+        onFiltersChange({
+          ...filters,
+          page: filters.page - 1,
+        });
       }
     },
-    [businessOwnersDataCache, currentPage, removeBusinessOwnerFromCache],
+    [
+      businessOwnersDataCache,
+      filters,
+      onFiltersChange,
+      removeBusinessOwnerFromCache,
+    ],
   );
 
   const handleDeleteBusinessOwnerError = useCallback((err: string) => {
@@ -314,19 +299,19 @@ export default function BusinessOwnerTab() {
   );
 
   const handleResetFilters = useCallback(() => {
-    setSearchQuery('');
-    setDebouncedSearchQuery('');
-    setStatusFilter('all');
-    setSortOrder('latest');
-    setCurrentPage(1);
+    onFiltersChange({
+      page: 1,
+      searchQuery: '',
+      statusFilter: 'all',
+      sortOrder: 'latest',
+    });
     toast.info('Filters reset');
-  }, []);
+  }, [onFiltersChange]);
 
   const isSubmitting =
     createBusinessOwnerMutation.isPending ||
     updateBusinessOwnerMutation.isPending ||
     deleteBusinessOwnerMutation.isPending;
-  const error = fetchError ? extractErrorMessage(fetchError) : null;
 
   if (!isAdmin) {
     return (
@@ -364,38 +349,49 @@ export default function BusinessOwnerTab() {
         </Button>
       </div>
 
-      {error && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-          <p>{error}</p>
-        </div>
-      )}
-
       <UserSearchFilter
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        statusFilter={statusFilter}
-        onStatusFilterChange={(status) => {
-          setStatusFilter(status);
-          setCurrentPage(1);
+        searchQuery={filters.searchQuery}
+        onSearchChange={(query) => {
+          onFiltersChange({
+            ...filters,
+            searchQuery: query,
+            page: 1, // Reset to page 1 on search change
+          });
         }}
-        sortOrder={sortOrder}
+        statusFilter={filters.statusFilter}
+        onStatusFilterChange={(status) => {
+          onFiltersChange({
+            ...filters,
+            statusFilter: status,
+            page: 1,
+          });
+        }}
+        sortOrder={filters.sortOrder}
         onSortOrderChange={(order) => {
-          setSortOrder(order);
-          setCurrentPage(1);
+          onFiltersChange({
+            ...filters,
+            sortOrder: order,
+            page: 1,
+          });
         }}
         onReset={handleResetFilters}
         hasActiveFilters={
-          Boolean(searchQuery || debouncedSearchQuery) ||
-          statusFilter !== 'all' ||
-          sortOrder !== 'latest'
+          Boolean(filters.searchQuery) ||
+          filters.statusFilter !== 'all' ||
+          filters.sortOrder !== 'latest'
         }
       />
 
       <UsersTable
         data={businessOwnersDataCache}
         isLoading={isLoading}
-        currentPage={currentPage}
-        onPageChange={setCurrentPage}
+        currentPage={filters.page}
+        onPageChange={(page) => {
+          onFiltersChange({
+            ...filters,
+            page,
+          });
+        }}
         onEdit={handleEdit}
         onDelete={handleDelete}
         onStatusChange={patchBusinessOwnerInCache}

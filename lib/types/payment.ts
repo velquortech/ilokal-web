@@ -36,7 +36,7 @@ export type Payment = PaymentRow & {
 
 export type CreatePaymentRequest = {
   amount: number;
-  currency: string;
+  currency: 'PHP'; // Only PHP currency is supported
   payment_method: PaymentMethod;
   business_id?: string;
   metadata?: {
@@ -74,7 +74,7 @@ export type Invoice = {
   user_id: string;
   business_id: string | null;
   amount: number; // in cents
-  currency: string;
+  currency: 'PHP'; // Only PHP currency is supported
   status: InvoiceStatus;
   invoice_number: string; // auto-generated: INV-YYYYMMDD-XXXXX
   due_date: string | null;
@@ -88,7 +88,7 @@ export type Invoice = {
 export type CreateInvoiceRequest = {
   payment_id?: string;
   amount: number;
-  currency: string;
+  currency: 'PHP'; // Only PHP currency is supported
   due_date?: string;
   business_id?: string;
 };
@@ -126,7 +126,7 @@ export type StripePaymentConfirm = {
 // ===== Checkout Request =====
 export type CheckoutRequest = {
   amount: number;
-  currency: string;
+  currency: 'PHP'; // Only PHP currency is supported
   payment_method: PaymentMethod;
   success_url: string;
   cancel_url: string;

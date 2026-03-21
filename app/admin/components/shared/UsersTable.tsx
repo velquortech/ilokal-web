@@ -6,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import {
   getCoreRowModel,
   getSortedRowModel,
+  ColumnDef,
   SortingState,
   useReactTable,
 } from '@tanstack/react-table';
@@ -21,18 +22,38 @@ import {
   UsersTableColumnsProps,
 } from './UsersTableColumns';
 
-interface UsersTableProps {
-  data: PaginatedResponse<AdminUser> | null | undefined;
+interface UsersTableProps<TRow = AdminUser> {
+  data: PaginatedResponse<TRow> | null | undefined;
   isLoading: boolean;
   currentPage: number;
   onPageChange: (page: number) => void;
-  onEdit: (user: AdminUser) => void;
-  onDelete: (id: string) => void;
-  onStatusChange?: (updatedUser: AdminUser) => void;
+  onEdit?: (user: TRow) => void;
+  onDelete?: (id: string) => void;
+  onStatusChange?: (updatedUser: TRow) => void;
   isSubmitting: boolean;
+  /**
+   * Optional: Provide custom columns for non-AdminUser types
+   * If not provided and TRow is AdminUser, will use default admin columns
+   */
+  columns?: ColumnDef<TRow>[];
+  /**
+   * Optional: Handler for delete confirmation
+   * Only used if columns support delete action
+   */
+  onDeleteConfirm?: (id: string) => void;
+  /**
+   * Optional: User data for delete confirmation dialog
+   * Only shown if using AdminUser and delete action is triggered
+   */
+  deleteUser?: AdminUser | null;
+  onDeleteCancel?: () => void;
+  /**
+   * Optional: Show/hide features (for extending to other row types)
+   */
+  showDeleteConfirmation?: boolean;
 }
 
-export default function UsersTable({
+export default function UsersTable<TRow extends { id: string } = AdminUser>({
   data,
   isLoading,
   currentPage,
@@ -41,7 +62,12 @@ export default function UsersTable({
   onDelete,
   onStatusChange,
   isSubmitting,
-}: UsersTableProps) {
+  columns: customColumns,
+  onDeleteConfirm,
+  deleteUser,
+  onDeleteCancel,
+  showDeleteConfirmation = true,
+}: UsersTableProps<TRow>) {
   const [error, setError] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<
@@ -57,20 +83,37 @@ export default function UsersTable({
     user: null,
   });
 
-  // Create columns using the factory function
+  // Use custom columns if provided, otherwise generate admin columns for backward compatibility
   const columns = useMemo(() => {
-    const columnsProps: UsersTableColumnsProps = {
-      currentPage,
-      isSubmitting,
-      onEdit,
-      onDelete: (user) => {
-        setDeleteConfirmation({ open: true, user });
-      },
-      onStatusChange,
-      onError: setError,
-    };
-    return createUsersTableColumns(columnsProps);
-  }, [currentPage, isSubmitting, onEdit, onStatusChange]);
+    if (customColumns) {
+      return customColumns;
+    }
+
+    // Default behavior for AdminUser type
+    if (onEdit && onDelete) {
+      const columnsProps: UsersTableColumnsProps = {
+        currentPage,
+        isSubmitting,
+        onEdit: onEdit as unknown as (user: AdminUser) => void,
+        onDelete: (user: AdminUser) => {
+          setDeleteConfirmation({ open: true, user });
+        },
+        onStatusChange: onStatusChange as unknown as (user: AdminUser) => void,
+        onError: setError,
+      };
+      return createUsersTableColumns(columnsProps) as ColumnDef<TRow>[];
+    }
+
+    // If no handlers provided and no custom columns, return empty array
+    return [];
+  }, [
+    customColumns,
+    currentPage,
+    isSubmitting,
+    onEdit,
+    onDelete,
+    onStatusChange,
+  ]);
 
   // Initialize table instance
   const table = useReactTable({
@@ -88,7 +131,12 @@ export default function UsersTable({
 
   const handleDeleteConfirm = () => {
     if (deleteConfirmation.user) {
-      onDelete(deleteConfirmation.user.id);
+      // Use new handler if provided, otherwise use legacy onDelete
+      if (onDeleteConfirm) {
+        onDeleteConfirm(deleteConfirmation.user.id);
+      } else if (onDelete) {
+        onDelete(deleteConfirmation.user.id);
+      }
       setDeleteConfirmation({ open: false, user: null });
     }
   };
@@ -117,6 +165,14 @@ export default function UsersTable({
         <p className="mt-1 text-sm text-gray-500">
           Create your first account to get started
         </p>
+      </div>
+    );
+  }
+
+  if (columns.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-gray-300 p-12 text-center">
+        <p className="text-gray-600">No columns configured for this table</p>
       </div>
     );
   }
@@ -154,14 +210,22 @@ export default function UsersTable({
           onPageChange={onPageChange}
         />
 
-        {/* Delete Confirmation Dialog */}
-        <DeleteConfirmationDialog
-          open={deleteConfirmation.open}
-          user={deleteConfirmation.user}
-          isSubmitting={isSubmitting}
-          onClose={() => setDeleteConfirmation({ open: false, user: null })}
-          onConfirm={handleDeleteConfirm}
-        />
+        {/* Delete Confirmation Dialog - Only show for AdminUser type with delete confirmation enabled */}
+        {showDeleteConfirmation && (
+          <DeleteConfirmationDialog
+            open={deleteUser ? true : deleteConfirmation.open}
+            user={deleteUser || deleteConfirmation.user}
+            isSubmitting={isSubmitting}
+            onClose={() => {
+              if (onDeleteCancel) {
+                onDeleteCancel();
+              } else {
+                setDeleteConfirmation({ open: false, user: null });
+              }
+            }}
+            onConfirm={handleDeleteConfirm}
+          />
+        )}
       </div>
     </TooltipProvider>
   );

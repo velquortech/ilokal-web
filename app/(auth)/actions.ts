@@ -4,7 +4,15 @@ import { redirect } from 'next/navigation';
 import { createServerSupabaseClient } from '@/config/server';
 import { ROUTES } from '@/config/routeConfig';
 import { User } from '@/lib/types/user';
-import { SignupInput } from '@/lib/validation/auth';
+import {
+  SignupInput,
+  UpdateCurrentUserProfileInput,
+  updateCurrentUserProfileSchema,
+} from '@/lib/validation/auth';
+import {
+  fetchProfileById,
+  updateUserProfile,
+} from '@/lib/api/users/userService';
 
 /**
  * Server Action: Handle user login
@@ -51,42 +59,40 @@ export async function loginAction(
 
     // Fetch profile data from 'profiles' table
     // Uses authenticated session from cookie
-    const { data: profile, error: profileError } = await supabase
+    const profile = await fetchProfileById(authData.user.id).catch((error) => {
+      console.error('[loginAction] Profile fetch error:', error.message);
+      throw new Error('Failed to load user profile');
+    });
+
+    // Fetch additional status fields for verification
+    const { data: statusCheck } = await supabase
       .from('profiles')
-      .select('id, email, full_name, phone_number, role, avatar_url, status')
+      .select('archived_at, status')
       .eq('id', authData.user.id)
       .single();
 
-    if (profileError || !profile) {
-      console.error(
-        '[loginAction] Profile fetch error:',
-        profileError?.message,
+    // Verify user account is not archived
+    if (statusCheck?.archived_at) {
+      console.warn(
+        `[loginAction] Login attempt by archived user ${authData.user.id}`,
       );
-      throw new Error('Failed to load user profile');
+      throw new Error(
+        'Your account has been archived. Please contact support.',
+      );
     }
 
     // Verify user account is active (not suspended or inactive)
-    if (profile.status !== 'active') {
+    if (statusCheck?.status !== 'active') {
       console.warn(
-        `[loginAction] Login attempt by inactive user ${authData.user.id} with status: ${profile.status}`,
+        `[loginAction] Login attempt by inactive user ${authData.user.id} with status: ${statusCheck?.status}`,
       );
       throw new Error(
-        `Your account is ${profile.status}. Please contact support.`,
+        `Your account is ${statusCheck?.status}. Please contact support.`,
       );
     }
 
-    // Return only necessary user data to client
-    const userData: User = {
-      id: profile.id,
-      email: profile.email,
-      full_name: profile.full_name,
-      phone_number: profile.phone_number,
-      role: profile.role,
-      avatar_url: profile.avatar_url,
-    };
-
     return {
-      user: userData,
+      user: profile,
       message: 'Logged in successfully',
     };
   } catch (error) {
@@ -157,9 +163,11 @@ export async function signupAction(
       throw new Error(authError?.message || 'Failed to create account');
     }
 
+    const userId = authData.user.id;
+
     // Prepare profile data - set initial status to active
     const profileData: Record<string, unknown> = {
-      id: authData.user.id,
+      id: userId,
       email: data.email.trim(),
       full_name: data.name.trim(),
       role: data.role,
@@ -189,21 +197,24 @@ export async function signupAction(
         profileError.message,
       );
       // Attempt to clean up auth user on profile creation failure
-      await supabase.auth.admin.deleteUser(authData.user.id).catch(() => {
+      await supabase.auth.admin.deleteUser(userId).catch(() => {
         // Silently ignore cleanup errors
       });
       throw new Error('Failed to create user profile');
     }
 
-    // Return user data (subset for client)
-    const userData: User = {
-      id: authData.user.id,
-      email: data.email.trim(),
-      full_name: data.name.trim(),
-      phone_number: phoneNumber || null,
-      role: data.role,
-      avatar_url: data.avatar_url?.trim() || null,
-    };
+    // Fetch created profile to return to client
+    const userData = await fetchProfileById(userId).catch(() =>
+      // Create user data from signup input as fallback
+      ({
+        id: userId,
+        email: data.email.trim(),
+        full_name: data.name.trim(),
+        phone_number: data.phone_number?.trim() || null,
+        role: data.role,
+        avatar_url: data.avatar_url?.trim() || null,
+      }),
+    );
 
     return {
       user: userData,
@@ -254,38 +265,124 @@ export async function verifySessionAction(): Promise<{ user: User } | null> {
       return null;
     }
 
-    // Fetch fresh profile data including status
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, email, full_name, phone_number, role, avatar_url, status')
-      .eq('id', user.id)
-      .single();
+    // Fetch profile and map to User type
+    const userData = await fetchProfileById(user.id).catch(() => null);
 
-    if (profileError || !profile) {
+    if (!userData) {
       return null;
     }
 
     // Check if user is still active (not suspended or inactive)
-    if (profile.status !== 'active') {
+    // Note: Check status from the full profile query
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('status')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile || profile.status !== 'active') {
       console.warn(
-        `[verifySessionAction] User ${user.id} has status: ${profile.status}`,
+        `[verifySessionAction] User ${user.id} has status: ${profile?.status}`,
       );
       return null;
     }
-
-    const userData: User = {
-      id: profile.id,
-      email: profile.email,
-      full_name: profile.full_name,
-      phone_number: profile.phone_number,
-      role: profile.role,
-      avatar_url: profile.avatar_url,
-    };
 
     return { user: userData };
   } catch (error) {
     console.error('[verifySessionAction] Error:', error);
     return null;
+  }
+}
+
+/**
+ * Server Action: Update current user profile
+ *
+ * Security considerations:
+ * - Requires active session (not suspended or inactive)
+ * - Validates input with Zod schema
+ * - Only allows updating own profile (via session user ID)
+ * - Returns type-safe ApiResponse<User>
+ * - Uses shared userService for DRY principle (also used by API route)
+ *
+ * @param data - Profile update data (full_name, phone_number, avatar_url)
+ * @returns ApiResponse with updated user or error
+ */
+export async function updateCurrentUserProfileAction(
+  data: UpdateCurrentUserProfileInput,
+): Promise<{
+  success: boolean;
+  data?: User;
+  error?: { code: string; message: string };
+}> {
+  try {
+    // Validate input
+    const validation = updateCurrentUserProfileSchema.safeParse(data);
+
+    if (!validation.success) {
+      const firstError = validation.error.issues[0];
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: firstError?.message || 'Invalid input',
+        },
+      };
+    }
+
+    // Get current user session
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return {
+        success: false,
+        error: {
+          code: 'AUTHENTICATION_ERROR',
+          message: 'Authentication required',
+        },
+      };
+    }
+
+    // Verify user is still active (not suspended or inactive)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('status')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile || profile.status !== 'active') {
+      console.warn(
+        `[updateCurrentUserProfileAction] Attempted update by inactive user ${user.id}`,
+      );
+      return {
+        success: false,
+        error: {
+          code: 'AUTHORIZATION_ERROR',
+          message: 'Your account is not active',
+        },
+      };
+    }
+
+    // Update profile using shared service
+    const updatedUser = await updateUserProfile(user.id, validation.data);
+
+    return {
+      success: true,
+      data: updatedUser,
+    };
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'An unexpected error occurred';
+    console.error('[updateCurrentUserProfileAction] Error:', errorMessage);
+    return {
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to update profile',
+      },
+    };
   }
 }
 

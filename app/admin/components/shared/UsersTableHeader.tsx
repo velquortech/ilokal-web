@@ -3,13 +3,14 @@ import { HeaderGroup } from '@tanstack/react-table';
 import { TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { flexRender } from '@tanstack/react-table';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { AdminUser } from '@/lib/types/admin';
 
-interface UsersTableHeaderProps {
-  headerGroups: HeaderGroup<AdminUser>[];
+interface UsersTableHeaderProps<TRow> {
+  headerGroups: HeaderGroup<TRow>[];
 }
 
-export function UsersTableHeader({ headerGroups }: UsersTableHeaderProps) {
+export function UsersTableHeader<TRow>({
+  headerGroups,
+}: UsersTableHeaderProps<TRow>) {
   return (
     <TableHeader className="bg-gray-50">
       {headerGroups.map((headerGroup) => (

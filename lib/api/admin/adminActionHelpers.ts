@@ -10,6 +10,11 @@ import { AdminUser } from '@/lib/types/admin';
 
 /**
  * Extended admin update input with optional password field
+ *
+ * Status values:
+ * - 'active': Normal account, can login
+ * - 'inactive': Archived account (soft-deleted), cannot login
+ * - 'suspended': Temporarily suspended by admin, cannot login
  */
 export interface AdminUpdateUserInput {
   email?: string;
@@ -74,7 +79,61 @@ export async function createAuthUser(
 }
 
 /**
+ * Archive a user (soft delete via archived_at timestamp)
+ * Keeps the profile in the database but marks it as archived
+ * Sets status to 'inactive' and archived_at timestamp
+ * Prevents the user from logging in and hides from user lists
+ */
+export async function archiveUser(
+  userId: string,
+): Promise<{ error: string | null }> {
+  const db = await createServerSupabaseClient();
+
+  const { error: updateError } = await db
+    .from('profiles')
+    .update({
+      status: 'inactive',
+      archived_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId);
+
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
+  return { error: null };
+}
+
+/**
+ * Unarchive a user (soft delete recovery)
+ * Clears archived_at timestamp to restore user access
+ * Sets status back to 'active'
+ */
+export async function unarchiveUser(
+  userId: string,
+): Promise<{ error: string | null }> {
+  const db = await createServerSupabaseClient();
+
+  const { error: updateError } = await db
+    .from('profiles')
+    .update({
+      status: 'active',
+      archived_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId);
+
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
+  return { error: null };
+}
+
+/**
  * Delete an auth user (which cascades to delete the profile)
+ * @deprecated Use archiveUser instead for soft deletes
  */
 export async function deleteAuthUser(
   userId: string,

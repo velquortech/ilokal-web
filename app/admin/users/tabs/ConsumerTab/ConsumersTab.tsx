@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { AdminUser } from '@/lib/types/admin';
+import { AdminUser, AdminTabFilterState } from '@/lib/types/admin';
 import { extractErrorMessage } from '@/lib/utils/errorHandler';
 import { UserFormData } from '@/app/admin/schemas/userFormSchema';
 import { UserFormModal } from '../../../components/forms';
@@ -14,61 +14,44 @@ import {
   useUpdateConsumer,
   useDeleteConsumer,
 } from '@/hooks/useAdminMutations';
-import { useProfilesByRole } from '@/hooks/useProfiles';
 import { useUser } from '@/providers/UserContext';
 import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
 import { PaginatedResponse } from '@/services/api/paginationService';
 
-export default function ConsumersTab() {
+interface ConsumersTabProps {
+  data: PaginatedResponse<AdminUser> | null;
+  isLoading: boolean;
+  filters: AdminTabFilterState;
+  onFiltersChange: (filters: AdminTabFilterState) => void;
+  _onRefetch?: () => void; // Available for future explicit refresh functionality
+}
+
+export default function ConsumersTab({
+  data: consumerData,
+  isLoading,
+  filters,
+  onFiltersChange,
+  _onRefetch,
+}: ConsumersTabProps) {
   const user = useUser();
   const isAdmin = user?.role === 'admin';
+  const [isMounted, setIsMounted] = useState(false);
   const [selectedConsumer, setSelectedConsumer] = useState<AdminUser | null>(
     null,
   );
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<
-    'all' | 'active' | 'inactive' | 'suspended'
-  >('all');
-  const [sortOrder, setSortOrder] = useState<'latest' | 'oldest'>('latest');
   const [consumersDataCache, setConsumersDataCache] =
-    useState<PaginatedResponse<AdminUser> | null>(null);
+    useState<PaginatedResponse<AdminUser> | null>(consumerData);
 
-  // Reset to page 1 immediately when the search query changes
+  // Prevent hydration mismatch by only rendering after client hydration
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
+    setIsMounted(true);
+  }, []);
 
-  // Debounce search input value used for querying
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, ADMIN_CONFIG.SEARCH_DEBOUNCE_MS);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  // Fetch consumers data with server-side pagination and filtering
-  const {
-    data: consumersData,
-    isLoading,
-    error: fetchError,
-  } = useProfilesByRole('app_user', {
-    page: currentPage,
-    limit: ADMIN_CONFIG.ITEMS_PER_PAGE,
-    searchQuery: debouncedSearchQuery,
-    statusFilter,
-    sortOrder,
-  });
-
-  // Sync fetched data to cache
-  useEffect(() => {
-    if (consumersData) {
-      setConsumersDataCache(consumersData);
-    }
-  }, [consumersData]);
+  // Update cache when data changes
+  if (consumerData && consumersDataCache !== consumerData) {
+    setConsumersDataCache(consumerData);
+  }
 
   /**
    * Patch a single user record in the cached data with only the changed fields
@@ -210,12 +193,15 @@ export default function ConsumersTab() {
       if (
         consumersDataCache &&
         consumersDataCache.data.length === 1 &&
-        currentPage > 1
+        filters.page > 1
       ) {
-        setCurrentPage(currentPage - 1);
+        onFiltersChange({
+          ...filters,
+          page: filters.page - 1,
+        });
       }
     },
-    [consumersDataCache, currentPage, removeConsumerFromCache],
+    [consumersDataCache, filters, onFiltersChange, removeConsumerFromCache],
   );
 
   const handleDeleteConsumerError = useCallback((err: string) => {
@@ -306,19 +292,24 @@ export default function ConsumersTab() {
   );
 
   const handleResetFilters = useCallback(() => {
-    setSearchQuery('');
-    setDebouncedSearchQuery('');
-    setStatusFilter('all');
-    setSortOrder('latest');
-    setCurrentPage(1);
+    onFiltersChange({
+      page: 1,
+      searchQuery: '',
+      statusFilter: 'all',
+      sortOrder: 'latest',
+    });
     toast.info('Filters reset');
-  }, []);
+  }, [onFiltersChange]);
 
   const isSubmitting =
     createConsumerMutation.isPending ||
     updateConsumerMutation.isPending ||
     deleteConsumerMutation.isPending;
-  const error = fetchError ? extractErrorMessage(fetchError) : null;
+
+  // Prevent hydration mismatch: render placeholder until mounted
+  if (!isMounted) {
+    return <div className="space-y-4" />;
+  }
 
   if (!isAdmin) {
     return (
@@ -355,38 +346,49 @@ export default function ConsumersTab() {
         </Button>
       </div>
 
-      {error && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-          <p>{error}</p>
-        </div>
-      )}
-
       <UserSearchFilter
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        statusFilter={statusFilter}
-        onStatusFilterChange={(status) => {
-          setStatusFilter(status);
-          setCurrentPage(1);
+        searchQuery={filters.searchQuery}
+        onSearchChange={(query) => {
+          onFiltersChange({
+            ...filters,
+            searchQuery: query,
+            page: 1, // Reset to page 1 on search change
+          });
         }}
-        sortOrder={sortOrder}
+        statusFilter={filters.statusFilter}
+        onStatusFilterChange={(status) => {
+          onFiltersChange({
+            ...filters,
+            statusFilter: status,
+            page: 1,
+          });
+        }}
+        sortOrder={filters.sortOrder}
         onSortOrderChange={(order) => {
-          setSortOrder(order);
-          setCurrentPage(1);
+          onFiltersChange({
+            ...filters,
+            sortOrder: order,
+            page: 1,
+          });
         }}
         onReset={handleResetFilters}
         hasActiveFilters={
-          Boolean(searchQuery || debouncedSearchQuery) ||
-          statusFilter !== 'all' ||
-          sortOrder !== 'latest'
+          Boolean(filters.searchQuery) ||
+          filters.statusFilter !== 'all' ||
+          filters.sortOrder !== 'latest'
         }
       />
 
       <UsersTable
         data={consumersDataCache}
         isLoading={isLoading}
-        currentPage={currentPage}
-        onPageChange={setCurrentPage}
+        currentPage={filters.page}
+        onPageChange={(page) => {
+          onFiltersChange({
+            ...filters,
+            page,
+          });
+        }}
         onEdit={handleEdit}
         onDelete={handleDelete}
         onStatusChange={patchConsumerInCache}

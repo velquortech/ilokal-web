@@ -11,12 +11,25 @@ export async function GET(request: NextRequest) {
     const supabase = await createServerSupabaseClient();
     const { searchParams } = new URL(request.url);
 
+    const filter = searchParams.get('filter') || 'active'; // active, archived, inactive, all
     const role = searchParams.get('role');
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '10', 10);
     const search = searchParams.get('search')?.trim() || '';
     const status = searchParams.get('status');
     const sort = searchParams.get('sort') || 'latest';
+
+    // Validate filter parameter
+    const validFilters = ['active', 'archived', 'inactive', 'all'];
+    if (!validFilters.includes(filter)) {
+      return NextResponse.json(
+        {
+          message:
+            'Invalid filter parameter. Must be one of: active, archived, inactive, all',
+        },
+        { status: 400 },
+      );
+    }
 
     // Validate pagination params
     const validPage = Math.max(1, page);
@@ -47,12 +60,30 @@ export async function GET(request: NextRequest) {
 
     let dataQuery = supabase.from('profiles').select();
 
-    // Apply equality filters
+    // Apply filter based on account status
+    if (filter === 'active') {
+      countQuery = countQuery.is('archived_at', null).eq('status', 'active');
+      dataQuery = dataQuery.is('archived_at', null).eq('status', 'active');
+    } else if (filter === 'archived') {
+      countQuery = countQuery.not('archived_at', 'is', null);
+      dataQuery = dataQuery.not('archived_at', 'is', null);
+    } else if (filter === 'inactive') {
+      countQuery = countQuery
+        .is('archived_at', null)
+        .in('status', ['inactive', 'suspended']);
+      dataQuery = dataQuery
+        .is('archived_at', null)
+        .in('status', ['inactive', 'suspended']);
+    }
+    // If filter === 'all', no additional status/archived filters applied
+
+    // Apply role filter if provided
     if (role) {
       countQuery = countQuery.eq('role', role);
       dataQuery = dataQuery.eq('role', role);
     }
 
+    // Apply additional status filter if provided (overrides filter-based status)
     if (status && status !== 'all') {
       countQuery = countQuery.eq('status', status);
       dataQuery = dataQuery.eq('status', status);

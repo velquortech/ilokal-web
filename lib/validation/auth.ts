@@ -111,6 +111,25 @@ export function validateLoginData(data: unknown) {
   return loginSchema.safeParse(data);
 }
 
+// ============================================================================
+// UPDATE PROFILE VALIDATION (Current User)
+// Used when user updates their own profile
+// ============================================================================
+
+export const updateCurrentUserProfileSchema = z.object({
+  full_name: z
+    .string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(100, 'Name is too long')
+    .optional(),
+  phone_number: z.string().optional().or(z.literal('')),
+  avatar_url: z.string().url('Invalid image URL').optional().or(z.literal('')),
+});
+
+export type UpdateCurrentUserProfileInput = z.infer<
+  typeof updateCurrentUserProfileSchema
+>;
+
 /**
  * Gets a formatted error message from validation result
  * @param errors - Zod errors object

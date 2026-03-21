@@ -114,6 +114,37 @@ export type {
   PaymentError,
 } from './payment';
 
+// Subscription Domain Types
+export type {
+  BillingCycle,
+  SubscriptionStatus,
+  PlanTier,
+  FeatureType,
+  PaymentMethodType,
+  SubscriptionPlan,
+  SubscriptionPlanFeature,
+  Subscription,
+  PaymentMethod as SubscriptionPaymentMethod,
+  SubscriptionUsage,
+  CreateSubscriptionRequest,
+  UpdateSubscriptionRequest,
+  UpgradeSubscriptionRequest,
+  DowngradeSubscriptionRequest,
+  CancelSubscriptionRequest,
+  CreatePaymentMethodRequest,
+  UpdatePaymentMethodRequest,
+  SubscriptionResponse,
+  SubscriptionWithUsageResponse,
+  SubscriptionPlanListResponse,
+  PaymentMethodListResponse,
+  BillingInvoice,
+  BillingInvoiceResponse,
+  BillingUsageResponse,
+  PaginatedSubscriptionResponse,
+  PaginatedInvoiceResponse,
+  PaginatedPaymentMethodResponse,
+} from './subscription';
+
 // Admin Domain Types
 export type {
   AdminUser,

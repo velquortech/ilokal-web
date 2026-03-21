@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -35,10 +35,16 @@ export default function AdminTab({
 }: AdminTabProps) {
   const user = useUser();
   const isAdmin = user?.role === 'admin';
+  const [isMounted, setIsMounted] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<AdminUser | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [adminsDataCache, setAdminsDataCache] =
     useState<PaginatedResponse<AdminUser> | null>(adminData);
+
+  // Prevent hydration mismatch by only rendering after client hydration
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Update cache when data changes
   if (adminData && adminsDataCache !== adminData) {
@@ -298,6 +304,11 @@ export default function AdminTab({
     createAdminMutation.isPending ||
     updateAdminMutation.isPending ||
     deleteAdminMutation.isPending;
+
+  // Prevent hydration mismatch: render placeholder until mounted
+  if (!isMounted) {
+    return <div className="space-y-4" />;
+  }
 
   if (!isAdmin) {
     return (

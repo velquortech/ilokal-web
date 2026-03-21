@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -35,12 +35,18 @@ export default function ConsumersTab({
 }: ConsumersTabProps) {
   const user = useUser();
   const isAdmin = user?.role === 'admin';
+  const [isMounted, setIsMounted] = useState(false);
   const [selectedConsumer, setSelectedConsumer] = useState<AdminUser | null>(
     null,
   );
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [consumersDataCache, setConsumersDataCache] =
     useState<PaginatedResponse<AdminUser> | null>(consumerData);
+
+  // Prevent hydration mismatch by only rendering after client hydration
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Update cache when data changes
   if (consumerData && consumersDataCache !== consumerData) {
@@ -299,6 +305,11 @@ export default function ConsumersTab({
     createConsumerMutation.isPending ||
     updateConsumerMutation.isPending ||
     deleteConsumerMutation.isPending;
+
+  // Prevent hydration mismatch: render placeholder until mounted
+  if (!isMounted) {
+    return <div className="space-y-4" />;
+  }
 
   if (!isAdmin) {
     return (

@@ -41,8 +41,8 @@ export const step3Schema = z.object({
   interior_images: z
     .any()
     .refine(
-      (files) => files && files.length >= 3,
-      'At least 3 images required',
+      (files) => files && files.length >= 4,
+      'At least 4 images required',
     ),
 });
 

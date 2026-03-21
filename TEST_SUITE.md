@@ -2,17 +2,46 @@
 
 ## Overview
 
-Comprehensive test suite for ilokal-web backend with **198 passing tests** across all critical paths.
+Comprehensive test suite for ilokal-web backend with **275 passing tests** across all critical paths.
 
 **Framework**: Vitest 4.1.0  
 **Build Status**: ✅ All tests passing  
-**Coverage Scope**: Validation schemas, API routes, server actions, utility functions
+**Test Files**: 9 files  
+**Coverage Scope**: Admin operations, validation schemas, API routes, server actions, utility functions
 
 ---
 
 ## Test Files Created
 
-### 1. **Validation Schema Tests (56 tests total)**
+### 1. **Admin Tests (77 tests total)** ✅ NEW
+
+#### `/app/admin/__tests__/schemas.test.ts` (30 tests)
+
+- ✅ Email validation (valid, invalid, length constraints)
+- ✅ Full name validation (valid names, special characters, length)
+- ✅ Password validation (minimum 8 chars, confirmation matching)
+- ✅ Role validation (admin, business_owner, app_user)
+- ✅ Status validation (active, inactive, suspended)
+- ✅ Phone number validation (international format with country code)
+- ✅ Avatar URL validation
+- ✅ Admin edit schema (optional fields, updates)
+- **Key Coverage**: Zod schema validation, user form inputs
+
+#### `/app/admin/__tests__/actions.test.ts` (47 tests)
+
+- ✅ Admin user creation (all roles)
+- ✅ Admin user update & status management
+- ✅ User suspension, reactivation, deletion
+- ✅ Business verification, rejection, suspension
+- ✅ Business reactivation & archival
+- ✅ Authorization checks (admin-only actions)
+- ✅ Error handling (database, validation, not found)
+- ✅ Audit logging & request validation
+- **Key Coverage**: Server action flows, RBAC enforcement, error scenarios
+
+---
+
+### 2. **Validation Schema Tests (56 tests total)**
 
 #### `/lib/validation/payments.test.ts` (38 tests)
 
@@ -33,7 +62,7 @@ Comprehensive test suite for ilokal-web backend with **198 passing tests** acros
 
 ---
 
-### 2. **API Route Tests (49 tests total)**
+### 3. **API Route Tests (49 tests total)**
 
 #### `/app/api/subscriptions/__tests__/subscription.routes.test.ts` (21 tests)
 
@@ -55,7 +84,7 @@ Comprehensive test suite for ilokal-web backend with **198 passing tests** acros
 
 ---
 
-### 3. **Server Actions Tests (72 tests total)**
+### 4. **Server Action Tests (72 tests total)**
 
 #### `/app/business/__tests__/actions.test.ts` (32 tests)
 

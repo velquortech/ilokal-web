@@ -15,8 +15,9 @@ npm run test:coverage # Generate coverage report
 
 ## Current Test Coverage
 
-**198 tests** covering:
+**275 tests** covering:
 
+- ✅ Admin operations (77 tests) - NEW
 - ✅ Validation schemas (56 tests)
 - ✅ API routes (49 tests)
 - ✅ Server actions (72 tests)

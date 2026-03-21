@@ -31,15 +31,10 @@ export const featureTypeSchema = z.enum([
   'custom_branding',
 ]);
 
-// Currency validation (same as payment)
-export const currencySchema = z.enum([
-  'USD',
-  'EUR',
-  'GBP',
-  'CAD',
-  'INR',
-  'ZAR',
-]);
+// Currency validation - Only PHP currency is supported for transactions
+export const currencySchema = z
+  .enum(['PHP'])
+  .describe('Only PHP (Philippine Peso) currency is supported');
 
 /**
  * Create subscription schema

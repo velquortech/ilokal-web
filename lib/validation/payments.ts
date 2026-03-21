@@ -17,14 +17,10 @@ export const paymentStatusSchema = z.enum([
 
 export const paymentMethodSchema = z.enum(['card', 'bank_transfer', 'wallet']);
 
-export const currencySchema = z.enum([
-  'USD',
-  'EUR',
-  'GBP',
-  'CAD',
-  'INR',
-  'ZAR',
-]);
+// Only PHP currency is supported for transactions
+export const currencySchema = z
+  .enum(['PHP'])
+  .describe('Only PHP (Philippine Peso) currency is supported');
 
 export const createPaymentSchema = z.object({
   amount: z

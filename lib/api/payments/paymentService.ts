@@ -141,12 +141,13 @@ export async function confirmPayment(
       };
     }
 
-    // Auto-generate invoice if user_id is present and currency is valid
-    if (payment.user_id && payment.currency) {
+    // Auto-generate invoice if user_id is present
+    // Currency is always PHP (enforced by validation layer)
+    if (payment.user_id) {
       await createInvoice(payment.user_id, {
         payment_id: paymentId,
         amount: payment.amount,
-        currency: payment.currency,
+        currency: 'PHP',
         business_id: payment.business_id || undefined,
       });
     }

@@ -31,7 +31,7 @@ export type SubscriptionPlan = SubscriptionPlanRow & {
   tier?: PlanTier;
   monthly_price_cents?: number; // Price in cents
   yearly_price_cents?: number;
-  currency?: 'USD' | 'EUR' | 'GBP' | 'CAD' | 'INR' | 'ZAR';
+  currency?: 'PHP'; // Only PHP currency is supported
   features: SubscriptionPlanFeature[];
   max_products?: number | null; // null = unlimited
   max_branches?: number | null;

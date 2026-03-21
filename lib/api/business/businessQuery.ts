@@ -129,7 +129,7 @@ export async function getBusinessesPaginated(
     return {
       data: data as AdminBusiness[],
       total: count || 0,
-      error: null,
+      error: null as string | null,
     };
   } catch (err) {
     return {
@@ -175,7 +175,7 @@ export async function getBusinessesByStatus(
 
     return {
       businesses: data as AdminBusiness[],
-      error: null,
+      error: null as string | null,
     };
   } catch (err) {
     return {
@@ -215,7 +215,7 @@ export async function countBusinessesByStatus(): Promise<{
       }
     });
 
-    return { counts, error: null };
+    return { counts, error: null as string | null };
   } catch (err) {
     return {
       counts: {},

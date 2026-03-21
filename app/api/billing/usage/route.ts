@@ -85,7 +85,20 @@ export async function GET(_request: NextRequest) {
       );
     }
 
-    // Get plan details
+    // Get plan details - check plan_id is not null (from database schema)
+    if (!subResult.data.plan_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Subscription plan not found',
+          },
+        } as ApiResponse<null>,
+        { status: 404 },
+      );
+    }
+
     const planResult = await subscriptionQuery.getSubscriptionPlanById(
       subResult.data.plan_id,
     );
@@ -149,11 +162,11 @@ export async function GET(_request: NextRequest) {
       subscription: subResult.data,
       usage,
       limits: {
-        max_products: plan.max_products,
-        max_branches: plan.max_branches,
-        max_users: plan.max_users,
-        max_api_calls_per_month: plan.max_api_calls_per_month,
-        max_storage_gb: plan.max_storage_gb,
+        max_products: plan.max_products ?? null,
+        max_branches: plan.max_branches ?? null,
+        max_users: plan.max_users ?? null,
+        max_api_calls_per_month: plan.max_api_calls_per_month ?? null,
+        max_storage_gb: plan.max_storage_gb ?? null,
       },
       usage_percentage: usagePercentage,
     };

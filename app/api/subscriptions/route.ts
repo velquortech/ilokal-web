@@ -146,7 +146,17 @@ export async function GET(_request: NextRequest) {
       );
     }
 
-    // Get plan details
+    // Get plan details - check plan_id is not null (from database schema)
+    if (!result.data.plan_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Associated plan not found' },
+        } as ApiResponse<null>,
+        { status: 404 },
+      );
+    }
+
     const planResult = await subscriptionQuery.getSubscriptionPlanById(
       result.data.plan_id,
     );

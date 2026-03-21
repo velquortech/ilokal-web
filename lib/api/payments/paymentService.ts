@@ -141,13 +141,15 @@ export async function confirmPayment(
       };
     }
 
-    // Auto-generate invoice
-    await createInvoice(payment.user_id, {
-      payment_id: paymentId,
-      amount: payment.amount,
-      currency: payment.currency,
-      business_id: payment.business_id || undefined,
-    });
+    // Auto-generate invoice if user_id is present and currency is valid
+    if (payment.user_id && payment.currency) {
+      await createInvoice(payment.user_id, {
+        payment_id: paymentId,
+        amount: payment.amount,
+        currency: payment.currency,
+        business_id: payment.business_id || undefined,
+      });
+    }
 
     return {
       success: true,

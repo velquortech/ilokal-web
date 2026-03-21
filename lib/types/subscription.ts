@@ -1,6 +1,17 @@
 /**
  * Subscription domain types for subscription management and billing
+ *
+ * NOTE: Domain types extend database.ts Row types as the foundation.
+ * If database schema changes via migration, domain types automatically stay in sync.
  */
+
+import { Database } from './database';
+
+// Extract Row types from database.ts (source of truth)
+type SubscriptionRow =
+  Database['public']['Tables']['business_subscriptions']['Row'];
+type SubscriptionPlanRow =
+  Database['public']['Tables']['subscription_plans']['Row'];
 
 // Enums
 export type BillingCycle = 'monthly' | 'yearly';
@@ -15,28 +26,22 @@ export type FeatureType =
   | 'custom_branding';
 export type PaymentMethodType = 'card' | 'bank_transfer';
 
-// Subscription Plan (Admin-defined)
-export type SubscriptionPlan = {
-  id: string;
-  tier: PlanTier;
-  name: string; // 'Basic', 'Professional', 'Enterprise'
-  description: string;
-  monthly_price_cents: number; // Price in cents
-  yearly_price_cents: number;
-  currency: 'USD' | 'EUR' | 'GBP' | 'CAD' | 'INR' | 'ZAR';
+// Subscription Plan - Extends SubscriptionPlanRow with domain enrichments
+export type SubscriptionPlan = SubscriptionPlanRow & {
+  tier?: PlanTier;
+  monthly_price_cents?: number; // Price in cents
+  yearly_price_cents?: number;
+  currency?: 'USD' | 'EUR' | 'GBP' | 'CAD' | 'INR' | 'ZAR';
   features: SubscriptionPlanFeature[];
-  max_products: number | null; // null = unlimited
-  max_branches: number | null;
-  max_users: number | null;
-  max_api_calls_per_month: number | null; // null = unlimited
-  max_storage_gb: number | null;
-  custom_branding_enabled: boolean;
-  support_level: 'email' | 'priority' | 'dedicated'; // Based on tier
-  trial_days: number; // 0 = no trial
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  archived_at: string | null;
+  max_products?: number | null; // null = unlimited
+  max_branches?: number | null;
+  max_users?: number | null;
+  max_api_calls_per_month?: number | null; // null = unlimited
+  max_storage_gb?: number | null;
+  custom_branding_enabled?: boolean;
+  support_level?: 'email' | 'priority' | 'dedicated'; // Based on tier
+  trial_days?: number; // 0 = no trial
+  archived_at?: string | null;
 };
 
 export type SubscriptionPlanFeature = {
@@ -47,27 +52,14 @@ export type SubscriptionPlanFeature = {
   description: string;
 };
 
-// User Subscription
-export type Subscription = {
-  id: string;
-  business_id: string;
-  plan_id: string;
-  status: SubscriptionStatus;
-  billing_cycle: BillingCycle;
-  current_period_start: string;
-  current_period_end: string;
-  next_billing_date: string | null;
-  canceled_at: string | null;
-  cancel_at_period_end: boolean;
-  payment_method_id: string | null;
-  stripe_subscription_id: string | null;
-  stripe_customer_id: string | null;
-  auto_renew: boolean;
-  trial_start: string | null;
-  trial_end: string | null;
-  created_at: string;
-  updated_at: string;
-  archived_at: string | null;
+// User Subscription - Extends SubscriptionRow with domain enrichments (Stripe integration, auto-renew logic, etc.)
+export type Subscription = SubscriptionRow & {
+  stripe_subscription_id?: string | null;
+  stripe_customer_id?: string | null;
+  auto_renew?: boolean;
+  trial_start?: string | null;
+  trial_end?: string | null;
+  next_billing_date?: string | null;
 };
 
 // Payment Methods (Stored locally + Stripe reference)

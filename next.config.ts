@@ -140,14 +140,14 @@ const nextConfig: NextConfig = {
           {
             key: 'Content-Security-Policy',
             value: `
-                  default-src 'self';
-                  script-src 'self' 'unsafe-eval' 'unsafe-inline' https://maps.googleapis.com;
-                  style-src 'self' 'unsafe-inline';
-                  img-src ${buildCSPImageSources()};
-                  frame-src 'self' https://www.google.com;
-                  connect-src 'self' https://maps.googleapis.com http://127.0.0.1:54321 ${process.env.NEXT_PUBLIC_SUPABASE_URL || ''};
-                  font-src 'self' data:;
-                `
+                default-src 'self';
+                script-src 'self' 'unsafe-eval' 'unsafe-inline' https://maps.googleapis.com https://www.youtube.com https://s.ytimg.com;
+                style-src 'self' 'unsafe-inline';
+                img-src ${buildCSPImageSources()} https://i.ytimg.com;
+                frame-src 'self' https://www.google.com https://www.youtube.com https://youtube.com;
+                connect-src 'self' https://maps.googleapis.com http://127.0.0.1:54321 ${process.env.NEXT_PUBLIC_SUPABASE_URL || ''};
+                font-src 'self' data:;
+              `
               .replace(/\s{2,}/g, ' ')
               .trim(),
           },

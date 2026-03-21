@@ -55,7 +55,7 @@ function isItemActive(
   subItems?: { href: string }[],
 ): boolean {
   if (href) {
-    return pathname === href || pathname.startsWith(`${href}/`);
+    return pathname === href;
   }
   if (subItems) {
     return subItems.some(

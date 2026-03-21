@@ -39,7 +39,7 @@ html {
   }
 }
 
-@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
   --font-giest: var(--font-geist-sans), sans-serif;

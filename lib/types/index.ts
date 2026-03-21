@@ -92,6 +92,28 @@ export type {
   CouponError,
 } from './coupon';
 
+// Payment & Invoice Domain Types
+export type {
+  Payment,
+  PaymentResponse,
+  PaymentStatus,
+  PaymentMethod,
+  CreatePaymentRequest,
+  PaymentHistoryFilters,
+  PaginatedPaymentsResponse,
+  Invoice,
+  InvoiceResponse,
+  InvoiceStatus,
+  CreateInvoiceRequest,
+  InvoiceFilters,
+  PaginatedInvoicesResponse,
+  CheckoutRequest,
+  StripeCheckoutSession,
+  StripePaymentConfirm,
+  PaymentAnalytics,
+  PaymentError,
+} from './payment';
+
 // Admin Domain Types
 export type {
   AdminUser,

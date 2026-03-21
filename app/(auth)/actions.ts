@@ -10,10 +10,8 @@ import {
   updateCurrentUserProfileSchema,
 } from '@/lib/validation/auth';
 import {
-  updateUserProfile,
   fetchProfileById,
-  mapProfileToUser,
-  PROFILE_SELECT_FIELDS,
+  updateUserProfile,
 } from '@/lib/api/users/userService';
 
 /**
@@ -206,17 +204,17 @@ export async function signupAction(
     }
 
     // Fetch created profile to return to client
-    const userData = await fetchProfileById(userId).catch(() => {
+    const userData = await fetchProfileById(userId).catch(() =>
       // Create user data from signup input as fallback
-      return {
+      ({
         id: userId,
         email: data.email.trim(),
         full_name: data.name.trim(),
         phone_number: data.phone_number?.trim() || null,
         role: data.role,
         avatar_url: data.avatar_url?.trim() || null,
-      };
-    });
+      }),
+    );
 
     return {
       user: userData,
@@ -268,9 +266,7 @@ export async function verifySessionAction(): Promise<{ user: User } | null> {
     }
 
     // Fetch profile and map to User type
-    const userData = await fetchProfileById(user.id).catch(() => {
-      return null;
-    });
+    const userData = await fetchProfileById(user.id).catch(() => null);
 
     if (!userData) {
       return null;

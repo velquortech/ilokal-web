@@ -42,6 +42,23 @@ export type {
   BusinessVerificationStatus,
 } from './business';
 
+// Product Domain Types
+export type {
+  Product,
+  Category,
+  ProductStatus,
+  ProductSortOrder,
+  CreateProductRequest,
+  UpdateProductRequest,
+  ProductResponse,
+  PaginatedProductsResponse,
+  CreateCategoryRequest,
+  UpdateCategoryRequest,
+  ProductFilters,
+  CategoryFilters,
+  ProductError,
+} from './product';
+
 // Admin Domain Types
 export type {
   AdminUser,

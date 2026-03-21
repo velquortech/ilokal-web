@@ -70,6 +70,28 @@ export type {
   BranchError,
 } from './branch';
 
+// Coupon & Deal Domain Types
+export type {
+  Coupon,
+  FeaturedDeal,
+  DiscountValue,
+  DiscountType,
+  UsageScope,
+  CreateCouponRequest,
+  UpdateCouponRequest,
+  CouponFilters,
+  PaginatedCouponsResponse,
+  CouponDetailResponse,
+  CouponRedemption,
+  RedemptionStats,
+  CreateFeaturedDealRequest,
+  UpdateFeaturedDealRequest,
+  FeaturedDealFilters,
+  PaginatedFeaturedDealsResponse,
+  FeaturedDealDuration,
+  CouponError,
+} from './coupon';
+
 // Admin Domain Types
 export type {
   AdminUser,

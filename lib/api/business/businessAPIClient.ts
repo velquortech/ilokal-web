@@ -16,11 +16,7 @@ import {
   archiveBusiness as archiveBusinessService,
   permanentlyDeleteBusiness,
 } from './businessService';
-import {
-  getBusinessById,
-  getBusinessesPaginated,
-  countBusinessesByStatus,
-} from './businessQuery';
+import { getBusinessById, getBusinessesPaginated } from './businessQuery';
 import { AdminBusiness, PaginatedBusinessResponse } from '@/lib/types/business';
 
 // ============================================================================
@@ -54,20 +50,16 @@ export async function getBusinessesList(
       return { error };
     }
 
-    const { counts } = await countBusinessesByStatus();
     const page = (filters.page as number) || 1;
     const pageSize = (filters.pageSize as number) || 10;
 
     return {
       data: {
-        businesses: data,
-        pagination: {
-          total,
-          page,
-          pageSize,
-          totalPages: Math.ceil(total / pageSize),
-        },
-        counts: counts || {},
+        data,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.ceil(total / pageSize),
       },
     };
   } catch (err) {

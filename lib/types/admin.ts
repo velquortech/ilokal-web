@@ -75,12 +75,12 @@ export type AdminSortOrder = 'latest' | 'oldest';
  * Filter state for admin user lists and tables
  * Single source of truth for pagination and filtering
  */
-export interface AdminTabFilterState {
+export type AdminTabFilterState = {
   page: number;
   searchQuery: string;
   statusFilter: AdminStatusFilter;
   sortOrder: AdminSortOrder;
-}
+};
 
 // ============================================================================
 // ADMIN MUTATIONS & ACTIONS
@@ -89,7 +89,7 @@ export interface AdminTabFilterState {
 /**
  * Input for creating a user via admin interface
  */
-export interface AdminCreateUserInput {
+export type AdminCreateUserInput = {
   email: string;
   full_name: string;
   password: string;
@@ -97,38 +97,38 @@ export interface AdminCreateUserInput {
   avatar_url?: string;
   role: AdminUserRole;
   status?: AdminUserStatus;
-}
+};
 
 /**
  * Input for updating a user via admin interface
  */
-export interface AdminUpdateUserInput {
+export type AdminUpdateUserInput = {
   email?: string;
   full_name?: string;
   phone_number?: string;
   avatar_url?: string;
   status?: AdminUserStatus;
-}
+};
 
 /**
  * Response from admin mutations
  */
-export interface AdminActionResponse<T = AdminUser> {
+export type AdminActionResponse<T = AdminUser> = {
   success: boolean;
   data?: T;
   error?: string;
   message?: string;
-}
+};
 
 /**
  * Bulk response for multiple operations
  */
-export interface AdminBulkActionResponse<T = AdminUser> {
+export type AdminBulkActionResponse<T = AdminUser> = {
   success: boolean;
   results: AdminActionResponse<T>[];
   successCount: number;
   failureCount: number;
-}
+};
 
 // ============================================================================
 // ADMIN FILTERS & PAGINATION
@@ -137,7 +137,7 @@ export interface AdminBulkActionResponse<T = AdminUser> {
 /**
  * Admin filter options for user tables
  */
-export interface AdminUserFilters {
+export type AdminUserFilters = {
   searchQuery?: string;
   statusFilter?: 'all' | AdminUserStatus;
   roleFilter?: 'all' | AdminUserRole;
@@ -146,23 +146,23 @@ export interface AdminUserFilters {
     from: string; // ISO date
     to: string; // ISO date
   };
-}
+};
 
 /**
  * Pagination options for admin tables
  */
-export interface AdminPaginationOptions {
+export type AdminPaginationOptions = {
   page?: number;
   limit?: number;
   sortBy?: 'created_at' | 'updated_at' | 'email' | 'full_name';
   sortOrder?: 'asc' | 'desc';
-}
+};
 
 /**
  * Combined query options
  */
-export interface AdminQueryOptions
-  extends Omit<AdminUserFilters, 'sortOrder'>, AdminPaginationOptions {}
+export type AdminQueryOptions = Omit<AdminUserFilters, 'sortOrder'> &
+  AdminPaginationOptions;
 
 // ============================================================================
 // ADMIN RESPONSES
@@ -176,7 +176,7 @@ export type AdminUsersPaginatedResponse = PaginatedResponse<AdminUserWithMeta>;
 /**
  * Admin dashboard user counts
  */
-export interface AdminUserCounts {
+export type AdminUserCounts = {
   total: number;
   active: number;
   inactive: number;
@@ -186,21 +186,21 @@ export interface AdminUserCounts {
     business_owner: number;
     app_user: number;
   };
-}
+};
 
 /**
  * Admin dashboard statistics
  */
-export interface AdminDashboardStats {
+export type AdminDashboardStats = {
   userCounts: AdminUserCounts;
   recentUsers: AdminUserWithMeta[];
   recentActivity: AdminActivityLog[];
-}
+};
 
 /**
  * Activity log for auditing
  */
-export interface AdminActivityLog {
+export type AdminActivityLog = {
   id: string;
   adminId: string;
   action: 'CREATE' | 'UPDATE' | 'DELETE' | 'STATUS_CHANGE' | 'LOGIN_FAILED';
@@ -210,7 +210,7 @@ export interface AdminActivityLog {
   timestamp: string;
   ipAddress?: string;
   userAgent?: string;
-}
+};
 
 // ============================================================================
 // ADMIN TABLE COLUMNS
@@ -219,14 +219,14 @@ export interface AdminActivityLog {
 /**
  * Column definition for admin tables
  */
-export interface AdminTableColumn<T = AdminUser> {
+export type AdminTableColumn<T = AdminUser> = {
   id: keyof T | string;
   label: string;
   sortable?: boolean;
   filterable?: boolean;
   width?: string;
   align?: 'left' | 'center' | 'right';
-}
+};
 
 /**
  * Admin users table column definitions
@@ -283,7 +283,7 @@ export const ADMIN_USER_TABLE_COLUMNS: AdminTableColumn<AdminUser>[] = [
 /**
  * Admin user form field configuration
  */
-export interface AdminUserFormField {
+export type AdminUserFormField = {
   name: keyof AdminCreateUserInput | keyof AdminUpdateUserInput;
   label: string;
   placeholder?: string;
@@ -296,18 +296,18 @@ export interface AdminUserFormField {
   };
   options?: Array<{ value: string; label: string }>;
   showFor?: 'create' | 'update' | 'both';
-}
+};
 
 /**
  * Admin form state
  */
-export interface AdminFormState {
+export type AdminFormState = {
   isLoading: boolean;
   isSubmitting: boolean;
   error: string | null;
   success: boolean;
   message?: string;
-}
+};
 
 // ============================================================================
 // ADMIN PERMISSIONS & RBAC
@@ -316,7 +316,7 @@ export interface AdminFormState {
 /**
  * Admin capabilities based on role
  */
-export interface AdminCapabilities {
+export type AdminCapabilities = {
   canViewUsers: boolean;
   canCreateUsers: boolean;
   canEditUsers: boolean;
@@ -325,7 +325,7 @@ export interface AdminCapabilities {
   canManageAdmins: boolean;
   canViewAnalytics: boolean;
   canExportData: boolean;
-}
+};
 
 /**
  * Role-based capabilities mapping
@@ -370,18 +370,18 @@ export const ROLE_CAPABILITIES: Record<AdminUserRole, AdminCapabilities> = {
 /**
  * Admin context state
  */
-export interface AdminContextState {
+export type AdminContextState = {
   currentAdmin: AdminUser | null;
   capabilities: AdminCapabilities;
   isLoading: boolean;
   error: string | null;
-}
+};
 
 /**
  * Admin context actions
  */
-export interface AdminContextActions {
+export type AdminContextActions = {
   setCurrentAdmin: (admin: AdminUser | null) => void;
   checkPermission: (capability: keyof AdminCapabilities) => boolean;
   setError: (error: string | null) => void;
-}
+};

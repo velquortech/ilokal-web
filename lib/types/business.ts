@@ -23,7 +23,7 @@ export type BusinessVerificationStatus =
 /**
  * Core business record from database
  */
-export interface Business {
+export type Business = {
   id: string;
   owner_id: string;
   name: string;
@@ -35,19 +35,19 @@ export interface Business {
   created_at: string | null;
   updated_at: string | null;
   archived_at: string | null;
-}
+};
 
 /**
  * Business with owner profile information (for admin dashboard)
  */
-export interface AdminBusiness extends Business {
+export type AdminBusiness = Business & {
   owner?: AdminUser;
-}
+};
 
 /**
  * Business with additional metadata for admin views
  */
-export interface AdminBusinessWithMeta extends AdminBusiness {
+export type AdminBusinessWithMeta = AdminBusiness & {
   /** Time since creation in human-readable format */
   createdAgo?: string;
   /** Time since last update in human-readable format */
@@ -62,7 +62,7 @@ export interface AdminBusinessWithMeta extends AdminBusiness {
   activeDealsCount?: number;
   /** Number of total followers/subscribers */
   totalFollowers?: number;
-}
+};
 
 // ============================================================================
 // BUSINESS FILTER & PAGINATION
@@ -71,25 +71,25 @@ export interface AdminBusinessWithMeta extends AdminBusiness {
 /**
  * Filters for business list queries
  */
-export interface BusinessFilters {
+export type BusinessFilters = {
   status?: BusinessVerificationStatus | 'all';
   search?: string; // Search by name or owner email
   sortBy?: 'created' | 'updated' | 'name';
   sortOrder?: 'asc' | 'desc';
   page?: number; // Pagination: page number (default 1)
   pageSize?: number; // Pagination: items per page (default 10)
-}
+};
 
 /**
  * Paginated business response
  */
-export interface PaginatedBusinessResponse {
+export type PaginatedBusinessResponse = {
   data: AdminBusinessWithMeta[];
   total: number;
   page: number;
   pageSize: number;
   totalPages: number;
-}
+};
 
 // ============================================================================
 // BUSINESS MUTATIONS
@@ -98,39 +98,39 @@ export interface PaginatedBusinessResponse {
 /**
  * Input for creating a business (business owner only - not admin)
  */
-export interface CreateBusinessInput {
+export type CreateBusinessInput = {
   name: string;
   description?: string;
   logo_url?: string;
   interior_images?: string[];
   verification_docs_url?: string[];
-}
+};
 
 /**
  * Input for updating a business
  */
-export interface UpdateBusinessInput {
+export type UpdateBusinessInput = {
   name?: string;
   description?: string;
   logo_url?: string;
   interior_images?: string[];
   verification_docs_url?: string[];
-}
+};
 
 /**
  * Admin-specific update (includes status changes)
  */
-export interface AdminUpdateBusinessInput extends UpdateBusinessInput {
+export type AdminUpdateBusinessInput = UpdateBusinessInput & {
   status?: BusinessVerificationStatus;
-}
+};
 
 /**
  * Verification request with reason/notes
  */
-export interface VerifyBusinessInput {
+export type VerifyBusinessInput = {
   verified: boolean;
   notes?: string; // Optional notes for rejection/suspension
-}
+};
 
 // ============================================================================
 // API RESPONSES
@@ -139,19 +139,19 @@ export interface VerifyBusinessInput {
 /**
  * Standard response for business operations
  */
-export interface BusinessActionResponse<T = AdminBusiness> {
+export type BusinessActionResponse<T = AdminBusiness> = {
   success: boolean;
   data?: T;
   error?: string;
   message?: string;
-}
+};
 
 /**
  * Input for adding suspension reason
  */
-export interface SuspendBusinessInput {
+export type SuspendBusinessInput = {
   reason?: string;
-}
+};
 
 // ============================================================================
 // BUSINESS STATISTICS
@@ -160,10 +160,10 @@ export interface SuspendBusinessInput {
 /**
  * Dashboard statistics for a business
  */
-export interface BusinessDashboardStats {
+export type BusinessDashboardStats = {
   business_id: string;
   business_name: string;
   total_followers: number;
   total_redemptions: number;
   active_deals: number;
-}
+};

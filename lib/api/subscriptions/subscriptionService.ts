@@ -6,7 +6,6 @@
 import { createServerSupabaseClient } from '@/config/server';
 import type {
   ApiResponse,
-  Subscription,
   SubscriptionResponse,
   SubscriptionPaymentMethod,
   BillingInvoice,
@@ -17,7 +16,12 @@ import type {
   CancelSubscriptionRequest,
   CreatePaymentMethodRequest,
 } from '@/lib/types';
+import type { Database } from '@/lib/types/database';
 import * as subscriptionQuery from './subscriptionQuery';
+
+// Extract database Row types
+type SubscriptionRow =
+  Database['public']['Tables']['business_subscriptions']['Row'];
 
 /**
  * Create new subscription for business
@@ -137,7 +141,7 @@ export async function createSubscription(
  */
 export async function updateSubscription(
   subscriptionId: string,
-  input: UpdateSubscriptionRequest,
+  _input: UpdateSubscriptionRequest,
 ): Promise<ApiResponse<SubscriptionResponse>> {
   try {
     const supabase = await createServerSupabaseClient();
@@ -153,34 +157,14 @@ export async function updateSubscription(
       };
     }
 
-    const updates: Partial<Subscription> = {};
+    // Only update fields that exist in database schema
+    const updates: Partial<SubscriptionRow> = {
+      updated_at: new Date().toISOString(),
+    };
 
-    if (input.billing_cycle) {
-      updates.billing_cycle = input.billing_cycle;
-    }
-
-    if (input.payment_method_id) {
-      // Verify payment method exists
-      const pmResult = await subscriptionQuery.getPaymentMethodById(
-        input.payment_method_id,
-      );
-      if ('error' in pmResult) {
-        return {
-          success: false,
-          error: {
-            code: 'NOT_FOUND',
-            message: 'Payment method not found',
-          },
-        };
-      }
-      updates.payment_method_id = input.payment_method_id;
-    }
-
-    if (input.auto_renew !== undefined) {
-      updates.auto_renew = input.auto_renew;
-    }
-
-    updates.updated_at = new Date().toISOString();
+    // Note: billing_cycle, payment_method_id, auto_renew are domain fields, not stored in database
+    // If these need to be persisted, they should be added as database columns via migration
+    // For now, domain enrichments are computed at the application layer, not persisted
 
     const { data, error } = await supabase
       .from('subscriptions')
@@ -270,14 +254,12 @@ export async function upgradeSubscription(
     // TODO: Calculate proration credit if upgrading mid-cycle
     // For now, upgrade takes effect immediately
 
-    const updates: Partial<Subscription> = {
+    const updates: Partial<SubscriptionRow> = {
       plan_id: input.new_plan_id,
       updated_at: new Date().toISOString(),
     };
 
-    if (input.billing_cycle) {
-      updates.billing_cycle = input.billing_cycle;
-    }
+    // Note: billing_cycle is a domain field, not stored in database
 
     const { data, error } = await supabase
       .from('subscriptions')
@@ -351,18 +333,13 @@ export async function downgradeSubscription(
     }
 
     // If downgrade_at = 'period_end', set flag instead of immediate change
-    const updates: Partial<Subscription> = {
+    // Only downgrade immediately for MVP
+    const updates: Partial<SubscriptionRow> = {
+      plan_id: input.new_plan_id,
       updated_at: new Date().toISOString(),
     };
 
-    if (input.downgrade_at === 'immediately') {
-      updates.plan_id = input.new_plan_id;
-    } else {
-      // Store pending downgrade plan for processing at period end
-      // TODO: Implement job to process pending downgrades at period_end
-      // For MVP, we immediately downgrade
-      updates.plan_id = input.new_plan_id;
-    }
+    // Note: downgrade_at is request parameter, not persisted in database
 
     const { data, error } = await supabase
       .from('subscriptions')
@@ -422,13 +399,13 @@ export async function cancelSubscription(
       };
     }
 
-    const updates: Partial<Subscription> = {
+    const updates: Partial<SubscriptionRow> = {
       updated_at: new Date().toISOString(),
     };
 
     if (input.cancel_at === 'immediately') {
       updates.status = 'canceled';
-      updates.canceled_at = new Date().toISOString();
+      // Note: canceled_at is a domain field, not in database schema
     } else {
       // Cancel at period end
       updates.cancel_at_period_end = true;

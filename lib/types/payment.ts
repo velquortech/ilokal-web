@@ -1,7 +1,15 @@
 /**
  * Payment & Invoice Type Definitions
  * Stripe integration and payment processing
+ *
+ * NOTE: Domain types extend database.ts Row types as the foundation.
+ * If database schema changes via migration, domain types automatically stay in sync.
  */
+
+import { Database } from './database';
+
+// Extract Row types from database.ts (source of truth)
+type PaymentRow = Database['public']['Tables']['payments']['Row'];
 
 // ===== Payment Status =====
 export type PaymentStatus =
@@ -13,24 +21,17 @@ export type PaymentStatus =
 
 export type PaymentMethod = 'card' | 'bank_transfer' | 'wallet';
 
-// ===== Payment Types =====
-export type Payment = {
-  id: string;
-  user_id: string;
-  business_id: string | null; // null for general payments
-  amount: number; // in cents
-  currency: string; // 'USD', 'EUR', etc.
-  status: PaymentStatus;
-  payment_method: PaymentMethod;
-  stripe_payment_intent_id: string | null;
+// ===== Payment Types - Extends PaymentRow with domain enrichments =====
+export type Payment = PaymentRow & {
+  user_id?: string; // Domain enrichment - not in DB
+  stripe_payment_intent_id?: string | null;
   metadata?: {
     order_id?: string;
     subscription_id?: string;
     description?: string;
   };
-  created_at: string;
-  updated_at: string;
-  archived_at: string | null;
+  updated_at?: string; // Domain enrichment
+  archived_at?: string | null; // Domain enrichment
 };
 
 export type CreatePaymentRequest = {

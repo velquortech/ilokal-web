@@ -185,16 +185,21 @@ export async function getPaymentAnalytics(
       return { error: 'Failed to fetch analytics' };
     }
 
-    const payments = data as Payment[];
-    const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+    const payments = (data as Payment[]).filter(
+      (p) => p.status && p.payment_method && p.currency,
+    );
+    const totalRevenue = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
     const byStatus: Record<string, number> = {};
     const byMethod: Record<string, number> = {};
     const byCurrency: Record<string, number> = {};
 
     payments.forEach((p) => {
-      byStatus[p.status] = (byStatus[p.status] ?? 0) + 1;
-      byMethod[p.payment_method] = (byMethod[p.payment_method] ?? 0) + 1;
-      byCurrency[p.currency] = (byCurrency[p.currency] ?? 0) + p.amount;
+      if (p.status && p.payment_method && p.currency) {
+        byStatus[p.status] = (byStatus[p.status] ?? 0) + 1;
+        byMethod[p.payment_method] = (byMethod[p.payment_method] ?? 0) + 1;
+        byCurrency[p.currency] =
+          (byCurrency[p.currency] ?? 0) + (p.amount || 0);
+      }
     });
 
     return {

@@ -1,70 +1,39 @@
 /**
  * Business API Client
  *
- * Client for server-side calls to /api/admin/businesses endpoints.
- * Used by server actions to avoid code duplication.
- * Centralizes business management logic in API routes.
+ * Shared interface for business operations.
+ * Calls business service and query functions directly (no HTTP/fetch).
+ * Used by both server actions and API routes to avoid code duplication.
+ * Follows the DRY pattern established in userService.
  */
 
+import {
+  verifyBusiness as verifyBusinessService,
+  rejectBusiness as rejectBusinessService,
+  suspendBusiness as suspendBusinessService,
+  reactivateBusiness as reactivateBusinessService,
+  updateAdminBusiness,
+  archiveBusiness as archiveBusinessService,
+  permanentlyDeleteBusiness,
+} from './businessService';
+import {
+  getBusinessById,
+  getBusinessesPaginated,
+  countBusinessesByStatus,
+} from './businessQuery';
 import { AdminBusiness, PaginatedBusinessResponse } from '@/lib/types/business';
-
-const API_BASE = '/api/admin/businesses';
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-export interface ApiResponse<T = unknown> {
-  success: boolean;
+/**
+ * Standard operation result format
+ * Matches the pattern used in userAPIClient
+ */
+export interface OperationResult<T = unknown> {
   data?: T;
   error?: string;
-}
-
-export interface ApiListResponse<T> {
-  success: boolean;
-  data?: T[];
-  pagination?: {
-    total: number;
-    page: number;
-    pageSize: number;
-    totalPages: number;
-  };
-  counts?: Record<string, number>;
-  error?: string;
-}
-
-// ============================================================================
-// HELPER FUNCTION
-// ============================================================================
-
-/**
- * Generic fetch helper for API calls
- */
-async function apiFetch<T>(
-  endpoint: string,
-  options: RequestInit = {},
-): Promise<{ data?: T; error?: string }> {
-  try {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      return { error: result.error || `API error: ${response.status}` };
-    }
-
-    return { data: result };
-  } catch (error) {
-    return {
-      error: error instanceof Error ? error.message : 'API request failed',
-    };
-  }
 }
 
 // ============================================================================
@@ -73,32 +42,61 @@ async function apiFetch<T>(
 
 /**
  * Get paginated businesses with filters
+ * Calls service layer directly (no HTTP)
  */
 export async function getBusinessesList(
   filters: Partial<Record<string, string | number>> = {},
-): Promise<{ data?: PaginatedBusinessResponse; error?: string }> {
-  const params = new URLSearchParams();
+): Promise<OperationResult<PaginatedBusinessResponse>> {
+  try {
+    const { data, total, error } = await getBusinessesPaginated(filters);
 
-  if (filters.status) params.append('status', String(filters.status));
-  if (filters.search) params.append('search', String(filters.search));
-  if (filters.sortBy) params.append('sortBy', String(filters.sortBy));
-  if (filters.sortOrder) params.append('sortOrder', String(filters.sortOrder));
-  if (filters.page) params.append('page', String(filters.page));
-  if (filters.pageSize) params.append('pageSize', String(filters.pageSize));
+    if (error) {
+      return { error };
+    }
 
-  const queryString = params.toString();
-  const endpoint = queryString ? `?${queryString}` : '';
+    const { counts } = await countBusinessesByStatus();
+    const page = (filters.page as number) || 1;
+    const pageSize = (filters.pageSize as number) || 10;
 
-  return apiFetch<PaginatedBusinessResponse>(endpoint);
+    return {
+      data: {
+        businesses: data,
+        pagination: {
+          total,
+          page,
+          pageSize,
+          totalPages: Math.ceil(total / pageSize),
+        },
+        counts: counts || {},
+      },
+    };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : 'Failed to fetch businesses',
+    };
+  }
 }
 
 /**
  * Get single business by ID
+ * Calls service layer directly (no HTTP)
  */
 export async function getBusiness(
   businessId: string,
-): Promise<{ data?: AdminBusiness; error?: string }> {
-  return apiFetch<AdminBusiness>(`/${businessId}`);
+): Promise<OperationResult<AdminBusiness>> {
+  try {
+    const { business, error } = await getBusinessById(businessId);
+
+    if (error) {
+      return { error };
+    }
+
+    return { data: business || undefined };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : 'Failed to fetch business',
+    };
+  }
 }
 
 // ============================================================================
@@ -107,52 +105,69 @@ export async function getBusiness(
 
 /**
  * Verify a business
+ * Calls service layer directly (no HTTP)
  */
 export async function verifyBusiness(
   businessId: string,
   notes?: string,
-): Promise<{ data?: AdminBusiness; error?: string }> {
-  return apiFetch<AdminBusiness>(`/${businessId}/verify`, {
-    method: 'POST',
-    body: JSON.stringify({ notes }),
-  });
+): Promise<OperationResult<AdminBusiness>> {
+  const response = await verifyBusinessService(businessId, notes);
+
+  if (!response.success) {
+    return { error: response.error };
+  }
+
+  return { data: response.data };
 }
 
 /**
  * Reject a business
+ * Calls service layer directly (no HTTP)
  */
 export async function rejectBusiness(
   businessId: string,
   reason?: string,
-): Promise<{ data?: AdminBusiness; error?: string }> {
-  return apiFetch<AdminBusiness>(`/${businessId}/reject`, {
-    method: 'POST',
-    body: JSON.stringify({ reason }),
-  });
+): Promise<OperationResult<AdminBusiness>> {
+  const response = await rejectBusinessService(businessId, reason);
+
+  if (!response.success) {
+    return { error: response.error };
+  }
+
+  return { data: response.data };
 }
 
 /**
  * Suspend a business
+ * Calls service layer directly (no HTTP)
  */
 export async function suspendBusiness(
   businessId: string,
   reason?: string,
-): Promise<{ data?: AdminBusiness; error?: string }> {
-  return apiFetch<AdminBusiness>(`/${businessId}/suspend`, {
-    method: 'POST',
-    body: JSON.stringify({ reason }),
-  });
+): Promise<OperationResult<AdminBusiness>> {
+  const response = await suspendBusinessService(businessId, reason);
+
+  if (!response.success) {
+    return { error: response.error };
+  }
+
+  return { data: response.data };
 }
 
 /**
  * Reactivate a suspended business
+ * Calls service layer directly (no HTTP)
  */
 export async function reactivateBusiness(
   businessId: string,
-): Promise<{ data?: AdminBusiness; error?: string }> {
-  return apiFetch<AdminBusiness>(`/${businessId}/reactivate`, {
-    method: 'POST',
-  });
+): Promise<OperationResult<AdminBusiness>> {
+  const response = await reactivateBusinessService(businessId);
+
+  if (!response.success) {
+    return { error: response.error };
+  }
+
+  return { data: response.data };
 }
 
 // ============================================================================
@@ -161,35 +176,49 @@ export async function reactivateBusiness(
 
 /**
  * Update business
+ * Calls service layer directly (no HTTP)
  */
 export async function updateBusiness(
   businessId: string,
   updates: Partial<Record<string, string | number | boolean>>,
-): Promise<{ data?: AdminBusiness; error?: string }> {
-  return apiFetch<AdminBusiness>(`/${businessId}`, {
-    method: 'PUT',
-    body: JSON.stringify(updates),
-  });
+): Promise<OperationResult<AdminBusiness>> {
+  const response = await updateAdminBusiness(businessId, updates);
+
+  if (!response.success) {
+    return { error: response.error };
+  }
+
+  return { data: response.data };
 }
 
 /**
  * Archive a business (soft delete)
+ * Calls service layer directly (no HTTP)
  */
 export async function archiveBusiness(
   businessId: string,
-): Promise<{ error?: string }> {
-  return apiFetch(`/${businessId}`, {
-    method: 'DELETE',
-  });
+): Promise<OperationResult<void>> {
+  const response = await archiveBusinessService(businessId);
+
+  if (!response.success) {
+    return { error: response.error };
+  }
+
+  return {};
 }
 
 /**
  * Permanently delete a business (hard delete)
+ * Calls service layer directly (no HTTP)
  */
 export async function deleteBusinessPermanently(
   businessId: string,
-): Promise<{ error?: string }> {
-  return apiFetch(`/${businessId}/delete`, {
-    method: 'DELETE',
-  });
+): Promise<OperationResult<void>> {
+  const response = await permanentlyDeleteBusiness(businessId);
+
+  if (!response.success) {
+    return { error: response.error };
+  }
+
+  return {};
 }

@@ -57,6 +57,33 @@ Make sure the following are installed on your machine:
 
 ---
 
+## 🧪 Testing with Vitest
+
+- Run tests in watch mode (development):
+
+  ```bash
+  make test
+  ```
+
+- Run all tests once (CI mode):
+
+  ```bash
+  make test-run
+  ```
+
+- Open interactive test UI dashboard:
+
+  ```bash
+  make test-ui
+  ```
+
+- Generate coverage report:
+  ```bash
+  make test-coverage
+  ```
+
+---
+
 ## 👀 Production Preview (Local)
 
 - Start the app in production mode locally:

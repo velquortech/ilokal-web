@@ -49,6 +49,32 @@
 - ✅ **100% build passing** (Next.js 16.1.6)
 - ✅ **Grade A+ code quality**
 
+### Test Coverage Summary
+
+**Framework**: Vitest 4.1.0  
+**Current Status**: ✅ **275 tests passing** (9 test files)
+
+| Category           | Tests | Status      | Details                                                                                 |
+| ------------------ | ----- | ----------- | --------------------------------------------------------------------------------------- |
+| Admin Operations   | 77    | ✅ Complete | Schemas (30), Actions (47)                                                              |
+| Validation Schemas | 56    | ⏳ Partial  | Payments (38), Subscriptions (18); Missing: Auth, Business, Products, Coupons, Branches |
+| API Routes         | 49    | ⏳ Partial  | Subscriptions (21), Payments (28); Missing: Admin, Auth, Billing, Categories, etc.      |
+| Server Actions     | 72    | ✅ Complete | Auth (40), Business (32)                                                                |
+| Utilities          | 33    | ✅ Complete | Helper functions, date formatting, error handling                                       |
+
+**Test Details**: See [`TEST_SUITE.md`](./TEST_SUITE.md) for full breakdown  
+**Quick Reference**: Run `npm run test:run` to execute all tests
+
+**Next Actions**:
+
+- [ ] Add tests for auth validation schemas (auth.ts)
+- [ ] Add tests for business validation schemas (business.ts)
+- [ ] Add tests for products & coupons validation schemas
+- [ ] Add API route tests for admin endpoints
+- [ ] Add API route tests for auth endpoints
+- [ ] Add API route tests for billing endpoints
+- [ ] Achieve 80%+ code coverage on critical paths
+
 ---
 
 ## Priority Levels

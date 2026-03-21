@@ -98,16 +98,16 @@ export const adminNavItems: NavItem[] = [
     description: 'View platform metrics & insights',
   },
   {
-    label: 'System Management',
+    label: 'Administration',
     icon: Users,
     description: 'Manage admin accounts and security',
     isSection: true,
   },
   {
-    label: 'Admin Accounts',
+    label: 'User Management',
     href: `${ROUTES.DASHBOARD.ADMIN}/users`,
     icon: Users,
-    description: 'Manage admin users and permissions',
+    description: 'Manage admin, business owner, and app user accounts',
   },
   {
     label: 'Account Status',

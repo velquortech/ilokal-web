@@ -37,6 +37,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/config/server';
+import type { ApiResponse } from '@/lib/types/common';
 import { updateCurrentUserProfileSchema } from '@/lib/validation/auth';
 import {
   updateUserProfile,
@@ -44,12 +45,6 @@ import {
   PROFILE_SELECT_FIELDS,
 } from '@/lib/api/users/userService';
 import type { User } from '@/lib/types';
-
-type ApiResponse<T = unknown> = {
-  success: boolean;
-  data?: T;
-  error?: { code: string; message: string };
-};
 
 /**
  * GET /api/users/me

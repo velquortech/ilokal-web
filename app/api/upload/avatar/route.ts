@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const formData = await request.formData();
@@ -22,16 +22,13 @@ export async function POST(request: NextRequest) {
     const targetUserId = (formData.get('userId') as string) || user.id;
 
     if (!file) {
-      return NextResponse.json(
-        { message: 'No file provided' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { message: 'File size must be less than 5MB' },
+        { error: 'File size must be less than 5MB' },
         { status: 400 },
       );
     }
@@ -39,7 +36,7 @@ export async function POST(request: NextRequest) {
     // Validate file type
     if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json(
-        { message: 'Only image files (JPEG, PNG, GIF, WebP) are allowed' },
+        { error: 'Only image files (JPEG, PNG, GIF, WebP) are allowed' },
         { status: 400 },
       );
     }
@@ -56,19 +53,19 @@ export async function POST(request: NextRequest) {
 
     if (uploadError) {
       console.error('Storage upload error:', uploadError);
-      return NextResponse.json(
-        { message: uploadError.message },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: uploadError.message }, { status: 400 });
     }
 
     const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
 
-    return NextResponse.json({ publicUrl: data.publicUrl });
+    return NextResponse.json(
+      { success: true, data: { publicUrl: data.publicUrl } },
+      { status: 200 },
+    );
   } catch (error) {
     console.error('Avatar upload error:', error);
     return NextResponse.json(
-      { message: 'Internal server error' },
+      { error: 'Internal server error' },
       { status: 500 },
     );
   }

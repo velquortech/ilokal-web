@@ -59,6 +59,17 @@ export type {
   ProductError,
 } from './product';
 
+// Branch Domain Types
+export type {
+  Branch,
+  BranchResponse,
+  CreateBranchRequest,
+  UpdateBranchRequest,
+  BranchFilters,
+  PaginatedBranchesResponse,
+  BranchError,
+} from './branch';
+
 // Admin Domain Types
 export type {
   AdminUser,

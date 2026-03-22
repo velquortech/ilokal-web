@@ -13,7 +13,7 @@ This document provides a comprehensive overview of the project folder structure,
 
 - ✅ **Type Safety:** All types in centralized `/lib/types` folder
 - ✅ **Service Layer:** DRY pattern across `/lib/api/` subdirectories
-- ✅ **Server Actions:** Organized by feature in corresponding `/actions.ts` files
+- ✅ **Server Actions:** Organized by feature in `/actions/` folder structure (prevents merge conflicts)
 - ✅ **Validation:** Centralized in `/lib/validation/` with Zod schemas
 - ✅ **No Code Duplication:** Helper functions in `/lib/utils/` and `/lib/helpers/`
 - ✅ **Component Organization:** Separated by feature with sub-components
@@ -59,16 +59,22 @@ Protected routes for login and signup pages outside admin/business namespaces.
 
 ```
 (auth)/
-├── actions.ts                 # Server Actions for authentication
-│                               # - loginAction()
-│                               # - signupAction()
-│                               # - logoutAction()
-│                               # - redirectByRole()
-│                               # - verifySessionAction()
+├── actions/                   # Server Actions for authentication (folder-based for scalability)
+│   ├── authActions.ts         # Core auth actions
+│   │                           # - loginAction()
+│   │                           # - signupAction()
+│   │                           # - logoutAction()
+│   │                           # - redirectByRole()
+│   │                           # - verifySessionAction()
+│   ├── userActions.ts         # User profile actions
+│   │                           # - updateCurrentUserProfileAction()
+│   └── index.ts               # Barrel exports (backward compatib)
 ├── layout.tsx                 # Auth layout wrapper
 ├── login/                      # Login page route
 └── signup/                     # Signup page route
 ```
+
+**Rationale:** Folder-based structure allows parallel development without merge conflicts
 
 ### `app/admin` - Admin Dashboard
 
@@ -78,6 +84,24 @@ Administrative interface for user and business management.
 admin/
 ├── page.tsx                    # Admin dashboard homepage
 ├── layout.tsx                  # Admin layout with navigation
+├── actions/                    # Server Actions for admin operations (folder-based)
+│   ├── userActions.ts          # User management actions
+│   │                           # - createAdminAction()
+│   │                           # - updateAdminAction()
+│   │                           # - deleteAdminAction()
+│   │                           # - createBusinessOwnerAction()
+│   │                           # - updateConsumerAction()
+│   │                           # - restoreUserAction()
+│   ├── businessActions.ts      # Business management actions
+│   │                           # - createBusinessAction()
+│   │                           # - updateBusinessAction()
+│   │                           # - verifyBusinessAction()
+│   │                           # - suspendBusinessAction()
+│   ├── categoryActions.ts      # Category management actions
+│   │                           # - createCategoryAction()
+│   │                           # - updateCategoryAction()
+│   │                           # - deleteCategoryAction()
+│   └── index.ts                # Barrel exports (backward compatible)
 ├── users/                      # User management section
 │   ├── page.tsx                # Users table and management UI
 │   ├── tabs/                   # Tab components for different user types
@@ -133,11 +157,29 @@ Dashboard for business owner role users.
 business/
 ├── page.tsx                    # Business dashboard homepage
 ├── layout.tsx                  # Business layout wrapper
+├── actions/                    # Server Actions for business operations (folder-based)
+│   ├── productActions.ts       # Product management actions
+│   │                           # - createProductAction()
+│   │                           # - updateProductAction()
+│   │                           # - deleteProductAction()
+│   │                           # - getBusinessProductsAction()
+│   │                           # - getCategoriesAction()
+│   ├── branchActions.ts        # Branch management actions
+│   │                           # - createBranchAction()
+│   │                           # - updateBranchAction()
+│   │                           # - deleteBranchAction()
+│   ├── couponActions.ts        # Coupon & deal actions
+│   │                           # - createCouponAction()
+│   │                           # - redeemCouponAction()
+│   │                           # - createFeaturedDealAction()
+│   └── index.ts                # Barrel exports (backward compatible)
 ├── components/                 # Business-specific components
 ├── config/                     # Business configuration
 ├── constants/                  # Business constants
 └── schemas/                    # Business validation schemas
 ```
+
+**Rationale:** Folder-based structure allows parallel development without merge conflicts
 
 ### `app/home` - Public Landing Page
 

@@ -122,3 +122,71 @@ export type BusinessFilters = z.infer<typeof businessFiltersSchema>;
 export const uuidSchema = z.object({
   id: z.string().uuid('Invalid business ID format'),
 });
+
+// ============================================================================
+// UPLOAD VALIDATION SCHEMAS
+// ============================================================================
+
+/**
+ * Schema for validating business logo upload request
+ */
+export const businessLogoUploadSchema = z.object({
+  file: z
+    .instanceof(File)
+    .refine(
+      (file) => file.size <= 5 * 1024 * 1024,
+      'File size must be less than 5MB',
+    ),
+  businessId: z.string().uuid('Invalid business ID format'),
+});
+
+export type BusinessLogoUploadInput = z.infer<typeof businessLogoUploadSchema>;
+
+/**
+ * Schema for validating interior photos upload request
+ */
+export const interiorPhotosUploadSchema = z.object({
+  file: z
+    .instanceof(File)
+    .refine(
+      (file) => file.size <= 5 * 1024 * 1024,
+      'File size must be less than 5MB',
+    ),
+  businessId: z.string().uuid('Invalid business ID format'),
+});
+
+export type InteriorPhotosUploadInput = z.infer<
+  typeof interiorPhotosUploadSchema
+>;
+
+/**
+ * Schema for validating verification documents upload request
+ */
+export const verificationDocsUploadSchema = z.object({
+  file: z
+    .instanceof(File)
+    .refine(
+      (file) => file.size <= 10 * 1024 * 1024,
+      'File size must be less than 10MB',
+    ),
+  businessId: z.string().uuid('Invalid business ID format'),
+});
+
+export type VerificationDocsUploadInput = z.infer<
+  typeof verificationDocsUploadSchema
+>;
+
+/**
+ * Schema for validating file deletion request
+ */
+export const fileDeleteSchema = z.object({
+  bucket: z.enum([
+    'avatars',
+    'business-logos',
+    'business-interior',
+    'verification-docs',
+  ]),
+  filePath: z.string().min(1, 'File path is required'),
+});
+
+export type FileDeleteInput = z.infer<typeof fileDeleteSchema>;

@@ -145,6 +145,27 @@ export type {
   PaginatedPaymentMethodResponse,
 } from './subscription';
 
+// Search & Discovery Domain Types
+export type {
+  SearchType,
+  SortBy,
+  BusinessSearchResult,
+  ProductSearchResult,
+  DealSearchResult,
+  TrendingResult,
+  PaginationParams,
+  SearchFilters,
+  SearchRequest,
+  SearchResponse,
+  GlobalSearchResponse,
+  TrendingResponse,
+  GlobalSearchRequest,
+  BusinessSearchRequest,
+  ProductSearchRequest,
+  DealSearchRequest,
+  AdvancedFilterRequest,
+} from './search';
+
 // Admin Domain Types
 export type {
   AdminUser,

@@ -4,15 +4,7 @@ import { redirect } from 'next/navigation';
 import { createServerSupabaseClient } from '@/config/server';
 import { ROUTES } from '@/config/routeConfig';
 import { User } from '@/lib/types/user';
-import {
-  SignupInput,
-  UpdateCurrentUserProfileInput,
-  updateCurrentUserProfileSchema,
-} from '@/lib/validation/auth';
-import {
-  fetchProfileById,
-  updateUserProfile,
-} from '@/lib/api/users/userService';
+import { SignupInput } from '@/lib/validation/auth';
 
 /**
  * Server Action: Handle user login
@@ -59,20 +51,22 @@ export async function loginAction(
 
     // Fetch profile data from 'profiles' table
     // Uses authenticated session from cookie
-    const profile = await fetchProfileById(authData.user.id).catch((error) => {
-      console.error('[loginAction] Profile fetch error:', error.message);
-      throw new Error('Failed to load user profile');
-    });
-
-    // Fetch additional status fields for verification
     const { data: statusCheck } = await supabase
       .from('profiles')
-      .select('archived_at, status')
+      .select('id, archived_at, status')
       .eq('id', authData.user.id)
       .single();
 
+    if (!statusCheck) {
+      console.error(
+        '[loginAction] Profile not found for user',
+        authData.user.id,
+      );
+      throw new Error('Failed to load user profile');
+    }
+
     // Verify user account is not archived
-    if (statusCheck?.archived_at) {
+    if (statusCheck.archived_at) {
       console.warn(
         `[loginAction] Login attempt by archived user ${authData.user.id}`,
       );
@@ -82,17 +76,28 @@ export async function loginAction(
     }
 
     // Verify user account is active (not suspended or inactive)
-    if (statusCheck?.status !== 'active') {
+    if (statusCheck.status !== 'active') {
       console.warn(
-        `[loginAction] Login attempt by inactive user ${authData.user.id} with status: ${statusCheck?.status}`,
+        `[loginAction] Login attempt by inactive user ${authData.user.id} with status: ${statusCheck.status}`,
       );
       throw new Error(
-        `Your account is ${statusCheck?.status}. Please contact support.`,
+        `Your account is ${statusCheck.status}. Please contact support.`,
       );
     }
 
+    // Fetch full profile data
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', authData.user.id)
+      .single();
+
+    if (!profile) {
+      throw new Error('Failed to load user profile');
+    }
+
     return {
-      user: profile,
+      user: profile as User,
       message: 'Logged in successfully',
     };
   } catch (error) {
@@ -198,30 +203,27 @@ export async function signupAction(
       );
       // Attempt to clean up auth user on profile creation failure
       await supabase.auth.admin.deleteUser(userId).catch(() => {
-        // Silently ignore cleanup errors
+        // Ignore cleanup errors
       });
       throw new Error('Failed to create user profile');
     }
 
-    // Fetch created profile to return to client
-    const userData = await fetchProfileById(userId).catch(() =>
-      // Create user data from signup input as fallback
-      ({
-        id: userId,
-        email: data.email.trim(),
-        full_name: data.name.trim(),
-        phone_number: data.phone_number?.trim() || null,
-        role: data.role,
-        avatar_url: data.avatar_url?.trim() || null,
-      }),
-    );
+    // Fetch the created profile
+    const { data: createdProfile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (!createdProfile) {
+      throw new Error('Failed to load created profile');
+    }
 
     return {
-      user: userData,
-      message: 'Account created successfully. Please verify your email.',
+      user: createdProfile as User,
+      message: 'Account created successfully',
     };
   } catch (error) {
-    // Log detailed error server-side
     const errorMessage =
       error instanceof Error ? error.message : 'An unexpected error occurred';
     console.error('[signupAction] Error:', errorMessage);
@@ -230,185 +232,69 @@ export async function signupAction(
 }
 
 /**
- * Server Action: Redirect user based on role
- * Separated to prevent timing attacks during authentication
+ * Server Action: Redirect user to appropriate dashboard
  */
 export async function redirectByRole(role: string): Promise<void> {
-  switch (role) {
-    case 'admin':
-      redirect(ROUTES.DASHBOARD.ADMIN);
-      break;
-    case 'business_owner':
-      redirect(ROUTES.DASHBOARD.BUSINESS);
-      break;
-    default:
-      redirect(ROUTES.DASHBOARD.HOME);
-  }
-}
-/**
- * Server Action: Verify and refresh session
- *
- * Security: Checks if current session is still valid
- * Also checks that user is still active (not suspended or inactive)
- * Returns null if session is invalid and cannot be refreshed
- */
-export async function verifySessionAction(): Promise<{ user: User } | null> {
   try {
-    const supabase = await createServerSupabaseClient();
-
-    // Get current user session
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return null;
+    switch (role) {
+      case 'admin':
+        redirect(ROUTES.DASHBOARD.ADMIN);
+        break;
+      case 'business_owner':
+        redirect(ROUTES.DASHBOARD.BUSINESS);
+        break;
+      case 'app_user':
+      default:
+        redirect(ROUTES.PUBLIC.HOME);
+        break;
     }
-
-    // Fetch profile and map to User type
-    const userData = await fetchProfileById(user.id).catch(() => null);
-
-    if (!userData) {
-      return null;
-    }
-
-    // Check if user is still active (not suspended or inactive)
-    // Note: Check status from the full profile query
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('status')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || profile.status !== 'active') {
-      console.warn(
-        `[verifySessionAction] User ${user.id} has status: ${profile?.status}`,
-      );
-      return null;
-    }
-
-    return { user: userData };
   } catch (error) {
-    console.error('[verifySessionAction] Error:', error);
-    return null;
+    console.error('[redirectByRole] Error:', error);
+    throw error;
   }
 }
 
 /**
- * Server Action: Update current user profile
- *
- * Security considerations:
- * - Requires active session (not suspended or inactive)
- * - Validates input with Zod schema
- * - Only allows updating own profile (via session user ID)
- * - Returns type-safe ApiResponse<User>
- * - Uses shared userService for DRY principle (also used by API route)
- *
- * @param data - Profile update data (full_name, phone_number, avatar_url)
- * @returns ApiResponse with updated user or error
- */
-export async function updateCurrentUserProfileAction(
-  data: UpdateCurrentUserProfileInput,
-): Promise<{
-  success: boolean;
-  data?: User;
-  error?: { code: string; message: string };
-}> {
-  try {
-    // Validate input
-    const validation = updateCurrentUserProfileSchema.safeParse(data);
-
-    if (!validation.success) {
-      const firstError = validation.error.issues[0];
-      return {
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: firstError?.message || 'Invalid input',
-        },
-      };
-    }
-
-    // Get current user session
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'Authentication required',
-        },
-      };
-    }
-
-    // Verify user is still active (not suspended or inactive)
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('status')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || profile.status !== 'active') {
-      console.warn(
-        `[updateCurrentUserProfileAction] Attempted update by inactive user ${user.id}`,
-      );
-      return {
-        success: false,
-        error: {
-          code: 'AUTHORIZATION_ERROR',
-          message: 'Your account is not active',
-        },
-      };
-    }
-
-    // Update profile using shared service
-    const updatedUser = await updateUserProfile(user.id, validation.data);
-
-    return {
-      success: true,
-      data: updatedUser,
-    };
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'An unexpected error occurred';
-    console.error('[updateCurrentUserProfileAction] Error:', errorMessage);
-    return {
-      success: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Failed to update profile',
-      },
-    };
-  }
-}
-
-/**
- * Server Action: Logout user
- * Clears session and redirects to login page
- *
- * Note: redirect() must be called inside try block or after error handling
- * because it throws NEXT_REDIRECT error that Next.js framework catches
+ * Server Action: Handle user logout
  */
 export async function logoutAction(): Promise<void> {
   try {
     const supabase = await createServerSupabaseClient();
-    const { error } = await supabase.auth.signOut();
+    await supabase.auth.signOut();
+    redirect(ROUTES.AUTH.LOGIN);
+  } catch (error) {
+    console.error('[logoutAction] Error:', error);
+    redirect(ROUTES.AUTH.LOGIN);
+  }
+}
 
-    if (error) {
-      console.error('[logoutAction] Sign out error:', error.message);
-      throw new Error('Failed to sign out');
+/**
+ * Server Action: Verify session and get current user
+ */
+export async function verifySessionAction(): Promise<{ user: User } | null> {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+
+    if (!authUser) {
+      return null;
     }
 
-    console.info('[logoutAction] User signed out successfully');
-  } catch (error) {
-    console.error('[logoutAction] Error during logout:', error);
-    // Continue to redirect even if signout had issues
-  }
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', authUser.id)
+      .single();
 
-  // Redirect to login page after logout (moved inside to ensure it executes)
-  redirect(ROUTES.AUTH.LOGIN);
+    if (!profile) {
+      return null;
+    }
+
+    return { user: profile as User };
+  } catch (error) {
+    console.error('[verifySessionAction] Error:', error);
+    return null;
+  }
 }

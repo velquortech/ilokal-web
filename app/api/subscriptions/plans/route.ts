@@ -9,8 +9,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type { SubscriptionPlan, ApiResponse } from '@/lib/types';
 import * as subscriptionQuery from '@/lib/api/subscriptions/subscriptionQuery';
 
-// Revalidate every 1 hour (plans change rarely)
-export const revalidate = 3600;
+// Mark as dynamic because Supabase client uses cookies() from next/headers
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/subscriptions/plans

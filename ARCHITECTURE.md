@@ -111,15 +111,19 @@
 │                          │                                        │
 │                          ▼                                        │
 │ ┌─────────────────────────────────────────────────────────────┐ │
-│ │        Server Actions (app/auth/actions.ts)                │ │
+│ │        Server Actions (app/(auth)/actions/)                │ │
 │ │              🔐 Secure Server-Side Code                    │ │
 │ │                                                             │ │
-│ │  Actions:                                                   │ │
-│ │  ├─ loginAction(email, password)                           │ │
-│ │  ├─ signupAction(data)                                     │ │
-│ │  ├─ redirectByRole(role)                                   │ │
-│ │  ├─ logoutAction()                                         │ │
-│ │  └─ verifySessionAction()                                  │ │
+│ │  Folder Structure (prevents merge conflicts):               │ │
+│ │  ├─ authActions.ts (core auth actions)                     │ │
+│ │  │  ├─ loginAction(email, password)                        │ │
+│ │  │  ├─ signupAction(data)                                  │ │
+│ │  │  ├─ redirectByRole(role)                                │ │
+│ │  │  ├─ logoutAction()                                      │ │
+│ │  │  └─ verifySessionAction()                               │ │
+│ │  ├─ userActions.ts (profile actions)                       │ │
+│ │  │  └─ updateCurrentUserProfileAction(data)               │ │
+│ │  └─ index.ts (barrel exports)                              │ │
 │ │                                                             │ │
 │ │  Security:                                                  │ │
 │ │  ├─ Server-side password validation                        │ │
@@ -296,7 +300,7 @@ Session extended              Every 60 seconds:
 │              'use client'                           │
 │                                                    │
 │  import { useActionState } from 'react'            │
-│  import { loginAction } from '@/app/auth/actions'  │
+│  import { loginAction } from '@/app/(auth)/actions'  │
 │  import { useForm } from 'react-hook-form'         │
 │                                                    │
 │  const [state, formAction, isPending] =            │
@@ -318,7 +322,7 @@ Session extended              Every 60 seconds:
          │ Calls
          ▼
 ┌────────────────────────────────────────────────────┐
-│      app/auth/actions.ts                           │
+│      app/(auth)/actions/authActions.ts             │
 │       'use server'                                 │
 │                                                    │
 │  export async function loginAction(                │
@@ -488,7 +492,7 @@ HTTPS Enforcement
          ▼
 ┌─────────────────────────────────┐
 │  Server - Next.js Action        │
-│  (app/auth/actions.ts)          │
+│  (app/(auth)/actions/)          │
 │                                 │
 │  • Validate input (server)      │
 │  • Supabase authentication      │

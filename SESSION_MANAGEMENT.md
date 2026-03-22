@@ -136,7 +136,7 @@ NEXT_PUBLIC_SESSION_WARNING_INTERVAL=15    # Warn 15 min before
 ### 1. Session Initialization (On Login)
 
 ```typescript
-// app/auth/actions.ts
+// app/(auth)/actions/authActions.ts
 export async function loginAction(email: string, password: string) {
   // 1. Create Supabase auth user
   const { data } = await supabase.auth.signInWithPassword({ email, password });
@@ -517,7 +517,7 @@ export function SessionWarningDialog() {
 }
 ```
 
-#### app/auth/actions.ts
+#### app/(auth)/actions/authActions.ts
 
 ```typescript
 export async function verifySessionAction() {

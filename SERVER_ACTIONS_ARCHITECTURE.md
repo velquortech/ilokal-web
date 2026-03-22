@@ -45,7 +45,7 @@ const handleSubmit = async (formData: UpdateProfileInput) => {
 
 ```typescript
 // 1. Define Server Action
-// app/(auth)/actions.ts
+// app/(auth)/actions/userActions.ts (in actions folder structure)
 'use server';
 
 export async function updateCurrentUserProfileAction(
@@ -117,7 +117,7 @@ export async function PUT(request: NextRequest, { params }) {
 }
 
 // 2. Server Action delegates to API route (DRY principle)
-// app/(auth)/actions.ts
+// app/(auth)/actions/userActions.ts (in actions folder structure)
 ('use server');
 
 export async function updateCurrentUserProfileAction(
@@ -178,11 +178,10 @@ User Form Submission
 **Implementation Strategy:**
 
 ```
-/app/(auth)/actions.ts              ← Server actions for user auth & profile
-  └─ loginAction()
-  └─ signupAction()
-  └─ logoutAction()
-  └─ updateCurrentUserProfileAction() ← NEW (you wanted to add)
+/app/(auth)/actions/                 ← Server actions folder structure
+  ├─ authActions.ts (core auth)
+  ├─ userActions.ts (profile)
+  └─ index.ts (exports)
 
 /app/api/users/me/route.ts          ← API endpoint (for external use, webhooks)
   └─ API route calls same service as server action
@@ -298,7 +297,7 @@ export async function updateUserProfile(
 ### Step 2: Create server action
 
 ```typescript
-// app/(auth)/actions.ts
+// app/(auth)/actions/userActions.ts (in actions folder structure)
 
 export async function updateCurrentUserProfileAction(
   data: UpdateUserProfileInput,

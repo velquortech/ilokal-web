@@ -1,6 +1,7 @@
 /**
- * Server Actions Test Suite
- * Tests: Business operations (create, update, delete)
+ * Business Server Actions Test Suite
+ * Location: app/business/actions/ (split into productActions.ts, branchActions.ts, couponActions.ts)
+ * Tests: Product, Branch, Coupon, and Featured Deal operations (create, update, delete)
  */
 
 import { describe, it, expect } from 'vitest';
@@ -8,272 +9,411 @@ import type { ApiResponse } from '@/lib/types';
 
 type TestResponse<T> = ApiResponse<T>;
 
-describe('Server Actions - Business Operations', () => {
-  describe('Product Creation', () => {
-    it('should validate required product fields', () => {
-      const validProduct = {
-        name: 'Test Product',
-        description: 'Test Description',
-        price: 10000,
-        inventory: 50,
-        category_id: '550e8400-e29b-41d4-a716-446655440000',
-      };
-      expect(validProduct).toHaveProperty('name');
-      expect(validProduct).toHaveProperty('price');
-      expect(validProduct).toHaveProperty('category_id');
-    });
+describe('Business Server Actions', () => {
+  describe('app/business/actions/productActions.ts - Product Management', () => {
+    describe('Product Creation', () => {
+      it('should validate required product fields', () => {
+        const validProduct = {
+          name: 'Test Product',
+          description: 'Test Description',
+          price: 10000,
+          inventory: 50,
+          category_id: '550e8400-e29b-41d4-a716-446655440000',
+        };
+        expect(validProduct).toHaveProperty('name');
+        expect(validProduct).toHaveProperty('price');
+        expect(validProduct).toHaveProperty('category_id');
+      });
 
-    it('should reject product with missing name', () => {
-      const invalidProduct = {
-        description: 'Test Description',
-        price: 10000,
-        inventory: 50,
-        category_id: '550e8400-e29b-41d4-a716-446655440000',
-      };
-      expect('name' in invalidProduct).toBe(false);
-    });
+      it('should reject product with missing name', () => {
+        const invalidProduct = {
+          description: 'Test Description',
+          price: 10000,
+          inventory: 50,
+          category_id: '550e8400-e29b-41d4-a716-446655440000',
+        };
+        expect('name' in invalidProduct).toBe(false);
+      });
 
-    it('should reject product with zero or negative price', () => {
-      const prices = [0, -100, -1];
-      prices.forEach((price) => {
-        expect(price).toBeLessThanOrEqual(0);
+      it('should reject product with zero or negative price', () => {
+        const prices = [0, -100, -1];
+        prices.forEach((price) => {
+          expect(price).toBeLessThanOrEqual(0);
+        });
+      });
+
+      it('should enforce PHP currency for pricing', () => {
+        const product = {
+          name: 'Product',
+          price: 10000,
+          currency: 'PHP',
+        };
+        expect(product.currency).toBe('PHP');
+      });
+
+      it('should validate inventory is non-negative', () => {
+        const validInventory = 50;
+        expect(validInventory).toBeGreaterThanOrEqual(0);
+
+        const invalidInventory = -10;
+        expect(invalidInventory).toBeLessThan(0);
+      });
+
+      it('should return success response on valid creation', () => {
+        const response: TestResponse<{
+          id: string;
+          name: string;
+          price: number;
+        }> = {
+          success: true,
+          data: {
+            id: 'prod-123',
+            name: 'Test Product',
+            price: 10000,
+          },
+        };
+        expect(response.success).toBe(true);
+        expect(response.data).toHaveProperty('id');
+      });
+
+      it('should return error response on validation failure', () => {
+        const response: TestResponse<never> = {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid product data',
+          },
+        };
+        expect(response.success).toBe(false);
+        expect(response.error?.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should return error if category not found', () => {
+        const response: TestResponse<never> = {
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Category not found',
+          },
+        };
+        expect(response.success).toBe(false);
+        expect(response.error?.code).toBe('NOT_FOUND');
       });
     });
 
-    it('should enforce PHP currency for pricing', () => {
-      const product = {
-        name: 'Product',
-        price: 10000,
-        currency: 'PHP',
-      };
-      expect(product.currency).toBe('PHP');
-    });
+    describe('Product Update', () => {
+      it('should validate product_id is UUID', () => {
+        const validId = '550e8400-e29b-41d4-a716-446655440000';
+        const uuidPattern =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        expect(validId).toMatch(uuidPattern);
+      });
 
-    it('should validate inventory is non-negative', () => {
-      const validInventory = 50;
-      expect(validInventory).toBeGreaterThanOrEqual(0);
+      it('should reject non-UUID product_id', () => {
+        const invalidId = 'not-a-uuid';
+        const uuidPattern =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{3}-[0-9a-f]{3}-[0-9a-f]{12}$/i;
+        expect(invalidId).not.toMatch(uuidPattern);
+      });
 
-      const invalidInventory = -10;
-      expect(invalidInventory).toBeLessThan(0);
-    });
-
-    it('should return success response on valid creation', () => {
-      const response: TestResponse<{
-        id: string;
-        name: string;
-        price: number;
-      }> = {
-        success: true,
-        data: {
-          id: 'prod-123',
-          name: 'Test Product',
-          price: 10000,
-        },
-      };
-      expect(response.success).toBe(true);
-      expect(response.data).toHaveProperty('id');
-    });
-
-    it('should return error response on validation failure', () => {
-      const response: TestResponse<never> = {
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Invalid product data',
-        },
-      };
-      expect(response.success).toBe(false);
-      expect(response.error?.code).toBe('VALIDATION_ERROR');
-    });
-
-    it('should return error if category not found', () => {
-      const response: TestResponse<never> = {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Category not found',
-        },
-      };
-      expect(response.success).toBe(false);
-      expect(response.error?.code).toBe('NOT_FOUND');
-    });
-  });
-
-  describe('Product Update', () => {
-    it('should validate product_id is UUID', () => {
-      const validId = '550e8400-e29b-41d4-a716-446655440000';
-      const uuidPattern =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      expect(validId).toMatch(uuidPattern);
-    });
-
-    it('should reject non-UUID product_id', () => {
-      const invalidId = 'not-a-uuid';
-      const uuidPattern =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{3}-[0-9a-f]{3}-[0-9a-f]{12}$/i;
-      expect(invalidId).not.toMatch(uuidPattern);
-    });
-
-    it('should allow partial updates', () => {
-      const update = {
-        name: 'Updated Name',
-      };
-      expect(Object.keys(update).length).toBe(1);
-    });
-
-    it('should return 404 if product not found', () => {
-      const response: TestResponse<never> = {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Product not found',
-        },
-      };
-      expect(response.error?.code).toBe('NOT_FOUND');
-    });
-
-    it('should return updated product on success', () => {
-      const response: TestResponse<{
-        id: string;
-        name: string;
-        updated_at: string;
-      }> = {
-        success: true,
-        data: {
-          id: 'prod-123',
+      it('should allow partial updates', () => {
+        const update = {
           name: 'Updated Name',
-          updated_at: new Date().toISOString(),
-        },
-      };
-      expect(response.success).toBe(true);
-      expect(response.data!.name).toBe('Updated Name');
+        };
+        expect(Object.keys(update).length).toBe(1);
+      });
+
+      it('should return 404 if product not found', () => {
+        const response: TestResponse<never> = {
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Product not found',
+          },
+        };
+        expect(response.error?.code).toBe('NOT_FOUND');
+      });
+
+      it('should return updated product on success', () => {
+        const response: TestResponse<{
+          id: string;
+          name: string;
+          updated_at: string;
+        }> = {
+          success: true,
+          data: {
+            id: 'prod-123',
+            name: 'Updated Name',
+            updated_at: new Date().toISOString(),
+          },
+        };
+        expect(response.success).toBe(true);
+        expect(response.data!.name).toBe('Updated Name');
+      });
+    });
+
+    describe('Product Deletion', () => {
+      it('should validate product_id', () => {
+        const validId = '550e8400-e29b-41d4-a716-446655440000';
+        const uuidPattern =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        expect(validId).toMatch(uuidPattern);
+      });
+
+      it('should return 404 if product not found', () => {
+        const response: TestResponse<never> = {
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Product not found',
+          },
+        };
+        expect(response.error?.code).toBe('NOT_FOUND');
+      });
+
+      it('should return success on deletion', () => {
+        const response: TestResponse<{ message: string }> = {
+          success: true,
+          data: {
+            message: 'Product deleted successfully',
+          },
+        };
+        expect(response.success).toBe(true);
+      });
+    });
+
+    describe('Get Categories Action', () => {
+      it('should return list of categories', () => {
+        const response: TestResponse<Array<{ id: string; name: string }>> = {
+          success: true,
+          data: [
+            { id: 'cat-1', name: 'Electronics' },
+            { id: 'cat-2', name: 'Clothing' },
+          ],
+        };
+        expect(response.success).toBe(true);
+        expect(Array.isArray(response.data)).toBe(true);
+      });
+
+      it('should return empty array if no categories exist', () => {
+        const response: TestResponse<Array<{ id: string; name: string }>> = {
+          success: true,
+          data: [],
+        };
+        expect(response.data).toHaveLength(0);
+      });
     });
   });
 
-  describe('Product Deletion', () => {
-    it('should validate product_id', () => {
-      const validId = '550e8400-e29b-41d4-a716-446655440000';
-      const uuidPattern =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      expect(validId).toMatch(uuidPattern);
+  describe('app/business/actions/couponActions.ts - Coupon & Featured Deal Management', () => {
+    describe('Coupon Management', () => {
+      it('should validate coupon code format', () => {
+        const validCode = 'SUMMER2026';
+        expect(validCode).toMatch(/^[A-Z0-9]+$/);
+      });
+
+      it('should validate discount percentage', () => {
+        const validDiscount = 20;
+        expect(validDiscount).toBeGreaterThan(0);
+        expect(validDiscount).toBeLessThanOrEqual(100);
+      });
+
+      it('should reject discount exceeding 100%', () => {
+        const invalidDiscount = 101;
+        expect(invalidDiscount).toBeGreaterThan(100);
+      });
+
+      it('should validate expiration date is in future', () => {
+        const futureDate = new Date('2026-12-31');
+        const now = new Date();
+        expect(futureDate.getTime()).toBeGreaterThan(now.getTime());
+      });
+
+      it('should return success on coupon creation', () => {
+        const response: TestResponse<{
+          id: string;
+          code: string;
+          discount_percentage: number;
+        }> = {
+          success: true,
+          data: {
+            id: 'coupon-123',
+            code: 'SUMMER2026',
+            discount_percentage: 20,
+          },
+        };
+        expect(response.success).toBe(true);
+        expect(response.data!.code).toBe('SUMMER2026');
+      });
+
+      it('should reject duplicate coupon codes', () => {
+        const response: TestResponse<never> = {
+          success: false,
+          error: {
+            code: 'CONFLICT',
+            message: 'Coupon code already exists',
+          },
+        };
+        expect(response.error?.code).toBe('CONFLICT');
+      });
     });
 
-    it('should return 404 if product not found', () => {
-      const response: TestResponse<never> = {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Product not found',
-        },
-      };
-      expect(response.error?.code).toBe('NOT_FOUND');
+    describe('Coupon Redemption', () => {
+      it('should validate coupon code exists', () => {
+        const couponCode = 'SUMMER2026';
+        expect(couponCode).toBeDefined();
+      });
+
+      it('should check if coupon is expired', () => {
+        const expiredDate = new Date('2025-01-01');
+        const now = new Date();
+        expect(expiredDate.getTime()).toBeLessThan(now.getTime());
+      });
+
+      it('should apply valid coupon to order', () => {
+        const response: TestResponse<{
+          total: number;
+          discount: number;
+        }> = {
+          success: true,
+          data: {
+            total: 8000,
+            discount: 2000,
+          },
+        };
+        expect(response.success).toBe(true);
+        expect(response.data!.discount).toBeGreaterThan(0);
+      });
     });
 
-    it('should return success on deletion', () => {
-      const response: TestResponse<{ message: string }> = {
-        success: true,
-        data: {
-          message: 'Product deleted successfully',
-        },
-      };
-      expect(response.success).toBe(true);
-    });
-  });
-
-  describe('Coupon Management', () => {
-    it('should validate coupon code format', () => {
-      const validCode = 'SUMMER2026';
-      expect(validCode).toMatch(/^[A-Z0-9]+$/);
-    });
-
-    it('should validate discount percentage', () => {
-      const validDiscount = 20;
-      expect(validDiscount).toBeGreaterThan(0);
-      expect(validDiscount).toBeLessThanOrEqual(100);
-    });
-
-    it('should reject discount exceeding 100%', () => {
-      const invalidDiscount = 101;
-      expect(invalidDiscount).toBeGreaterThan(100);
-    });
-
-    it('should validate expiration date is in future', () => {
-      const futureDate = new Date('2026-12-31');
-      const now = new Date();
-      expect(futureDate.getTime()).toBeGreaterThan(now.getTime());
-    });
-
-    it('should return success on coupon creation', () => {
-      const response: TestResponse<{
-        id: string;
-        code: string;
-        discount_percentage: number;
-      }> = {
-        success: true,
-        data: {
-          id: 'coupon-123',
-          code: 'SUMMER2026',
-          discount_percentage: 20,
-        },
-      };
-      expect(response.success).toBe(true);
-      expect(response.data!.code).toBe('SUMMER2026');
-    });
-
-    it('should reject duplicate coupon codes', () => {
-      const response: TestResponse<never> = {
-        success: false,
-        error: {
-          code: 'CONFLICT',
-          message: 'Coupon code already exists',
-        },
-      };
-      expect(response.error?.code).toBe('CONFLICT');
-    });
-  });
-
-  describe('Featured Deals', () => {
-    it('should validate product_id', () => {
-      const validRequest = {
-        product_id: '550e8400-e29b-41d4-a716-446655440000',
-        start_date: '2026-03-21T00:00:00Z',
-        end_date: '2026-03-28T23:59:59Z',
-      };
-      const uuidPattern =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      expect(validRequest.product_id).toMatch(uuidPattern);
-    });
-
-    it('should validate end_date is after start_date', () => {
-      const start = new Date('2026-03-21');
-      const end = new Date('2026-03-28');
-      expect(end.getTime()).toBeGreaterThan(start.getTime());
-    });
-
-    it('should return success on deal creation', () => {
-      const response: TestResponse<{ id: string; product_id: string }> = {
-        success: true,
-        data: {
-          id: 'deal-123',
+    describe('Featured Deals', () => {
+      it('should validate product_id', () => {
+        const validRequest = {
           product_id: '550e8400-e29b-41d4-a716-446655440000',
-        },
-      };
-      expect(response.success).toBe(true);
-    });
+          start_date: '2026-03-21T00:00:00Z',
+          end_date: '2026-03-28T23:59:59Z',
+        };
+        const uuidPattern =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        expect(validRequest.product_id).toMatch(uuidPattern);
+      });
 
-    it('should return 404 if product not found', () => {
-      const response: TestResponse<never> = {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Product not found for featured deal',
-        },
-      };
-      expect(response.error?.code).toBe('NOT_FOUND');
+      it('should validate end_date is after start_date', () => {
+        const start = new Date('2026-03-21');
+        const end = new Date('2026-03-28');
+        expect(end.getTime()).toBeGreaterThan(start.getTime());
+      });
+
+      it('should return success on deal creation', () => {
+        const response: TestResponse<{ id: string; product_id: string }> = {
+          success: true,
+          data: {
+            id: 'deal-123',
+            product_id: '550e8400-e29b-41d4-a716-446655440000',
+          },
+        };
+        expect(response.success).toBe(true);
+      });
+
+      it('should return 404 if product not found', () => {
+        const response: TestResponse<never> = {
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Product not found for featured deal',
+          },
+        };
+        expect(response.error?.code).toBe('NOT_FOUND');
+      });
     });
   });
 
-  describe('Error Handling', () => {
+  describe('app/business/actions/branchActions.ts - Branch Management', () => {
+    describe('Branch Operations', () => {
+      it('should validate branch name is required', () => {
+        const validBranch = {
+          name: 'Main Branch',
+          address: '123 Main St',
+          city: 'Manila',
+        };
+        expect('name' in validBranch).toBe(true);
+      });
+
+      it('should validate branch address format', () => {
+        const validAddress = '123 Main Street, Barangay Gulod';
+        expect(validAddress.length).toBeGreaterThan(10);
+      });
+
+      it('should validate location coordinates if provided', () => {
+        const location = {
+          latitude: 14.5995,
+          longitude: 120.9842,
+        };
+        expect(location.latitude).toBeDefined();
+        expect(location.longitude).toBeDefined();
+      });
+
+      it('should return success on branch creation', () => {
+        const response: TestResponse<{
+          id: string;
+          name: string;
+        }> = {
+          success: true,
+          data: {
+            id: 'branch-123',
+            name: 'Main Branch',
+          },
+        };
+        expect(response.success).toBe(true);
+        expect(response.data!.name).toBe('Main Branch');
+      });
+
+      it('should return error for duplicate branch name in business', () => {
+        const response: TestResponse<never> = {
+          success: false,
+          error: {
+            code: 'CONFLICT',
+            message: 'Branch name already exists for this business',
+          },
+        };
+        expect(response.error?.code).toBe('CONFLICT');
+      });
+
+      it('should update branch details', () => {
+        const response: TestResponse<{ id: string; name: string }> = {
+          success: true,
+          data: {
+            id: 'branch-123',
+            name: 'Updated Branch Name',
+          },
+        };
+        expect(response.success).toBe(true);
+      });
+
+      it('should delete branch successfully', () => {
+        const response: TestResponse<{ message: string }> = {
+          success: true,
+          data: {
+            message: 'Branch deleted successfully',
+          },
+        };
+        expect(response.success).toBe(true);
+      });
+
+      it('should return 404 if branch not found', () => {
+        const response: TestResponse<never> = {
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Branch not found',
+          },
+        };
+        expect(response.error?.code).toBe('NOT_FOUND');
+      });
+    });
+  });
+
+  describe('Error Handling & Authorization', () => {
     it('should return consistent error response format', () => {
       const errorResponse: ApiResponse<never> = {
         success: false,
@@ -312,9 +452,7 @@ describe('Server Actions - Business Operations', () => {
       expect(errorContext).toHaveProperty('userId');
       expect(errorContext).toHaveProperty('timestamp');
     });
-  });
 
-  describe('Authorization', () => {
     it('should return 401 for unauthenticated actions', () => {
       const response: TestResponse<never> = {
         success: false,

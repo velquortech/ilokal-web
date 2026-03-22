@@ -328,7 +328,7 @@ Ilokal-web now has a **complete, production-ready authentication system** featur
 
 ### 1. Server Actions Architecture
 
-#### Core Server Actions (app/auth/actions.ts)
+#### Core Server Actions (app/(auth)/actions/authActions.ts)
 
 - ✅ `loginAction()` - Secure email/password login
 - ✅ `signupAction()` - Safe account creation with validation

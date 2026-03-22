@@ -67,8 +67,11 @@ Complete guide to the authentication and authorization system for Ilokal, built 
 
 ```
 app/
-├── auth/                     # Authentication routes
-│   ├── actions.ts            # ✅ Server Actions (main auth logic)
+├── (auth)/                   # Authentication routes
+│   ├── actions/              # ✅ Server Actions folder (split structure)
+│   │   ├── authActions.ts    # Core auth (login, signup, logout, etc.)
+│   │   ├── userActions.ts    # User profile management
+│   │   └── index.ts          # Barrel export for backward compatibility
 │   ├── layout.tsx
 │   ├── login/page.tsx        # Login page
 │   └── signup/page.tsx       # Signup page
@@ -234,7 +237,7 @@ Periodic verification (every 60 seconds):
 All sensitive operations use Server Actions, never client-side API calls:
 
 ```typescript
-// app/auth/actions.ts
+// app/(auth)/actions/authActions.ts
 'use server';
 
 export async function loginAction(email: string, password: string) {

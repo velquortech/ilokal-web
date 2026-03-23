@@ -36,7 +36,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import type { ApiResponse } from '@/lib/types/common';
 import { updateCurrentUserProfileSchema } from '@/lib/validation/auth';
 import {

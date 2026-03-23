@@ -23,7 +23,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import type { User } from '@/lib/types';
 
 type ApiResponse<T = unknown> = {

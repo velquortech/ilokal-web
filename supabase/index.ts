@@ -7,7 +7,9 @@ export async function createClient() {
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   // Use a server-only env var name to avoid accidental exposure to the client
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_SERVICE_SECRET_KEY;
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_SECRET_KEY;
 
   if (!url || !key) {
     throw new Error(
@@ -36,7 +38,10 @@ export async function createClient() {
           // (Don't throw — this may be called from Server Components where setting
           // cookies is not allowed.)
           // eslint-disable-next-line no-console
-          console.error('supabase: failed to set cookies in createClient.setAll', err);
+          console.error(
+            'supabase: failed to set cookies in createClient.setAll',
+            err,
+          );
         }
       },
     },

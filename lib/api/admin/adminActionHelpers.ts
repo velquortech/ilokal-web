@@ -3,8 +3,10 @@
  * Reduces boilerplate and centralizes error handling
  */
 
-import { createServerSupabaseClient } from '@/supabase/server';
-import { createClient } from '@/supabase';
+import {
+  createServerSupabaseClient,
+  createServerAdminClient,
+} from '@/supabase/server';
 import { CreateUserInput } from '@/services/api/userService';
 import { AdminUser } from '@/lib/types/admin';
 
@@ -62,7 +64,7 @@ export async function createAuthUser(
   email: string,
   password: string,
 ): Promise<{ userId: string | null; error: string | null }> {
-  const adminSupabase = await createClient();
+  const adminSupabase = await createServerAdminClient();
 
   const { data: authData, error: authError } =
     await adminSupabase.auth.admin.createUser({
@@ -138,7 +140,7 @@ export async function unarchiveUser(
 export async function deleteAuthUser(
   userId: string,
 ): Promise<{ error: string | null }> {
-  const adminSupabase = await createClient();
+  const adminSupabase = await createServerAdminClient();
 
   const { error: deleteError } =
     await adminSupabase.auth.admin.deleteUser(userId);
@@ -162,7 +164,7 @@ export async function updateAuthUser(
     return { error: null };
   }
 
-  const adminSupabase = await createClient();
+  const adminSupabase = await createServerAdminClient();
   const authUpdateData: Record<string, unknown> = {};
 
   if (email) {

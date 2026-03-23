@@ -3,8 +3,8 @@
  * Reduces boilerplate and centralizes error handling
  */
 
-import { createServerSupabaseClient } from '@/config/server';
-import { createClient } from '@/config';
+import { createServerSupabaseClient } from '@/supabase/server';
+import { createClient } from '@/supabase';
 import { CreateUserInput } from '@/services/api/userService';
 import { AdminUser } from '@/lib/types/admin';
 

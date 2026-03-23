@@ -3,7 +3,7 @@
  * Business logic for branch management
  */
 
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import type {
   Branch,
   ApiResponse,

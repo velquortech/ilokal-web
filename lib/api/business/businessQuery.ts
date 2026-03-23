@@ -5,7 +5,7 @@
  * Handles all database interactions with proper error handling.
  */
 
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import { Business, AdminBusiness, BusinessFilters } from '@/lib/types/business';
 
 // ============================================================================

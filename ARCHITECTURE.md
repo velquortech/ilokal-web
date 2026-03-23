@@ -160,7 +160,7 @@
         ┌──────────────────────────────────────┐
         │                                      │
         │    Supabase SSR Backend              │
-        │   (config/server.ts)                 │
+        │   (supabase/server.ts)               │
         │                                      │
         │  Cookie Security:                    │
         │  ├─ httpOnly: true                   │
@@ -348,7 +348,7 @@ Session extended              Every 60 seconds:
          ▼
 ┌────────────────────────────────────────────────────┐
 │    Supabase SSR Client                             │
-│    (config/server.ts)                              │
+│    (supabase/server.ts)                            │
 │                                                    │
 │  - Creates server-only Supabase client             │
 │  - Manages HTTP-only cookies                       │

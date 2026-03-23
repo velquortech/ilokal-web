@@ -305,15 +305,6 @@ config/
 ├── routeConfig.ts              # ✅ **Single source of truth for all routes**
 │                                # Defines: ROUTES object and PROTECTED_ROUTES
 │
-├── server.ts                   # Server-side configuration
-│                                # - Secure cookie options
-│                                # - Supabase server client config
-│
-├── client.ts                   # Client-side configuration
-│                                # - Supabase public key
-│                                # - Client config options
-│
-├── index.ts                    # Exports all configs
 ├── adminConfig.ts              # Admin-specific settings
 ├── phoneConfig.ts              # Phone number validation config
 └── sidebarConfig.ts            # Sidebar navigation configuration
@@ -468,6 +459,9 @@ Supabase-specific files for database management.
 ```
 supabase/
 ├── config.toml                 # Local Supabase CLI configuration
+├── client.ts                   # Client-side Supabase config (browser/anon key)
+├── server.ts                   # Server-side Supabase helpers (session & admin clients)
+├── index.ts                    # Barrel export for backward compatibility
 ├── migrations/                 # **Database migrations**
 │   ├── 001_initial_schema.sql
 │   ├── 002_profiles_table.sql

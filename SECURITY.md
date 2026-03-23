@@ -49,7 +49,7 @@ Complete guide to security hardening, configuration, and verification for Ilokal
 └──────────────────────────────────────────┘
                      ↓
 ┌──────────────────────────────────────────┐
-│   Cookie Security (config/server.ts)     │
+│   Cookie Security (supabase/server.ts)   │
 │  - HttpOnly (no JS access)               │
 │  - Secure (HTTPS only)                   │
 │  - SameSite: Lax (CSRF protection)       │
@@ -66,12 +66,12 @@ Complete guide to security hardening, configuration, and verification for Ilokal
 
 ---
 
-## 🍪 Cookie Security (config/server.ts)
+## 🍪 Cookie Security (supabase/server.ts)
 
 ### Configuration
 
 ```typescript
-// config/server.ts
+// supabase/server.ts
 const secureOptions = {
   httpOnly: true, // ✅ Prevents JavaScript access (XSS protection)
   secure: true, // ✅ Only sent over HTTPS
@@ -343,9 +343,9 @@ SameSite: ✅ Lax        ← Click to check
 
 All three should show ✅. If any show ❌, check:
 
-- **HttpOnly ❌?** Check `config/server.ts` has `httpOnly: true`
-- **Secure ❌?** You're on HTTP (normal for localhost). Production must use HTTPS.
-- **SameSite ❌?** Check `config/server.ts` has `sameSite: 'lax'`
+-- **HttpOnly ❌?** Check `supabase/server.ts` has `httpOnly: true`
+-- **Secure ❌?** You're on HTTP (normal for localhost). Production must use HTTPS.
+-- **SameSite ❌?** Check `supabase/server.ts` has `sameSite: 'lax'`
 
 ### 2. Verify HTTP Headers
 

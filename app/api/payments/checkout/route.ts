@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import type { ApiResponse, StripeCheckoutSession } from '@/lib/types';
 import { checkoutRequestSchema } from '@/lib/validation/payments';
 import * as paymentService from '@/lib/api/payments/paymentService';

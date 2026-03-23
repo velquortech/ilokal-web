@@ -3,7 +3,7 @@
  * Business logic for coupon and featured deal management
  */
 
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import type {
   Coupon,
   CouponDetailResponse,

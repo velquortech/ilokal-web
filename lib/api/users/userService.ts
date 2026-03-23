@@ -5,7 +5,7 @@
  * Used by both server actions and API routes to avoid duplication.
  */
 
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import { UpdateCurrentUserProfileInput } from '@/lib/validation/auth';
 import { User } from '@/lib/types';
 

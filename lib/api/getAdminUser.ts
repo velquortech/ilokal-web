@@ -8,7 +8,7 @@
  */
 
 import { redirect } from 'next/navigation';
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import { User } from '@/lib/types/user';
 import { ROUTES } from '@/config/routeConfig';
 

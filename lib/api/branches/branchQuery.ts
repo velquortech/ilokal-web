@@ -3,7 +3,7 @@
  * Handles all direct Supabase database operations for branches
  */
 
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import type { Branch, BranchResponse, BranchFilters } from '@/lib/types';
 
 // ===== Branch Queries =====

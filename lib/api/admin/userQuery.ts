@@ -8,7 +8,7 @@
  * - inactive: Only inactive users (status='inactive' or 'suspended')
  */
 
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import { AdminUser } from '@/lib/types/admin';
 
 export type UserFilterType = 'active' | 'archived' | 'all' | 'inactive';

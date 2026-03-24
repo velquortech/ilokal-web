@@ -178,6 +178,15 @@ export type {
   AdminActivityLog,
 } from './admin';
 
+// Review types
+export type {
+  Review,
+  CreateReviewRequest,
+  UpdateReviewRequest,
+  PaginatedReviewsResponse,
+  RatingResponse,
+} from './review';
+
 // Form Types
 export type { SelectFieldConfig, UserFormModalProps } from './forms';
 

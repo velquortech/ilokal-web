@@ -187,6 +187,9 @@ export type {
   RatingResponse,
 } from './review';
 
+// Analytics Types
+export type { PlatformAnalytics, AdminAnalyticsResponse } from './analytics';
+
 // Form Types
 export type { SelectFieldConfig, UserFormModalProps } from './forms';
 

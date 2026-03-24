@@ -1,0 +1,48 @@
+export const dynamic = 'force-dynamic';
+
+import { NextResponse, type NextRequest } from 'next/server';
+import type { ApiResponse } from '@/lib/types';
+import * as reviewService from '@/lib/api/reviews/reviewService';
+import { updateReviewSchema } from '@/lib/validation/reviews';
+import type { UpdateReviewRequest } from '@/lib/types';
+
+export async function PUT(request: NextRequest) {
+  try {
+    const pathParts = request.nextUrl.pathname.split('/').filter(Boolean);
+    const id = pathParts[pathParts.length - 1];
+    const body = await request.json();
+    const parsed = updateReviewSchema.parse(body);
+    const result = await reviewService.updateReview(
+      id,
+      parsed as UpdateReviewRequest,
+    );
+    return NextResponse.json(result, { status: result.success ? 200 : 400 });
+  } catch (error) {
+    console.error('[PUT /api/reviews/:id]', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: (error as Error).message },
+      } as ApiResponse<null>,
+      { status: 400 },
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const pathParts = request.nextUrl.pathname.split('/').filter(Boolean);
+    const id = pathParts[pathParts.length - 1];
+    const result = await reviewService.deleteReview(id);
+    return NextResponse.json(result, { status: result.success ? 200 : 400 });
+  } catch (error) {
+    console.error('[DELETE /api/reviews/:id]', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: { code: 'INTERNAL_ERROR', message: 'Failed to delete review' },
+      } as ApiResponse<null>,
+      { status: 500 },
+    );
+  }
+}

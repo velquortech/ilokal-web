@@ -178,6 +178,15 @@ export type {
   AdminActivityLog,
 } from './admin';
 
+// Moderation types
+export type {
+  ModerationReport,
+  FlaggedContent,
+  ModerationActionRequest,
+  SuspendRequest,
+  WarnRequest,
+} from './moderation';
+
 // Review types
 export type {
   Review,

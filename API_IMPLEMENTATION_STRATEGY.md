@@ -821,39 +821,43 @@ WEEK 7+    (P3) Notifications + Optimizations
 
 ### Phase 9: Reviews & Ratings (P2)
 
-**Timeline: Week 5-6 | Status: 0% Complete**
+**Timeline: Week 5-6 | Status: ✅ Implemented (code + tests present)**
 
 #### Reviews Endpoints
 
-- [ ] POST /api/reviews - Create review
-- [ ] GET /api/reviews - List reviews (with pagination)
-- [ ] GET /api/reviews/business/:id - Get reviews for business
-- [ ] GET /api/reviews/product/:id - Get reviews for product
-- [ ] PUT /api/reviews/:id - Update review
-- [ ] DELETE /api/reviews/:id - Delete review (owner or admin)
-- [ ] GET /api/ratings/:id - Get average rating
-- [ ] POST /api/reviews/:id/helpful - Mark review as helpful
+- [x] POST /api/reviews - Create review ✅
+- [x] GET /api/reviews - List reviews (with pagination) ✅
+- [x] GET /api/reviews/business/:id - Get reviews for business ✅
+- [x] GET /api/reviews/product/:id - Get reviews for product ✅
+- [x] PUT /api/reviews/:id - Update review ✅
+- [x] DELETE /api/reviews/:id - Delete review (owner or admin) ✅
+- [x] GET /api/ratings/:id - Get average rating ✅
+- [x] POST /api/reviews/:id/helpful - Mark review as helpful ✅
+
+**Notes:** Implementation includes types, Zod validation, service/query layer, server actions, API routes and unit tests. Minor QA/edge-case hardening may remain.
 
 ---
 
 ### Phase 10: Analytics & Reporting (P2)
 
-**Timeline: Week 6+ | Status: 0% Complete**
+**Timeline: Week 6+ | Status: ✅ Implemented (admin + business routes added)**
 
 #### Business Owner Analytics
 
-- [ ] GET /api/analytics/dashboard - Business dashboard stats
-- [ ] GET /api/analytics/products - Product performance
-- [ ] GET /api/analytics/coupons - Coupon redemption stats
-- [ ] GET /api/analytics/traffic - Page views, visitors
-- [ ] GET /api/analytics/revenue - Revenue breakdown
+- [x] GET /api/analytics/dashboard - Business dashboard stats ✅
+- [x] GET /api/analytics/products - Product performance ✅
+- [x] GET /api/analytics/coupons - Coupon redemption stats ✅
+- [x] GET /api/analytics/traffic - Page views, visitors ✅
+- [x] GET /api/analytics/revenue - Revenue breakdown ✅
 
 #### Admin Analytics
 
-- [ ] GET /api/admin/analytics/platform - Platform overview
-- [ ] GET /api/admin/analytics/users - User growth metrics
-- [ ] GET /api/admin/analytics/revenue - Total revenue
-- [ ] GET /api/admin/analytics/businesses - Business metrics
+- [x] GET /api/admin/analytics/platform - Platform overview ✅
+- [x] GET /api/admin/analytics/users - User growth metrics ✅
+- [x] GET /api/admin/analytics/revenue - Total revenue ✅
+- [x] GET /api/admin/analytics/businesses - Business metrics ✅
+
+**Notes:** Admin analytics and business analytics routes, services and tests were added. A Supabase aggregation typing issue was resolved by moving aggregation to the JS layer for compatibility; build/type-check is passing locally.
 
 ---
 
@@ -906,31 +910,33 @@ For EACH endpoint that gets implemented, ensure:
 
 ## Progress Summary
 
-**Total Endpoints Defined:** 117  
-**Endpoints Implemented:** 87 (74%)  
-**Endpoints In Progress:** 0  
-**Endpoints Pending:** 30 (26%)
+This summary reflects the current repository implementation state. Key analytics and reviews work have been added recently.
 
-### By Phase:
+**Endpoints Implemented:** core platform endpoints and search/reviews/analytics routes implemented across the codebase (see per-phase status below).
 
-- **Phase 1 (P0):** 11/11 endpoints (100%) ✅ **COMPLETE** - Auth & User Management
-- **Phase 2 (P0):** 15/15 endpoints (100%) ✅ **COMPLETE** - Business & Admin Management + Uploads
-- **Phase 3 (P1):** 9/9 endpoints (100%) ✅ **COMPLETE** - Products & Categories
-- **Phase 4 (P1):** 7/7 endpoints (100%) ✅ **COMPLETE** - Branches & Locations
-- **Phase 5 (P1):** 12/12 endpoints (100%) ✅ **COMPLETE** - Coupons & Deals
-- **Phase 6 (P1):** 9/9 endpoints (100%) ✅ **COMPLETE** - Payments & Transactions
-- **Phase 7 (P1):** 15/15 endpoints (100%) ✅ **COMPLETE** - Subscriptions & Billing
-- **Phase 8 (P2):** 5/5 endpoints (100%) ✅ **COMPLETE** - Search & Discovery
-- **Phase 9-12 (P2-P3):** 0/30 endpoints (0%) - Reviews, Analytics, Moderation, Notifications
+### By Phase (high level):
+
+- **Phase 1 (P0):** ✅ COMPLETE - Auth & User Management
+- **Phase 2 (P0):** ✅ COMPLETE - Business & Admin Management + Uploads
+- **Phase 3 (P1):** ✅ COMPLETE - Products & Categories
+- **Phase 4 (P1):** ✅ COMPLETE - Branches & Locations
+- **Phase 5 (P1):** ✅ COMPLETE - Coupons & Deals
+- **Phase 6 (P1):** ✅ COMPLETE - Payments & Transactions
+- **Phase 7 (P1):** ✅ COMPLETE - Subscriptions & Billing
+- **Phase 8 (P2):** ✅ COMPLETE - Search & Discovery
+- **Phase 9 (P2):** ✅ COMPLETE - Reviews & Ratings (implementation + tests present)
+- **Phase 10 (P2):** ✅ COMPLETE - Analytics & Reporting (admin + business analytics routes added; minor QA possible)
+- **Phase 11 (P2):** ⏳ IN PROGRESS - Admin Moderation (pending)
+- **Phase 12 (P3):** ⏳ IN PROGRESS - Notifications (pending)
 
 ### Critical Path (Revenue):
 
 1. ✅ Authentication endpoints (COMPLETE)
 2. ✅ Business Profile management + Uploads (COMPLETE)
 3. ✅ Payments & Subscriptions (COMPLETE)
-4. ✅ Featured Deals/Premium features (COMPLETE as coupons)
-5. ⏳ Analytics (in planning - Phase 10)
+4. ✅ Featured Deals/Premium features (COMPLETE)
+5. ✅ Analytics & Reporting (routes implemented; verify dashboards and final QA)
 
 ---
 
-## Last Updated: March 22, 2026
+## Last Updated: March 24, 2026

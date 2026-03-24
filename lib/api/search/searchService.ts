@@ -187,3 +187,47 @@ export async function getTrendingService(
     };
   }
 }
+
+/**
+ * Get simple autocomplete/suggestions for query
+ */
+export async function getSuggestions(
+  query: string,
+  limit: number = 10,
+): Promise<ApiResponse<{ suggestions: string[] }>> {
+  try {
+    if (!query || !query.trim()) {
+      return { success: true, data: { suggestions: [] } };
+    }
+
+    // Reuse query layer to fetch small result sets
+    const [bizResults, prodResults] = await Promise.all([
+      searchQuery.searchBusinesses(
+        query,
+        undefined,
+        { page: 1, per_page: limit },
+        'relevance',
+      ),
+      searchQuery.searchProducts(
+        query,
+        undefined,
+        { page: 1, per_page: limit },
+        'relevance',
+      ),
+    ]);
+
+    const names = new Set<string>();
+    bizResults.results.forEach((b) => b.name && names.add(b.name));
+    prodResults.results.forEach((p) => p.name && names.add(p.name));
+
+    const suggestions = Array.from(names).slice(0, limit);
+
+    return { success: true, data: { suggestions } };
+  } catch (error) {
+    console.error('[getSuggestions]', error);
+    return {
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'Failed to get suggestions' },
+    };
+  }
+}

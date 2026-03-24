@@ -3,7 +3,7 @@
 ### Test Coverage Summary
 
 **Framework**: Vitest 4.1.1  
-**Current Status**: ✅ **473 tests passing** (21 test files)
+**Current Status**: ✅ **480 tests passing** (22 test files)
 
 | Category           | Tests | Status      | Details                                                                                 |
 | ------------------ | ----- | ----------- | --------------------------------------------------------------------------------------- |
@@ -23,7 +23,8 @@
 
 - **Lint:** Passed (`eslint --fix` applied)
 - **Build:** Next.js production build succeeded (Next.js 16.2.1)
-- **Tests:** 473 passed across 21 test files (`vitest --run`)
+- **Tests:** 480 passed across 22 test files (`vitest --run`)
+  - **Run details:** Start at 18:20:46, Duration 1.31s
 - **Notes:** Tests produced expected stderr logs from mocked error paths; overall suite green.
 
 - [ ] Add tests for auth validation schemas (auth.ts)

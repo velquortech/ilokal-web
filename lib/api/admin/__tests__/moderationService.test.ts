@@ -11,7 +11,9 @@ describe('moderationService', () => {
     const sample = [
       { id: 'f1', target_type: 'product', target_id: 'p1', reason: 'spam' },
     ];
-    vi.mocked(q.fetchFlaggedContent).mockResolvedValueOnce(sample as any);
+    vi.mocked(q.fetchFlaggedContent).mockResolvedValueOnce(
+      sample as unknown as Awaited<ReturnType<typeof q.fetchFlaggedContent>>,
+    );
 
     const res = await svc.getFlaggedContent(1, 10);
     expect(res.success).toBe(true);
@@ -29,14 +31,18 @@ describe('moderationService', () => {
     const sample = [
       { id: 'r1', reporter_id: 'u1', target_type: 'product', status: 'open' },
     ];
-    vi.mocked(q.fetchReports).mockResolvedValueOnce(sample as any);
+    vi.mocked(q.fetchReports).mockResolvedValueOnce(
+      sample as unknown as Awaited<ReturnType<typeof q.fetchReports>>,
+    );
     const res = await svc.getReports(1, 5);
     expect(res.success).toBe(true);
     expect(res.data).toEqual(sample);
   });
 
   it('createReport returns created report', async () => {
-    const created = { id: 'r2', reporter_id: 'u2' } as any;
+    const created = { id: 'r2', reporter_id: 'u2' } as unknown as Awaited<
+      ReturnType<typeof q.createReport>
+    >;
     vi.mocked(q.createReport).mockResolvedValueOnce(created);
     const res = await svc.createReport({ reporter_id: 'u2' });
     expect(res.success).toBe(true);

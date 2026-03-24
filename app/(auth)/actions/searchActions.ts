@@ -191,3 +191,25 @@ export async function getTrendingAction(input: TrendingQueryInput) {
     } as ApiResponse<null>;
   }
 }
+
+/**
+ * Suggestions (autocomplete) server action
+ */
+export async function getSuggestionsAction(query: string, limit: number = 10) {
+  try {
+    if (!query || !query.trim()) {
+      return { success: true, data: { suggestions: [] } } as ApiResponse<{
+        suggestions: string[];
+      }>;
+    }
+
+    const result = await searchService.getSuggestions(query.trim(), limit);
+    return result;
+  } catch (error) {
+    console.error('[getSuggestionsAction]', error);
+    return {
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'Failed to get suggestions' },
+    } as ApiResponse<null>;
+  }
+}

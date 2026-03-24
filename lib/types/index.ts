@@ -189,6 +189,13 @@ export type {
 
 // Analytics Types
 export type { PlatformAnalytics, AdminAnalyticsResponse } from './analytics';
+export type {
+  BusinessDashboard,
+  ProductPerformance,
+  CouponStats,
+  TrafficMetrics,
+  BusinessRevenue,
+} from './analyticsBusiness';
 
 // Form Types
 export type { SelectFieldConfig, UserFormModalProps } from './forms';

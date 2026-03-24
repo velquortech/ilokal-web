@@ -7,9 +7,10 @@ import { moderationActionSchema } from '@/lib/validation/moderation';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  context: { params: { id: string } | Promise<{ id: string }> },
 ) {
   try {
+    const params = await Promise.resolve(context.params);
     const { id } = params;
     const body = await request.json();
     const parsed = moderationActionSchema.safeParse(body);
@@ -34,7 +35,7 @@ export async function PUT(
     const result = await moderationService.actionOnReport(
       id,
       status,
-      parsed.data.comment,
+      parsed.data.comment ?? undefined,
     );
     return NextResponse.json(result, { status: result.success ? 200 : 400 });
   } catch (error) {

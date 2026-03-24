@@ -187,6 +187,14 @@ export type {
   WarnRequest,
 } from './moderation';
 
+// Notification types
+export type {
+  Notification,
+  NotificationPreferences,
+  CreateNotificationRequest,
+  PaginatedNotificationsResponse,
+} from './notification';
+
 // Review types
 export type {
   Review,

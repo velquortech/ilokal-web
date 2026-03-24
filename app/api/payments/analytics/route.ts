@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import type { ApiResponse, PaymentAnalytics } from '@/lib/types';
 import * as paymentQuery from '@/lib/api/payments/paymentQuery';
 

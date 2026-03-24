@@ -35,7 +35,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import { z } from 'zod';
 
 type ApiResponse<T = unknown> = {

@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import { businessFiltersSchema } from '@/lib/validation/business';
 import {
   getBusinessesPaginated,

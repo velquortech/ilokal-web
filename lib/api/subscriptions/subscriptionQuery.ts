@@ -3,7 +3,7 @@
  * All subscription, plan, and billing-related queries
  */
 
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import type {
   Subscription,
   SubscriptionPlan,

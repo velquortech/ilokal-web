@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import { uuidSchema } from '@/lib/validation/business';
 import { rejectBusiness } from '@/lib/api/business/businessService';
 

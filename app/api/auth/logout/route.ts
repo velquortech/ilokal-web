@@ -17,7 +17,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 
 type ApiResponse<T = unknown> = {
   success: boolean;

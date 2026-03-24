@@ -3,7 +3,7 @@
  * Handles all direct Supabase database operations for products and categories
  */
 
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import type {
   Product,
   Category,

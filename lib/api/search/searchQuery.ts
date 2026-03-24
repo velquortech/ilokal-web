@@ -3,7 +3,7 @@
  * All search and discovery related queries
  */
 
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import type {
   SearchResponse,
   BusinessSearchResult,

@@ -89,8 +89,10 @@ app/
 config/
 ├── sessionConfig.ts          # ✅ Session timeouts & verification config
 ├── routeConfig.ts            # ✅ Centralized route definitions
-├── server.ts                 # Secure server-side Supabase config
-└── client.ts                 # Client-side Supabase config
+
+supabase/
+├── server.ts                 # Secure server-side Supabase config (moved from `config/`)
+└── client.ts                 # Client-side Supabase config (moved from `config/`)
 
 lib/
 ├── api/
@@ -327,7 +329,7 @@ if (!validation.success) {
 ### Cookie Security
 
 ```typescript
-// config/server.ts
+// supabase/server.ts
 const secureOptions = {
   httpOnly: true, // ✅ JavaScript cannot access (XSS protection)
   secure: true, // ✅ HTTPS only (in production)

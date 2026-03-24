@@ -3,7 +3,7 @@
  * Handles all direct Supabase database operations for coupons and featured deals
  */
 
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import type {
   Coupon,
   CouponFilters,

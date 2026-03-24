@@ -390,7 +390,7 @@ Ilokal-web now has a **complete, production-ready authentication system** featur
 
 ### 4. Security Hardening
 
-#### Cookie Security (config/server.ts)
+#### Cookie Security (supabase/server.ts)
 
 ```typescript
 httpOnly: true  ← Prevents JavaScript access (XSS protection)
@@ -461,10 +461,9 @@ components/
 
 config/
 ├── routeConfig.ts              ✅ **CENTRALIZED ROUTES** (NEW)
-├── server.ts                   ✅ Secure cookie options
-├── client.ts
 ├── adminConfig.ts
-└── sidebarConfig.ts
+├── sidebarConfig.ts
+└── sessionConfig.ts            ✅ Session timeouts & verification
 
 lib/
 ├── types/

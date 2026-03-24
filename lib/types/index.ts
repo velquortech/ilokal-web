@@ -178,6 +178,42 @@ export type {
   AdminActivityLog,
 } from './admin';
 
+// Moderation types
+export type {
+  ModerationReport,
+  FlaggedContent,
+  ModerationActionRequest,
+  SuspendRequest,
+  WarnRequest,
+} from './moderation';
+
+// Notification types
+export type {
+  Notification,
+  NotificationPreferences,
+  CreateNotificationRequest,
+  PaginatedNotificationsResponse,
+} from './notification';
+
+// Review types
+export type {
+  Review,
+  CreateReviewRequest,
+  UpdateReviewRequest,
+  PaginatedReviewsResponse,
+  RatingResponse,
+} from './review';
+
+// Analytics Types
+export type { PlatformAnalytics, AdminAnalyticsResponse } from './analytics';
+export type {
+  BusinessDashboard,
+  ProductPerformance,
+  CouponStats,
+  TrafficMetrics,
+  BusinessRevenue,
+} from './analyticsBusiness';
+
 // Form Types
 export type { SelectFieldConfig, UserFormModalProps } from './forms';
 

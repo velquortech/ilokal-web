@@ -3,7 +3,7 @@
  * Business logic for payments and invoices
  */
 
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import type {
   Invoice,
   ApiResponse,

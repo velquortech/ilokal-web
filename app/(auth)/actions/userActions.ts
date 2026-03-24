@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import { User } from '@/lib/types/user';
 import {
   UpdateCurrentUserProfileInput,

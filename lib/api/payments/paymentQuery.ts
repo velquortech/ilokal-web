@@ -3,7 +3,7 @@
  * All database read operations
  */
 
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import type {
   Payment,
   Invoice,

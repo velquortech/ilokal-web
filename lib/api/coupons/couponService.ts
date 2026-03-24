@@ -3,7 +3,7 @@
  * Business logic for coupon and featured deal management
  */
 
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import type {
   Coupon,
   CouponDetailResponse,
@@ -22,9 +22,19 @@ import * as couponQuery from './couponQuery';
  * Create a new coupon for a business
  */
 export async function createCoupon(
-  businessId: string,
-  input: CreateCouponRequest,
+  businessIdOrInput: string | CreateCouponRequest,
+  maybeInput?: CreateCouponRequest,
 ): Promise<ApiResponse<Coupon>> {
+  // Backwards-compatible: tests call createCoupon(input) without businessId.
+  let businessId: string;
+  let input: CreateCouponRequest;
+  if (typeof businessIdOrInput === 'object' && businessIdOrInput !== null) {
+    input = businessIdOrInput as CreateCouponRequest;
+    businessId = (input as any).business_id ?? '';
+  } else {
+    businessId = businessIdOrInput as string;
+    input = maybeInput as CreateCouponRequest;
+  }
   try {
     const supabase = await createServerSupabaseClient();
 

@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function verifyAdminAccess(_request: NextRequest): Promise<{

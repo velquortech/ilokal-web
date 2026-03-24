@@ -143,12 +143,18 @@ export async function getTrafficMetrics(
     .eq('business_id', businessId)
     .gte('created_at', thirtyDaysAgo);
 
-  const { count: uv } = await supabase
+  const { data: uvData } = await supabase
     .from('page_views')
-    .select('visitor_id', { count: 'exact' })
+    .select('visitor_id')
     .eq('business_id', businessId)
-    .gte('created_at', thirtyDaysAgo)
-    .distinct();
+    .gte('created_at', thirtyDaysAgo);
+  const uv = Array.isArray(uvData)
+    ? new Set(
+        uvData.map((r: unknown) =>
+          String((r as Record<string, unknown>).visitor_id),
+        ),
+      ).size
+    : 0;
 
   return {
     business_id: businessId,
@@ -183,19 +189,25 @@ export async function getBusinessRevenue(
   }
 
   // We'll attempt to query payments grouped by month; fallback to empty months if unsupported
+  // Fetch payments for the last 6 months and aggregate in JS to avoid DB-specific group syntax
   try {
+    const earliest = new Date();
+    earliest.setMonth(earliest.getMonth() - 5);
+    earliest.setDate(1);
+    const earliestIso = earliest.toISOString();
     const { data } = await supabase
       .from('payments')
-      .select("to_char(created_at, 'YYYY-MM') as month, sum:sum(amount)")
+      .select('created_at, amount')
       .eq('status', 'succeeded')
       .eq('business_id', businessId)
-      .group('month');
+      .gte('created_at', earliestIso);
 
     if (Array.isArray(data)) {
       data.forEach((r: unknown) => {
         const row = r as Record<string, unknown>;
-        const m = String(row.month);
-        if (m in months) months[m] = Number(row.sum ?? 0);
+        const created = new Date(String(row.created_at));
+        const label = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}`;
+        if (label in months) months[label] += Number(row.amount ?? 0);
       });
     }
   } catch {

@@ -7,9 +7,10 @@ import { warnSchema } from '@/lib/validation/moderation';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  context: { params: { id: string } | Promise<{ id: string }> },
 ) {
   try {
+    const params = await Promise.resolve(context.params);
     const { id } = params;
     const body = await request.json();
     const parsed = warnSchema.safeParse(body);
@@ -23,7 +24,7 @@ export async function POST(
       );
     }
     const { target_type, message } = parsed.data;
-    const result = await moderationService.warn(target_type, id, message);
+    const result = await moderationService.warn(target_type, id, message ?? '');
     return NextResponse.json(result, { status: result.success ? 200 : 400 });
   } catch (error) {
     console.error('[POST /api/admin/moderation/:id/warn]', error);

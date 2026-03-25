@@ -1,4 +1,4 @@
-import { getAdminUserOrRedirect } from '@/lib/api/getAdminUser';
+import { getAdminUserOrRedirect } from '@/lib/api/getCurrentUser';
 import { AdminLayoutClient } from '@/app/admin/components/AdminLayoutClient';
 
 // This route uses cookies for authentication, must be dynamic

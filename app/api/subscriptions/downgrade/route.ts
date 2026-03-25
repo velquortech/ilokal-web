@@ -6,7 +6,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse } from '@/lib/types';
-import { getCurrentUser } from '@/lib/api/getAdminUser';
+import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import { downgradeSubscriptionSchema } from '@/lib/validation/subscriptions';
 import * as subscriptionQuery from '@/lib/api/subscriptions/subscriptionQuery';
 import * as subscriptionService from '@/lib/api/subscriptions/subscriptionService';

@@ -13,6 +13,8 @@ import type {
   StripePaymentConfirm,
 } from '@/lib/types';
 import * as paymentQuery from './paymentQuery';
+import auditEvent from '@/lib/utils/audit';
+import { claimIdempotencyKey } from '@/lib/utils/idempotency';
 
 // Stripe would be imported from '@stripe/stripe-js' or '@stripe/stripe-node'
 // For now, we'll stub the integration
@@ -120,6 +122,14 @@ export async function confirmPayment(
 
     const payment = result.payment;
     const supabase = await createServerSupabaseClient();
+    // Idempotent: if already succeeded, treat as success
+    if (payment.status === 'succeeded') {
+      await auditEvent('payment_confirm_idempotent', { paymentId });
+      return {
+        success: true,
+        data: { status: 'succeeded' },
+      };
+    }
 
     // Update payment status to succeeded
     const { error: updateError } = await supabase
@@ -151,6 +161,8 @@ export async function confirmPayment(
         business_id: payment.business_id || undefined,
       });
     }
+
+    await auditEvent('payment_confirm', { paymentId, userId: payment.user_id });
 
     return {
       success: true,
@@ -193,9 +205,7 @@ export async function refundPayment(
 
     // Idempotency: if already refunded, treat as success
     if (payment.status === 'refunded') {
-      console.info(
-        `[refundPayment] payment ${paymentId} already refunded - idempotent return`,
-      );
+      await auditEvent('refund_idempotent', { paymentId });
       return { success: true, data: null };
     }
 
@@ -211,8 +221,15 @@ export async function refundPayment(
 
     const supabase = await createServerSupabaseClient();
 
-    // Audit: log refund attempt
-    console.info(`[refundPayment] refunding payment ${paymentId} by admin`);
+    // Audit: record refund attempt
+    await auditEvent('refund_attempt', { paymentId });
+
+    // Optional idempotency claim (best-effort)
+    try {
+      await claimIdempotencyKey(`refund:${paymentId}`);
+    } catch (e) {
+      // ignore idempotency helper errors
+    }
 
     // Update payment status to refunded (handled via archived_at)
     const { error: updateError } = await supabase

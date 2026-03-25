@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/supabase/server';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { businessFiltersSchema } from '@/lib/validation/business';
 import {
   getBusinessesPaginated,
@@ -19,28 +19,9 @@ import {
  */
 export async function GET(request: NextRequest) {
   try {
-    // Verify admin access
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user: currentUser },
-    } = await supabase.auth.getUser();
-
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', currentUser.id)
-      .single();
-
-    if (profile?.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Only admins can access this endpoint' },
-        { status: 403 },
-      );
-    }
+    // Enforce admin authorization
+    const auth = await assertAuthorized(request, { roles: ['admin'] });
+    if (!auth.authorized) return auth.error;
 
     // Parse and validate filters from query params
     const queryParams = Object.fromEntries(request.nextUrl.searchParams);

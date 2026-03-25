@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse } from '@/lib/types';
 import * as reviewService from '@/lib/api/reviews/reviewService';
 import { createReviewSchema } from '@/lib/validation/reviews';
@@ -35,9 +36,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await assertAuthorized(request);
+    if (!auth.authorized) return auth.error;
+
     const body = await request.json();
+    // Inject server-side user id
+    const payload = { ...body, user_id: auth.user.id };
     // Validate
-    const parsed = createReviewSchema.parse(body);
+    const parsed = createReviewSchema.parse(payload);
     const result = await reviewService.createReview(
       parsed as CreateReviewRequest,
     );

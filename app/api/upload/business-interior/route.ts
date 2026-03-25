@@ -1,28 +1,25 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
-
-    // Verify the user is authenticated
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    const auth = await verifyBusinessOwner();
+    if (!auth.authorized) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 },
+        { success: false, error: auth.error?.message || 'Unauthorized' },
+        { status: auth.error?.code === 'AUTHENTICATION_ERROR' ? 401 : 403 },
       );
     }
 
+    const supabase = await createServerSupabaseClient();
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
-    const businessId = (formData.get('businessId') as string) || '';
+    const businessId =
+      (formData.get('businessId') as string) || auth.business!.id;
 
     if (!file) {
       return NextResponse.json(

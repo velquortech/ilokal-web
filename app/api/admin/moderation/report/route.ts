@@ -1,12 +1,15 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse, type NextRequest } from 'next/server';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse } from '@/lib/types';
 import * as moderationService from '@/lib/api/admin/moderationService';
 import { createReportSchema } from '@/lib/validation/moderation';
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await assertAuthorized(request, { roles: ['admin'] });
+    if (!auth.authorized) return auth.error;
     const body = await request.json();
     const parsed = createReportSchema.safeParse(body);
     if (!parsed.success) {

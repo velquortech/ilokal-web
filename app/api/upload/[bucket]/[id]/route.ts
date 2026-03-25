@@ -1,24 +1,15 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ bucket: string; id: string }> },
 ) {
   try {
+    const auth = await assertAuthorized();
+    if (!auth.authorized) return auth.error;
     const supabase = await createServerSupabaseClient();
-
-    // Verify the user is authenticated
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 },
-      );
-    }
 
     const { bucket, id } = await params;
 
@@ -41,14 +32,8 @@ export async function DELETE(
 
     // For verification-docs, only allow admins or the owner
     if (bucket === 'verification-docs') {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-
-      const isAdmin = profile?.role === 'admin';
-      const isOwner = filePath.startsWith(user.id);
+      const isAdmin = auth.profile.role === 'admin';
+      const isOwner = filePath.startsWith(auth.user.id);
 
       if (!isAdmin && !isOwner) {
         return NextResponse.json(

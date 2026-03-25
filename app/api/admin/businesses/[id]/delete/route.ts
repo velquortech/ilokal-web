@@ -5,44 +5,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/supabase/server';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { uuidSchema } from '@/lib/validation/business';
 import { permanentlyDeleteBusiness } from '@/lib/api/business/businessService';
 
-/**
- * Verify admin access helper
- */
-async function verifyAdminAccess() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user: currentUser },
-  } = await supabase.auth.getUser();
-
-  if (!currentUser) {
-    return {
-      authorized: false,
-      response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
-    };
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', currentUser.id)
-    .single();
-
-  if (profile?.role !== 'admin') {
-    return {
-      authorized: false,
-      response: NextResponse.json(
-        { error: 'Only admins can access this endpoint' },
-        { status: 403 },
-      ),
-    };
-  }
-
-  return { authorized: true };
-}
+// Use centralized assertAuthorized for admin checks
 
 /**
  * DELETE /api/admin/businesses/[id]/delete
@@ -54,8 +21,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, response } = await verifyAdminAccess();
-    if (!authorized) return response;
+    const auth = await assertAuthorized(request, { roles: ['admin'] });
+    if (!auth.authorized) return auth.error;
 
     // Validate ID format
     const { id } = await params;

@@ -17,6 +17,7 @@ import type {
   CancelSubscriptionRequest,
 } from '@/lib/types';
 import { getCurrentUser } from '@/lib/api/getAdminUser';
+import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import {
   createSubscriptionSchema,
   updateSubscriptionSchema,
@@ -31,14 +32,17 @@ import * as subscriptionService from '@/lib/api/subscriptions/subscriptionServic
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
+    const auth = await verifyBusinessOwner();
+    if (!auth.authorized) {
       return NextResponse.json(
         {
           success: false,
-          error: { code: 'AUTHENTICATION_ERROR', message: 'Not authenticated' },
+          error: auth.error || {
+            code: 'AUTHENTICATION_ERROR',
+            message: 'Not authenticated',
+          },
         } as ApiResponse<null>,
-        { status: 401 },
+        { status: auth.error?.code === 'AUTHENTICATION_ERROR' ? 401 : 403 },
       );
     }
 
@@ -60,7 +64,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
+    const businessResult = { data: { id: auth.business!.id } };
     if ('error' in businessResult) {
       return NextResponse.json(
         {

@@ -4,50 +4,29 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/supabase/server';
+import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import type { ApiResponse } from '@/lib/types';
 import { couponFiltersSchema } from '@/lib/validation/coupons';
 import * as couponQuery from '@/lib/api/coupons/couponQuery';
 
 export async function GET(req: NextRequest) {
   try {
-    // Get user's business
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    // Verify business owner session
+    const auth = await verifyBusinessOwner();
+    if (!auth.authorized) {
       return NextResponse.json(
         {
           success: false,
-          error: {
-            code: 'AUTHENTICATION_ERROR',
-            message: 'You must be logged in',
-          },
-        } as ApiResponse<null>,
-        { status: 401 },
-      );
-    }
-
-    const { data: business } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('owner_id', user.id)
-      .single();
-
-    if (!business) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
+          error: auth.error || {
             code: 'AUTHORIZATION_ERROR',
-            message: 'You do not have a business',
+            message: 'Unauthorized',
           },
         } as ApiResponse<null>,
-        { status: 403 },
+        { status: auth.error?.code === 'AUTHENTICATION_ERROR' ? 401 : 403 },
       );
     }
+
+    const business = auth.business!;
 
     const searchParams = req.nextUrl.searchParams;
 

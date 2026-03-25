@@ -27,7 +27,11 @@ export async function PUT(
         { status: 400 },
       );
     }
-    const result = await notificationsService.markRead(id, parsed.data.read);
+    const result = await notificationsService.markRead(
+      id,
+      parsed.data.read,
+      auth.user.id,
+    );
     return NextResponse.json(result, { status: result.success ? 200 : 400 });
   } catch (error) {
     console.error('[PUT /api/notifications/:id]', error);

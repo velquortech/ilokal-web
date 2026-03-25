@@ -19,6 +19,7 @@ export async function PUT(request: NextRequest) {
     const result = await reviewService.updateReview(
       id,
       parsed as UpdateReviewRequest,
+      { userId: auth.user.id, role: auth.profile.role },
     );
     return NextResponse.json(result, { status: result.success ? 200 : 400 });
   } catch (error) {
@@ -40,7 +41,10 @@ export async function DELETE(request: NextRequest) {
 
     const pathParts = request.nextUrl.pathname.split('/').filter(Boolean);
     const id = pathParts[pathParts.length - 1];
-    const result = await reviewService.deleteReview(id);
+    const result = await reviewService.deleteReview(id, {
+      userId: auth.user.id,
+      role: auth.profile.role,
+    });
     return NextResponse.json(result, { status: result.success ? 200 : 400 });
   } catch (error) {
     console.error('[DELETE /api/reviews/:id]', error);

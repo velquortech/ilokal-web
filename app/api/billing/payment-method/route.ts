@@ -104,8 +104,25 @@ export async function GET(request: NextRequest) {
     if (idMatch) {
       const paymentMethodId = idMatch[1];
 
-      const result =
-        await subscriptionQuery.getPaymentMethodById(paymentMethodId);
+      // Ensure payment method belongs to the authenticated user's business
+      const businessResult = await subscriptionQuery.getUserBusiness(
+        auth.user.id,
+      );
+      if ('error' in businessResult) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: 'NOT_FOUND', message: 'No business found for user' },
+          } as ApiResponse<null>,
+          { status: 404 },
+        );
+      }
+      const businessId = businessResult.data.id;
+
+      const result = await subscriptionQuery.getPaymentMethodById(
+        paymentMethodId,
+        businessId,
+      );
 
       if ('error' in result) {
         return NextResponse.json(
@@ -116,8 +133,6 @@ export async function GET(request: NextRequest) {
           { status: 404 },
         );
       }
-
-      // TODO: Verify ownership
 
       return NextResponse.json(
         {

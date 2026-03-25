@@ -4,6 +4,7 @@
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse } from '@/lib/types';
 import { getCurrentUser } from '@/lib/api/getAdminUser';
 import { upgradeSubscriptionSchema } from '@/lib/validation/subscriptions';
@@ -12,19 +13,13 @@ import * as subscriptionService from '@/lib/api/subscriptions/subscriptionServic
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'AUTHENTICATION_ERROR', message: 'Not authenticated' },
-        } as ApiResponse<null>,
-        { status: 401 },
-      );
-    }
+    const auth = await assertAuthorized(request);
+    if (!auth.authorized) return auth.error;
 
     // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
+    const businessResult = await subscriptionQuery.getUserBusiness(
+      auth.user.id,
+    );
     if ('error' in businessResult) {
       return NextResponse.json(
         {

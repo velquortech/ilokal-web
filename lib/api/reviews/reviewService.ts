@@ -89,8 +89,31 @@ export async function createReview(
 export async function updateReview(
   id: string,
   input: UpdateReviewRequest,
+  actor?: { userId: string; role?: string },
 ): Promise<ApiResponse<Record<string, unknown>>> {
   try {
+    // ownership check
+    if (actor) {
+      const existing = await reviewQuery.getReviewById(id);
+      if ('error' in existing) {
+        return {
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Review not found' },
+        };
+      }
+      const reviewRow = existing.data as Record<string, unknown>;
+      const ownerId = String(reviewRow.user_id || '');
+      if (actor.role !== 'admin' && ownerId !== actor.userId) {
+        return {
+          success: false,
+          error: {
+            code: 'AUTHORIZATION_ERROR',
+            message: 'Not authorized to update this review',
+          },
+        };
+      }
+    }
+
     const updated = await reviewQuery.updateReview(
       id,
       input as unknown as Record<string, unknown>,
@@ -107,8 +130,32 @@ export async function updateReview(
   }
 }
 
-export async function deleteReview(id: string): Promise<ApiResponse<null>> {
+export async function deleteReview(
+  id: string,
+  actor?: { userId: string; role?: string },
+): Promise<ApiResponse<null>> {
   try {
+    if (actor) {
+      const existing = await reviewQuery.getReviewById(id);
+      if ('error' in existing) {
+        return {
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Review not found' },
+        };
+      }
+      const reviewRow = existing.data as Record<string, unknown>;
+      const ownerId = String(reviewRow.user_id || '');
+      if (actor.role !== 'admin' && ownerId !== actor.userId) {
+        return {
+          success: false,
+          error: {
+            code: 'AUTHORIZATION_ERROR',
+            message: 'Not authorized to delete this review',
+          },
+        };
+      }
+    }
+
     await reviewQuery.deleteReview(id);
     return { success: true, data: null };
   } catch (error) {

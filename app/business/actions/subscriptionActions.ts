@@ -7,6 +7,7 @@
 
 import type {
   ApiResponse,
+  ApiError,
   SubscriptionResponse,
   CreateSubscriptionRequest,
   UpdateSubscriptionRequest,
@@ -21,7 +22,7 @@ import {
   downgradeSubscriptionSchema,
   cancelSubscriptionSchema,
 } from '@/lib/validation/subscriptions';
-import { getCurrentUser } from '@/lib/api/getAdminUser';
+import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import * as subscriptionQuery from '@/lib/api/subscriptions/subscriptionQuery';
 import * as subscriptionService from '@/lib/api/subscriptions/subscriptionService';
 
@@ -33,18 +34,6 @@ export async function subscribeToplanAction(
   input: CreateSubscriptionRequest,
 ): Promise<ApiResponse<SubscriptionResponse>> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'Not authenticated',
-        },
-      };
-    }
-
-    // Validate input
     const validated = createSubscriptionSchema.safeParse(input);
     if (!validated.success) {
       return {
@@ -57,19 +46,10 @@ export async function subscribeToplanAction(
       };
     }
 
-    // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
-    if ('error' in businessResult) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'No business found for user',
-        },
-      };
-    }
-
-    const businessId = businessResult.data.id;
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+    const businessId = verify.business!.id;
 
     // Check if business already has active subscription
     const existingResult =
@@ -109,18 +89,6 @@ export async function updateSubscriptionAction(
   input: UpdateSubscriptionRequest,
 ): Promise<ApiResponse<SubscriptionResponse>> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'Not authenticated',
-        },
-      };
-    }
-
-    // Validate input
     const validated = updateSubscriptionSchema.safeParse(input);
     if (!validated.success) {
       return {
@@ -133,19 +101,10 @@ export async function updateSubscriptionAction(
       };
     }
 
-    // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
-    if ('error' in businessResult) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'No business found for user',
-        },
-      };
-    }
-
-    const businessId = businessResult.data.id;
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+    const businessId = verify.business!.id;
 
     // Get active subscription
     const subResult = await subscriptionQuery.getActiveSubscription(businessId);
@@ -184,18 +143,6 @@ export async function upgradeSubscriptionAction(
   input: UpgradeSubscriptionRequest,
 ): Promise<ApiResponse<SubscriptionResponse>> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'Not authenticated',
-        },
-      };
-    }
-
-    // Validate input
     const validated = upgradeSubscriptionSchema.safeParse(input);
     if (!validated.success) {
       return {
@@ -208,19 +155,10 @@ export async function upgradeSubscriptionAction(
       };
     }
 
-    // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
-    if ('error' in businessResult) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'No business found for user',
-        },
-      };
-    }
-
-    const businessId = businessResult.data.id;
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+    const businessId = verify.business!.id;
 
     // Get active subscription
     const subResult = await subscriptionQuery.getActiveSubscription(businessId);
@@ -259,18 +197,6 @@ export async function downgradeSubscriptionAction(
   input: DowngradeSubscriptionRequest,
 ): Promise<ApiResponse<SubscriptionResponse>> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'Not authenticated',
-        },
-      };
-    }
-
-    // Validate input
     const validated = downgradeSubscriptionSchema.safeParse(input);
     if (!validated.success) {
       return {
@@ -283,19 +209,10 @@ export async function downgradeSubscriptionAction(
       };
     }
 
-    // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
-    if ('error' in businessResult) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'No business found for user',
-        },
-      };
-    }
-
-    const businessId = businessResult.data.id;
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+    const businessId = verify.business!.id;
 
     // Get active subscription
     const subResult = await subscriptionQuery.getActiveSubscription(businessId);
@@ -334,18 +251,6 @@ export async function cancelSubscriptionAction(
   input: CancelSubscriptionRequest,
 ): Promise<ApiResponse<SubscriptionResponse>> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'Not authenticated',
-        },
-      };
-    }
-
-    // Validate input
     const validated = cancelSubscriptionSchema.safeParse(input);
     if (!validated.success) {
       return {
@@ -358,19 +263,10 @@ export async function cancelSubscriptionAction(
       };
     }
 
-    // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
-    if ('error' in businessResult) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'No business found for user',
-        },
-      };
-    }
-
-    const businessId = businessResult.data.id;
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+    const businessId = verify.business!.id;
 
     // Get active subscription
     const subResult = await subscriptionQuery.getActiveSubscription(businessId);

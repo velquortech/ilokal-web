@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import type { ApiResponse } from '@/lib/types';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 
 interface VerificationStatusData {
   id: string;
@@ -18,6 +19,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const auth = await assertAuthorized(_request);
+    if (!auth.authorized) return auth.error;
+
     const supabase = await createServerSupabaseClient();
     const { id: businessId } = await params;
 
@@ -39,7 +43,7 @@ export async function GET(
 
     const { data, error } = await supabase
       .from('businesses')
-      .select('id, status, name, created_at')
+      .select('id, status, name, created_at, owner_id')
       .eq('id', businessId)
       .is('archived_at', null)
       .single();
@@ -54,6 +58,21 @@ export async function GET(
           },
         },
         { status: 404 },
+      );
+    }
+
+    // Only allow if requester is admin or business owner
+    if (auth.profile.role !== 'admin' && data.owner_id !== auth.user.id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'FORBIDDEN',
+            message:
+              'You do not have permission to view this business verification status',
+          },
+        } as ApiResponse<null>,
+        { status: 403 },
       );
     }
 

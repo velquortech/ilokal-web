@@ -191,6 +191,14 @@ export async function refundPayment(
 
     const payment = result.payment;
 
+    // Idempotency: if already refunded, treat as success
+    if (payment.status === 'refunded') {
+      console.info(
+        `[refundPayment] payment ${paymentId} already refunded - idempotent return`,
+      );
+      return { success: true, data: null };
+    }
+
     if (payment.status !== 'succeeded') {
       return {
         success: false,
@@ -203,11 +211,14 @@ export async function refundPayment(
 
     const supabase = await createServerSupabaseClient();
 
+    // Audit: log refund attempt
+    console.info(`[refundPayment] refunding payment ${paymentId} by admin`);
+
     // Update payment status to refunded (handled via archived_at)
     const { error: updateError } = await supabase
       .from('payments')
       .update({
-        status: 'canceled',
+        status: 'refunded',
         archived_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })

@@ -14,15 +14,19 @@ export async function GET(req: NextRequest) {
     // Verify business owner session
     const auth = await verifyBusinessOwner();
     if (!auth.authorized) {
+      const errorPayload =
+        auth.error && typeof auth.error === 'object' && 'code' in auth.error
+          ? (auth.error as { code: string; message: string })
+          : { code: 'AUTHORIZATION_ERROR', message: 'Unauthorized' };
+
+      const status = errorPayload.code === 'AUTHENTICATION_ERROR' ? 401 : 403;
+
       return NextResponse.json(
         {
           success: false,
-          error: auth.error || {
-            code: 'AUTHORIZATION_ERROR',
-            message: 'Unauthorized',
-          },
+          error: errorPayload,
         } as ApiResponse<null>,
-        { status: auth.error?.code === 'AUTHENTICATION_ERROR' ? 401 : 403 },
+        { status },
       );
     }
 

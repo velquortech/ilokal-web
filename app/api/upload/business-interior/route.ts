@@ -9,17 +9,52 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await verifyBusinessOwner();
     if (!auth.authorized) {
+      const errorPayload =
+        auth.error && typeof auth.error === 'object' && 'code' in auth.error
+          ? (auth.error as { code: string; message: string })
+          : { code: 'AUTHENTICATION_ERROR', message: 'Unauthorized' };
+
+      const status = errorPayload.code === 'AUTHENTICATION_ERROR' ? 401 : 403;
+
       return NextResponse.json(
-        { success: false, error: auth.error?.message || 'Unauthorized' },
-        { status: auth.error?.code === 'AUTHENTICATION_ERROR' ? 401 : 403 },
+        { success: false, error: errorPayload.message || 'Unauthorized' },
+        { status },
       );
     }
 
     const supabase = await createServerSupabaseClient();
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
-    const businessId =
-      (formData.get('businessId') as string) || auth.business!.id;
+
+    const suppliedBusinessId =
+      (formData.get('businessId') as string) || undefined;
+    let businessId: string | undefined;
+
+    if (suppliedBusinessId) {
+      const suppliedAuth = await verifyBusinessOwner(suppliedBusinessId);
+      if (!suppliedAuth.authorized) {
+        const suppliedError =
+          suppliedAuth.error &&
+          typeof suppliedAuth.error === 'object' &&
+          'code' in suppliedAuth.error
+            ? (suppliedAuth.error as { code: string; message: string })
+            : { code: 'AUTHENTICATION_ERROR', message: 'Unauthorized' };
+
+        const status =
+          suppliedError.code === 'AUTHENTICATION_ERROR' ? 401 : 403;
+
+        return NextResponse.json(
+          {
+            success: false,
+            error: suppliedError.message || 'Unauthorized',
+          },
+          { status },
+        );
+      }
+      businessId = suppliedBusinessId;
+    } else {
+      businessId = auth.business?.id;
+    }
 
     if (!file) {
       return NextResponse.json(

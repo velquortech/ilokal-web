@@ -34,15 +34,19 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await verifyBusinessOwner();
     if (!auth.authorized) {
+      const errorPayload =
+        auth.error && typeof auth.error === 'object' && 'code' in auth.error
+          ? (auth.error as { code: string; message: string })
+          : { code: 'AUTHENTICATION_ERROR', message: 'Not authenticated' };
+
+      const status = errorPayload.code === 'AUTHENTICATION_ERROR' ? 401 : 403;
+
       return NextResponse.json(
         {
           success: false,
-          error: auth.error || {
-            code: 'AUTHENTICATION_ERROR',
-            message: 'Not authenticated',
-          },
+          error: errorPayload,
         } as ApiResponse<null>,
-        { status: auth.error?.code === 'AUTHENTICATION_ERROR' ? 401 : 403 },
+        { status },
       );
     }
 

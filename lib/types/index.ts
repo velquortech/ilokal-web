@@ -231,3 +231,6 @@ export type {
   TablesUpdate,
   Enums,
 } from './database';
+
+// Test helpers (used by unit/integration tests)
+export type { TestNextRequest } from './test';

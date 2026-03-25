@@ -4,30 +4,16 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/supabase/server';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse, StripeCheckoutSession } from '@/lib/types';
 import { checkoutRequestSchema } from '@/lib/validation/payments';
 import * as paymentService from '@/lib/api/payments/paymentService';
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'AUTHENTICATION_ERROR',
-            message: 'You must be logged in',
-          },
-        } as ApiResponse<null>,
-        { status: 401 },
-      );
-    }
+    const auth = await assertAuthorized();
+    if (!auth.authorized) return auth.error;
+    const userId = auth.user.id;
 
     const body = await req.json();
     const validation = checkoutRequestSchema.safeParse(body);
@@ -47,7 +33,7 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await paymentService.createCheckoutSession(
-      user.id,
+      userId,
       validation.data,
     );
 

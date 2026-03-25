@@ -1,25 +1,19 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await assertAuthorized();
+    if (!auth.authorized) return auth.error;
     const supabase = await createServerSupabaseClient();
-
-    // Verify the user is authenticated
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
-    const targetUserId = (formData.get('userId') as string) || user.id;
+    const targetUserId = (formData.get('userId') as string) || auth.user.id;
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });

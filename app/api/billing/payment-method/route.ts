@@ -9,12 +9,13 @@
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type {
   ApiResponse,
   SubscriptionPaymentMethod,
   PaginatedPaymentMethodResponse,
 } from '@/lib/types';
-import { getCurrentUser } from '@/lib/api/getAdminUser';
+// import { getCurrentUser } from '@/lib/api/getAdminUser';
 import {
   createPaymentMethodSchema,
   updatePaymentMethodSchema,
@@ -29,19 +30,13 @@ import * as subscriptionService from '@/lib/api/subscriptions/subscriptionServic
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'AUTHENTICATION_ERROR', message: 'Not authenticated' },
-        } as ApiResponse<null>,
-        { status: 401 },
-      );
-    }
+    const auth = await assertAuthorized(request);
+    if (!auth.authorized) return auth.error;
 
     // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
+    const businessResult = await subscriptionQuery.getUserBusiness(
+      auth.user.id,
+    );
     if ('error' in businessResult) {
       return NextResponse.json(
         {
@@ -100,17 +95,8 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'AUTHENTICATION_ERROR', message: 'Not authenticated' },
-        } as ApiResponse<null>,
-        { status: 401 },
-      );
-    }
-
+    const auth = await assertAuthorized(request);
+    if (!auth.authorized) return auth.error;
     const pathname = request.nextUrl.pathname;
     const idMatch = pathname.match(/\/api\/billing\/payment-method\/([^/]+)$/);
 
@@ -118,8 +104,25 @@ export async function GET(request: NextRequest) {
     if (idMatch) {
       const paymentMethodId = idMatch[1];
 
-      const result =
-        await subscriptionQuery.getPaymentMethodById(paymentMethodId);
+      // Ensure payment method belongs to the authenticated user's business
+      const businessResult = await subscriptionQuery.getUserBusiness(
+        auth.user.id,
+      );
+      if ('error' in businessResult) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: 'NOT_FOUND', message: 'No business found for user' },
+          } as ApiResponse<null>,
+          { status: 404 },
+        );
+      }
+      const businessId = businessResult.data.id;
+
+      const result = await subscriptionQuery.getPaymentMethodById(
+        paymentMethodId,
+        businessId,
+      );
 
       if ('error' in result) {
         return NextResponse.json(
@@ -130,8 +133,6 @@ export async function GET(request: NextRequest) {
           { status: 404 },
         );
       }
-
-      // TODO: Verify ownership
 
       return NextResponse.json(
         {
@@ -149,7 +150,9 @@ export async function GET(request: NextRequest) {
 
     // Handle GET /api/billing/payment-method (list)
     // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
+    const businessResult = await subscriptionQuery.getUserBusiness(
+      auth.user.id,
+    );
     if ('error' in businessResult) {
       return NextResponse.json(
         {
@@ -232,19 +235,13 @@ export async function GET(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'AUTHENTICATION_ERROR', message: 'Not authenticated' },
-        } as ApiResponse<null>,
-        { status: 401 },
-      );
-    }
+    const auth = await assertAuthorized(request);
+    if (!auth.authorized) return auth.error;
 
     // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
+    const businessResult = await subscriptionQuery.getUserBusiness(
+      auth.user.id,
+    );
     if ('error' in businessResult) {
       return NextResponse.json(
         {
@@ -333,19 +330,13 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'AUTHENTICATION_ERROR', message: 'Not authenticated' },
-        } as ApiResponse<null>,
-        { status: 401 },
-      );
-    }
+    const auth = await assertAuthorized(request);
+    if (!auth.authorized) return auth.error;
 
     // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
+    const businessResult = await subscriptionQuery.getUserBusiness(
+      auth.user.id,
+    );
     if ('error' in businessResult) {
       return NextResponse.json(
         {

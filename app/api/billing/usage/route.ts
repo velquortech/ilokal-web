@@ -7,35 +7,31 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import type { ApiResponse, BillingUsageResponse } from '@/lib/types';
-import { getCurrentUser } from '@/lib/api/getAdminUser';
+import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import * as subscriptionQuery from '@/lib/api/subscriptions/subscriptionQuery';
 
 export async function GET(_request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
+    const auth = await verifyBusinessOwner();
+    if (!auth.authorized) {
+      const errorPayload =
+        auth.error && typeof auth.error === 'object' && 'code' in auth.error
+          ? (auth.error as { code: string; message: string })
+          : { code: 'AUTHENTICATION_ERROR', message: 'Not authenticated' };
+
+      const status = errorPayload.code === 'AUTHENTICATION_ERROR' ? 401 : 404;
+
       return NextResponse.json(
         {
           success: false,
-          error: { code: 'AUTHENTICATION_ERROR', message: 'Not authenticated' },
+          error: errorPayload,
         } as ApiResponse<null>,
-        { status: 401 },
+        { status },
       );
     }
 
-    // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
-    if ('error' in businessResult) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'NOT_FOUND', message: 'No business found for user' },
-        } as ApiResponse<null>,
-        { status: 404 },
-      );
-    }
-
-    const businessId = businessResult.data.id;
+    // Use verified business id
+    const businessId = auth.business!.id;
 
     // Get active subscription
     const subResult = await subscriptionQuery.getActiveSubscription(businessId);

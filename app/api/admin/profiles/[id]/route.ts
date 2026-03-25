@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAdminAccess } from '@/lib/api/verifyAdminAccess';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 
 // GET - fetchSingleProfile
 export async function GET(
@@ -8,8 +8,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, error } = await verifyAdminAccess(request);
-    if (!authorized) return error;
+    const auth = await assertAuthorized(request, { roles: ['admin'] });
+    if (!auth.authorized) return auth.error;
 
     const { id } = await params;
     const supabase = await createServerSupabaseClient();

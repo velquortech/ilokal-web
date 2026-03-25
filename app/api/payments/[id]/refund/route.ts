@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/supabase/server';
 import type { ApiResponse } from '@/lib/types';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import * as paymentService from '@/lib/api/payments/paymentService';
 
 export async function POST(
@@ -13,43 +13,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'AUTHENTICATION_ERROR',
-            message: 'You must be logged in',
-          },
-        } as ApiResponse<null>,
-        { status: 401 },
-      );
-    }
-
-    // Verify admin role
-    const { data: adminUser } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (adminUser?.role !== 'admin') {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'AUTHORIZATION_ERROR',
-            message: 'Only admins can refund payments',
-          },
-        } as ApiResponse<null>,
-        { status: 403 },
-      );
-    }
+    // Require admin role
+    const auth = await assertAuthorized(req, { roles: ['admin'] });
+    if (!auth.authorized) return auth.error;
 
     const { id } = await params;
 

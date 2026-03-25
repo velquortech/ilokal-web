@@ -1,12 +1,12 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { createPaginatedResponse } from '@/services/api/paginationService';
-import { verifyAdminAccess } from '@/lib/api/verifyAdminAccess';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 
 export async function GET(request: NextRequest) {
   try {
-    const { authorized, error } = await verifyAdminAccess(request);
-    if (!authorized) return error;
+    const auth = await assertAuthorized(request, { roles: ['admin'] });
+    if (!auth.authorized) return auth.error;
 
     const supabase = await createServerSupabaseClient();
     const { searchParams } = new URL(request.url);

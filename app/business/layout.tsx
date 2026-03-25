@@ -1,4 +1,4 @@
-import { getBusinessUserOrRedirect } from '@/lib/api/getAdminUser';
+import { getBusinessUserOrRedirect } from '@/lib/api/getCurrentUser';
 import { BusinessLayoutClient } from './components/BusinessLayoutClient';
 
 // This route uses cookies for authentication, must be dynamic

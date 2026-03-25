@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerSupabaseClient } from '@/supabase/server';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { User } from '@/lib/types/user';
 import {
   UpdateCurrentUserProfileInput,
@@ -43,13 +43,9 @@ export async function updateCurrentUserProfileAction(
       };
     }
 
-    // Get current user session
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    // Use centralized auth check
+    const auth = await assertAuthorized();
+    if (!auth.authorized) {
       return {
         success: false,
         error: {
@@ -59,28 +55,8 @@ export async function updateCurrentUserProfileAction(
       };
     }
 
-    // Verify user is still active (not suspended or inactive)
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('status')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || profile.status !== 'active') {
-      console.warn(
-        `[updateCurrentUserProfileAction] Attempted update by inactive user ${user.id}`,
-      );
-      return {
-        success: false,
-        error: {
-          code: 'AUTHORIZATION_ERROR',
-          message: 'Your account is not active',
-        },
-      };
-    }
-
     // Update profile using shared service
-    const updatedUser = await updateUserProfile(user.id, validation.data);
+    const updatedUser = await updateUserProfile(auth.user.id, validation.data);
 
     return {
       success: true,

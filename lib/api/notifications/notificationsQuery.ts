@@ -48,12 +48,14 @@ export async function createNotification(input: Partial<Notification>) {
   return data as Notification;
 }
 
-export async function markAsRead(id: string, read = true) {
+export async function markAsRead(id: string, read = true, user_id?: string) {
   const supabase = await createServerSupabaseClient();
-  const { error } = await supabase
+  let query = supabase
     .from('notifications')
     .update({ is_read: read })
     .eq('id', id);
+  if (user_id) query = query.eq('user_id', user_id);
+  const { error } = await query;
   if (error) {
     console.error('[markAsRead]', error);
     return false;

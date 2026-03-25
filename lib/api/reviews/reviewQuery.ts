@@ -147,3 +147,22 @@ export async function getAverageRating(
     review_count: Number(cntVal ?? 0) || 0,
   };
 }
+
+export async function getReviewById(
+  id: string,
+): Promise<{ data: Record<string, unknown> } | { error: string }> {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('*')
+    .eq('id', id)
+    .is('archived_at', null)
+    .single();
+
+  if (error) {
+    console.error('[getReviewById]', error);
+    return { error: 'Review not found' };
+  }
+
+  return { data: data as Record<string, unknown> };
+}

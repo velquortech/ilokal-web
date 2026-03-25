@@ -8,6 +8,7 @@ import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse } from '@/lib/types';
 import { invoiceEmailSchema } from '@/lib/validation/payments';
 import * as paymentService from '@/lib/api/payments/paymentService';
+import * as paymentQuery from '@/lib/api/payments/paymentQuery';
 
 export async function POST(
   req: NextRequest,
@@ -33,6 +34,35 @@ export async function POST(
           },
         } as ApiResponse<null>,
         { status: 400 },
+      );
+    }
+
+    // Ownership check: only invoice owner or admin may send invoice
+    const invoiceRes = await paymentQuery.getInvoiceById(id);
+    if ('error' in invoiceRes) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Invoice not found' },
+        } as ApiResponse<null>,
+        { status: 404 },
+      );
+    }
+
+    const invoice = invoiceRes.invoice as { user_id?: string };
+    if (
+      auth.profile.role !== 'admin' &&
+      String(invoice.user_id || '') !== auth.user.id
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'AUTHORIZATION_ERROR',
+            message: 'Not authorized to send this invoice',
+          },
+        } as ApiResponse<null>,
+        { status: 403 },
       );
     }
 

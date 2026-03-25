@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
           success: false,
           error: {
             code: 'AUTHORIZATION_ERROR',
-            message: 'You do not have permission to view this business analytics',
+            message:
+              'You do not have permission to view this business analytics',
           },
         } as ApiResponse<null>,
         { status: 403 },

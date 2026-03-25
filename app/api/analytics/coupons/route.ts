@@ -22,14 +22,17 @@ export async function GET(request: NextRequest) {
       );
     }
     // Verify business ownership
-    const businessResult = await subscriptionQuery.getUserBusiness(auth.user.id);
+    const businessResult = await subscriptionQuery.getUserBusiness(
+      auth.user.id,
+    );
     if ('error' in businessResult || businessResult.data.id !== businessId) {
       return NextResponse.json(
         {
           success: false,
           error: {
             code: 'AUTHORIZATION_ERROR',
-            message: 'You do not have permission to view this business analytics',
+            message:
+              'You do not have permission to view this business analytics',
           },
         } as ApiResponse<null>,
         { status: 403 },

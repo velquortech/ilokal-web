@@ -227,7 +227,7 @@ export async function refundPayment(
     // Optional idempotency claim (best-effort)
     try {
       await claimIdempotencyKey(`refund:${paymentId}`);
-    } catch (e) {
+    } catch {
       // ignore idempotency helper errors
     }
 

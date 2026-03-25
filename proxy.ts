@@ -1,6 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { ROUTES, PROTECTED_ROUTES } from '@/config/routeConfig';
+import { ROUTES } from '@/config/routeConfig';
+import {
+  isProtectedPath,
+  roleAllowedForPath,
+} from '@/lib/utils/protectedRoutes';
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
@@ -55,18 +59,8 @@ export async function proxy(request: NextRequest) {
   }
 
   // Define protected routes by role
-  const adminRoutes = [PROTECTED_ROUTES.ADMIN];
-  const businessRoutes = [PROTECTED_ROUTES.BUSINESS];
-  const protectedRoutes = [...adminRoutes, ...businessRoutes];
-
-  // Check if current path is protected
-  const isProtectedRoute = protectedRoutes.some((route) =>
-    pathname.startsWith(route),
-  );
-  const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route));
-  const isBusinessRoute = businessRoutes.some((route) =>
-    pathname.startsWith(route),
-  );
+  // Use centralized helper for protected-route decisions
+  const isProtectedRoute = isProtectedPath(pathname);
 
   // Redirect unauthenticated users trying to access protected routes
   if (isProtectedRoute && !user) {
@@ -81,13 +75,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(ROUTES.AUTH.LOGIN, request.url));
   }
 
-  // Role-based access control for admin routes
-  if (isAdminRoute && user && userRole !== 'admin') {
-    return NextResponse.redirect(new URL(ROUTES.DASHBOARD.HOME, request.url));
-  }
-
-  // Role-based access control for business routes
-  if (isBusinessRoute && user && userRole !== 'business_owner') {
+  // Role-based access control
+  if (isProtectedRoute && user && !roleAllowedForPath(userRole, pathname)) {
     return NextResponse.redirect(new URL(ROUTES.DASHBOARD.HOME, request.url));
   }
 
@@ -97,5 +86,10 @@ export async function proxy(request: NextRequest) {
 export const config = {
   // Matcher must use static strings (evaluated at build time)
   // Maps to PROTECTED_ROUTES.ADMIN = '/admin' and PROTECTED_ROUTES.BUSINESS = '/business'
-  matcher: ['/admin/:path*', '/business/:path*'],
+  matcher: [
+    '/admin/:path*',
+    '/business/:path*',
+    '/admin/settings/:path*',
+    '/business/settings/:path*',
+  ],
 };

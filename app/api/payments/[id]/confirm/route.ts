@@ -5,14 +5,46 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import type { ApiResponse, StripePaymentConfirm } from '@/lib/types';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import * as paymentService from '@/lib/api/payments/paymentService';
+import * as paymentQuery from '@/lib/api/payments/paymentQuery';
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    // Require authentication for confirming payments
+    const auth = await assertAuthorized(req);
+    if (!auth.authorized) return auth.error;
+
     const { id } = await params;
+
+    // Ensure requester is payment owner or admin
+    const paymentResult = await paymentQuery.getPaymentById(id);
+    if ('error' in paymentResult) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Payment not found' },
+        },
+        { status: 404 },
+      );
+    }
+
+    const payment = paymentResult.payment;
+    if (auth.profile.role !== 'admin' && payment.user_id !== auth.user.id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'FORBIDDEN',
+            message: 'You do not have permission to confirm this payment',
+          },
+        },
+        { status: 403 },
+      );
+    }
 
     const result = await paymentService.confirmPayment(id);
 

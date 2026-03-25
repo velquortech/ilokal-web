@@ -45,6 +45,7 @@ import {
   PROFILE_SELECT_FIELDS,
 } from '@/lib/api/users/userService';
 import type { User } from '@/lib/types';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 
 /**
  * GET /api/users/me
@@ -52,31 +53,16 @@ import type { User } from '@/lib/types';
  */
 export async function GET(): Promise<NextResponse> {
   try {
+    const auth = await assertAuthorized();
+    if (!auth.authorized) return auth.error;
+
     const supabase = await createServerSupabaseClient();
 
-    // Get current user
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          error: {
-            code: 'AUTHENTICATION_ERROR',
-            message: 'Authentication required',
-          },
-        },
-        { status: 401 },
-      );
-    }
-
-    // Fetch profile
+    // Fetch profile (use id from auth.profile to be explicit)
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select(PROFILE_SELECT_FIELDS)
-      .eq('id', user.id)
+      .eq('id', auth.user.id)
       .single();
 
     if (profileError || !profile) {
@@ -129,25 +115,9 @@ export async function GET(): Promise<NextResponse> {
  */
 export async function PUT(request: NextRequest): Promise<NextResponse> {
   try {
-    const supabase = await createServerSupabaseClient();
-
-    // Get current user
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          error: {
-            code: 'AUTHENTICATION_ERROR',
-            message: 'Authentication required',
-          },
-        },
-        { status: 401 },
-      );
-    }
+    // Ensure caller is authorized
+    const auth = await assertAuthorized(request);
+    if (!auth.authorized) return auth.error;
 
     // Parse and validate request body
     const body = await request.json();
@@ -167,7 +137,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     }
 
     // Call shared service
-    const updated = await updateUserProfile(user.id, validation.data);
+    const updated = await updateUserProfile(auth.user.id, validation.data);
 
     return NextResponse.json<ApiResponse<User>>(
       {

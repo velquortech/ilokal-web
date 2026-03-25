@@ -13,7 +13,7 @@ import type {
   PaginatedInvoiceResponse,
   Subscription,
 } from '@/lib/types';
-import { getCurrentUser } from '@/lib/api/getAdminUser';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { invoiceFiltersSchema } from '@/lib/validation/subscriptions';
 import * as subscriptionQuery from '@/lib/api/subscriptions/subscriptionQuery';
 
@@ -23,16 +23,9 @@ import * as subscriptionQuery from '@/lib/api/subscriptions/subscriptionQuery';
  */
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'AUTHENTICATION_ERROR', message: 'Not authenticated' },
-        } as ApiResponse<null>,
-        { status: 401 },
-      );
-    }
+    const auth = await assertAuthorized(request);
+    if (!auth.authorized) return auth.error;
+    const user = { id: auth.user.id } as { id: string };
 
     const pathname = request.nextUrl.pathname;
     const idMatch = pathname.match(/\/api\/billing\/invoices\/([^/]+)$/);
@@ -53,7 +46,32 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // TODO: Verify ownership - invoice.business_id === user.business_id
+      // Verify ownership - invoice.business_id === user.business_id
+      const businessResult = await subscriptionQuery.getUserBusiness(user.id);
+      if ('error' in businessResult) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: 'NOT_FOUND', message: 'No business found for user' },
+          } as ApiResponse<null>,
+          { status: 404 },
+        );
+      }
+
+      const businessId = businessResult.data.id;
+
+      if (result.data.business_id !== businessId) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'AUTHORIZATION_ERROR',
+              message: 'You do not have permission to view this invoice',
+            },
+          } as ApiResponse<null>,
+          { status: 403 },
+        );
+      }
 
       // Get subscription details
       const subResult = await subscriptionQuery.getSubscriptionById(

@@ -20,6 +20,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/supabase/server';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { z } from 'zod';
 import type { User } from '@/lib/types';
 
@@ -41,62 +42,6 @@ const updateUserSchema = z.object({
   status: z.enum(['active', 'inactive', 'suspended']).optional(),
 });
 
-type VerifyAdminResult = {
-  authorized: boolean;
-  response?: NextResponse<ApiResponse>;
-};
-
-/**
- * Verify current user is admin
- */
-async function verifyAdminAccess(
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
-): Promise<VerifyAdminResult> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return {
-      authorized: false,
-      response: NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          error: {
-            code: 'AUTHENTICATION_ERROR',
-            message: 'Authentication required',
-          },
-        },
-        { status: 401 },
-      ),
-    };
-  }
-
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (error || profile?.role !== 'admin') {
-    return {
-      authorized: false,
-      response: NextResponse.json<ApiResponse>(
-        {
-          success: false,
-          error: {
-            code: 'AUTHORIZATION_ERROR',
-            message: 'Only admins can access this resource',
-          },
-        },
-        { status: 403 },
-      ),
-    };
-  }
-
-  return { authorized: true };
-}
-
 /**
  * GET /api/users/:id
  * Get user by ID (admin only)
@@ -106,12 +51,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   try {
+    const auth = await assertAuthorized(request, { roles: ['admin'] });
+    if (!auth.authorized) return auth.error;
     const supabase = await createServerSupabaseClient();
-    const result = await verifyAdminAccess(supabase);
-
-    if (!result.authorized) {
-      return result.response!;
-    }
 
     const { id } = await params;
     const validation = uuidSchema.safeParse({ id });
@@ -191,12 +133,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   try {
+    const auth = await assertAuthorized(request, { roles: ['admin'] });
+    if (!auth.authorized) return auth.error;
     const supabase = await createServerSupabaseClient();
-    const result = await verifyAdminAccess(supabase);
-
-    if (!result.authorized) {
-      return result.response!;
-    }
 
     const { id } = await params;
     const validation = uuidSchema.safeParse({ id });
@@ -344,12 +283,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   try {
+    const auth = await assertAuthorized(request, { roles: ['admin'] });
+    if (!auth.authorized) return auth.error;
     const supabase = await createServerSupabaseClient();
-    const result = await verifyAdminAccess(supabase);
-
-    if (!result.authorized) {
-      return result.response!;
-    }
 
     const { id } = await params;
     const validation = uuidSchema.safeParse({ id });

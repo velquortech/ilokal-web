@@ -13,6 +13,8 @@ import type {
   StripePaymentConfirm,
 } from '@/lib/types';
 import * as paymentQuery from './paymentQuery';
+import auditEvent from '@/lib/utils/audit';
+import { claimIdempotencyKey } from '@/lib/utils/idempotency';
 
 // Stripe would be imported from '@stripe/stripe-js' or '@stripe/stripe-node'
 // For now, we'll stub the integration
@@ -120,6 +122,14 @@ export async function confirmPayment(
 
     const payment = result.payment;
     const supabase = await createServerSupabaseClient();
+    // Idempotent: if already succeeded, treat as success
+    if (payment.status === 'succeeded') {
+      await auditEvent('payment_confirm_idempotent', { paymentId });
+      return {
+        success: true,
+        data: { status: 'succeeded' },
+      };
+    }
 
     // Update payment status to succeeded
     const { error: updateError } = await supabase
@@ -151,6 +161,8 @@ export async function confirmPayment(
         business_id: payment.business_id || undefined,
       });
     }
+
+    await auditEvent('payment_confirm', { paymentId, userId: payment.user_id });
 
     return {
       success: true,
@@ -191,6 +203,12 @@ export async function refundPayment(
 
     const payment = result.payment;
 
+    // Idempotency: if already refunded, treat as success
+    if (payment.status === 'refunded') {
+      await auditEvent('refund_idempotent', { paymentId });
+      return { success: true, data: null };
+    }
+
     if (payment.status !== 'succeeded') {
       return {
         success: false,
@@ -203,11 +221,21 @@ export async function refundPayment(
 
     const supabase = await createServerSupabaseClient();
 
+    // Audit: record refund attempt
+    await auditEvent('refund_attempt', { paymentId });
+
+    // Optional idempotency claim (best-effort)
+    try {
+      await claimIdempotencyKey(`refund:${paymentId}`);
+    } catch {
+      // ignore idempotency helper errors
+    }
+
     // Update payment status to refunded (handled via archived_at)
     const { error: updateError } = await supabase
       .from('payments')
       .update({
-        status: 'canceled',
+        status: 'refunded',
         archived_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })

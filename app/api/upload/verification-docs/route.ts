@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB for documents
 const ALLOWED_TYPES = [
@@ -14,23 +15,54 @@ const ALLOWED_TYPES = [
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
+    const auth = await verifyBusinessOwner();
+    if (!auth.authorized) {
+      const errorPayload =
+        auth.error && typeof auth.error === 'object' && 'code' in auth.error
+          ? (auth.error as { code: string; message: string })
+          : { code: 'AUTHENTICATION_ERROR', message: 'Unauthorized' };
 
-    // Verify the user is authenticated
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+      const status = errorPayload.code === 'AUTHENTICATION_ERROR' ? 401 : 403;
 
-    if (!user) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 },
+        { success: false, error: errorPayload.message || 'Unauthorized' },
+        { status },
       );
     }
 
+    const supabase = await createServerSupabaseClient();
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
-    const businessId = (formData.get('businessId') as string) || '';
+
+    const suppliedBusinessId =
+      (formData.get('businessId') as string) || undefined;
+    let businessId: string | undefined;
+
+    if (suppliedBusinessId) {
+      const suppliedAuth = await verifyBusinessOwner(suppliedBusinessId);
+      if (!suppliedAuth.authorized) {
+        const suppliedError =
+          suppliedAuth.error &&
+          typeof suppliedAuth.error === 'object' &&
+          'code' in suppliedAuth.error
+            ? (suppliedAuth.error as { code: string; message: string })
+            : { code: 'AUTHENTICATION_ERROR', message: 'Unauthorized' };
+
+        const status =
+          suppliedError.code === 'AUTHENTICATION_ERROR' ? 401 : 403;
+
+        return NextResponse.json(
+          {
+            success: false,
+            error: suppliedError.message || 'Unauthorized',
+          },
+          { status },
+        );
+      }
+      businessId = suppliedBusinessId;
+    } else {
+      businessId = auth.business?.id;
+    }
 
     if (!file) {
       return NextResponse.json(

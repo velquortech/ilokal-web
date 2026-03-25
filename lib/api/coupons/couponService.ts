@@ -30,7 +30,10 @@ export async function createCoupon(
   let input: CreateCouponRequest;
   if (typeof businessIdOrInput === 'object' && businessIdOrInput !== null) {
     input = businessIdOrInput as CreateCouponRequest;
-    businessId = (input as any).business_id ?? '';
+    const maybeBusinessId = (businessIdOrInput as Record<string, unknown>)[
+      'business_id'
+    ];
+    businessId = typeof maybeBusinessId === 'string' ? maybeBusinessId : '';
   } else {
     businessId = businessIdOrInput as string;
     input = maybeInput as CreateCouponRequest;

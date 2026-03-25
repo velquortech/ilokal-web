@@ -16,7 +16,8 @@ import type {
   SubscriptionResponse,
   CancelSubscriptionRequest,
 } from '@/lib/types';
-import { getCurrentUser } from '@/lib/api/getAdminUser';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
+import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import {
   createSubscriptionSchema,
   updateSubscriptionSchema,
@@ -31,14 +32,21 @@ import * as subscriptionService from '@/lib/api/subscriptions/subscriptionServic
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
+    const auth = await verifyBusinessOwner();
+    if (!auth.authorized) {
+      const errorPayload =
+        auth.error && typeof auth.error === 'object' && 'code' in auth.error
+          ? (auth.error as { code: string; message: string })
+          : { code: 'AUTHENTICATION_ERROR', message: 'Not authenticated' };
+
+      const status = errorPayload.code === 'AUTHENTICATION_ERROR' ? 401 : 403;
+
       return NextResponse.json(
         {
           success: false,
-          error: { code: 'AUTHENTICATION_ERROR', message: 'Not authenticated' },
+          error: errorPayload,
         } as ApiResponse<null>,
-        { status: 401 },
+        { status },
       );
     }
 
@@ -60,7 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
+    const businessResult = { data: { id: auth.business!.id } };
     if ('error' in businessResult) {
       return NextResponse.json(
         {
@@ -104,19 +112,13 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(_request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'AUTHENTICATION_ERROR', message: 'Not authenticated' },
-        } as ApiResponse<null>,
-        { status: 401 },
-      );
-    }
+    const auth = await assertAuthorized(_request);
+    if (!auth.authorized) return auth.error;
 
     // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
+    const businessResult = await subscriptionQuery.getUserBusiness(
+      auth.user.id,
+    );
     if ('error' in businessResult) {
       return NextResponse.json(
         {
@@ -209,20 +211,13 @@ export async function GET(_request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'AUTHENTICATION_ERROR', message: 'Not authenticated' },
-        } as ApiResponse<null>,
-        { status: 401 },
-      );
-    }
+    const auth = await assertAuthorized(request);
+    if (!auth.authorized) return auth.error;
 
-    // TODO: Get business_id from user's profile
     // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
+    const businessResult = await subscriptionQuery.getUserBusiness(
+      auth.user.id,
+    );
     if ('error' in businessResult) {
       return NextResponse.json(
         {
@@ -300,19 +295,13 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'AUTHENTICATION_ERROR', message: 'Not authenticated' },
-        } as ApiResponse<null>,
-        { status: 401 },
-      );
-    }
+    const auth = await assertAuthorized(request);
+    if (!auth.authorized) return auth.error;
 
     // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
+    const businessResult = await subscriptionQuery.getUserBusiness(
+      auth.user.id,
+    );
     if ('error' in businessResult) {
       return NextResponse.json(
         {

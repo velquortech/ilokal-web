@@ -61,9 +61,10 @@ export async function createNotification(
 export async function markRead(
   id: string,
   read = true,
+  user_id?: string,
 ): Promise<ApiResponse<null>> {
   try {
-    const ok = await q.markAsRead(id, read);
+    const ok = await q.markAsRead(id, read, user_id);
     if (!ok)
       return {
         success: false,

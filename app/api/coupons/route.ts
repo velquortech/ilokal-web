@@ -4,50 +4,33 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/supabase/server';
+import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import type { ApiResponse } from '@/lib/types';
 import { couponFiltersSchema } from '@/lib/validation/coupons';
 import * as couponQuery from '@/lib/api/coupons/couponQuery';
 
 export async function GET(req: NextRequest) {
   try {
-    // Get user's business
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    // Verify business owner session
+    const auth = await verifyBusinessOwner();
+    if (!auth.authorized) {
+      const errorPayload =
+        auth.error && typeof auth.error === 'object' && 'code' in auth.error
+          ? (auth.error as { code: string; message: string })
+          : { code: 'AUTHORIZATION_ERROR', message: 'Unauthorized' };
 
-    if (!user) {
+      const status = errorPayload.code === 'AUTHENTICATION_ERROR' ? 401 : 403;
+
       return NextResponse.json(
         {
           success: false,
-          error: {
-            code: 'AUTHENTICATION_ERROR',
-            message: 'You must be logged in',
-          },
+          error: errorPayload,
         } as ApiResponse<null>,
-        { status: 401 },
+        { status },
       );
     }
 
-    const { data: business } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('owner_id', user.id)
-      .single();
-
-    if (!business) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'AUTHORIZATION_ERROR',
-            message: 'You do not have a business',
-          },
-        } as ApiResponse<null>,
-        { status: 403 },
-      );
-    }
+    const business = auth.business!;
 
     const searchParams = req.nextUrl.searchParams;
 

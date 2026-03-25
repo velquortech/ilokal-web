@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAdminAccess } from '@/lib/api/verifyAdminAccess';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 
 /**
  * DELETE /api/admin/profiles/[id]/delete
@@ -16,8 +16,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { authorized, error } = await verifyAdminAccess(request);
-    if (!authorized) return error;
+    const auth = await assertAuthorized(request, { roles: ['admin'] });
+    if (!auth.authorized) return auth.error;
 
     const { id } = await params;
     const supabase = await createServerSupabaseClient();

@@ -168,14 +168,18 @@ export async function subscriptionExists(
  */
 export async function getPaymentMethodById(
   paymentMethodId: string,
+  businessId?: string,
 ): Promise<{ data: SubscriptionPaymentMethod } | { error: string }> {
   const supabase = await createServerSupabaseClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from('payment_methods')
     .select('*')
     .eq('id', paymentMethodId)
-    .is('archived_at', null)
-    .single();
+    .is('archived_at', null);
+
+  if (businessId) query = query.eq('business_id', businessId);
+
+  const { data, error } = await query.single();
 
   if (error) {
     console.error('[getPaymentMethodById]', error);

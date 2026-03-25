@@ -11,7 +11,9 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "check:protected": "node WORKFLOW/tools/checkProtectedRoutes.js",
+    "ci:checks": "npm run lint -- --fix && npm run check:protected && npm run test:run"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

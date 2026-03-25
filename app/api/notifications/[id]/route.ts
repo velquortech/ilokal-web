@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse, type NextRequest } from 'next/server';
 import type { ApiResponse } from '@/lib/types';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import * as notificationsService from '@/lib/api/notifications/notificationsService';
 import { markReadSchema } from '@/lib/validation/notification';
 
@@ -10,6 +11,9 @@ export async function PUT(
   context: { params: { id: string } | Promise<{ id: string }> },
 ) {
   try {
+    const auth = await assertAuthorized(request);
+    if (!auth.authorized) return auth.error;
+
     const params = await Promise.resolve(context.params);
     const { id } = params;
     const body = await request.json();

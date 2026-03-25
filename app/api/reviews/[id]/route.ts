@@ -2,12 +2,16 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse, type NextRequest } from 'next/server';
 import type { ApiResponse } from '@/lib/types';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import * as reviewService from '@/lib/api/reviews/reviewService';
 import { updateReviewSchema } from '@/lib/validation/reviews';
 import type { UpdateReviewRequest } from '@/lib/types';
 
 export async function PUT(request: NextRequest) {
   try {
+    const auth = await assertAuthorized(request);
+    if (!auth.authorized) return auth.error;
+
     const pathParts = request.nextUrl.pathname.split('/').filter(Boolean);
     const id = pathParts[pathParts.length - 1];
     const body = await request.json();
@@ -31,6 +35,9 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const auth = await assertAuthorized(request);
+    if (!auth.authorized) return auth.error;
+
     const pathParts = request.nextUrl.pathname.split('/').filter(Boolean);
     const id = pathParts[pathParts.length - 1];
     const result = await reviewService.deleteReview(id);

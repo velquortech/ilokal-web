@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/supabase/server';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse } from '@/lib/types';
 import { invoiceEmailSchema } from '@/lib/validation/payments';
 import * as paymentService from '@/lib/api/payments/paymentService';
@@ -14,23 +14,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'AUTHENTICATION_ERROR',
-            message: 'You must be logged in',
-          },
-        } as ApiResponse<null>,
-        { status: 401 },
-      );
-    }
+    const auth = await assertAuthorized();
+    if (!auth.authorized) return auth.error;
 
     const { id } = await params;
     const body = await req.json();

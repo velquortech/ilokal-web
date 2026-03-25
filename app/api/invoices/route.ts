@@ -4,30 +4,16 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/supabase/server';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse, PaginatedInvoicesResponse } from '@/lib/types';
 import { invoiceFiltersSchema } from '@/lib/validation/payments';
 import * as paymentQuery from '@/lib/api/payments/paymentQuery';
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'AUTHENTICATION_ERROR',
-            message: 'You must be logged in',
-          },
-        } as ApiResponse<null>,
-        { status: 401 },
-      );
-    }
+    const auth = await assertAuthorized();
+    if (!auth.authorized) return auth.error;
+    const userId = auth.user.id;
 
     // Parse query parameters
     const searchParams = req.nextUrl.searchParams;
@@ -54,7 +40,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const result = await paymentQuery.getInvoices(user.id, validation.data);
+    const result = await paymentQuery.getInvoices(userId, validation.data);
 
     if ('error' in result) {
       return NextResponse.json(

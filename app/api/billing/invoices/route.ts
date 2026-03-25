@@ -13,7 +13,7 @@ import type {
   PaginatedInvoiceResponse,
   Subscription,
 } from '@/lib/types';
-import { getCurrentUser } from '@/lib/api/getAdminUser';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { invoiceFiltersSchema } from '@/lib/validation/subscriptions';
 import * as subscriptionQuery from '@/lib/api/subscriptions/subscriptionQuery';
 
@@ -23,16 +23,9 @@ import * as subscriptionQuery from '@/lib/api/subscriptions/subscriptionQuery';
  */
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'AUTHENTICATION_ERROR', message: 'Not authenticated' },
-        } as ApiResponse<null>,
-        { status: 401 },
-      );
-    }
+    const auth = await assertAuthorized(request);
+    if (!auth.authorized) return auth.error;
+    const user = { id: auth.user.id } as { id: string };
 
     const pathname = request.nextUrl.pathname;
     const idMatch = pathname.match(/\/api\/billing\/invoices\/([^/]+)$/);

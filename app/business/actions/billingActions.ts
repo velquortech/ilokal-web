@@ -7,6 +7,7 @@
 
 import type {
   ApiResponse,
+  ApiError,
   SubscriptionPaymentMethod,
   CreatePaymentMethodRequest,
   UpdatePaymentMethodRequest,
@@ -15,7 +16,7 @@ import {
   createPaymentMethodSchema,
   updatePaymentMethodSchema,
 } from '@/lib/validation/subscriptions';
-import { getCurrentUser } from '@/lib/api/getAdminUser';
+import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import * as subscriptionQuery from '@/lib/api/subscriptions/subscriptionQuery';
 import * as subscriptionService from '@/lib/api/subscriptions/subscriptionService';
 
@@ -27,17 +28,6 @@ export async function addPaymentMethodAction(
   input: CreatePaymentMethodRequest,
 ): Promise<ApiResponse<SubscriptionPaymentMethod>> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'Not authenticated',
-        },
-      };
-    }
-
     // Validate input
     const validated = createPaymentMethodSchema.safeParse(input);
     if (!validated.success) {
@@ -51,19 +41,11 @@ export async function addPaymentMethodAction(
       };
     }
 
-    // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
-    if ('error' in businessResult) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'No business found for user',
-        },
-      };
-    }
-
-    const businessId = businessResult.data.id;
+    // Verify business owner and get business id
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+    const businessId = verify.business!.id;
 
     // Add payment method via service layer
     return await subscriptionService.addPaymentMethod(
@@ -91,17 +73,6 @@ export async function updatePaymentMethodAction(
   input: UpdatePaymentMethodRequest,
 ): Promise<ApiResponse<SubscriptionPaymentMethod>> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'Not authenticated',
-        },
-      };
-    }
-
     // Validate input
     const validated = updatePaymentMethodSchema.safeParse(input);
     if (!validated.success) {
@@ -115,19 +86,10 @@ export async function updatePaymentMethodAction(
       };
     }
 
-    // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
-    if ('error' in businessResult) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'No business found for user',
-        },
-      };
-    }
-
-    const businessId = businessResult.data.id;
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+    const businessId = verify.business!.id;
 
     // Verify payment method belongs to user's business
     const pmResult =
@@ -177,30 +139,10 @@ export async function removePaymentMethodAction(
   paymentMethodId: string,
 ): Promise<ApiResponse<{ message: string }>> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'Not authenticated',
-        },
-      };
-    }
-
-    // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
-    if ('error' in businessResult) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'No business found for user',
-        },
-      };
-    }
-
-    const businessId = businessResult.data.id;
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+    const businessId = verify.business!.id;
 
     // Verify payment method belongs to user's business
     const pmResult =
@@ -248,30 +190,10 @@ export async function setDefaultPaymentMethodAction(
   paymentMethodId: string,
 ): Promise<ApiResponse<SubscriptionPaymentMethod>> {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'Not authenticated',
-        },
-      };
-    }
-
-    // Get user's primary business
-    const businessResult = await subscriptionQuery.getUserBusiness(user.id);
-    if ('error' in businessResult) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'No business found for user',
-        },
-      };
-    }
-
-    const businessId = businessResult.data.id;
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+    const businessId = verify.business!.id;
 
     // Verify payment method belongs to user's business
     const pmResult =

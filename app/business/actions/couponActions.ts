@@ -1,8 +1,10 @@
 'use server';
 
 import { createServerSupabaseClient } from '@/supabase/server';
+import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import type {
   ApiResponse,
+  ApiError,
   Coupon,
   CreateCouponRequest,
   UpdateCouponRequest,
@@ -41,39 +43,14 @@ export async function createCouponAction(
       };
     }
 
-    // Get current user's business
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
 
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'You must be logged in',
-        },
-      };
-    }
-
-    const { data: business } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('owner_id', user.id)
-      .single();
-
-    if (!business) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHORIZATION_ERROR',
-          message: 'You do not have a business',
-        },
-      };
-    }
-
-    return await couponService.createCoupon(business.id, validation.data);
+    return await couponService.createCoupon(
+      verify.business!.id,
+      validation.data,
+    );
   } catch (error) {
     console.error('[createCouponAction]', error);
     return {
@@ -107,30 +84,14 @@ export async function updateCouponAction(
       };
     }
 
-    // Get current user's business
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
 
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'You must be logged in',
-        },
-      };
-    }
-
-    // Verify user owns the coupon's business
-    const { data: coupon } = await supabase
-      .from('coupons')
-      .select('business_id')
-      .eq('id', id)
-      .single();
-
-    if (!coupon) {
+    const { coupon, error }: { coupon?: Coupon; error?: string } = await (
+      await import('@/lib/api/coupons/couponQuery')
+    ).getCouponById(id);
+    if (error || !coupon) {
       return {
         success: false,
         error: {
@@ -140,14 +101,7 @@ export async function updateCouponAction(
       };
     }
 
-    const { data: business } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('id', coupon.business_id)
-      .eq('owner_id', user.id)
-      .single();
-
-    if (!business) {
+    if (coupon.business_id !== verify.business!.id) {
       return {
         success: false,
         error: {
@@ -177,30 +131,14 @@ export async function deleteCouponAction(
   id: string,
 ): Promise<ApiResponse<null>> {
   try {
-    // Get current user's business
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
 
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'You must be logged in',
-        },
-      };
-    }
-
-    // Verify user owns the coupon's business
-    const { data: coupon } = await supabase
-      .from('coupons')
-      .select('business_id')
-      .eq('id', id)
-      .single();
-
-    if (!coupon) {
+    const { coupon, error }: { coupon?: Coupon; error?: string } = await (
+      await import('@/lib/api/coupons/couponQuery')
+    ).getCouponById(id);
+    if (error || !coupon) {
       return {
         success: false,
         error: {
@@ -210,14 +148,7 @@ export async function deleteCouponAction(
       };
     }
 
-    const { data: business } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('id', coupon.business_id)
-      .eq('owner_id', user.id)
-      .single();
-
-    if (!business) {
+    if (coupon.business_id !== verify.business!.id) {
       return {
         success: false,
         error: {
@@ -295,39 +226,14 @@ export async function createFeaturedDealAction(
       };
     }
 
-    // Get current user's business
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
 
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'You must be logged in',
-        },
-      };
-    }
-
-    const { data: business } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('owner_id', user.id)
-      .single();
-
-    if (!business) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHORIZATION_ERROR',
-          message: 'You do not have a business',
-        },
-      };
-    }
-
-    return await couponService.createFeaturedDeal(business.id, validation.data);
+    return await couponService.createFeaturedDeal(
+      verify.business!.id,
+      validation.data,
+    );
   } catch (error) {
     console.error('[createFeaturedDealAction]', error);
     return {
@@ -361,30 +267,14 @@ export async function updateFeaturedDealAction(
       };
     }
 
-    // Get current user's business
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
 
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'You must be logged in',
-        },
-      };
-    }
-
-    // Verify user owns the deal's business
-    const { data: deal } = await supabase
-      .from('featured_deals')
-      .select('business_id')
-      .eq('id', id)
-      .single();
-
-    if (!deal) {
+    const { coupon: deal, error }: { coupon?: Coupon; error?: string } = await (
+      await import('@/lib/api/coupons/couponQuery')
+    ).getCouponById(id);
+    if (error || !deal) {
       return {
         success: false,
         error: {
@@ -394,14 +284,7 @@ export async function updateFeaturedDealAction(
       };
     }
 
-    const { data: business } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('id', deal.business_id)
-      .eq('owner_id', user.id)
-      .single();
-
-    if (!business) {
+    if (deal.business_id !== verify.business!.id) {
       return {
         success: false,
         error: {
@@ -431,30 +314,14 @@ export async function deleteFeaturedDealAction(
   id: string,
 ): Promise<ApiResponse<null>> {
   try {
-    // Get current user's business
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
 
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'You must be logged in',
-        },
-      };
-    }
-
-    // Verify user owns the deal's business
-    const { data: deal } = await supabase
-      .from('featured_deals')
-      .select('business_id')
-      .eq('id', id)
-      .single();
-
-    if (!deal) {
+    const { coupon: deal, error }: { coupon?: Coupon; error?: string } = await (
+      await import('@/lib/api/coupons/couponQuery')
+    ).getCouponById(id);
+    if (error || !deal) {
       return {
         success: false,
         error: {
@@ -464,14 +331,7 @@ export async function deleteFeaturedDealAction(
       };
     }
 
-    const { data: business } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('id', deal.business_id)
-      .eq('owner_id', user.id)
-      .single();
-
-    if (!business) {
+    if (deal.business_id !== verify.business!.id) {
       return {
         success: false,
         error: {

@@ -1,14 +1,15 @@
 'use server';
 
-import { createServerSupabaseClient } from '@/supabase/server';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import type {
   ApiResponse,
+  ApiError,
   Product,
   CreateProductRequest,
   UpdateProductRequest,
   Category,
 } from '@/lib/types';
+
 import {
   createProductSchema,
   updateProductSchema,
@@ -41,7 +42,7 @@ export async function createProductAction(
     // Verify business owner and get business id
     const verify = await verifyBusinessOwner();
     if (!verify.authorized) {
-      return { success: false, error: verify.error as any };
+      return { success: false, error: verify.error as ApiError };
     }
 
     return await productService.createProduct(
@@ -83,7 +84,7 @@ export async function updateProductAction(
 
     const verify = await verifyBusinessOwner();
     if (!verify.authorized)
-      return { success: false, error: verify.error as any };
+      return { success: false, error: verify.error as ApiError };
 
     return await productService.updateProduct(
       id,
@@ -111,7 +112,7 @@ export async function deleteProductAction(
   try {
     const verify = await verifyBusinessOwner();
     if (!verify.authorized)
-      return { success: false, error: verify.error as any };
+      return { success: false, error: verify.error as ApiError };
 
     return await productService.deleteProduct(id, verify.business!.id);
   } catch (error) {
@@ -135,7 +136,7 @@ export async function getBusinessProductsAction(): Promise<
   try {
     const verify = await verifyBusinessOwner();
     if (!verify.authorized)
-      return { success: false, error: verify.error as any };
+      return { success: false, error: verify.error as ApiError };
 
     const result = await productQuery.getProductsByBusinessId(
       verify.business!.id,

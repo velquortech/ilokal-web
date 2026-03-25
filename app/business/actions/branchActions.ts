@@ -1,8 +1,9 @@
 'use server';
 
-import { createServerSupabaseClient } from '@/supabase/server';
+import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import type {
   ApiResponse,
+  ApiError,
   Branch,
   CreateBranchRequest,
   UpdateBranchRequest,
@@ -35,40 +36,14 @@ export async function createBranchAction(
       };
     }
 
-    // Get current user's business
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
 
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'You must be logged in',
-        },
-      };
-    }
-
-    // Get user's business
-    const { data: business } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('owner_id', user.id)
-      .single();
-
-    if (!business) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHORIZATION_ERROR',
-          message: 'You do not have a business',
-        },
-      };
-    }
-
-    return await branchService.createBranch(business.id, validation.data);
+    return await branchService.createBranch(
+      verify.business!.id,
+      validation.data,
+    );
   } catch (error) {
     console.error('[createBranchAction]', error);
     return {
@@ -102,47 +77,21 @@ export async function updateBranchAction(
       };
     }
 
-    // Get current user's business
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
 
-    if (!user) {
+    const { branch, error }: { branch?: Branch; error?: string } = await (
+      await import('@/lib/api/branches/branchQuery')
+    ).getBranchById(id);
+    if (error || !branch) {
       return {
         success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'You must be logged in',
-        },
+        error: { code: 'NOT_FOUND', message: 'Branch not found' },
       };
     }
 
-    // Verify user owns the branch's business
-    const { data: branch } = await supabase
-      .from('branches')
-      .select('business_id')
-      .eq('id', id)
-      .single();
-
-    if (!branch) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Branch not found',
-        },
-      };
-    }
-
-    const { data: business } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('id', branch.business_id)
-      .eq('owner_id', user.id)
-      .single();
-
-    if (!business) {
+    if (branch.business_id !== verify.business!.id) {
       return {
         success: false,
         error: {
@@ -172,47 +121,21 @@ export async function deleteBranchAction(
   id: string,
 ): Promise<ApiResponse<null>> {
   try {
-    // Get current user's business
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
 
-    if (!user) {
+    const { branch, error }: { branch?: Branch; error?: string } = await (
+      await import('@/lib/api/branches/branchQuery')
+    ).getBranchById(id);
+    if (error || !branch) {
       return {
         success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'You must be logged in',
-        },
+        error: { code: 'NOT_FOUND', message: 'Branch not found' },
       };
     }
 
-    // Verify user owns the branch's business
-    const { data: branch } = await supabase
-      .from('branches')
-      .select('business_id')
-      .eq('id', id)
-      .single();
-
-    if (!branch) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Branch not found',
-        },
-      };
-    }
-
-    const { data: business } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('id', branch.business_id)
-      .eq('owner_id', user.id)
-      .single();
-
-    if (!business) {
+    if (branch.business_id !== verify.business!.id) {
       return {
         success: false,
         error: {

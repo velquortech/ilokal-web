@@ -16,7 +16,7 @@ import type {
   SubscriptionResponse,
   CancelSubscriptionRequest,
 } from '@/lib/types';
-import { getCurrentUser } from '@/lib/api/getAdminUser';
+import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import {
   createSubscriptionSchema,

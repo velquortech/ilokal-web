@@ -96,6 +96,22 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // Matcher must use static strings (evaluated at build time)
-  // Maps to PROTECTED_ROUTES.ADMIN = '/admin' and PROTECTED_ROUTES.BUSINESS = '/business'
-  matcher: ['/admin/:path*', '/business/:path*'],
+  // Protect both frontend routes and sensitive API namespaces.
+  // Add API namespaces here so middleware runs for API requests as well.
+  matcher: [
+    '/admin/:path*',
+    '/business/:path*',
+    // API namespaces that should be checked by middleware
+    '/api/admin/:path*',
+    '/api/businesses/:path*',
+    '/api/billing/:path*',
+    '/api/payments/:path*',
+    '/api/subscriptions/:path*',
+    '/api/invoices/:path*',
+    '/api/users/:path*',
+    '/api/upload/:path*',
+    '/api/notifications/:path*',
+    '/api/reviews/:path*',
+    '/api/branches/:path*',
+  ],
 };

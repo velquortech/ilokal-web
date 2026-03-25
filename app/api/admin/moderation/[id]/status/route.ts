@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse, type NextRequest } from 'next/server';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse } from '@/lib/types';
 import * as moderationService from '@/lib/api/admin/moderationService';
 import { moderationActionSchema } from '@/lib/validation/moderation';
@@ -10,6 +11,9 @@ export async function PUT(
   context: { params: { id: string } | Promise<{ id: string }> },
 ) {
   try {
+    const auth = await assertAuthorized(request, { roles: ['admin'] });
+    if (!auth.authorized) return auth.error;
+
     const params = await Promise.resolve(context.params);
     const { id } = params;
     const body = await request.json();

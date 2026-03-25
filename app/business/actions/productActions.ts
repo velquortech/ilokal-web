@@ -1,6 +1,7 @@
 'use server';
 
 import { createServerSupabaseClient } from '@/supabase/server';
+import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import type {
   ApiResponse,
   Product,
@@ -37,40 +38,16 @@ export async function createProductAction(
       };
     }
 
-    // Get current user
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'You must be logged in',
-        },
-      };
+    // Verify business owner and get business id
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized) {
+      return { success: false, error: verify.error as any };
     }
 
-    // Get user's business
-    const { data: business, error: businessError } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (businessError || !business) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Business not found',
-        },
-      };
-    }
-
-    return await productService.createProduct(business.id, validation.data);
+    return await productService.createProduct(
+      verify.business!.id,
+      validation.data,
+    );
   } catch (error) {
     console.error('[createProductAction]', error);
     return {
@@ -104,40 +81,15 @@ export async function updateProductAction(
       };
     }
 
-    // Get current user
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as any };
 
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'You must be logged in',
-        },
-      };
-    }
-
-    // Get user's business
-    const { data: business } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (!business) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Business not found',
-        },
-      };
-    }
-
-    return await productService.updateProduct(id, business.id, validation.data);
+    return await productService.updateProduct(
+      id,
+      verify.business!.id,
+      validation.data,
+    );
   } catch (error) {
     console.error('[updateProductAction]', error);
     return {
@@ -157,40 +109,11 @@ export async function deleteProductAction(
   id: string,
 ): Promise<ApiResponse<null>> {
   try {
-    // Get current user
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as any };
 
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'You must be logged in',
-        },
-      };
-    }
-
-    // Get user's business
-    const { data: business } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (!business) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Business not found',
-        },
-      };
-    }
-
-    return await productService.deleteProduct(id, business.id);
+    return await productService.deleteProduct(id, verify.business!.id);
   } catch (error) {
     console.error('[deleteProductAction]', error);
     return {
@@ -210,40 +133,13 @@ export async function getBusinessProductsAction(): Promise<
   ApiResponse<Product[]>
 > {
   try {
-    // Get current user
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as any };
 
-    if (!user) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'You must be logged in',
-        },
-      };
-    }
-
-    // Get user's business
-    const { data: business } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (!business) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Business not found',
-        },
-      };
-    }
-
-    const result = await productQuery.getProductsByBusinessId(business.id);
+    const result = await productQuery.getProductsByBusinessId(
+      verify.business!.id,
+    );
     if ('error' in result) {
       return {
         success: false,

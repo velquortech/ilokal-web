@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import type { Profile, UserRole } from '@/lib/types/user';
 import { PaginatedResponse } from '@/services/api/paginationService';
+import { ROUTES } from '@/config/routeConfig';
 
 export interface AccountStatusCounts {
   active: number;
@@ -78,7 +79,7 @@ export function useAccountStatusData(
       role?: UserRole,
     ): Promise<number> => {
       try {
-        let url = '/api/admin/profiles?limit=1';
+        let url = `${ROUTES.API.ADMIN.PROFILES}?limit=1`;
 
         if (filter === 'active') {
           url += '&filter=active';
@@ -114,7 +115,7 @@ export function useAccountStatusData(
       options: FetchOptions,
     ): Promise<PaginatedResponse<Profile> | null> => {
       try {
-        let url = `/api/admin/profiles?page=${options.page}&limit=${options.limit}`;
+        let url = `${ROUTES.API.ADMIN.PROFILES}?page=${options.page}&limit=${options.limit}`;
 
         if (options.filter === 'archived') {
           url += '&filter=archived';

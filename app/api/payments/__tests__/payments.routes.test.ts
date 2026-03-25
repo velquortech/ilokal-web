@@ -138,7 +138,7 @@ describe('Payment API Routes', () => {
         'processing',
         'succeeded',
         'failed',
-        'canceled',
+        'refunded',
       ];
       expect(validStatuses).toContain(params.status);
     });

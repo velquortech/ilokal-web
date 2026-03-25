@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { createServerSupabaseClient } from '@/supabase/server';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { ROUTES } from '@/config/routeConfig';
 import { User } from '@/lib/types/user';
 import { SignupInput } from '@/lib/validation/auth';
@@ -235,22 +236,17 @@ export async function signupAction(
  * Server Action: Redirect user to appropriate dashboard
  */
 export async function redirectByRole(role: string): Promise<void> {
-  try {
-    switch (role) {
-      case 'admin':
-        redirect(ROUTES.DASHBOARD.ADMIN);
-        break;
-      case 'business_owner':
-        redirect(ROUTES.DASHBOARD.BUSINESS);
-        break;
-      case 'app_user':
-      default:
-        redirect(ROUTES.PUBLIC.HOME);
-        break;
-    }
-  } catch (error) {
-    console.error('[redirectByRole] Error:', error);
-    throw error;
+  switch (role) {
+    case 'admin':
+      redirect(ROUTES.DASHBOARD.ADMIN);
+      break;
+    case 'business_owner':
+      redirect(ROUTES.DASHBOARD.BUSINESS);
+      break;
+    case 'app_user':
+    default:
+      redirect(ROUTES.PUBLIC.HOME);
+      break;
   }
 }
 
@@ -261,11 +257,14 @@ export async function logoutAction(): Promise<void> {
   try {
     const supabase = await createServerSupabaseClient();
     await supabase.auth.signOut();
-    redirect(ROUTES.AUTH.LOGIN);
   } catch (error) {
-    console.error('[logoutAction] Error:', error);
-    redirect(ROUTES.AUTH.LOGIN);
+    // Log sign-out errors but do not swallow Next.js redirect behavior.
+    console.error('[logoutAction] Error signing out:', error);
   }
+
+  // Perform redirect outside of try/catch so the Next.js internal redirect
+  // control flow (throws `NEXT_REDIRECT`) is not caught and logged here.
+  redirect(ROUTES.AUTH.LOGIN);
 }
 
 /**
@@ -273,26 +272,9 @@ export async function logoutAction(): Promise<void> {
  */
 export async function verifySessionAction(): Promise<{ user: User } | null> {
   try {
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-
-    if (!authUser) {
-      return null;
-    }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', authUser.id)
-      .single();
-
-    if (!profile) {
-      return null;
-    }
-
-    return { user: profile as User };
+    const auth = await assertAuthorized();
+    if (!auth.authorized) return null;
+    return { user: auth.profile as User };
   } catch (error) {
     console.error('[verifySessionAction] Error:', error);
     return null;

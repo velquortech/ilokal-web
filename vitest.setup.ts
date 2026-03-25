@@ -20,7 +20,7 @@ if (process.env.VITEST || process.env.NODE_ENV === 'test') {
       });
       // Single-line standardized message to reduce noisy stack traces in test output
       originalConsoleError(`[TEST_ERROR] ${parts.join(' ')}\n`);
-    } catch (e) {
+    } catch {
       // Fallback to original if something goes wrong
       originalConsoleError('[TEST_ERROR] (failed to format error)');
       originalConsoleError(...args);

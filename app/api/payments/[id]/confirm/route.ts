@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import type { ApiResponse, StripePaymentConfirm } from '@/lib/types';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import * as paymentService from '@/lib/api/payments/paymentService';
 
 export async function POST(
@@ -12,6 +13,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    // Require authentication for confirming payments
+    const auth = await assertAuthorized(req);
+    if (!auth.authorized) return auth.error;
+
     const { id } = await params;
 
     const result = await paymentService.confirmPayment(id);

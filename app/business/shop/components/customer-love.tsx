@@ -4,7 +4,7 @@ import { Testimonial } from '@/components/custom/testimonial';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Play } from 'lucide-react';
 import { useState } from 'react';
-import { testimonials, videos } from '../../data/data';
+import { testimonials, videos } from '../../data/shop';
 
 export function CustomerLoveSection() {
   const [currentIndex, setCurrentIndex] = useState(0);

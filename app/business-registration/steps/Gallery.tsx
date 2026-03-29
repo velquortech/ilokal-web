@@ -159,7 +159,7 @@ function InteriorImages() {
             <h2 className="mb-4 font-semibold">Interior Images</h2>
 
             <div
-              className="border-border hover:border-primary hover:bg-muted/50 flex min-h-96 cursor-pointer flex-wrap gap-10 rounded-lg border-2 border-dashed p-12 text-center transition-colors"
+              className="border-border hover:border-primary hover:bg-muted/50 grid min-h-96 cursor-pointer grid-cols-2 gap-10 rounded-lg border-2 border-dashed p-12 text-center transition-colors"
               onClick={() => fileInputRef.current?.click()}
             >
               {previews.length > 0 ? (

@@ -40,11 +40,7 @@ export default function BusinessLayout({
           <BusinessHeader
             onAIChatClick={() => setIsAIChatOpen((prev) => !prev)}
           />
-          <div className="flex-1 overflow-auto">
-            <div className={`p-10 transition-all duration-300 ease-in-out`}>
-              {children}
-            </div>
-          </div>
+          <div className="flex flex-1 overflow-auto px-10 py-6">{children}</div>
         </SidebarInset>
       </SidebarProvider>
 

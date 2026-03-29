@@ -41,7 +41,7 @@ export default function BusinessHome() {
   const statMetrics = getStatMetrics(metrics);
 
   return (
-    <div className="space-y-6">
+    <div className="h-max flex-1 space-y-6">
       <OnboardingSection
         onStartTour={openTour}
         onViewRequirements={() => router.push('/business/register')}

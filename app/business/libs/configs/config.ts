@@ -71,12 +71,22 @@ export const storeNavigation: NavItem[] = [
     icon: Store,
   },
   {
-    title: 'Store Management',
+    title: 'Product Catalogues',
+    href: '/business/product-catalogues',
     icon: ShoppingBasket,
+  },
+  {
+    title: 'Shop Settings',
+    icon: Settings,
+  },
+  {
+    title: 'Vouchers & Coupons',
+    icon: Ticket,
     items: [
-      { title: 'Menu & Services', href: '/store/menu' },
-      { title: 'Operating Hours', href: '/store/hours' },
-      { title: 'Settings', href: '/store/settings' },
+      { title: 'All Vouchers', href: '/business/vouchers' },
+      { title: 'Create Voucher', href: '/business/vouchers/create' },
+      { title: 'Auto-Apply Rules', href: '/business/vouchers/rules' },
+      { title: 'Redemption History', href: '/business/vouchers/history' },
     ],
   },
 ];
@@ -89,17 +99,6 @@ export const marketingNavigation: NavItem[] = [
     items: [
       { title: 'Overview', href: '/business/marketing' },
       { title: 'Promotions', href: '/business/marketing/promotions' },
-    ],
-  },
-  {
-    title: 'Vouchers & Coupons',
-    icon: Ticket,
-
-    items: [
-      { title: 'All Vouchers', href: '/business/vouchers' },
-      { title: 'Create Voucher', href: '/business/vouchers/create' },
-      { title: 'Auto-Apply Rules', href: '/business/vouchers/rules' },
-      { title: 'Redemption History', href: '/business/vouchers/history' },
     ],
   },
   {

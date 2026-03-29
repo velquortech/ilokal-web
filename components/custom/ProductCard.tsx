@@ -2,15 +2,8 @@
 import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-
-type Product = {
-  id: string;
-  name: string;
-  description?: string;
-  price: number;
-  image: string;
-  badge?: string;
-};
+import { Product } from '@/app/business/libs/types/product.type';
+import { calculatePercentage } from '@/lib/product-helper';
 
 export function ProductCard(product: Product) {
   return (
@@ -19,12 +12,13 @@ export function ProductCard(product: Product) {
       className="group gap-2 overflow-hidden p-3 transition hover:shadow-lg"
     >
       {/* IMAGE */}
-      <div className="border-border relative h-48 w-full overflow-hidden rounded-md border">
+      <div className="border-border relative aspect-square min-h-48 w-full overflow-hidden rounded-md border">
         <Image
           src={product.image}
           alt={product.name}
           fill
           className="object-cover transition-transform duration-300 group-hover:scale-105"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
         />
 
         {/* BADGE */}
@@ -42,10 +36,21 @@ export function ProductCard(product: Product) {
             {product.description}
           </p>
         )}
-
-        <p className="mt-auto font-semibold">
-          ₱{product.price.toLocaleString()}
-        </p>
+        {product?.salePrice ? (
+          <p className="text-primary mt-auto inline-flex items-center gap-1.5 font-semibold">
+            ₱{product.salePrice.toLocaleString()}
+            <span className="text-muted-foreground/75 font-normal line-through">
+              ₱{product.price.toLocaleString()}
+            </span>
+            <Badge className="bg-primary/20 text-foreground font-light">
+              -{calculatePercentage(product.price, product.salePrice)}%
+            </Badge>
+          </p>
+        ) : (
+          <p className="text-primary mt-auto font-semibold">
+            ₱{product.price.toLocaleString()}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

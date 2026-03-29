@@ -7,13 +7,12 @@ import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier/flat';
 import reactPlugin from 'eslint-plugin-react';
 import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
-
 import nextPlugin from '@next/eslint-plugin-next';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-export default tseslint.config(
+export default [
   {
     ignores: [
       '.next/**',
@@ -43,8 +42,9 @@ export default tseslint.config(
       },
     },
     rules: {
-      ...nextPlugin.configs.recommended.rules,
-      ...nextPlugin.configs['core-web-vitals'].rules,
+      '@typescript-eslint/no-explicit-any': 'error',
+      ...(nextPlugin.configs?.recommended?.rules ?? {}),
+      ...(nextPlugin.configs?.['core-web-vitals']?.rules ?? {}),
     },
   },
 
@@ -140,4 +140,22 @@ export default tseslint.config(
       'unicorn/filename-case': 'off',
     },
   },
-);
+
+  {
+    files: ['WORKFLOW/tools/**/*.js', 'WORKFLOW/tools/*.js'],
+    languageOptions: {
+      globals: {
+        require: 'readonly',
+        __dirname: 'readonly',
+        process: 'readonly',
+        console: 'readonly',
+        module: 'readonly',
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+      'no-console': 'off',
+      'no-undef': 'off',
+    },
+  },
+];

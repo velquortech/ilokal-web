@@ -13,7 +13,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Profile } from '@/lib/types/user';
+import { AdminUser } from '@/lib/types/admin';
 import {
   adminEditSchema,
   type AdminEditFormData,
@@ -22,7 +22,7 @@ import { PhoneNumberInput } from './inputs/PhoneNumberInput';
 import { AvatarUpload } from './inputs/AvatarUpload';
 
 interface UserEditFormProps {
-  user: Profile;
+  user: AdminUser;
   onSubmit: (data: AdminEditFormData) => Promise<void>;
   onCancel: () => void;
   isSubmitting: boolean;

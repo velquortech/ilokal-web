@@ -1,68 +1,142 @@
 'use client';
 
-import React, { useState } from 'react';
-import { toast } from 'sonner';
+import { useState, useMemo } from 'react';
+import { Table as UITable } from '@/components/ui/table';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Edit2,
-  Trash2,
-  ChevronsLeft,
-  ChevronsRight,
-} from 'lucide-react';
-import { Profile } from '@/lib/types/user';
+  getCoreRowModel,
+  getSortedRowModel,
+  ColumnDef,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
+import { AdminUser } from '@/lib/types/admin';
 import { PaginatedResponse } from '@/services/api/paginationService';
-import { AvatarImage } from '@/components/custom/AvatarImage';
-import { StatusDropdown } from '../forms/fields/StatusDropdown';
-import { getTimeAgo } from '@/lib/utils/dateFormatter';
 import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
+import { UsersTableColumnVisibility } from './UsersTableColumnVisibility';
+import { UsersTablePagination } from './UsersTablePagination';
+import { UsersTableHeader } from './UsersTableHeader';
+import { UsersTableBody } from './UsersTableBody';
+import {
+  createUsersTableColumns,
+  UsersTableColumnsProps,
+} from './UsersTableColumns';
 
-interface UsersTableProps {
-  data: PaginatedResponse<Profile> | null | undefined;
+interface UsersTableProps<TRow = AdminUser> {
+  data: PaginatedResponse<TRow> | null | undefined;
   isLoading: boolean;
   currentPage: number;
   onPageChange: (page: number) => void;
-  onEdit: (user: Profile) => void;
-  onDelete: (id: string) => void;
+  onEdit?: (user: TRow) => void;
+  onDelete?: (id: string) => void;
+  onStatusChange?: (updatedUser: TRow) => void;
   isSubmitting: boolean;
+  /**
+   * Optional: Provide custom columns for non-AdminUser types
+   * If not provided and TRow is AdminUser, will use default admin columns
+   */
+  columns?: ColumnDef<TRow>[];
+  /**
+   * Optional: Handler for delete confirmation
+   * Only used if columns support delete action
+   */
+  onDeleteConfirm?: (id: string) => void;
+  /**
+   * Optional: User data for delete confirmation dialog
+   * Only shown if using AdminUser and delete action is triggered
+   */
+  deleteUser?: AdminUser | null;
+  onDeleteCancel?: () => void;
+  /**
+   * Optional: Show/hide features (for extending to other row types)
+   */
+  showDeleteConfirmation?: boolean;
 }
 
-export default function UsersTable({
+export default function UsersTable<TRow extends { id: string } = AdminUser>({
   data,
   isLoading,
   currentPage,
   onPageChange,
   onEdit,
   onDelete,
+  onStatusChange,
   isSubmitting,
-}: UsersTableProps) {
+  columns: customColumns,
+  onDeleteConfirm,
+  deleteUser,
+  onDeleteCancel,
+  showDeleteConfirmation = true,
+}: UsersTableProps<TRow>) {
   const [error, setError] = useState<string | null>(null);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<
+    Record<string, boolean>
+  >({
+    created_at: false, // Hide by default
+  });
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     open: boolean;
-    user: Profile | null;
+    user: AdminUser | null;
   }>({
     open: false,
     user: null,
   });
 
+  // Use custom columns if provided, otherwise generate admin columns for backward compatibility
+  const columns = useMemo(() => {
+    if (customColumns) {
+      return customColumns;
+    }
+
+    // Default behavior for AdminUser type
+    if (onEdit && onDelete) {
+      const columnsProps: UsersTableColumnsProps = {
+        currentPage,
+        isSubmitting,
+        onEdit: onEdit as unknown as (user: AdminUser) => void,
+        onDelete: (user: AdminUser) => {
+          setDeleteConfirmation({ open: true, user });
+        },
+        onStatusChange: onStatusChange as unknown as (user: AdminUser) => void,
+        onError: setError,
+      };
+      return createUsersTableColumns(columnsProps) as ColumnDef<TRow>[];
+    }
+
+    // If no handlers provided and no custom columns, return empty array
+    return [];
+  }, [
+    customColumns,
+    currentPage,
+    isSubmitting,
+    onEdit,
+    onDelete,
+    onStatusChange,
+  ]);
+
+  // Initialize table instance
+  const table = useReactTable({
+    data: data?.data || [],
+    columns,
+    state: {
+      sorting,
+      columnVisibility,
+    },
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
   const handleDeleteConfirm = () => {
     if (deleteConfirmation.user) {
-      onDelete(deleteConfirmation.user.id);
+      // Use new handler if provided, otherwise use legacy onDelete
+      if (onDeleteConfirm) {
+        onDeleteConfirm(deleteConfirmation.user.id);
+      } else if (onDelete) {
+        onDelete(deleteConfirmation.user.id);
+      }
       setDeleteConfirmation({ open: false, user: null });
     }
   };
@@ -95,9 +169,15 @@ export default function UsersTable({
     );
   }
 
+  if (columns.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-gray-300 p-12 text-center">
+        <p className="text-gray-600">No columns configured for this table</p>
+      </div>
+    );
+  }
+
   const { pagination } = data;
-  const hasNextPage = currentPage < pagination.totalPages;
-  const hasPrevPage = currentPage > 1;
 
   return (
     <TooltipProvider>
@@ -108,218 +188,44 @@ export default function UsersTable({
           </div>
         )}
 
+        <UsersTableColumnVisibility table={table} />
+
         <div className="overflow-hidden rounded-lg border border-gray-200">
           <div className="overflow-x-auto">
-            <Table role="table" aria-label="Users list table">
-              <TableHeader className="bg-gray-50">
-                <TableRow>
-                  <TableHead className="font-semibold" scope="col">
-                    #
-                  </TableHead>
-                  <TableHead className="font-semibold" scope="col">
-                    Avatar
-                  </TableHead>
-                  <TableHead className="font-semibold" scope="col">
-                    Name
-                  </TableHead>
-                  <TableHead className="font-semibold" scope="col">
-                    Email
-                  </TableHead>
-                  <TableHead className="font-semibold" scope="col">
-                    Created
-                  </TableHead>
-                  <TableHead className="font-semibold" scope="col">
-                    Updated
-                  </TableHead>
-                  <TableHead className="font-semibold" scope="col">
-                    Status
-                  </TableHead>
-                  <TableHead className="text-right font-semibold" scope="col">
-                    Actions
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.data.map((user, index) => (
-                  <TableRow key={user.id} className="hover:bg-gray-50">
-                    <TableCell>
-                      <span className="font-medium">
-                        {(currentPage - 1) * 10 + index + 1}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {user.avatar_url ? (
-                        <AvatarImage
-                          src={user.avatar_url}
-                          alt={user.full_name || 'Avatar'}
-                          width={40}
-                          height={40}
-                          className="h-10 w-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-xs font-medium text-gray-600">
-                          {user.full_name
-                            ?.split(' ')
-                            .map((n) => n[0])
-                            .join('')
-                            .toUpperCase()
-                            .slice(0, 2) || 'N/A'}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-medium">{user.full_name}</span>
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-600">
-                      {user.email}
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-600">
-                      {getTimeAgo(user.created_at)}
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-600">
-                      {getTimeAgo(user.updated_at)}
-                    </TableCell>
-                    <TableCell>
-                      <StatusDropdown admin={user} onError={setError} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Tooltip delayDuration={200}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                onEdit(user);
-                                const displayName =
-                                  user.full_name || user.email || 'User';
-                                toast.info(`Editing ${displayName}`);
-                              }}
-                              disabled={isSubmitting}
-                              className="cursor-pointer gap-1"
-                              aria-label={`Edit user ${user.full_name || user.email || 'this user'}`}
-                            >
-                              <Edit2 className="h-3 w-3" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="top"
-                            className="border-slate-700 bg-slate-950 text-white"
-                          >
-                            <p className="text-sm">Edit</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <Tooltip delayDuration={200}>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                setDeleteConfirmation({ open: true, user })
-                              }
-                              disabled={isSubmitting}
-                              className="cursor-pointer text-red-600 hover:text-red-700"
-                              aria-label={`Delete ${user.full_name ? `user ${user.full_name}` : user.email ? `user with email ${user.email}` : 'this user'}`}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="top"
-                            className="border-slate-700 bg-slate-950 text-white"
-                          >
-                            <p className="text-sm">Delete</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <UITable role="table" aria-label="Users list table">
+              <UsersTableHeader headerGroups={table.getHeaderGroups()} />
+              <UsersTableBody
+                rows={table.getRowModel().rows}
+                columnsLength={columns.length}
+              />
+            </UITable>
           </div>
         </div>
 
-        {/* Pagination */}
-        <nav
-          className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
-          aria-label="Users table pagination"
-        >
-          <div className="text-sm text-gray-600">
-            Page <span className="font-medium">{currentPage}</span> of{' '}
-            <span className="font-medium">{pagination.totalPages}</span>
-            {' • '}
-            <span className="font-medium">{pagination.totalItems}</span> total
-            items
-          </div>
-
-          <div
-            className="flex flex-wrap gap-2"
-            role="group"
-            aria-label="Pagination controls"
-          >
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPageChange(1)}
-              disabled={!hasPrevPage || isSubmitting}
-              className="gap-1"
-              aria-label="Go to first page"
-              title="Go to first page"
-            >
-              <ChevronsLeft className="h-4 w-4" />
-              <span className="sr-only">First</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPageChange(currentPage - 1)}
-              disabled={!hasPrevPage || isSubmitting}
-              className="gap-1"
-              aria-label="Go to previous page"
-              title="Go to previous page"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Previous</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPageChange(currentPage + 1)}
-              disabled={!hasNextPage || isSubmitting}
-              className="gap-1"
-              aria-label="Go to next page"
-              title="Go to next page"
-            >
-              <span className="hidden sm:inline">Next</span>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPageChange(pagination.totalPages)}
-              disabled={!hasNextPage || isSubmitting}
-              className="gap-1"
-              aria-label="Go to last page"
-              title="Go to last page"
-            >
-              <ChevronsRight className="h-4 w-4" />
-              <span className="sr-only">Last</span>
-            </Button>
-          </div>
-        </nav>
-
-        {/* Delete Confirmation Dialog */}
-        <DeleteConfirmationDialog
-          open={deleteConfirmation.open}
-          user={deleteConfirmation.user}
+        <UsersTablePagination
+          currentPage={currentPage}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.totalItems}
           isSubmitting={isSubmitting}
-          onClose={() => setDeleteConfirmation({ open: false, user: null })}
-          onConfirm={handleDeleteConfirm}
+          onPageChange={onPageChange}
         />
+
+        {/* Delete Confirmation Dialog - Only show for AdminUser type with delete confirmation enabled */}
+        {showDeleteConfirmation && (
+          <DeleteConfirmationDialog
+            open={deleteUser ? true : deleteConfirmation.open}
+            user={deleteUser || deleteConfirmation.user}
+            isSubmitting={isSubmitting}
+            onClose={() => {
+              if (onDeleteCancel) {
+                onDeleteCancel();
+              } else {
+                setDeleteConfirmation({ open: false, user: null });
+              }
+            }}
+            onConfirm={handleDeleteConfirm}
+          />
+        )}
       </div>
     </TooltipProvider>
   );

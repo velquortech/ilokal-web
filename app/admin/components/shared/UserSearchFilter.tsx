@@ -1,18 +1,16 @@
 'use client';
 
-import React from 'react';
-import { Button } from '@/components/ui/button';
-import { Search, X } from 'lucide-react';
+import { Search } from 'lucide-react';
+
+import { AdminStatusFilter, AdminSortOrder } from '@/lib/types/admin';
 
 interface UserSearchFilterProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  statusFilter: 'all' | 'active' | 'inactive' | 'suspended';
-  onStatusFilterChange: (
-    status: 'all' | 'active' | 'inactive' | 'suspended',
-  ) => void;
-  sortOrder: 'latest' | 'oldest';
-  onSortOrderChange: (order: 'latest' | 'oldest') => void;
+  statusFilter: AdminStatusFilter;
+  onStatusFilterChange: (status: AdminStatusFilter) => void;
+  sortOrder: AdminSortOrder;
+  onSortOrderChange: (order: AdminSortOrder) => void;
   onReset: () => void;
   hasActiveFilters: boolean;
 }
@@ -20,11 +18,6 @@ interface UserSearchFilterProps {
 export function UserSearchFilter({
   searchQuery,
   onSearchChange,
-  statusFilter,
-  onStatusFilterChange,
-  sortOrder,
-  onSortOrderChange,
-  onReset,
   hasActiveFilters,
 }: UserSearchFilterProps) {
   return (
@@ -51,62 +44,6 @@ export function UserSearchFilter({
             />
           </div>
         </div>
-
-        {/* Status Filter Dropdown */}
-        <div className="md:w-48">
-          <label
-            htmlFor="status-filter"
-            className="mb-1 block text-sm font-medium text-gray-700"
-          >
-            Status
-          </label>
-          <select
-            id="status-filter"
-            value={statusFilter}
-            onChange={(e) =>
-              onStatusFilterChange(
-                e.target.value as 'all' | 'active' | 'inactive' | 'suspended',
-              )
-            }
-            suppressHydrationWarning
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-          >
-            <option value="all">All</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="suspended">Suspended</option>
-          </select>
-        </div>
-
-        {/* Sort Filter Dropdown */}
-        <div className="md:w-48">
-          <label
-            htmlFor="sort-filter"
-            className="mb-1 block text-sm font-medium text-gray-700"
-          >
-            Sort by
-          </label>
-          <select
-            id="sort-filter"
-            value={sortOrder}
-            onChange={(e) =>
-              onSortOrderChange(e.target.value as 'latest' | 'oldest')
-            }
-            suppressHydrationWarning
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-          >
-            <option value="latest">Latest</option>
-            <option value="oldest">Oldest</option>
-          </select>
-        </div>
-
-        {/* Reset Button */}
-        {hasActiveFilters && (
-          <Button variant="outline" onClick={onReset} className="gap-2">
-            <X className="h-4 w-4" />
-            Reset
-          </Button>
-        )}
       </div>
 
       {/* Active Filters Display */}
@@ -115,12 +52,6 @@ export function UserSearchFilter({
           <span>Filters applied:</span>
           {searchQuery && (
             <span className="ml-2 font-medium">"Search: {searchQuery}"</span>
-          )}
-          {statusFilter !== 'all' && (
-            <span className="ml-2 font-medium">Status: {statusFilter}</span>
-          )}
-          {sortOrder !== 'latest' && (
-            <span className="ml-2 font-medium">Sort: {sortOrder}</span>
           )}
         </div>
       )}

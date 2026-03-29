@@ -1,6 +1,22 @@
 # 📁 Ilokal-Web Folder Structure Documentation
 
+> Last Updated: March 21, 2026  
+> Status: **✅ Phase 1-2 Complete | All Folders Organized | 100% TypeScript Strict Mode**
+
 This document provides a comprehensive overview of the project folder structure, describing the purpose and contents of each directory.
+
+---
+
+## ✅ Structure Verification - March 21, 2026
+
+### Key Features ✅
+
+- ✅ **Type Safety:** All types in centralized `/lib/types` folder
+- ✅ **Service Layer:** DRY pattern across `/lib/api/` subdirectories
+- ✅ **Server Actions:** Organized by feature in `/actions/` folder structure (prevents merge conflicts)
+- ✅ **Validation:** Centralized in `/lib/validation/` with Zod schemas
+- ✅ **No Code Duplication:** Helper functions in `/lib/utils/` and `/lib/helpers/`
+- ✅ **Component Organization:** Separated by feature with sub-components
 
 ---
 
@@ -19,15 +35,14 @@ This document provides a comprehensive overview of the project folder structure,
 ### Documentation Files
 
 - **`README.md`** - Project setup and usage guide
-- **`ARCHITECTURE.md`** - System architecture and design patterns
-- **`AUTH_IMPLEMENTATION.md`** - Authentication implementation details
-- **`AUTHENTICATION_SECURITY.md`** - Complete security guide
-- **`SESSION_MANAGEMENT.md`** - Session configuration documentation
-- **`SESSION_EXPIRATION_SUMMARY.md`** - Session expiration details
-- **`SECURITY_HARDENING.md`** - Security improvements and fixes
-- **`SECURITY_VERIFICATION.md`** - Security testing checklist
-- **`IMPLEMENTATION_COMPLETE.md`** - Feature completion summary
-- **`SETUP_CHECKLIST.md`** - Initial setup instructions
+- **`ARCHITECTURE.md`** - ✅ System architecture (updated March 21)
+- **`AUTHENTICATION.md`** - ✅ Authentication implementation (updated March 21)
+- **`SECURITY.md`** - ✅ Complete security guide (updated March 21)
+- **`SESSION_MANAGEMENT.md`** - ✅ Session configuration (updated March 21)
+- **`RBAC_MODEL.md`** - ✅ Role-based access control (updated March 21)
+- **`API_IMPLEMENTATION_STRATEGY.md`** - ✅ Phase 1-2 completion (updated March 21)
+- **`IMPLEMENTATION_COMPLETE.md`** - ✅ Feature completion (updated March 21)
+- **`FOLDER_STRUCTURE.md`** - This file; folder organization guide
 
 ### Other
 
@@ -44,16 +59,22 @@ Protected routes for login and signup pages outside admin/business namespaces.
 
 ```
 (auth)/
-├── actions.ts                 # Server Actions for authentication
-│                               # - loginAction()
-│                               # - signupAction()
-│                               # - logoutAction()
-│                               # - redirectByRole()
-│                               # - verifySessionAction()
+├── actions/                   # Server Actions for authentication (folder-based for scalability)
+│   ├── authActions.ts         # Core auth actions
+│   │                           # - loginAction()
+│   │                           # - signupAction()
+│   │                           # - logoutAction()
+│   │                           # - redirectByRole()
+│   │                           # - verifySessionAction()
+│   ├── userActions.ts         # User profile actions
+│   │                           # - updateCurrentUserProfileAction()
+│   └── index.ts               # Barrel exports (backward compatib)
 ├── layout.tsx                 # Auth layout wrapper
 ├── login/                      # Login page route
 └── signup/                     # Signup page route
 ```
+
+**Rationale:** Folder-based structure allows parallel development without merge conflicts
 
 ### `app/admin` - Admin Dashboard
 
@@ -63,6 +84,24 @@ Administrative interface for user and business management.
 admin/
 ├── page.tsx                    # Admin dashboard homepage
 ├── layout.tsx                  # Admin layout with navigation
+├── actions/                    # Server Actions for admin operations (folder-based)
+│   ├── userActions.ts          # User management actions
+│   │                           # - createAdminAction()
+│   │                           # - updateAdminAction()
+│   │                           # - deleteAdminAction()
+│   │                           # - createBusinessOwnerAction()
+│   │                           # - updateConsumerAction()
+│   │                           # - restoreUserAction()
+│   ├── businessActions.ts      # Business management actions
+│   │                           # - createBusinessAction()
+│   │                           # - updateBusinessAction()
+│   │                           # - verifyBusinessAction()
+│   │                           # - suspendBusinessAction()
+│   ├── categoryActions.ts      # Category management actions
+│   │                           # - createCategoryAction()
+│   │                           # - updateCategoryAction()
+│   │                           # - deleteCategoryAction()
+│   └── index.ts                # Barrel exports (backward compatible)
 ├── users/                      # User management section
 │   ├── page.tsx                # Users table and management UI
 │   ├── tabs/                   # Tab components for different user types
@@ -118,11 +157,29 @@ Dashboard for business owner role users.
 business/
 ├── page.tsx                    # Business dashboard homepage
 ├── layout.tsx                  # Business layout wrapper
+├── actions/                    # Server Actions for business operations (folder-based)
+│   ├── productActions.ts       # Product management actions
+│   │                           # - createProductAction()
+│   │                           # - updateProductAction()
+│   │                           # - deleteProductAction()
+│   │                           # - getBusinessProductsAction()
+│   │                           # - getCategoriesAction()
+│   ├── branchActions.ts        # Branch management actions
+│   │                           # - createBranchAction()
+│   │                           # - updateBranchAction()
+│   │                           # - deleteBranchAction()
+│   ├── couponActions.ts        # Coupon & deal actions
+│   │                           # - createCouponAction()
+│   │                           # - redeemCouponAction()
+│   │                           # - createFeaturedDealAction()
+│   └── index.ts                # Barrel exports (backward compatible)
 ├── components/                 # Business-specific components
 ├── config/                     # Business configuration
 ├── constants/                  # Business constants
 └── schemas/                    # Business validation schemas
 ```
+
+**Rationale:** Folder-based structure allows parallel development without merge conflicts
 
 ### `app/home` - Public Landing Page
 
@@ -195,9 +252,10 @@ Reusable components used across the entire application.
 ```
 components/
 ├── auth/                       # Authentication-specific components
-│   ├── LoginForm.tsx           # Login form with validation
-│   ├── SignupForm.tsx          # Signup form with validation
-│   └── SessionWarningDialog.tsx # Session expiration dialog
+│   ├── LoginForm.tsx           # Login form with useActionState
+│   ├── SignupForm.tsx          # Signup form with useActionState
+│   ├── SessionWarningDialog.tsx # Session expiration warning (5 min before logout)
+│   └── SessionTracker.tsx       # Initializes useSessionMonitor hook on mount
 │
 ├── custom/                     # Custom branded components
 │   ├── Header.tsx              # Global header/navbar
@@ -213,8 +271,8 @@ components/
 │   └── ...
 │
 ├── providers/                  # React Context & Provider Wrappers
-│   ├── AuthProvider.tsx        # Auth context with Zustand
-│   └── QueryProvider.tsx       # TanStack React Query setup
+│   ├── AuthProvider.tsx        # Wraps SessionTracker + UserContext
+│   ├── UserContext.tsx         # Provides user data via React Context
 │   └── SonnerProvider.tsx       # Toast notification provider
 │
 ├── ui/                         # shadcn/ui & Radix UI components
@@ -247,15 +305,6 @@ config/
 ├── routeConfig.ts              # ✅ **Single source of truth for all routes**
 │                                # Defines: ROUTES object and PROTECTED_ROUTES
 │
-├── server.ts                   # Server-side configuration
-│                                # - Secure cookie options
-│                                # - Supabase server client config
-│
-├── client.ts                   # Client-side configuration
-│                                # - Supabase public key
-│                                # - Client config options
-│
-├── index.ts                    # Exports all configs
 ├── adminConfig.ts              # Admin-specific settings
 ├── phoneConfig.ts              # Phone number validation config
 └── sidebarConfig.ts            # Sidebar navigation configuration
@@ -269,26 +318,30 @@ Custom hooks for authentication, data fetching, and state management.
 
 ```
 hooks/
-├── useAuth.ts                  # Authentication hook
+├── useAuth.ts                  # Logout only (no auth state)
 │                                # - Get user, isAuthenticated
 │                                # - logout() function
 │
-├── useAdminMutations.ts        # Admin CRUD mutations with optimistic updates
+├── useAdminMutations.ts        # Admin CRUD operations with Server Actions
 │                                # - useCreateAdmin(onSuccess?, onError?)
 │                                # - useUpdateAdmin(onSuccess?, onError?)
-│                                #   ✅ Optimistic row updates (no full table refetch)
 │                                # - useDeleteAdmin(onSuccess?, onError?)
-│                                #   ✅ Removes row from cache instantly
-│                                #   ✅ Updates total item count
 │                                # - useCreateConsumer() / useUpdateConsumer() / useDeleteConsumer()
+│                                # - useCreateBusinessOwner() / useUpdateBusinessOwner() / useDeleteBusinessOwner()
 │                                # - useUpdateAdminStatus()
+│                                # Uses useTransition for pending state
 │                                # Callbacks receive updated/deleted profile data
 │
-├── useProfiles.ts              # Profile data fetching
-│                                # - useProfilesByRole()
+├── useProfiles.ts              # Profile data fetching (manual state management)
+│                                # - useProfilesByRole(role, options?)
+│                                #   Pagination, search, filtering, sorting
+│                                #   Returns: { data, isLoading, error, refetch }
 │
 ├── useSessionMonitor.ts        # Session expiration monitoring
-│                                # - Tracks session timeout
+│                                # - Periodic verification (every 60s)
+│                                # - Activity detection (debounced 5s)
+│                                # - Expiration warning (5 min before logout)
+│                                # - Auto-logout on expiration
 │
 └── ...
 ```
@@ -349,34 +402,26 @@ Core services for API calls and state management (moved from lib/).
 ```
 services/
 ├── api/                        # **API service layer**
-│   ├── apiClient.ts            # Axios instance with interceptors
+│   ├── apiClient.ts            # Fetch wrapper with request/response handling
 │   │   - Enhanced error handling
-│   │   - Auth token injection
+│   │   - Generic error messages (prevents enumeration)
 │   │   - Response transformation
 │   │
-│   ├── authService.ts          # Authentication API calls
-│   │   - signup(), login(), logout()
-│   │   - verifySession()
-│   │
-│   ├── userService.ts          # User management API calls
-│   │   - getProfilesByRole(role)
-│   │   - getProfilesByRolePaginated(role, page, limit, filters)
+│   ├── userService.ts          # User profile API calls
+│   │   - getProfilesByRole(role, pagination, filters)
 │   │   - getProfileById(id)
-│   │   - createProfile(data)
-│   │   - adminUpdateProfile(id, changes)
-│   │   - deleteProfile(id)
-│   │   All endpoints use /api/admin/profiles/* routes
+│   │   - Works with useProfiles() hook
+│   │   - All endpoints use /api/admin/profiles/* routes
+│   │
+│   ├── authService.ts          # Auth API calls (mostly legacy)
+│   │   - Now handled via Server Actions primarily
 │   │
 │   └── paginationService.ts    # Pagination utilities
-│       - Page calculation, offset handling
+│       - Page calculation, offset handling, types
 │
-└── stores/                     # **State management with Zustand**
-    ├── authStore.ts            # Auth state
-    │   - user, isAuthenticated, sessionExpiry
-    │   - setUser(), logout(), setSessionExpiry()
-    │
-    └── adminStore.ts           # Admin feature state
-        - Users list, filters, etc.
+└── stores/                     # **Legacy state management** (mostly removed)
+    └── authStore.ts            # Legacy - Mostly deprecated
+        - Some UI state remains (not sensitive auth data)
 ```
 
 ---
@@ -394,14 +439,15 @@ public/
     └── ... (partner logos, screenshots, etc.)
 ```
 
-## 🌍 `/providers` - React Provider Components
+## 🌍 `/providers` - Legacy Providers
 
-**Note:** Most providers are in `/components/providers/`. This folder may be legacy.
+**Note:** Providers are now in `/components/providers/` (AuthProvider, UserContext, SonnerProvider).
 
 ```
 providers/
-├── QueryProvider.tsx           # TanStack React Query provider
-└── SonnerProvider.tsx          # Toast notification provider
+├── AuthProvider.tsx            # (Moved to components/providers/)
+├── UserContext.tsx             # (Moved to components/providers/)
+└── SonnerProvider.tsx          # (Moved to components/providers/)
 ```
 
 ---
@@ -413,6 +459,9 @@ Supabase-specific files for database management.
 ```
 supabase/
 ├── config.toml                 # Local Supabase CLI configuration
+├── client.ts                   # Client-side Supabase config (browser/anon key)
+├── server.ts                   # Server-side Supabase helpers (session & admin clients)
+├── index.ts                    # Barrel export for backward compatibility
 ├── migrations/                 # **Database migrations**
 │   ├── 001_initial_schema.sql
 │   ├── 002_profiles_table.sql

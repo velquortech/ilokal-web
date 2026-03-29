@@ -15,18 +15,11 @@ import {
 } from '../../../components/custom/Nav';
 import { Separator } from '@/components/ui/separator';
 import { Fragment } from 'react/jsx-runtime';
-import { DEFAULT_BRANCHES, SIDEBAR_SECTIONS } from '../libs/configs/config';
+import { SIDEBAR_SECTIONS } from '../libs/configs/config';
 import { UserMenu } from './UserMenu';
-import { useAuth } from '@/hooks/useAuth';
 import { ProCard } from './ProCard';
 
 export function BusinessSidebar() {
-  const { user, logout } = useAuth();
-
-  const handleLogout = async () => {
-    await logout();
-  };
-
   return (
     <Sidebar collapsible="icon" variant="sidebar" className="border-r">
       <SidebarLogo />
@@ -45,11 +38,7 @@ export function BusinessSidebar() {
       <SidebarFooter className="border-t">
         <SidebarMenu>
           <SidebarMenuItem>
-            <UserMenu
-              user={user}
-              branches={DEFAULT_BRANCHES}
-              onLogout={handleLogout}
-            />
+            <UserMenu />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

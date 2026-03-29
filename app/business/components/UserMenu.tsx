@@ -7,7 +7,6 @@ import {
   FileText,
   HelpCircle,
   LogOut,
-  Building2,
   ChevronsUpDown,
 } from 'lucide-react';
 import {
@@ -16,27 +15,21 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Branch } from '../libs/configs/config';
 import { type User } from '@/lib/types/user';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { SidebarMenuButton } from '@/components/ui/sidebar';
+import { useAuth } from '@/hooks/useAuth';
 
 interface UserMenuProps {
-  user: User | null;
-  branches: Branch[];
-  onLogout: () => void;
+  user?: User | null;
 }
 
-export function UserMenu({ user, branches, onLogout }: UserMenuProps) {
+export function UserMenu({ user }: UserMenuProps) {
+  const { logout } = useAuth();
   const isMobile = useIsMobile();
   return (
     <DropdownMenu>
@@ -45,7 +38,6 @@ export function UserMenu({ user, branches, onLogout }: UserMenuProps) {
           size="lg"
           className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
         >
-          {' '}
           <Avatar className="h-8 w-8 rounded-lg">
             <AvatarImage
               src={user?.avatar_url ?? undefined}
@@ -94,22 +86,6 @@ export function UserMenu({ user, branches, onLogout }: UserMenuProps) {
             </Link>
           </DropdownMenuItem>
 
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <Building2 className="mr-2 h-4 w-4" />
-              Switch Branch
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56">
-              <DropdownMenuRadioGroup>
-                {branches.map((branch) => (
-                  <DropdownMenuRadioItem key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-
           <DropdownMenuItem asChild>
             <Link href="/business/subscription">
               <FileText className="mr-2 h-4 w-4" />
@@ -127,7 +103,7 @@ export function UserMenu({ user, branches, onLogout }: UserMenuProps) {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="text-destructive focus:text-destructive"
-          onClick={onLogout}
+          onClick={logout}
         >
           <LogOut className="mr-2 h-4 w-4" />
           Log out

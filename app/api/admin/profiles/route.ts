@@ -1,16 +1,17 @@
-import { createServerSupabaseClient } from '@/config/server';
+import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { createPaginatedResponse } from '@/services/api/paginationService';
-import { verifyAdminAccess } from '@/lib/api/verifyAdminAccess';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 
 export async function GET(request: NextRequest) {
   try {
-    const { authorized, error } = await verifyAdminAccess(request);
-    if (!authorized) return error;
+    const auth = await assertAuthorized(request, { roles: ['admin'] });
+    if (!auth.authorized) return auth.error;
 
     const supabase = await createServerSupabaseClient();
     const { searchParams } = new URL(request.url);
 
+    const filter = searchParams.get('filter') || 'active'; // active, archived, inactive, all
     const role = searchParams.get('role');
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '10', 10);
@@ -18,13 +19,25 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const sort = searchParams.get('sort') || 'latest';
 
+    // Validate filter parameter
+    const validFilters = ['active', 'archived', 'inactive', 'all'];
+    if (!validFilters.includes(filter)) {
+      return NextResponse.json(
+        {
+          message:
+            'Invalid filter parameter. Must be one of: active, archived, inactive, all',
+        },
+        { status: 400 },
+      );
+    }
+
     // Validate pagination params
     const validPage = Math.max(1, page);
     const validLimit = Math.min(100, Math.max(1, limit));
     const offset = (validPage - 1) * validLimit;
 
     // Validate role parameter if provided
-    const validRoles = ['admin', 'business_owner', 'user'];
+    const validRoles = ['admin', 'business_owner', 'app_user'];
     if (role && !validRoles.includes(role)) {
       return NextResponse.json(
         { message: 'Invalid role parameter' },
@@ -47,12 +60,30 @@ export async function GET(request: NextRequest) {
 
     let dataQuery = supabase.from('profiles').select();
 
-    // Apply equality filters
+    // Apply filter based on account status
+    if (filter === 'active') {
+      countQuery = countQuery.is('archived_at', null).eq('status', 'active');
+      dataQuery = dataQuery.is('archived_at', null).eq('status', 'active');
+    } else if (filter === 'archived') {
+      countQuery = countQuery.not('archived_at', 'is', null);
+      dataQuery = dataQuery.not('archived_at', 'is', null);
+    } else if (filter === 'inactive') {
+      countQuery = countQuery
+        .is('archived_at', null)
+        .in('status', ['inactive', 'suspended']);
+      dataQuery = dataQuery
+        .is('archived_at', null)
+        .in('status', ['inactive', 'suspended']);
+    }
+    // If filter === 'all', no additional status/archived filters applied
+
+    // Apply role filter if provided
     if (role) {
       countQuery = countQuery.eq('role', role);
       dataQuery = dataQuery.eq('role', role);
     }
 
+    // Apply additional status filter if provided (overrides filter-based status)
     if (status && status !== 'all') {
       countQuery = countQuery.eq('status', status);
       dataQuery = dataQuery.eq('status', status);
@@ -127,33 +158,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const { authorized, error } = await verifyAdminAccess(request);
-    if (!authorized) return error;
-
-    const supabase = await createServerSupabaseClient();
-    const body = await request.json();
-
-    const { data, error: insertError } = await supabase
-      .from('profiles')
-      .insert(body)
-      .select()
-      .single();
-
-    if (insertError) {
-      return NextResponse.json(
-        { message: insertError.message },
-        { status: 400 },
-      );
-    }
-
-    return NextResponse.json(data, { status: 201 });
-  } catch (error) {
-    console.error('Profile creation error:', error);
-    return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 },
-    );
-  }
-}
+/**
+ * NOTE: POST/PUT/DELETE mutations are handled via Server Actions in `/app/admin/actions.ts`
+ * This endpoint is read-only for data fetching only.
+ * Server Actions provide better security context and error handling for mutations.
+ */

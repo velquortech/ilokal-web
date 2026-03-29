@@ -8,7 +8,7 @@ import React, {
   useRef,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import { ROUTES } from '@/config/routeConfig';
+import { useAuth } from '@/hooks/useAuth';
 import {
   Bell,
   Settings,
@@ -134,6 +134,7 @@ export function Header({
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
   const router = useRouter();
+  const { logout } = useAuth();
 
   // Memoize initials calculation
   const initials = useMemo(
@@ -148,13 +149,13 @@ export function Header({
   );
 
   // Handle logout with callback
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
     if (onLogout) {
       onLogout();
     } else {
-      router.push(ROUTES.AUTH.LOGIN);
+      await logout(); // Await the async logout action
     }
-  }, [onLogout, router]);
+  }, [onLogout, logout]);
 
   // Handle scroll visibility
   useEffect(() => {

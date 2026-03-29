@@ -1,7 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Clock, Store } from 'lucide-react';
 import { ReactNode } from 'react';
@@ -13,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { VisuallyHidden } from 'radix-ui';
 
 export function ApplicationSuccessDialog({
   children,
@@ -34,6 +41,10 @@ export function ApplicationSuccessDialog({
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
+        <VisuallyHidden.Root>
+          <DialogTitle>Application Successful</DialogTitle>
+          <DialogDescription>Application Successful</DialogDescription>
+        </VisuallyHidden.Root>
         {/* Main Content */}
         <div className="font-giest">
           <div className="mb-8 text-center">

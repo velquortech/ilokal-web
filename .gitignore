@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# claude
+claude.md
+
+# Ignore WORKFLOW artifacts created by AI agents and simulators
+WORKFLOW/

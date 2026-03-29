@@ -1,13 +1,16 @@
 import { ProductCard } from '@/components/custom/ProductCard';
 import { Button } from '@/components/ui/button';
 import { productCatalogues } from '../../data/products';
+import Link from 'next/link';
 
 export function ShopItems() {
   return (
     <div className="space-y-4">
       <div className="inline-flex w-full items-center justify-between">
         <span className="font-medium">Product Catalogues</span>
-        <Button size="sm">View Full Catalogue</Button>
+        <Link href="/business/product-catalogues">
+          <Button size="sm">View Full Catalogue</Button>
+        </Link>
       </div>
 
       {productCatalogues.map((catalogue, key) => (

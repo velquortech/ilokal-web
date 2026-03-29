@@ -28,7 +28,8 @@ const getUserLabel = (userType: string): string => {
   const labels: Record<string, string> = {
     admin: 'Admin',
     business_owner: 'Business Owner',
-    user: 'User',
+    app_user: 'Customer',
+    user: 'Customer', // Legacy support
   };
   return labels[userType] || userType;
 };

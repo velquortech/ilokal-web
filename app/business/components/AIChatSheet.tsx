@@ -131,14 +131,14 @@ export function AIChatSheet() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask about your business data..."
-            className="max-h-[120px] min-h-[60px] resize-none"
+            className="max-h-30 min-h-15 resize-none"
             rows={2}
           />
           <Button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
             size="icon"
-            className="h-[60px] w-[60px] shrink-0"
+            className="h-15 w-15 shrink-0"
           >
             <Send className="size-4" />
           </Button>

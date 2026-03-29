@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Upload, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AvatarImage } from '@/components/custom/AvatarImage';
+import { ROUTES } from '@/config/routeConfig';
 
 export interface AvatarUploadProps {
   value: string | null;
@@ -69,7 +70,7 @@ export function AvatarUpload({
         formData.append('userId', userId);
       }
 
-      const response = await fetch('/api/upload/avatar', {
+      const response = await fetch(`${ROUTES.API.UPLOAD}/avatar`, {
         method: 'POST',
         body: formData,
       });

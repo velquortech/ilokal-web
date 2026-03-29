@@ -8,6 +8,7 @@ import { useRef, useState } from 'react';
 import { Controller } from 'react-hook-form';
 import { useMultiStepForm } from '../provider/registration-form-provider';
 import { Field, FieldError } from '@/components/ui/field';
+import { cn } from '@/lib/utils';
 
 export function ShopGallery() {
   return (
@@ -159,7 +160,10 @@ function InteriorImages() {
             <h2 className="mb-4 font-semibold">Interior Images</h2>
 
             <div
-              className="border-border hover:border-primary hover:bg-muted/50 grid min-h-96 cursor-pointer grid-cols-2 gap-10 rounded-lg border-2 border-dashed p-12 text-center transition-colors"
+              className={cn(
+                'border-border hover:border-primary hover:bg-muted/50 min-h-96 cursor-pointer grid-cols-2 gap-10 rounded-lg border-2 border-dashed p-12 text-center transition-colors',
+                previews.length > 0 && 'grid',
+              )}
               onClick={() => fileInputRef.current?.click()}
             >
               {previews.length > 0 ? (

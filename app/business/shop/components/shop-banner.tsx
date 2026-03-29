@@ -10,7 +10,8 @@ export function ShopBanner() {
         src={businessTypes[0].items[0].imageURL}
         fill
         className="absolute top-0 left-0 h-full w-full object-cover"
-        quality={100}
+        loading="eager"
+        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
       />
       <div className="z-10 inline-flex gap-4">
         <div className="text-primary bg-primary/30 flex size-20 items-center justify-center rounded-xl">

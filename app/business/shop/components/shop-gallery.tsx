@@ -1,7 +1,7 @@
 import { Masonry } from '@/components/custom/Masonry';
 import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
-import { masonryData } from '../../data/data';
+import { masonryData } from '../../data/shop';
 
 export function ShopGallery() {
   return (

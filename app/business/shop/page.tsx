@@ -6,7 +6,7 @@ import { ShopLegitimacy } from './components/shop-legitimacy';
 
 export default function MyShopPage() {
   return (
-    <div className="font-giest flex flex-1 flex-col pb-8">
+    <div className="font-giest flex h-max flex-col pb-8">
       <ShopBanner />
       <div className="mt-8 flex flex-1 flex-col space-y-20">
         <ShopGallery />

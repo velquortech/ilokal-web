@@ -18,7 +18,7 @@ import {
   updateProfile,
   updateProfileStatus,
 } from '@/lib/api/admin/adminActionHelpers';
-import type { CreateUserInput } from '@/services';
+import type { AdminCreateUserInput } from '@/lib/types/admin';
 import { AdminUpdateUserInput } from '@/lib/api/admin/adminActionHelpers';
 
 // ============================================================================
@@ -40,7 +40,7 @@ export type UserRole = 'admin' | 'app_user' | 'business_owner';
  * Create a user with specified role
  */
 export async function createUser(
-  formData: CreateUserInput,
+  formData: AdminCreateUserInput,
   role: UserRole,
 ): Promise<UserOperationResult<AdminUser>> {
   try {
@@ -83,7 +83,7 @@ export async function createUser(
  * Create an admin user
  */
 export async function createAdmin(
-  formData: CreateUserInput,
+  formData: AdminCreateUserInput,
 ): Promise<UserOperationResult<AdminUser>> {
   return createUser(formData, 'admin');
 }
@@ -92,7 +92,7 @@ export async function createAdmin(
  * Create a consumer (app_user)
  */
 export async function createConsumer(
-  formData: CreateUserInput,
+  formData: AdminCreateUserInput,
 ): Promise<UserOperationResult<AdminUser>> {
   return createUser(formData, 'app_user');
 }
@@ -101,7 +101,7 @@ export async function createConsumer(
  * Create a business owner
  */
 export async function createBusinessOwner(
-  formData: CreateUserInput,
+  formData: AdminCreateUserInput,
 ): Promise<UserOperationResult<AdminUser>> {
   return createUser(formData, 'business_owner');
 }

@@ -72,6 +72,10 @@ Next steps I can do for you
 Prepared by: GitHub Copilot (assistant)
 Date: 2026-03-25
 
+Front-end note (2026-03-30):
+
+- Added `API_WRAPPER_FOR_FRONTEND.md` at the repo root with guidance for front-end developers on importing and using the `lib/services` wrappers safely. The file includes import examples, optimistic update guidance, and troubleshooting tips for 401/undefined response issues. Please include this note in your PR description so frontend reviewers are aware of the new documentation.
+
 ---
 
 Migration summary for the `lib/services` isomorphic client
@@ -108,3 +112,8 @@ Rollback plan
 - If issues are found post-merge, revert the PR branch and re-run CI; optionally reintroduce changes per smaller batches (Batch 1, Batch 2, ...).
 
 If you want, I will prepare a detailed PR description and a set of review notes that you can paste into GitHub when creating the PR.
+
+PR Addendum — Frontend docs (2026-03-30)
+
+- See API_WRAPPER_FOR_FRONTEND.md at the repo root for developer guidance and migration checklist. Please include a short note about this file in the PR description so frontend reviewers are aware of the recommended import patterns and the runtime auth handling guidance.
+

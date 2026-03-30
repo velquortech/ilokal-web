@@ -34,3 +34,32 @@ Notes
 
 - Do not remove `services/api/*` until callers are migrated and CI is stable.
 - Follow repository rules: avoid `any`, use explicit type guards for runtime-refined values.
+
+Why use the isomorphic wrapper instead of importing API routes or calling server actions directly
+-------------------------------------------------------------------------------------------
+
+- Single Source Of Truth: `lib/services` centralizes HTTP/server-call behavior and types so front-end code relies on consistent signatures and response shapes rather than ad-hoc fetch calls across the app.
+- Safe Bundling: The wrapper explicitly avoids importing server-only helpers in client bundles (dynamic imports for server-only code). This prevents accidental bundling of `next/headers`, server Supabase helpers, or other Node-only APIs into the browser build.
+- Reuse of Client Interceptors: In-browser the wrapper delegates to the existing axios client (`services/api/apiClient.ts`) preserving auth interceptors, retry logic, and centralized error shaping.
+- Easier Testing: Services are easy to mock in unit tests because they present small, well-typed functions. You can mock the `http` module or individual wrapper methods instead of stubbing route handlers or server actions.
+- Incremental Migration: The compatibility re-export (`services/index.ts`) enables gradual migration from legacy browser-only wrappers to the isomorphic layer without refactoring entire call graphs.
+
+When NOT to use the wrapper
+---------------------------
+
+- Low-level server-only operations (e.g., direct database migrations, private server RPCs, or functions that require server-only runtime context) should remain in server-only modules and be imported only from server callsites. The wrapper intentionally excludes server-only exports to avoid client leakage.
+
+Quick checklist for front-end devs
+---------------------------------
+
+1. Prefer importing from `lib/services` for new code.
+2. If you must use `@/services` compatibility export during migration, update the import to `lib/services` once all callers are migrated.
+3. Handle errors by catching thrown `Error` objects — inspect `.status` and `.data` for server details.
+4. For optimistic UI updates, follow the patterns in `app/admin/users/tabs/*` to mutate local cache and call `refetchTab` when needed.
+
+Where to look for examples
+--------------------------
+
+- `app/admin/users/tabs/*` — optimistic update patterns and cache sync.  
+- `lib/services/*` — wrapper implementations and how server/browser branches are handled.  
+- `services/api/apiClient.ts` — axios interceptors, error shaping, and 401 redirect behavior.

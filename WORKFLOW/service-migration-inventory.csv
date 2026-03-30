@@ -1,0 +1,7 @@
+file_path,line_number,matched_line
+lib/services/client.ts,4,import apiClient from '../../services/api/apiClient';
+lib/services/userService.ts,3,import { PaginatedResponse } from '../../services/api/paginationService';
+lib/services/index.ts,20,export type { PaginatedResponse } from '../../services/api/paginationService';
+lib/services/index.ts,25,} from '../../services/api/userService';
+lib/services/index.ts,30,} from '../../services/api/paginationService';
+app/api/admin/profiles/route.ts,3,import { createPaginatedResponse } from '@/services/api/paginationService';

@@ -14,7 +14,7 @@ import {
   createProductSchema,
   updateProductSchema,
 } from '@/lib/validation/products';
-import * as productService from '@/lib/api/products/productService';
+import productService from '@/lib/services/productService';
 import * as productQuery from '@/lib/api/products/productQuery';
 
 // ===== Business Owner Product Actions =====
@@ -45,10 +45,10 @@ export async function createProductAction(
       return { success: false, error: verify.error as ApiError };
     }
 
-    return await productService.createProduct(
-      verify.business!.id,
-      validation.data,
-    );
+    return (await productService.create({
+      business_id: verify.business!.id,
+      ...validation.data,
+    })) as ApiResponse<Product>;
   } catch (error) {
     console.error('[createProductAction]', error);
     return {
@@ -86,11 +86,10 @@ export async function updateProductAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    return await productService.updateProduct(
-      id,
-      verify.business!.id,
-      validation.data,
-    );
+    return (await productService.update(id, {
+      ...validation.data,
+      business_id: verify.business!.id,
+    })) as ApiResponse<Product>;
   } catch (error) {
     console.error('[updateProductAction]', error);
     return {
@@ -114,7 +113,7 @@ export async function deleteProductAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    return await productService.deleteProduct(id, verify.business!.id);
+    return (await productService.delete(id)) as ApiResponse<null>;
   } catch (error) {
     console.error('[deleteProductAction]', error);
     return {

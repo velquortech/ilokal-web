@@ -1,6 +1,6 @@
 import http from './client';
 import { Profile, UserRole } from '@/lib/types/user';
-import { PaginatedResponse } from '../../services/api/paginationService';
+import type { PaginatedResponse } from '@/services';
 
 export default {
   async getMe(): Promise<Profile | null> {

@@ -18,11 +18,8 @@ export { default as analyticsService } from './analyticsService';
 // Re-export commonly used types from the legacy browser services so callers
 // can migrate imports to `@/services` incrementally.
 export type { PaginatedResponse } from '@/services/api/paginationService';
-export type {
-  CreateUserInput,
-  UpdateUserInput,
-  AdminUpdateUserInput,
-} from '@/services/api/userService';
+export type { AdminCreateUserInput } from '@/lib/types/admin';
+export type { UpdateUserInput, AdminUpdateUserInput } from '@/services/api/userService';
 export {
   getOffset,
   getTotalPages,

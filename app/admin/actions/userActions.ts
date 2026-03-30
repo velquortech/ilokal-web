@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import type { CreateUserInput } from '@/services';
+import type { AdminCreateUserInput } from '@/lib/types/admin';
 import { AdminActionResponse, AdminUser } from '@/lib/types/admin';
 import { verifyCurrentUserIsAdmin } from '@/lib/api/admin/adminActionHelpers';
 import {
@@ -23,7 +23,7 @@ export type ActionState<T = unknown> = AdminActionResponse<T>;
 // ============================================================================
 
 export async function createAdminAction(
-  formData: CreateUserInput,
+  formData: AdminCreateUserInput,
 ): Promise<AdminActionResponse<AdminUser>> {
   try {
     const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
@@ -122,7 +122,7 @@ export async function updateAdminStatusAction(
 // ============================================================================
 
 export async function createConsumerAction(
-  formData: CreateUserInput,
+  formData: AdminCreateUserInput,
 ): Promise<AdminActionResponse<AdminUser>> {
   try {
     const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
@@ -197,7 +197,7 @@ export async function deleteConsumerAction(
 // ============================================================================
 
 export async function createBusinessOwnerAction(
-  formData: CreateUserInput,
+  formData: AdminCreateUserInput,
 ): Promise<AdminActionResponse<AdminUser>> {
   try {
     const { authorized, error: authError } = await verifyCurrentUserIsAdmin();

@@ -5,7 +5,7 @@
  * Instead of scattered imports, use:
  *
  * ✅ CORRECT:
- * import type { User, CreateUserInput, ApiResponse } from '@/lib/types';
+ * import type { User, AdminCreateUserInput, ApiResponse } from '@/lib/types';
  *
  * ❌ WRONG:
  * import type { User } from '@/lib/types/user';

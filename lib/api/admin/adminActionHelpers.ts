@@ -7,7 +7,7 @@ import {
   createServerSupabaseClient,
   createServerAdminClient,
 } from '@/supabase/server';
-import type { CreateUserInput } from '@/services';
+import type { AdminCreateUserInput } from '@/lib/types/admin';
 import { AdminUser } from '@/lib/types/admin';
 
 /**
@@ -220,7 +220,7 @@ export function buildProfileUpdateData(
  */
 export async function createProfile(
   userId: string,
-  formData: CreateUserInput,
+  formData: AdminCreateUserInput,
 ): Promise<{ profile: AdminUser | null; error: string | null }> {
   const db = await createServerSupabaseClient();
 

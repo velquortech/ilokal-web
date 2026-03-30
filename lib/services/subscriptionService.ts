@@ -123,13 +123,13 @@ const subscriptionService = {
 
   async removePaymentMethod(
     paymentMethodId: string,
-  ): Promise<ApiResponse<null>> {
+  ): Promise<ApiResponse<{ message: string }>> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
       return await client.removePaymentMethod(paymentMethodId);
     }
 
-    return await http.del<ApiResponse<null>>(
+    return await http.del<ApiResponse<{ message: string }>>(
       `/billing/payment-method/${paymentMethodId}`,
     );
   },

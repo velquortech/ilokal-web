@@ -27,7 +27,7 @@ export async function createAdminAction(
     if (!authorized)
       return { success: false, error: normalizeError(authError) };
 
-    const { data, error } = await adminService.createAdmin(formData as any);
+    const { data, error } = await adminService.createAdmin(formData);
 
     if (error) {
       return { success: false, error: normalizeError(error) };
@@ -52,7 +52,7 @@ export async function updateAdminAction(
     if (!authorized)
       return { success: false, error: normalizeError(authError) };
 
-    const { data, error } = await adminService.updateUser(id, changes as any);
+    const { data, error } = await adminService.updateUser(id, changes);
 
     if (error) {
       return { success: false, error: normalizeError(error) };
@@ -130,7 +130,7 @@ export async function createConsumerAction(
     if (!authorized)
       return { success: false, error: normalizeError(authError) };
 
-    const { data, error } = await adminService.createConsumer(formData as any);
+    const { data, error } = await adminService.createConsumer(formData);
 
     if (error) {
       return { success: false, error: normalizeError(error) };
@@ -156,7 +156,7 @@ export async function updateConsumerAction(
     if (!authorized)
       return { success: false, error: normalizeError(authError) };
 
-    const { data, error } = await adminService.updateUser(id, changes as any);
+    const { data, error } = await adminService.updateUser(id, changes);
 
     if (error) {
       return { success: false, error };
@@ -207,9 +207,7 @@ export async function createBusinessOwnerAction(
     if (!authorized)
       return { success: false, error: normalizeError(authError) };
 
-    const { data, error } = await adminService.createBusinessOwner(
-      formData as any,
-    );
+    const { data, error } = await adminService.createBusinessOwner(formData);
 
     if (error) {
       return { success: false, error: normalizeError(error) };
@@ -236,7 +234,7 @@ export async function updateBusinessOwnerAction(
     const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
     if (!authorized) return { success: false, error: authError };
 
-    const { data, error } = await adminService.updateUser(id, changes as any);
+    const { data, error } = await adminService.updateUser(id, changes);
 
     if (error) {
       return { success: false, error };

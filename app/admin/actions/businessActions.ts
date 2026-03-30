@@ -42,18 +42,17 @@ export async function verifyAdminAuth(): Promise<{
  * Get all businesses with pagination and filters
  */
 export async function getBusinessesAction(
-  filters: Partial<Record<string, unknown>>,
+  filters?: Partial<Record<string, string | number>>,
 ): Promise<PaginatedBusinessResponse | { error: string }> {
   try {
     const { authorized, error } = await verifyCurrentUserIsAdmin();
     if (!authorized) return { error: error || 'Unauthorized' };
 
     // Validate filters
-    const validatedFilters = businessFiltersSchema.parse(filters);
+    const validatedFilters = businessFiltersSchema.parse(filters || {});
 
-    const { data, error: apiError } = await businessService.list(
-      validatedFilters as any,
-    );
+    const { data, error: apiError } =
+      await businessService.list(validatedFilters);
 
     if (apiError) {
       return { error: apiError };

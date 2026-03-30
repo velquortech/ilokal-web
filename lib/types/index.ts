@@ -29,6 +29,8 @@ export type {
   User,
   AuthUser,
   DatabaseProfile,
+  DatabaseInsertProfile,
+  DatabaseUpdateProfile,
 } from './user';
 
 // Business Domain Types

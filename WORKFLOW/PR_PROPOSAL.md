@@ -93,6 +93,8 @@ Files added/updated (representative)
 - Migrated `app/admin/actions/categoryActions.ts` to use `lib/services/categoryService` (added `lib/services/categoryService.ts` which delegates to server `lib/api/products/productService` on server, and uses the HTTP client in browser).
 - Removed `categoryService` export from `lib/services/index.ts` to avoid bundling server-aware modules into client bundles; server-only callsites should import `lib/services/categoryService` directly.
 - Migrated `app/business/actions/productActions.ts` and `app/business/actions/branchActions.ts` to use `lib/services` wrappers. Added `create/update/delete` methods to `lib/services/branchService.ts` and updated server action call sites to cast service responses to `ApiResponse` shapes where necessary.
+- Migrated `app/business/actions/productActions.ts` and `app/business/actions/branchActions.ts` to use `lib/services` wrappers. Added `create/update/delete` methods to `lib/services/branchService.ts` and updated server action call sites to cast service responses to `ApiResponse` shapes where necessary.
+- Added `lib/services/subscriptionService.ts` and `lib/services/couponService.ts` server-aware wrappers. Removed `subscriptionService` and `couponService` from the client-facing `lib/services/index.ts` barrel to prevent server-only modules from being bundled into client code.
 
 Review checklist (minimal)
 

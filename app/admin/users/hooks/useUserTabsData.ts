@@ -18,6 +18,7 @@ interface UseUserTabsDataReturn {
     app_user: boolean;
   };
   refetchTab: (role: UserRole) => Promise<void>;
+  authRequired?: boolean;
 }
 
 export function useUserTabsData(
@@ -38,6 +39,8 @@ export function useUserTabsData(
     business_owner: false,
     app_user: false,
   });
+
+  const [authRequired, setAuthRequired] = useState(false);
 
   // Cache tracking with format: "role-page-search-status-sort"
   const fetchedTabsRef = useRef<Set<string>>(new Set());
@@ -66,7 +69,19 @@ export function useUserTabsData(
         return result;
       } catch (error) {
         console.error(`Failed to fetch ${role} data:`, error);
-        toast.error(`Failed to load ${role} users`);
+        // Detect authentication errors and surface a specific message
+        const status =
+          typeof error === 'object' && error !== null && 'status' in error
+            ? (error as { status?: number }).status
+            : undefined;
+
+        if (status === 401) {
+          setAuthRequired(true);
+          toast.error('Authentication required. Please sign in.');
+        } else {
+          toast.error(`Failed to load ${role} users`);
+        }
+
         return null;
       }
     },
@@ -158,5 +173,6 @@ export function useUserTabsData(
     appUserData,
     tabLoading,
     refetchTab,
+    authRequired,
   };
 }

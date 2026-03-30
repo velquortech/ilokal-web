@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { CreateUserInput } from '@/services/api/userService';
+import type { CreateUserInput } from '@/services';
 import { AdminActionResponse, AdminUser } from '@/lib/types/admin';
 import { verifyCurrentUserIsAdmin } from '@/lib/api/admin/adminActionHelpers';
 import {

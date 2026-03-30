@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import type { Profile, UserRole } from '@/lib/types/user';
-import { PaginatedResponse } from '@/services/api/paginationService';
+import { PaginatedResponse } from '@/services';
 import { ROUTES } from '@/config/routeConfig';
 
 export interface AccountStatusCounts {

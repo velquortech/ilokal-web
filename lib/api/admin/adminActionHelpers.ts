@@ -7,7 +7,7 @@ import {
   createServerSupabaseClient,
   createServerAdminClient,
 } from '@/supabase/server';
-import { CreateUserInput } from '@/services/api/userService';
+import type { CreateUserInput } from '@/services';
 import { AdminUser } from '@/lib/types/admin';
 
 /**

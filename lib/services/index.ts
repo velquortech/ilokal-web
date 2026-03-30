@@ -9,8 +9,9 @@ export { default as ratingService } from './ratingService';
 export { default as couponService } from './couponService';
 export { default as featuredDealService } from './featuredDealService';
 export { default as branchService } from './branchService';
-export { default as businessService } from './businessService';
-export { default as categoryService } from './categoryService';
+// `businessService` is server-aware and must not be exported through the
+// client-facing barrel to avoid pulling server-only modules into client bundles.
+// Import `lib/services/businessService` directly from server-only callsites.
 export { default as notificationService } from './notificationService';
 export { default as uploadService } from './uploadService';
 export { default as analyticsService } from './analyticsService';
@@ -19,7 +20,10 @@ export { default as analyticsService } from './analyticsService';
 // can migrate imports to `@/services` incrementally.
 export type { PaginatedResponse } from '@/services/api/paginationService';
 export type { AdminCreateUserInput } from '@/lib/types/admin';
-export type { UpdateUserInput, AdminUpdateUserInput } from '@/services/api/userService';
+export type {
+  UpdateUserInput,
+  AdminUpdateUserInput,
+} from '@/services/api/userService';
 export {
   getOffset,
   getTotalPages,

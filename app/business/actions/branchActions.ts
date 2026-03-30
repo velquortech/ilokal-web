@@ -12,7 +12,7 @@ import {
   createBranchSchema,
   updateBranchSchema,
 } from '@/lib/validation/branches';
-import * as branchService from '@/lib/api/branches/branchService';
+import branchService from '@/lib/services/branchService';
 
 // ===== Branch Management Actions =====
 
@@ -40,10 +40,10 @@ export async function createBranchAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    return await branchService.createBranch(
-      verify.business!.id,
-      validation.data,
-    );
+    return (await branchService.create({
+      business_id: verify.business!.id,
+      ...validation.data,
+    })) as ApiResponse<Branch>;
   } catch (error) {
     console.error('[createBranchAction]', error);
     return {
@@ -101,7 +101,10 @@ export async function updateBranchAction(
       };
     }
 
-    return await branchService.updateBranch(id, validation.data);
+    return (await branchService.update(
+      id,
+      validation.data,
+    )) as ApiResponse<Branch>;
   } catch (error) {
     console.error('[updateBranchAction]', error);
     return {
@@ -145,7 +148,7 @@ export async function deleteBranchAction(
       };
     }
 
-    return await branchService.deleteBranch(id);
+    return (await branchService.delete(id)) as ApiResponse<null>;
   } catch (error) {
     console.error('[deleteBranchAction]', error);
     return {

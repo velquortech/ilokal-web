@@ -16,7 +16,7 @@ import {
 } from '@/hooks/useAdminMutations';
 import { useUser } from '@/providers/UserContext';
 import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
-import { PaginatedResponse } from '@/services/api/paginationService';
+import { PaginatedResponse } from '@/services';
 
 interface AdminTabProps {
   data: PaginatedResponse<AdminUser> | null;

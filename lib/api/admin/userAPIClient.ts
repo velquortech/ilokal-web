@@ -18,7 +18,7 @@ import {
   updateProfile,
   updateProfileStatus,
 } from '@/lib/api/admin/adminActionHelpers';
-import { CreateUserInput } from '@/services/api/userService';
+import type { CreateUserInput } from '@/services';
 import { AdminUpdateUserInput } from '@/lib/api/admin/adminActionHelpers';
 
 // ============================================================================

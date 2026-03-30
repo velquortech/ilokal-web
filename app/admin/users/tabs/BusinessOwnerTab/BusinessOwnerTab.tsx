@@ -47,10 +47,10 @@ export default function BusinessOwnerTab({
     setIsMounted(true);
   }, []);
 
-  // Update cache when data changes
-  if (businessOwnerData && businessOwnersDataCache !== businessOwnerData) {
-    setBusinessOwnersDataCache(businessOwnerData);
-  }
+  // Sync incoming prop to local cache when it changes
+  useEffect(() => {
+    setBusinessOwnersDataCache(businessOwnerData ?? null);
+  }, [businessOwnerData]);
 
   /**
    * Patch a single user record in the cached data with only the changed fields
@@ -99,20 +99,25 @@ export default function BusinessOwnerTab({
         };
       }
 
-      // Add new business owner to the beginning of the list
-      const updatedData = {
+      // Add new business owner to the beginning of the list and recompute pagination
+      const prevTotal =
+        prevData.pagination?.totalItems ?? prevData.data?.length ?? 0;
+      const pageSize =
+        prevData.pagination?.pageSize ?? ADMIN_CONFIG.ITEMS_PER_PAGE;
+      const newTotal = prevTotal + 1;
+      const newList = [newBusinessOwner, ...(prevData.data ?? [])];
+      const trimmed = newList.slice(0, pageSize);
+
+      return {
         ...prevData,
-        data: [newBusinessOwner, ...prevData.data.slice(0, -1)], // Add at top, remove last if exceeds limit
+        data: trimmed,
         pagination: {
-          ...prevData.pagination,
-          totalItems: prevData.pagination.totalItems + 1,
-          totalPages: Math.ceil(
-            (prevData.pagination.totalItems + 1) / ADMIN_CONFIG.ITEMS_PER_PAGE,
-          ),
+          ...(prevData.pagination ?? {}),
+          totalItems: newTotal,
+          totalPages: Math.max(1, Math.ceil(newTotal / pageSize)),
+          pageSize,
         },
       };
-
-      return updatedData;
     });
   }, []);
 
@@ -126,25 +131,25 @@ export default function BusinessOwnerTab({
         if (!prevData) return prevData;
 
         // Remove the deleted business owner from the list
-        const updatedData = {
+        const filtered = (prevData.data ?? []).filter(
+          (businessOwner) => businessOwner.id !== deletedBusinessOwnerId,
+        );
+        const prevTotal =
+          prevData.pagination?.totalItems ?? prevData.data?.length ?? 0;
+        const newTotal = Math.max(0, prevTotal - 1);
+        const pageSize =
+          prevData.pagination?.pageSize ?? ADMIN_CONFIG.ITEMS_PER_PAGE;
+
+        return {
           ...prevData,
-          data: prevData.data.filter(
-            (businessOwner) => businessOwner.id !== deletedBusinessOwnerId,
-          ),
+          data: filtered,
           pagination: {
-            ...prevData.pagination,
-            totalItems: Math.max(0, prevData.pagination.totalItems - 1),
-            totalPages: Math.max(
-              1,
-              Math.ceil(
-                (prevData.pagination.totalItems - 1) /
-                  ADMIN_CONFIG.ITEMS_PER_PAGE,
-              ),
-            ),
+            ...(prevData.pagination ?? {}),
+            totalItems: newTotal,
+            totalPages: Math.max(1, Math.ceil(newTotal / pageSize)),
+            pageSize,
           },
         };
-
-        return updatedData;
       });
     },
     [],
@@ -345,7 +350,7 @@ export default function BusinessOwnerTab({
           </h2>
           <p className="mt-1 text-sm text-gray-600">
             Total business owners:{' '}
-            {businessOwnersDataCache?.pagination.totalItems || 0}
+            {businessOwnersDataCache?.pagination?.totalItems || 0}
           </p>
         </div>
         <Button

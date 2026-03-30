@@ -55,15 +55,15 @@ export async function request<T = unknown>(
   const url = `/api${path}`;
   switch (method) {
     case 'GET':
-      return (await apiClient.get(url, { headers })).data as T;
+      return (await apiClient.get(url, { headers })) as T;
     case 'POST':
-      return (await apiClient.post(url, body, { headers })).data as T;
+      return (await apiClient.post(url, body, { headers })) as T;
     case 'PUT':
-      return (await apiClient.put(url, body, { headers })).data as T;
+      return (await apiClient.put(url, body, { headers })) as T;
     case 'DELETE':
-      return (await apiClient.delete(url, { headers })).data as T;
+      return (await apiClient.delete(url, { headers })) as T;
     case 'PATCH':
-      return (await apiClient.patch(url, body, { headers })).data as T;
+      return (await apiClient.patch(url, body, { headers })) as T;
     default:
       throw new Error(`Unsupported method: ${method}`);
   }

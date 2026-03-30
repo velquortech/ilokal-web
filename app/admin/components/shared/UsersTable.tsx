@@ -158,7 +158,7 @@ export default function UsersTable<TRow extends { id: string } = AdminUser>({
     );
   }
 
-  if (!data || data.data.length === 0) {
+  if (!data || (data.data?.length ?? 0) === 0) {
     return (
       <div className="rounded-lg border border-dashed border-gray-300 p-12 text-center">
         <p className="text-gray-600">No users found</p>

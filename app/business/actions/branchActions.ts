@@ -40,10 +40,9 @@ export async function createBranchAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    return (await branchService.create({
-      business_id: verify.business!.id,
-      ...validation.data,
-    })) as ApiResponse<Branch>;
+    const api = await import('@/lib/api/branches/branchService');
+    const res = await api.createBranch(verify.business!.id, validation.data);
+    return res as ApiResponse<Branch>;
   } catch (error) {
     console.error('[createBranchAction]', error);
     return {
@@ -101,10 +100,8 @@ export async function updateBranchAction(
       };
     }
 
-    return (await branchService.update(
-      id,
-      validation.data,
-    )) as ApiResponse<Branch>;
+    const updated = await branchService.update(id, validation.data);
+    return { success: true, data: updated } as ApiResponse<Branch>;
   } catch (error) {
     console.error('[updateBranchAction]', error);
     return {
@@ -148,7 +145,8 @@ export async function deleteBranchAction(
       };
     }
 
-    return (await branchService.delete(id)) as ApiResponse<null>;
+    await branchService.delete(id);
+    return { success: true, data: null } as ApiResponse<null>;
   } catch (error) {
     console.error('[deleteBranchAction]', error);
     return {

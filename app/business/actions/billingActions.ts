@@ -162,7 +162,11 @@ export async function removePaymentMethodAction(
       paymentMethodId,
     )) as ApiResponse<{ message: string }>;
 
-    if (!result.success) return result;
+    if (!result.success)
+      return {
+        success: false,
+        error: result.error,
+      } as ApiResponse<{ message: string }>;
 
     return {
       success: true,

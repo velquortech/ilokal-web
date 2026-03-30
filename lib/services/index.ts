@@ -1,7 +1,9 @@
 export { default as userService } from './userService';
 export { default as http } from './client';
 export { default as productService } from './productService';
-export { default as paymentService } from './paymentService';
+// `paymentService` performs server-side operations (confirm/refund).
+// Do NOT export it from this client-facing barrel; import directly from
+// `lib/services/paymentService` in server-only code.
 export { default as ratingService } from './ratingService';
 // `subscriptionService` and `couponService` are server-aware and must not be
 // exported through the client-facing barrel to avoid pulling server-only
@@ -12,7 +14,9 @@ export { default as branchService } from './branchService';
 // `businessService` is server-aware and must not be exported through the
 // client-facing barrel to avoid pulling server-only modules into client bundles.
 // Import `lib/services/businessService` directly from server-only callsites.
-export { default as notificationService } from './notificationService';
+// `notificationService` is server-aware (reads current user on server).
+// Do NOT export it through the client-facing barrel; import directly
+// from `lib/services/notificationService` in server-only callsites when needed.
 export { default as uploadService } from './uploadService';
 export { default as analyticsService } from './analyticsService';
 

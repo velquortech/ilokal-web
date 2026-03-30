@@ -14,7 +14,7 @@ import {
   createProductSchema,
   updateProductSchema,
 } from '@/lib/validation/products';
-import productService from '@/lib/services/productService';
+// productService is not used here; we import the API client dynamically on server
 import * as productQuery from '@/lib/api/products/productQuery';
 
 // ===== Business Owner Product Actions =====
@@ -45,10 +45,8 @@ export async function createProductAction(
       return { success: false, error: verify.error as ApiError };
     }
 
-    return (await productService.create({
-      business_id: verify.business!.id,
-      ...validation.data,
-    })) as ApiResponse<Product>;
+    const api = await import('@/lib/api/products/productService');
+    return await api.createProduct(verify.business!.id, validation.data);
   } catch (error) {
     console.error('[createProductAction]', error);
     return {
@@ -86,10 +84,8 @@ export async function updateProductAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    return (await productService.update(id, {
-      ...validation.data,
-      business_id: verify.business!.id,
-    })) as ApiResponse<Product>;
+    const api = await import('@/lib/api/products/productService');
+    return await api.updateProduct(id, verify.business!.id, validation.data);
   } catch (error) {
     console.error('[updateProductAction]', error);
     return {
@@ -113,7 +109,8 @@ export async function deleteProductAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    return (await productService.delete(id)) as ApiResponse<null>;
+    const api = await import('@/lib/api/products/productService');
+    return await api.deleteProduct(id, verify.business!.id);
   } catch (error) {
     console.error('[deleteProductAction]', error);
     return {

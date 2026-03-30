@@ -12,7 +12,7 @@ async function useServerClient() {
 
 const businessService = {
   async list(
-    filters?: Partial<Record<string, unknown>>,
+    filters?: Partial<Record<string, string | number>>,
   ): Promise<OperationResult<PaginatedBusinessResponse>> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();

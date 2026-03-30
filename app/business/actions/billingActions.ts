@@ -18,7 +18,7 @@ import {
 } from '@/lib/validation/subscriptions';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import * as subscriptionQuery from '@/lib/api/subscriptions/subscriptionQuery';
-import * as subscriptionService from '@/lib/api/subscriptions/subscriptionService';
+import subscriptionService from '@/lib/services/subscriptionService';
 
 /**
  * Add new payment method for business
@@ -48,10 +48,10 @@ export async function addPaymentMethodAction(
     const businessId = verify.business!.id;
 
     // Add payment method via service layer
-    return await subscriptionService.addPaymentMethod(
+    return (await subscriptionService.addPaymentMethod(
       businessId,
       validated.data,
-    );
+    )) as ApiResponse<SubscriptionPaymentMethod>;
   } catch (error) {
     console.error('[addPaymentMethodAction]', error);
     return {
@@ -106,10 +106,10 @@ export async function updatePaymentMethodAction(
 
     // If setting as default, call appropriate service function
     if (validated.data.is_default) {
-      return await subscriptionService.setDefaultPaymentMethod(
+      return (await subscriptionService.setDefaultPaymentMethod(
         businessId,
         paymentMethodId,
-      );
+      )) as ApiResponse<SubscriptionPaymentMethod>;
     }
 
     // For other updates (expiry dates in Stripe integration)
@@ -158,12 +158,11 @@ export async function removePaymentMethodAction(
     }
 
     // Remove payment method via service layer
-    const result =
-      await subscriptionService.removePaymentMethod(paymentMethodId);
+    const result = (await subscriptionService.removePaymentMethod(
+      paymentMethodId,
+    )) as ApiResponse<{ message: string }>;
 
-    if (!result.success) {
-      return result;
-    }
+    if (!result.success) return result;
 
     return {
       success: true,
@@ -209,10 +208,10 @@ export async function setDefaultPaymentMethodAction(
     }
 
     // Set as default via service layer
-    return await subscriptionService.setDefaultPaymentMethod(
+    return (await subscriptionService.setDefaultPaymentMethod(
       businessId,
       paymentMethodId,
-    );
+    )) as ApiResponse<SubscriptionPaymentMethod>;
   } catch (error) {
     console.error('[setDefaultPaymentMethodAction]', error);
     return {

@@ -17,7 +17,8 @@ class ApiManager {
 
   constructor() {
     this.instance = axios.create({
-      baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api',
+      // Use origin only; API routes are prefixed with `/api` by callers.
+      baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
       headers: {
         'Content-Type': 'application/json',
       },

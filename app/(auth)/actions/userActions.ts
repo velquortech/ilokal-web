@@ -6,7 +6,7 @@ import {
   UpdateCurrentUserProfileInput,
   updateCurrentUserProfileSchema,
 } from '@/lib/validation/auth';
-import userService from '@/lib/services/userService';
+import { updateUserProfile } from '@/lib/api/users/userService';
 
 /**
  * Server Action: Update current user profile
@@ -55,8 +55,8 @@ export async function updateCurrentUserProfileAction(
       };
     }
 
-    // Update profile using centralized user service (isomorphic)
-    const updatedUser = await userService.updateCurrentProfile(validation.data);
+    // Update profile using server API client (server-only)
+    const updatedUser = await updateUserProfile(auth.user.id, validation.data);
 
     return {
       success: true,

@@ -17,7 +17,7 @@ export default {
   async createAdmin(data: AdminCreateUserInput): Promise<UserOpResult> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
-      const res = await client.createAdmin(data as any);
+      const res = await client.createAdmin(data);
       return {
         data: res.data,
         error: typeof res.error === 'string' ? res.error : undefined,
@@ -35,7 +35,7 @@ export default {
   async createConsumer(data: AdminCreateUserInput): Promise<UserOpResult> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
-      const res = await client.createConsumer(data as any);
+      const res = await client.createConsumer(data);
       return {
         data: res.data,
         error: typeof res.error === 'string' ? res.error : undefined,
@@ -53,7 +53,7 @@ export default {
   async createBusinessOwner(data: AdminCreateUserInput): Promise<UserOpResult> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
-      const res = await client.createBusinessOwner(data as any);
+      const res = await client.createBusinessOwner(data);
       return {
         data: res.data,
         error: typeof res.error === 'string' ? res.error : undefined,
@@ -74,7 +74,7 @@ export default {
   ): Promise<UserOpResult> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
-      const res = await client.updateUser(id, changes as any);
+      const res = await client.updateUser(id, changes);
       return {
         data: res.data,
         error: typeof res.error === 'string' ? res.error : undefined,

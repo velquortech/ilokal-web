@@ -6,10 +6,18 @@ const paymentService = {
   },
 
   async confirm(id: string) {
+    if (typeof window === 'undefined') {
+      const svc = await import('@/lib/api/payments/paymentService');
+      return await svc.confirmPayment(id);
+    }
     return await http.post(`/payments/${id}/confirm`);
   },
 
   async refund(id: string) {
+    if (typeof window === 'undefined') {
+      const svc = await import('@/lib/api/payments/paymentService');
+      return await svc.refundPayment(id);
+    }
     return await http.post(`/payments/${id}/refund`);
   },
 

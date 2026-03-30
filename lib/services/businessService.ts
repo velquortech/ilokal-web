@@ -16,7 +16,7 @@ const businessService = {
   ): Promise<OperationResult<PaginatedBusinessResponse>> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
-      return await client.getBusinessesList(filters as any);
+      return await client.getBusinessesList(filters);
     }
 
     try {
@@ -120,7 +120,7 @@ const businessService = {
   ): Promise<OperationResult<AdminBusiness>> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
-      return await client.updateBusiness(businessId, updates as any);
+      return await client.updateBusiness(businessId, updates);
     }
 
     try {

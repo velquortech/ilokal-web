@@ -15,7 +15,7 @@ const categoryService = {
   async create(input: CreateCategoryRequest): Promise<ApiResponse<Category>> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
-      return await client.createCategory(input as any);
+      return await client.createCategory(input);
     }
 
     try {
@@ -38,7 +38,7 @@ const categoryService = {
   ): Promise<ApiResponse<Category>> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
-      return await client.updateCategory(id, input as any);
+      return await client.updateCategory(id, input);
     }
 
     try {

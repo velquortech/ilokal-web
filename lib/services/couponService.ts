@@ -30,7 +30,7 @@ const couponService = {
   ): Promise<ApiResponse<Coupon>> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
-      return await client.createCoupon(businessId, input as any);
+      return await client.createCoupon(businessId, input);
     }
 
     try {
@@ -56,7 +56,7 @@ const couponService = {
   ): Promise<ApiResponse<Coupon>> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
-      return await client.updateCoupon(id, input as any);
+      return await client.updateCoupon(id, input);
     }
 
     try {
@@ -123,7 +123,7 @@ const couponService = {
   ): Promise<ApiResponse<FeaturedDeal>> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
-      return await client.createFeaturedDeal(businessId, input as any);
+      return await client.createFeaturedDeal(businessId, input);
     }
 
     try {
@@ -149,7 +149,7 @@ const couponService = {
   ): Promise<ApiResponse<FeaturedDeal>> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
-      return await client.updateFeaturedDeal(id, input as any);
+      return await client.updateFeaturedDeal(id, input);
     }
 
     try {

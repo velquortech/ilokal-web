@@ -100,4 +100,4 @@ Rollback plan
 
 - If issues are found post-merge, revert the PR branch and re-run CI; optionally reintroduce changes per smaller batches (Batch 1, Batch 2, ...).
 
-If you want, I will prepare a detailed PR description and a set of review notes that you can paste into GitHub when creating the PR. 
+If you want, I will prepare a detailed PR description and a set of review notes that you can paste into GitHub when creating the PR.

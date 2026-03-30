@@ -1,5 +1,10 @@
 import http from './client';
-import { Profile, UserRole } from '@/lib/types/user';
+import type {
+  Profile,
+  UserRole,
+  DatabaseInsertProfile,
+  DatabaseUpdateProfile,
+} from '@/lib/types';
 import type { PaginatedResponse } from '@/services';
 
 export default {
@@ -53,18 +58,21 @@ export default {
     return await http.get(`/admin/profiles/${id}`);
   },
 
-  async createProfile(data: unknown): Promise<Profile> {
-    return await http.post('/admin/profiles', data);
+  async createProfile(data: DatabaseInsertProfile): Promise<Profile> {
+    return await http.post<Profile>('/admin/profiles', data);
   },
 
-  async adminUpdateProfile(id: string, data: unknown): Promise<Profile> {
-    return await http.put(`/admin/profiles/${id}`, data);
+  async adminUpdateProfile(
+    id: string,
+    data: DatabaseUpdateProfile,
+  ): Promise<Profile> {
+    return await http.put<Profile>(`/admin/profiles/${id}`, data);
   },
 
   async deleteProfile(id: string): Promise<{ message: string }> {
     return await http.del(`/admin/profiles/${id}`);
   },
-  async updateCurrentProfile(data: unknown): Promise<Profile> {
-    return await http.put('/auth/me', data);
+  async updateCurrentProfile(data: DatabaseUpdateProfile): Promise<Profile> {
+    return await http.put<Profile>('/auth/me', data);
   },
 };

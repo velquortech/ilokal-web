@@ -1,12 +1,23 @@
 import http from './client';
+import type { ApiResponse } from '@/lib/types';
 
 const uploadService = {
-  async uploadAvatar(formData: unknown) {
-    return await http.post('/upload/avatar', formData);
+  async uploadAvatar(
+    formData: FormData,
+  ): Promise<ApiResponse<{ url: string }>> {
+    return await http.post<ApiResponse<{ url: string }>>(
+      '/upload/avatar',
+      formData,
+    );
   },
 
-  async uploadVerificationDocs(formData: unknown) {
-    return await http.post('/upload/verification-docs', formData);
+  async uploadVerificationDocs(
+    formData: FormData,
+  ): Promise<ApiResponse<{ url: string }>> {
+    return await http.post<ApiResponse<{ url: string }>>(
+      '/upload/verification-docs',
+      formData,
+    );
   },
 };
 

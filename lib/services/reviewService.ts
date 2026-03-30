@@ -1,5 +1,5 @@
 import http from './client';
-import type { ApiResponse, RatingResponse } from '@/lib/types';
+import type { ApiResponse, RatingResponse, Review } from '@/lib/types';
 import type { CreateReviewRequest, UpdateReviewRequest } from '@/lib/types';
 
 async function useServerClient() {
@@ -8,17 +8,15 @@ async function useServerClient() {
 }
 
 const reviewService = {
-  async createReview(
-    input: CreateReviewRequest,
-  ): Promise<ApiResponse<Record<string, unknown>>> {
+  async createReview(input: CreateReviewRequest): Promise<ApiResponse<Review>> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
-      return await client.createReview(input as any);
+      return (await client.createReview(input)) as ApiResponse<Review>;
     }
 
     try {
-      const res = await http.post('/reviews', input);
-      return res as ApiResponse<Record<string, unknown>>;
+      const res = await http.post<Review>('/reviews', input);
+      return { success: true, data: res } as ApiResponse<Review>;
     } catch (err: unknown) {
       return {
         success: false,
@@ -34,15 +32,19 @@ const reviewService = {
     id: string,
     input: UpdateReviewRequest,
     actor?: { userId: string; role?: string },
-  ): Promise<ApiResponse<Record<string, unknown>>> {
+  ): Promise<ApiResponse<Review>> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
-      return await client.updateReview(id, input as any, actor as any);
+      return (await client.updateReview(
+        id,
+        input,
+        actor,
+      )) as ApiResponse<Review>;
     }
 
     try {
-      const res = await http.put(`/reviews/${id}`, input);
-      return res as ApiResponse<Record<string, unknown>>;
+      const res = await http.put<Review>(`/reviews/${id}`, input);
+      return { success: true, data: res } as ApiResponse<Review>;
     } catch (err: unknown) {
       return {
         success: false,
@@ -60,7 +62,7 @@ const reviewService = {
   ): Promise<ApiResponse<null>> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
-      return await client.deleteReview(id, actor as any);
+      return await client.deleteReview(id, actor);
     }
 
     try {

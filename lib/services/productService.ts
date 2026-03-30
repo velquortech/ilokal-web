@@ -1,4 +1,9 @@
 import http from './client';
+import type {
+  CreateProductRequest,
+  UpdateProductRequest,
+  Product,
+} from '@/lib/types';
 
 const productService = {
   async list(params?: Record<string, string | number>) {
@@ -12,12 +17,12 @@ const productService = {
     return await http.get(`/products/${id}`);
   },
 
-  async create(data: unknown) {
-    return await http.post('/products', data);
+  async create(data: CreateProductRequest) {
+    return await http.post<Product>('/products', data);
   },
 
-  async update(id: string, data: unknown) {
-    return await http.put(`/products/${id}`, data);
+  async update(id: string, data: UpdateProductRequest) {
+    return await http.put<Product>(`/products/${id}`, data);
   },
 
   async delete(id: string) {

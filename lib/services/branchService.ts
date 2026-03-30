@@ -1,4 +1,9 @@
 import http from './client';
+import type {
+  CreateBranchRequest,
+  UpdateBranchRequest,
+  Branch,
+} from '@/lib/types';
 
 const branchService = {
   async list() {
@@ -13,12 +18,12 @@ const branchService = {
     return await http.get(`/branches/business/${businessId}`);
   },
 
-  async create(data: unknown) {
-    return await http.post('/branches', data);
+  async create(data: CreateBranchRequest) {
+    return await http.post<Branch>('/branches', data);
   },
 
-  async update(id: string, data: unknown) {
-    return await http.put(`/branches/${id}`, data);
+  async update(id: string, data: UpdateBranchRequest) {
+    return await http.put<Branch>(`/branches/${id}`, data);
   },
 
   async delete(id: string) {

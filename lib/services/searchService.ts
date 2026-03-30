@@ -4,6 +4,9 @@ import type {
   GlobalSearchResponse,
   SearchResponse,
   TrendingResponse,
+  BusinessSearchResult,
+  ProductSearchResult,
+  DealSearchResult,
 } from '@/lib/types';
 import type {
   SearchFiltersInput,
@@ -52,7 +55,7 @@ const searchService = {
     filters?: SearchFiltersInput,
     pagination?: PaginationParams,
     sortBy: string = 'relevance',
-  ): Promise<ApiResponse<SearchResponse<unknown>>> {
+  ): Promise<ApiResponse<SearchResponse<BusinessSearchResult>>> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
       return await client.searchBusinessesService(
@@ -64,14 +67,17 @@ const searchService = {
     }
 
     try {
-      const res = await http.post(`/search/businesses`, {
-        query,
-        filters,
-        pagination,
-        sortBy,
-      });
+      const res = await http.post<SearchResponse<BusinessSearchResult>>(
+        `/search/businesses`,
+        {
+          query,
+          filters,
+          pagination,
+          sortBy,
+        },
+      );
       return { success: true, data: res } as ApiResponse<
-        SearchResponse<unknown>
+        SearchResponse<BusinessSearchResult>
       >;
     } catch (err: unknown) {
       return {
@@ -89,7 +95,7 @@ const searchService = {
     filters?: SearchFiltersInput,
     pagination?: PaginationParams,
     sortBy: string = 'relevance',
-  ): Promise<ApiResponse<SearchResponse<unknown>>> {
+  ): Promise<ApiResponse<SearchResponse<ProductSearchResult>>> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
       return await client.searchProductsService(
@@ -101,14 +107,17 @@ const searchService = {
     }
 
     try {
-      const res = await http.post(`/search/products`, {
-        query,
-        filters,
-        pagination,
-        sortBy,
-      });
+      const res = await http.post<SearchResponse<ProductSearchResult>>(
+        `/search/products`,
+        {
+          query,
+          filters,
+          pagination,
+          sortBy,
+        },
+      );
       return { success: true, data: res } as ApiResponse<
-        SearchResponse<unknown>
+        SearchResponse<ProductSearchResult>
       >;
     } catch (err: unknown) {
       return {
@@ -126,7 +135,7 @@ const searchService = {
     filters?: SearchFiltersInput,
     pagination?: PaginationParams,
     sortBy: string = 'relevance',
-  ): Promise<ApiResponse<SearchResponse<unknown>>> {
+  ): Promise<ApiResponse<SearchResponse<DealSearchResult>>> {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
       return await client.searchDealsService(
@@ -138,14 +147,17 @@ const searchService = {
     }
 
     try {
-      const res = await http.post(`/search/deals`, {
-        query,
-        filters,
-        pagination,
-        sortBy,
-      });
+      const res = await http.post<SearchResponse<DealSearchResult>>(
+        `/search/deals`,
+        {
+          query,
+          filters,
+          pagination,
+          sortBy,
+        },
+      );
       return { success: true, data: res } as ApiResponse<
-        SearchResponse<unknown>
+        SearchResponse<DealSearchResult>
       >;
     } catch (err: unknown) {
       return {

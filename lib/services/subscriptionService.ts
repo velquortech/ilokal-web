@@ -74,6 +74,45 @@ const subscriptionService = {
 
     return await http.post(`/subscriptions/${id}/cancel`, data);
   },
+
+  async addPaymentMethod(businessId: string, input: unknown): Promise<unknown> {
+    if (typeof window === 'undefined') {
+      const client = await useServerClient();
+      return await client.addPaymentMethod(businessId, input as any);
+    }
+
+    return await http.post(
+      '/billing/payment-method',
+      Object.assign(
+        { business_id: businessId },
+        input as Record<string, unknown>,
+      ),
+    );
+  },
+
+  async removePaymentMethod(paymentMethodId: string): Promise<unknown> {
+    if (typeof window === 'undefined') {
+      const client = await useServerClient();
+      return await client.removePaymentMethod(paymentMethodId);
+    }
+
+    return await http.del(`/billing/payment-method/${paymentMethodId}`);
+  },
+
+  async setDefaultPaymentMethod(
+    businessId: string,
+    paymentMethodId: string,
+  ): Promise<unknown> {
+    if (typeof window === 'undefined') {
+      const client = await useServerClient();
+      return await client.setDefaultPaymentMethod(businessId, paymentMethodId);
+    }
+
+    return await http.put(`/billing/payment-method/${paymentMethodId}`, {
+      is_default: true,
+      business_id: businessId,
+    });
+  },
 };
 
 export default subscriptionService;

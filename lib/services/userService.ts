@@ -64,4 +64,7 @@ export default {
   async deleteProfile(id: string): Promise<{ message: string }> {
     return await http.del(`/admin/profiles/${id}`);
   },
+  async updateCurrentProfile(data: unknown): Promise<Profile> {
+    return await http.put('/auth/me', data);
+  },
 };

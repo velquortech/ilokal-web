@@ -1,9 +1,7 @@
 export { default as userService } from './userService';
 export { default as http } from './client';
-export { default as searchService } from './searchService';
 export { default as productService } from './productService';
 export { default as paymentService } from './paymentService';
-export { default as reviewService } from './reviewService';
 export { default as ratingService } from './ratingService';
 // `subscriptionService` and `couponService` are server-aware and must not be
 // exported through the client-facing barrel to avoid pulling server-only

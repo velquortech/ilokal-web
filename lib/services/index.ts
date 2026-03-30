@@ -3,10 +3,12 @@ export { default as http } from './client';
 export { default as searchService } from './searchService';
 export { default as productService } from './productService';
 export { default as paymentService } from './paymentService';
-export { default as subscriptionService } from './subscriptionService';
 export { default as reviewService } from './reviewService';
 export { default as ratingService } from './ratingService';
-export { default as couponService } from './couponService';
+// `subscriptionService` and `couponService` are server-aware and must not be
+// exported through the client-facing barrel to avoid pulling server-only
+// modules into client bundles. Import them directly from their files in
+// server-only callsites when needed.
 export { default as featuredDealService } from './featuredDealService';
 export { default as branchService } from './branchService';
 // `businessService` is server-aware and must not be exported through the

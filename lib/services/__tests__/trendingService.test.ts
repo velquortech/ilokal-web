@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import type { Mock } from 'vitest';
 
 vi.mock('../client', () => ({
   default: {
@@ -14,8 +15,12 @@ describe('trendingService', () => {
 
   it('get calls /trending with qs and returns data', async () => {
     const mock = { items: [] };
-    (http.get as any).mockResolvedValue(mock);
-    const res = await trendingService.get({ period: 'week', type: 'all', limit: 10 });
+    (http.get as unknown as Mock).mockResolvedValue(mock);
+    const res = await trendingService.get({
+      period: 'week',
+      type: 'all',
+      limit: 10,
+    });
     expect(http.get).toHaveBeenCalledWith(expect.stringContaining('/trending'));
     expect(res).toEqual({ success: true, data: mock });
   });

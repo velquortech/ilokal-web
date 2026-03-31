@@ -29,7 +29,7 @@ const invoiceService = {
           page,
           limit,
           ...(filters || {}),
-        } as any);
+        } as Record<string, unknown>);
       } catch (err) {
         console.error('[invoiceService.list] server fast-path error', err);
         return await http.get<PaginatedInvoicesResponse>(url);

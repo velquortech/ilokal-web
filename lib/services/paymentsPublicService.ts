@@ -29,6 +29,10 @@ const paymentsPublicService = {
         return await paymentMod.createCheckoutSession(user.id, input);
       } catch (err: unknown) {
         // If server fast-path fails (eg. no request scope in tests), fall back to HTTP POST
+        console.error(
+          '[paymentsPublicService.checkout] server fast-path error',
+          err,
+        );
         try {
           const res = await http.post('/payments/checkout', input);
           return { success: true, data: res } as ApiResponse<unknown>;

@@ -42,8 +42,7 @@ const productService = {
 
   async delete(id: string) {
     if (typeof window === 'undefined') {
-      const client = await useServerClient();
-      const [client, userMod, subQ] = await Promise.all([
+      const [svcClient, userMod, subQ] = await Promise.all([
         useServerClient(),
         import('@/lib/api/getCurrentUser'),
         import('@/lib/api/subscriptions/subscriptionQuery'),
@@ -65,7 +64,7 @@ const productService = {
         } as unknown as Product;
       }
 
-      return await client.deleteProduct(id, businessResult.data.id);
+      return await svcClient.deleteProduct(id, businessResult.data.id);
     }
 
     return await http.del(`/products/${id}`);

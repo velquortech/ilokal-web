@@ -40,9 +40,9 @@ export async function createServerSupabaseClient() {
 // such as `auth.admin.*`. This client MUST use a server-only key.
 export async function createServerAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_SECRET_KEY;
+  // Service role key MUST be server-only. DO NOT expose this via NEXT_PUBLIC_*
+  // Only read from the server-side-only env `SUPABASE_SERVICE_ROLE_KEY`.
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !key) {
     throw new Error(

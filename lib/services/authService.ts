@@ -5,6 +5,18 @@ export type LoginResult = { user: User; message: string };
 
 const authService = {
   async getMe(): Promise<User | null> {
+    // Server fast-path: use server helper to fetch current user without HTTP
+    if (typeof window === 'undefined') {
+      try {
+        const mod = await import('@/lib/api/getCurrentUser');
+        const user = await mod.getCurrentUser();
+        return user;
+      } catch (err) {
+        console.error('[authService.getMe] server fast-path error', err);
+        return null;
+      }
+    }
+
     try {
       return await http.get<User>('/auth/me');
     } catch (err: unknown) {

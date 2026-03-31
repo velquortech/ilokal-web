@@ -19,9 +19,20 @@ export { default as branchService } from './branchService';
 // from `lib/services/notificationService` in server-only callsites when needed.
 export { default as uploadService } from './uploadService';
 export { default as analyticsService } from './analyticsService';
-
+export { default as notificationService } from './notificationService';
 // Re-export commonly used types from the legacy browser services so callers
 // can migrate imports to `@/services` incrementally.
+// Additional client-safe, isomorphic services (can be imported from the
+// client-facing barrel without pulling server-only modules into browser
+// bundles). Keep server-only services (payment/subscription/coupon/etc.) out
+// of this barrel per the comments above.
+export { default as reviewService } from './reviewService';
+export { default as searchService } from './searchService';
+export { default as categoryService } from './categoryService';
+export { default as invoiceService } from './invoiceService';
+export { default as adminService } from './adminService';
+export { default as authService } from './authService';
+export { default as businessPublicService } from './businessPublicService';
 export type { PaginatedResponse } from '@/services/api/paginationService';
 export type { AdminCreateUserInput } from '@/lib/types/admin';
 export type {

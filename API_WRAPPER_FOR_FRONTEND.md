@@ -1,5 +1,7 @@
 # API Wrapper — Front-end Developer Guide
 
+**⚠️ Updated March 31, 2026** — Document corrected to match current `lib/services/index.ts` barrel status. See [WORKFLOW/INVENTORY_AUDIT_REPORT.md](WORKFLOW/INVENTORY_AUDIT_REPORT.md) for audit details.
+
 ## Purpose
 
 This document explains how front-end developers should consume the repository's isomorphic API wrapper layer (`lib/services`) and why using the wrapper is preferable to calling API routes or server actions directly from client code.
@@ -85,24 +87,72 @@ export async function someServerAction() {
 
 ## Server-only wrappers
 
-The main `lib/services` barrel only exports services that are safe for browser import (no server-only helpers):
+The main `lib/services` barrel only exports services that are safe for browser import (no server-only helpers at module level):
 
-- ✅ **Safe to import from barrel**: `userService`, `ratingService`, `featuredDealService`, `branchService`, `uploadService`, `trendingService`, `http` client
+### ✅ Safe to import from barrel (7 services)
 
-Services that are server-aware and NOT exported from the barrel (import directly only in server callsites):
+```ts
+import {
+  userService,
+  ratingService,
+  featuredDealService,
+  branchService,
+  uploadService,
+  trendingService,
+  http,
+} from '@/lib/services';
+```
 
-- ❌ **Server-only**: `productService`, `categoryService`, `invoiceService`, `searchService`, `analyticsService`, `authService`, `reviewService`, `paymentService`, `subscriptionService`, `couponService`, `businessService`, `businessPublicService`, `notificationService`, `paymentsPublicService`
+### ❌ Server-only — NOT exported from barrel (13 services)
 
-**Do NOT import server-only services in browser code.** The build will fail with a "server-only helper in client bundle" error if you do.
+Import these **only in server contexts** (API routes, server actions, Server Components):
 
-For browser operations that need server-backed flows (auth, DB access), use isomorphic public wrappers or call `/api/*` routes. See [lib/services/README.md](lib/services/README.md) for the pattern.
+```ts
+// ✅ OK in API routes and server contexts:
+import authService from '@/lib/services/authService';
+import searchService from '@/lib/services/searchService';
+import productService from '@/lib/services/productService';
+import categoryService from '@/lib/services/categoryService';
+import invoiceService from '@/lib/services/invoiceService';
+import reviewService from '@/lib/services/reviewService';
+import analyticsService from '@/lib/services/analyticsService';
+import paymentService from '@/lib/services/paymentService';
+import subscriptionService from '@/lib/services/subscriptionService';
+import couponService from '@/lib/services/couponService';
+import businessService from '@/lib/services/businessService';
+import notificationService from '@/lib/services/notificationService';
+import paymentsPublicService from '@/lib/services/paymentsPublicService';
+
+// ❌ NEVER in client code — will cause Turbopack build error:
+import authService from '@/lib/services/authService'; // ❌ Server-only
+```
+
+**Do NOT import server-only services in browser code.** The build will fail with a clear error message.
+
+For browser operations that need server-backed flows (auth, DB access, business logic), use isomorphic public wrappers or call `/api/*` routes. See [lib/services/README.md](lib/services/README.md) for the pattern.
+
+**See [WORKFLOW/api-wrapper-inventory.md](WORKFLOW/api-wrapper-inventory.md) for the complete, authoritative list and per-route classifications.**
 
 ## Migration checklist (small batches)
 
-1. Replace one import at a time from `services/api/*` -> `lib/services`.
-2. Run `yarn lint --fix` and `yarn test` after each small batch.
-3. Run `yarn build` (production build) to catch server-only import leaks (Turbopack/Next will fail if server-only code is pulled into browser bundle).
-4. If a build error indicates server-only code in client bundle, remove that export from `lib/services/index.ts` and import the server-only file directly at server-only callsites.
+Before starting: See [WORKFLOW/api-wrapper-inventory.md](WORKFLOW/api-wrapper-inventory.md) for which services are safe to import from the barrel (✅) vs server-only (❌).
+
+1. Replace one import at a time from `services/api/*` -> `lib/services` barrel.
+   - **Only import from barrel**: `userService`, `ratingService`, `featuredDealService`, `branchService`, `uploadService`, `trendingService`
+   - **For server-only services**: import directly from `@/lib/services/[serviceName]` (in server contexts only)
+
+2. Run `yarn lint --fix` and `yarn test` after each small batch to catch type errors.
+
+3. Run `yarn build` (production build) to catch bundling violations (Turbopack will fail if server-only code is pulled into browser bundle).
+   - Build error: `"You're importing a module that depends on 'next/headers'..."`
+   - **Solution**: That service is server-only; import it directly only in API routes/server actions, not from the barrel.
+
+4. If a build error indicates server-only code in client bundle:
+   - Check [lib/services/index.ts](lib/services/index.ts) to confirm the service is NOT exported
+   - Import the service directly only in server callsites: `import service from '@/lib/services/[serviceName]'`
+   - Never re-export it from the barrel
+
+For detailed status of each route and service, refer to [WORKFLOW/api-wrapper-inventory.md](WORKFLOW/api-wrapper-inventory.md).
 
 ## Error handling & auth notes
 
@@ -117,9 +167,13 @@ For browser operations that need server-backed flows (auth, DB access), use isom
 ## Troubleshooting
 
 - "Undefined response body": check whether the axios interceptor returns `response.data` and avoid double-unwrapping `.data` in your callers.
-- "Turbopack bundling error: server-only helper in client bundle": you've imported a server-only service (or a service that imports server modules) in browser code. Check the import trace and either:
-  - Remove the import from client code and import in server callsites only, OR
-  - Create a browser-safe wrapper with an HTTP fallback (see [lib/services/README.md](lib/services/README.md) for the pattern)
+
+- "Turbopack bundling error: server-only helper in client bundle": you've imported a server-only service (or a service that imports server modules) in browser code.
+  - **Root cause**: A service with server-only dependencies was imported in server context (should be fine) but got pulled into client bundle.
+  - **Fix**: Check the import trace and either:
+    - Remove the import from client code and import in server callsites only, OR
+    - Create a browser-safe wrapper with an HTTP fallback (see [lib/services/README.md](lib/services/README.md) for the pattern)
+  - **Verify**: Use [WORKFLOW/api-wrapper-inventory.md](WORKFLOW/api-wrapper-inventory.md) to confirm which services can be safely imported from the barrel (✅) vs which are server-only (❌).
 
 ## Build enforcement
 
@@ -137,10 +191,18 @@ Q: Why not call server actions directly from the client? A: Server actions run o
 
 ## Where to look for examples
 
+- [lib/services/index.ts](lib/services/index.ts) — barrel exports and comments explaining what's safe for client
 - `lib/services/*` — wrapper implementations
+- [lib/services/README.md](lib/services/README.md) — technical patterns and isomorphic wrapper pattern
 - `app/admin/users/tabs/*` — optimistic updates and cache mutation patterns
 - `services/api/apiClient.ts` — axios interceptors, error shaping, 401 redirect behavior
 
+## Reference Documentation
+
+- **[WORKFLOW/api-wrapper-inventory.md](WORKFLOW/api-wrapper-inventory.md)** — Authoritative list of API routes and whether they're safe for client import (✅) or server-only (❌)
+- **[WORKFLOW/INVENTORY_AUDIT_REPORT.md](WORKFLOW/INVENTORY_AUDIT_REPORT.md)** — Audit report showing what was corrected in the inventory (March 31, 2026)
+- **[lib/services/index.ts](lib/services/index.ts)** — Current barrel exports (source of truth)
+
 ## Contact
 
-If you want a short example added to a component or a PR note for frontend reviewers, tell me which component and I’ll add a tailored snippet.
+If you find a service that should be exported from the barrel but isn't, or want a short example added to a component, check [WORKFLOW/api-wrapper-inventory.md](WORKFLOW/api-wrapper-inventory.md) first to understand the design decision. Then open an issue or comment on PR #46.

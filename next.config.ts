@@ -60,6 +60,26 @@ const buildCSPImageSources = (): string => {
   return sources.join(' ');
 };
 
+// Build script-src for CSP. In production we disallow 'unsafe-inline' and 'unsafe-eval'.
+// For any inline scripts in production, prefer using nonces or CSP hashes.
+const buildScriptSrc = (): string => {
+  const sources = [`'self'`];
+  if (process.env.NODE_ENV !== 'production') {
+    // Keep relaxed CSP in development for convenience
+    sources.push("'unsafe-inline'", "'unsafe-eval'");
+  }
+  return sources.join(' ');
+};
+
+// Build style-src for CSP. Allow 'unsafe-inline' only in development.
+const buildStyleSrc = (): string => {
+  const sources = [`'self'`];
+  if (process.env.NODE_ENV !== 'production') {
+    sources.push("'unsafe-inline'");
+  }
+  return sources.join(' ');
+};
+
 const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),

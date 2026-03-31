@@ -5,6 +5,11 @@ import type {
   Product,
 } from '@/lib/types';
 
+async function useServerClient() {
+  const client = await import('@/lib/api/products/productService');
+  return client;
+}
+
 const productService = {
   async list(params?: Record<string, string | number>) {
     const qs = params
@@ -18,14 +23,51 @@ const productService = {
   },
 
   async create(data: CreateProductRequest) {
+    if (typeof window === 'undefined') {
+      const client = await useServerClient();
+      return await client.createProduct(data.business_id, data);
+    }
+
     return await http.post<Product>('/products', data);
   },
 
   async update(id: string, data: UpdateProductRequest) {
+    if (typeof window === 'undefined') {
+      const client = await useServerClient();
+      return await client.updateProduct(id, data.business_id as string, data);
+    }
+
     return await http.put<Product>(`/products/${id}`, data);
   },
 
   async delete(id: string) {
+    if (typeof window === 'undefined') {
+      const client = await useServerClient();
+      const [client, userMod, subQ] = await Promise.all([
+        useServerClient(),
+        import('@/lib/api/getCurrentUser'),
+        import('@/lib/api/subscriptions/subscriptionQuery'),
+      ]);
+
+      const user = await userMod.getCurrentUser();
+      if (!user) {
+        return {
+          success: false,
+          error: { code: 'UNAUTHORIZED', message: 'Not authenticated' },
+        } as unknown as Product;
+      }
+
+      const businessResult = await subQ.getUserBusiness(user.id);
+      if ('error' in businessResult) {
+        return {
+          success: false,
+          error: businessResult.error,
+        } as unknown as Product;
+      }
+
+      return await client.deleteProduct(id, businessResult.data.id);
+    }
+
     return await http.del(`/products/${id}`);
   },
 };

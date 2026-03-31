@@ -67,11 +67,12 @@ async function loadUsers() {
 
 ```ts
 // Inside a server action or route handler (server runtime)
-import subscriptionService from '@/lib/services/subscriptionService'; // uses server API directly
+import invoiceService from '@/lib/services/invoiceService'; // server-only wrapper
+import subscriptionService from '@/lib/services/subscriptionService'; // server-only wrapper
 
 export async function someServerAction() {
-  // The service will dynamically import the server implementation and run
-  return await subscriptionService.createSubscription(businessId, payload);
+  // Server-only wrappers will use the server implementation (invoiceService is not exported from public barrel)
+  return await invoiceService.list();
 }
 ```
 
@@ -84,8 +85,17 @@ export async function someServerAction() {
 
 ## Server-only wrappers
 
-- Some wrappers in `lib/services` are server-aware (for example `notificationService`, `invoiceService` or `adminService`) and are intentionally not exported from the client-facing barrel (`lib/services/index.ts`).
-- Do not import those server-only wrappers into browser code; import them directly inside server actions or other server-only callsites (for example `import invoiceService from '@/lib/services/invoiceService'` inside a server action).
+The main `lib/services` barrel only exports services that are safe for browser import (no server-only helpers):
+
+- ✅ **Safe to import from barrel**: `userService`, `ratingService`, `featuredDealService`, `branchService`, `uploadService`, `trendingService`, `http` client
+
+Services that are server-aware and NOT exported from the barrel (import directly only in server callsites):
+
+- ❌ **Server-only**: `productService`, `categoryService`, `invoiceService`, `searchService`, `analyticsService`, `authService`, `reviewService`, `paymentService`, `subscriptionService`, `couponService`, `businessService`, `businessPublicService`, `notificationService`, `paymentsPublicService`
+
+**Do NOT import server-only services in browser code.** The build will fail with a "server-only helper in client bundle" error if you do.
+
+For browser operations that need server-backed flows (auth, DB access), use isomorphic public wrappers or call `/api/*` routes. See [lib/services/README.md](lib/services/README.md) for the pattern.
 
 ## Migration checklist (small batches)
 
@@ -107,7 +117,17 @@ export async function someServerAction() {
 ## Troubleshooting
 
 - "Undefined response body": check whether the axios interceptor returns `response.data` and avoid double-unwrapping `.data` in your callers.
-- "Turbopack/webpack bundling error referencing server-only code": find the import chain from your client code into the server file. Ensure `lib/services/index.ts` does not re-export that server-only module.
+- "Turbopack bundling error: server-only helper in client bundle": you've imported a server-only service (or a service that imports server modules) in browser code. Check the import trace and either:
+  - Remove the import from client code and import in server callsites only, OR
+  - Create a browser-safe wrapper with an HTTP fallback (see [lib/services/README.md](lib/services/README.md) for the pattern)
+
+## Build enforcement
+
+The build (`yarn build` / Turbopack) enforces these rules automatically:
+
+- If a service with server-only imports is included in `lib/services/index.ts` barrel and imported by client code, the build will fail
+- Error message: `"You're importing a module that depends on 'next/headers'. This API is only available in Server Components..."`
+- Fix: remove the service from the barrel export OR create a browser-safe wrapper with HTTP fallback
 
 ## FAQ
 

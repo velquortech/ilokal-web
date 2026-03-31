@@ -27,6 +27,34 @@ const authService = {
   async logout(): Promise<{ message: string }> {
     return await http.post('/auth/logout');
   },
+
+  async signup(data: {
+    email: string;
+    password: string;
+    confirmPassword: string;
+    name: string;
+    role: 'admin' | 'business_owner' | 'app_user';
+    phone_number?: string;
+    avatar_url?: string;
+  }): Promise<{ success: boolean; data?: unknown; error?: unknown }> {
+    return await http.post('/auth/signup', data);
+  },
+
+  async resetPasswordRequest(email: string) {
+    return await http.post('/auth/reset-password', { email });
+  },
+
+  async resetPasswordConfirm(token: string, newPassword: string) {
+    return await http.post('/auth/reset-password', { token, newPassword });
+  },
+
+  async verifyEmail() {
+    return await http.post('/auth/verify-email');
+  },
+
+  async refreshToken() {
+    return await http.post('/auth/refresh-token');
+  },
 };
 
 export default authService;

@@ -33,6 +33,8 @@ export { default as invoiceService } from './invoiceService';
 export { default as adminService } from './adminService';
 export { default as authService } from './authService';
 export { default as businessPublicService } from './businessPublicService';
+export { default as trendingService } from './trendingService';
+export { default as paymentsPublicService } from './paymentsPublicService';
 export type { PaginatedResponse } from '@/services/api/paginationService';
 export type { AdminCreateUserInput } from '@/lib/types/admin';
 export type {

@@ -31,7 +31,8 @@ setup-supabase: init-log
 		echo "NEXT_PUBLIC_SUPABASE_URL=$$(grep 'Project URL' supabase_output.txt | grep -Eo 'http://[a-zA-Z0-9.:]+' | head -1)" >> .env; \
 		echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$$(grep 'Publishable' supabase_output.txt | grep -Eo 'sb_publishable_[a-zA-Z0-9_-]+' | head -1)" >> .env; \
 		echo "SUPABASE_SERVICE_ROLE_KEY=$$(grep 'Secret' supabase_output.txt | grep -Eo 'sb_secret_[a-zA-Z0-9_-]+' | head -1)" >> .env; \
-		echo "NEXT_PUBLIC_SUPABASE_DB_URL=$$(grep 'postgresql://' supabase_output.txt | grep -Eo 'postgresql://[a-zA-Z0-9.:@/-]+' | head -1)" >> .env; \
+		# Save DB URL as server-only env var (do NOT expose with NEXT_PUBLIC_)
+		echo "SUPABASE_DB_URL=$$(grep 'postgresql://' supabase_output.txt | grep -Eo 'postgresql://[a-zA-Z0-9.:@/-]+' | head -1)" >> .env; \
 		echo "[$(TIMESTAMP)] .env file created successfully" | tee -a $(LOG_FILE); \
 	else \
 		echo "[$(TIMESTAMP)] Error: Supabase output is empty. Check Supabase CLI or Docker setup." | tee -a $(LOG_FILE); \

@@ -22,34 +22,36 @@
 */
 
 // Client-safe services (can be imported from the browser)
+// These services are truly read-only and do NOT import server-only helpers at module-level,
+// including dynamic imports that Turbopack/Next.js would include in the client bundle.
 export { default as userService } from './userService';
 export { default as http } from './client';
-export { default as productService } from './productService';
 export { default as ratingService } from './ratingService';
 export { default as featuredDealService } from './featuredDealService';
 export { default as branchService } from './branchService';
 export { default as uploadService } from './uploadService';
-export { default as analyticsService } from './analyticsService';
-export { default as reviewService } from './reviewService';
-export { default as searchService } from './searchService';
-export { default as categoryService } from './categoryService';
-export { default as invoiceService } from './invoiceService';
-export { default as authService } from './authService';
 export { default as trendingService } from './trendingService';
 
 // NOTE: The following services are intentionally NOT exported here because
-// they are server-aware and may import server-only helpers. Import them
-// directly in server-only callsites when needed:
+// they import server-only helpers (directly or via dynamic import). Even dynamic
+// imports are included in the client bundle by Turbopack's static analyzer.
+// Import them directly in server-only callsites (Server Components, Server Actions, API routes) when needed:
+// - productService (create/update/delete product & category flows)
+// - categoryService (create/update/delete category flows)
+// - invoiceService (read/write invoice flows with auth requirements)
+// - searchService (search with server-side filters and auth)
+// - analyticsService (analytics queries requiring auth/admin context)
+// - authService (getMe requires server helper for session access)
+// - reviewService (review mutations require server auth)
 // - paymentService (confirm/refund flows)
-// - subscriptionService
-// - couponService
-// - businessService / businessPublicService
-// - notificationService
-// - paymentsPublicService
+// - subscriptionService (subscription mutation flows)
+// - couponService (coupon mutation flows)
+// - businessService / businessPublicService (business write flows)
+// - notificationService (notification send flows)
+// - paymentsPublicService (payment session flows)
 // If you need a browser-safe wrapper for any of the above, create an
-// explicit isomorphic wrapper (eg. `lib/services/<name>Public.ts`) that
-// implements a safe fallback and does not import server-only modules at
-// module initialization time.
+// explicit isomorphic wrapper (eg. `lib/services/public/<name>Wrapper.ts`) that
+// does NOT dynamically import server modules (use API routes instead).
 
 // Re-export types/helpers that are client-safe for gradual migration.
 export type { PaginatedResponse } from '@/services/api/paginationService';

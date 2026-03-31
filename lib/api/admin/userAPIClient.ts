@@ -9,7 +9,6 @@
 import { AdminUser } from '@/lib/types/admin';
 import {
   createAuthUser,
-  deleteAuthUser,
   archiveUser,
   unarchiveUser,
   updateAuthUser,
@@ -65,7 +64,7 @@ export async function createUser(
 
     if (profileError || !profile) {
       // Cleanup on failure
-      await deleteAuthUser(userId);
+      await archiveUser(userId);
       return {
         error: profileError || 'Failed to create profile',
       };

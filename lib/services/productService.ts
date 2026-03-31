@@ -22,7 +22,7 @@ const productService = {
     return await http.get(`/products/${id}`);
   },
 
-  async create(data: CreateProductRequest) {
+  async create(data: CreateProductRequest & { business_id: string }) {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
       return await client.createProduct(data.business_id, data);
@@ -31,7 +31,10 @@ const productService = {
     return await http.post<Product>('/products', data);
   },
 
-  async update(id: string, data: UpdateProductRequest) {
+  async update(
+    id: string,
+    data: UpdateProductRequest & { business_id?: string },
+  ) {
     if (typeof window === 'undefined') {
       const client = await useServerClient();
       return await client.updateProduct(id, data.business_id as string, data);

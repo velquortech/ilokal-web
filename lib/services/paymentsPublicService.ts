@@ -1,13 +1,5 @@
 import http from './client';
-import type { ApiResponse } from '@/lib/types';
-
-export type CheckoutRequest = {
-  amount: number;
-  currency: string;
-  payment_method: string;
-  business_id?: string;
-  metadata?: Record<string, unknown>;
-};
+import type { ApiResponse, CheckoutRequest } from '@/lib/types';
 
 const paymentsPublicService = {
   async checkout(input: CheckoutRequest): Promise<ApiResponse<unknown>> {

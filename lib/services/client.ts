@@ -1,7 +1,7 @@
 /* Unified service client: uses axios-based client on browser and fetch on server
-   Delegates to existing /services/api/apiClient for client-side requests to reuse interceptors.
+   Delegates to unified apiClient helper for client-side requests to reuse interceptors.
 */
-import apiClient from '@/services/api/apiClient';
+import apiClient from './utils/apiClient';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 

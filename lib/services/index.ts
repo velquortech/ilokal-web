@@ -54,7 +54,7 @@ export { default as trendingService } from './trendingService';
 // does NOT dynamically import server modules (use API routes instead).
 
 // Re-export types/helpers that are client-safe for gradual migration.
-export type { PaginatedResponse } from '@/services/api/paginationService';
+export type { PaginatedResponse } from './utils/paginationService';
 export type { AdminCreateUserInput } from '@/lib/types/admin';
 export type {
   UpdateUserInput,
@@ -64,4 +64,4 @@ export {
   getOffset,
   getTotalPages,
   createPaginatedResponse,
-} from '@/services/api/paginationService';
+} from './utils/paginationService';

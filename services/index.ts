@@ -1,3 +1,4 @@
-// Compatibility re-export: forward exports from the new `lib/services` layer
-// Use this file to migrate imports gradually from `services/api/*` -> `lib/services`.
+// DEPRECATED: This file is maintained for backward compatibility only.
+// New code should import directly from '@/lib/services'.
+// Existing code importing from here will continue to work during migration.
 export * from '../lib/services';

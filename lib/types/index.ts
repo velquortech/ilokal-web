@@ -206,6 +206,14 @@ export type {
   RatingResponse,
 } from './review';
 
+// Rating types
+export type {
+  Rating,
+  CreateRatingRequest,
+  UpdateRatingRequest,
+  RatingStats,
+} from './rating';
+
 // Analytics Types
 export type { PlatformAnalytics, AdminAnalyticsResponse } from './analytics';
 export type {

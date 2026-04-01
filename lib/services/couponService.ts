@@ -116,6 +116,26 @@ const couponService = {
     }
   },
 
+  async redeemAtBranch(
+    couponId: string,
+    branchId: string,
+  ): Promise<ApiResponse> {
+    try {
+      const res = await http.post(`/coupons/${couponId}/redeem`, {
+        branch_id: branchId,
+      });
+      return res as ApiResponse;
+    } catch (err: unknown) {
+      return {
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: err instanceof Error ? err.message : String(err),
+        },
+      };
+    }
+  },
+
   // Featured deals
   async createFeaturedDeal(
     businessId: string,

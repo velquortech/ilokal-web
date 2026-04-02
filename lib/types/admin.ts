@@ -15,7 +15,7 @@
  */
 
 import { Profile, UserRole } from './user';
-import { PaginatedResponse } from '@/services/api/paginationService';
+import { PaginatedResponse } from '@/services';
 
 // ============================================================================
 // ADMIN USER REPRESENTATION

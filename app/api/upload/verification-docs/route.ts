@@ -15,10 +15,20 @@ const ALLOWED_TYPES = [
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await verifyBusinessOwner();
-    if (!auth.authorized) {
+    let auth;
+    try {
+      auth = await verifyBusinessOwner();
+    } catch (e) {
+      console.error('[upload/verification-docs] verifyBusinessOwner threw', e);
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 403 },
+      );
+    }
+
+    if (!auth?.authorized) {
       const errorPayload =
-        auth.error && typeof auth.error === 'object' && 'code' in auth.error
+        auth?.error && typeof auth.error === 'object' && 'code' in auth.error
           ? (auth.error as { code: string; message: string })
           : { code: 'AUTHENTICATION_ERROR', message: 'Unauthorized' };
 
@@ -30,7 +40,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createServerSupabaseClient();
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
 
@@ -39,10 +48,23 @@ export async function POST(request: NextRequest) {
     let businessId: string | undefined;
 
     if (suppliedBusinessId) {
-      const suppliedAuth = await verifyBusinessOwner(suppliedBusinessId);
-      if (!suppliedAuth.authorized) {
+      let suppliedAuth;
+      try {
+        suppliedAuth = await verifyBusinessOwner(suppliedBusinessId);
+      } catch (e) {
+        console.error(
+          '[upload/verification-docs] verifyBusinessOwner(suppliedId) threw',
+          e,
+        );
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized' },
+          { status: 403 },
+        );
+      }
+
+      if (!suppliedAuth?.authorized) {
         const suppliedError =
-          suppliedAuth.error &&
+          suppliedAuth?.error &&
           typeof suppliedAuth.error === 'object' &&
           'code' in suppliedAuth.error
             ? (suppliedAuth.error as { code: string; message: string })
@@ -100,6 +122,8 @@ export async function POST(request: NextRequest) {
 
     const fileName = `${Date.now()}-${file.name}`;
     const filePath = `${businessId}/${fileName}`;
+
+    const supabase = await createServerSupabaseClient();
 
     const { error: uploadError } = await supabase.storage
       .from('verification-docs')

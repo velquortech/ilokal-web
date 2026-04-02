@@ -12,17 +12,7 @@
 import { revalidatePath } from 'next/cache';
 import { verifyCurrentUserIsAdmin } from '@/lib/api/admin/adminActionHelpers';
 import { businessFiltersSchema } from '@/lib/validation/business';
-import {
-  getBusinessesList,
-  getBusiness,
-  verifyBusiness,
-  rejectBusiness,
-  suspendBusiness,
-  reactivateBusiness,
-  updateBusiness,
-  archiveBusiness,
-  deleteBusinessPermanently,
-} from '@/lib/api/business/businessAPIClient';
+import businessService from '@/lib/services/businessService';
 import {
   BusinessActionResponse,
   AdminBusiness,
@@ -52,16 +42,17 @@ export async function verifyAdminAuth(): Promise<{
  * Get all businesses with pagination and filters
  */
 export async function getBusinessesAction(
-  filters: Partial<Record<string, unknown>>,
+  filters?: Partial<Record<string, string | number>>,
 ): Promise<PaginatedBusinessResponse | { error: string }> {
   try {
     const { authorized, error } = await verifyCurrentUserIsAdmin();
     if (!authorized) return { error: error || 'Unauthorized' };
 
     // Validate filters
-    const validatedFilters = businessFiltersSchema.parse(filters);
+    const validatedFilters = businessFiltersSchema.parse(filters || {});
 
-    const { data, error: apiError } = await getBusinessesList(validatedFilters);
+    const { data, error: apiError } =
+      await businessService.list(validatedFilters);
 
     if (apiError) {
       return { error: apiError };
@@ -87,7 +78,8 @@ export async function getBusinessAction(
       return { success: false, error: error || 'Unauthorized' };
     }
 
-    const { data: business, error: apiError } = await getBusiness(businessId);
+    const { data: business, error: apiError } =
+      await businessService.get(businessId);
 
     if (apiError) {
       return {
@@ -118,7 +110,7 @@ export async function getBusinessCountsAction(): Promise<
     const { authorized, error } = await verifyCurrentUserIsAdmin();
     if (!authorized) return { error: error || 'Unauthorized' };
 
-    const { error: apiError } = await getBusinessesList();
+    const { error: apiError } = await businessService.list();
 
     if (apiError) {
       return { error: apiError };
@@ -151,7 +143,10 @@ export async function verifyBusinessAction(
       return { success: false, error: error || 'Unauthorized' };
     }
 
-    const { data, error: apiError } = await verifyBusiness(businessId, notes);
+    const { data, error: apiError } = await businessService.verify(
+      businessId,
+      notes,
+    );
 
     if (apiError) {
       return { success: false, error: apiError };
@@ -182,7 +177,10 @@ export async function rejectBusinessAction(
       return { success: false, error: error || 'Unauthorized' };
     }
 
-    const { data, error: apiError } = await rejectBusiness(businessId, reason);
+    const { data, error: apiError } = await businessService.reject(
+      businessId,
+      reason,
+    );
 
     if (apiError) {
       return { success: false, error: apiError };
@@ -217,7 +215,10 @@ export async function suspendBusinessAction(
       return { success: false, error: error || 'Unauthorized' };
     }
 
-    const { data, error: apiError } = await suspendBusiness(businessId, reason);
+    const { data, error: apiError } = await businessService.suspend(
+      businessId,
+      reason,
+    );
 
     if (apiError) {
       return { success: false, error: apiError };
@@ -247,7 +248,8 @@ export async function reactivateBusinessAction(
       return { success: false, error: error || 'Unauthorized' };
     }
 
-    const { data, error: apiError } = await reactivateBusiness(businessId);
+    const { data, error: apiError } =
+      await businessService.reactivate(businessId);
 
     if (apiError) {
       return { success: false, error: apiError };
@@ -283,7 +285,10 @@ export async function updateBusinessAction(
       return { success: false, error: error || 'Unauthorized' };
     }
 
-    const { data, error: apiError } = await updateBusiness(businessId, updates);
+    const { data, error: apiError } = await businessService.update(
+      businessId,
+      updates,
+    );
 
     if (apiError) {
       return { success: false, error: apiError };
@@ -318,7 +323,7 @@ export async function archiveBusinessAction(
       return { success: false, error: error || 'Unauthorized' };
     }
 
-    const { error: apiError } = await archiveBusiness(businessId);
+    const { error: apiError } = await businessService.archive(businessId);
 
     if (apiError) {
       return { success: false, error: apiError };
@@ -348,7 +353,8 @@ export async function deleteBusinessAction(
       return { success: false, error: error || 'Unauthorized' };
     }
 
-    const { error: apiError } = await deleteBusinessPermanently(businessId);
+    const { error: apiError } =
+      await businessService.deletePermanently(businessId);
 
     if (apiError) {
       return { success: false, error: apiError };

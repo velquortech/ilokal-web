@@ -2,7 +2,7 @@
 
 import { useTransition, useCallback } from 'react';
 import { UserFormData } from '@/app/admin/schemas/userFormSchema';
-import { AdminUpdateUserInput } from '@/services/api/userService';
+import type { AdminUpdateUserInput } from '@/services';
 import { AdminUser } from '@/lib/types/admin';
 import {
   createAdminAction,

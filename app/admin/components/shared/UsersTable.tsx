@@ -11,7 +11,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { AdminUser } from '@/lib/types/admin';
-import { PaginatedResponse } from '@/services/api/paginationService';
+import { PaginatedResponse } from '@/services';
 import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
 import { UsersTableColumnVisibility } from './UsersTableColumnVisibility';
 import { UsersTablePagination } from './UsersTablePagination';
@@ -158,7 +158,7 @@ export default function UsersTable<TRow extends { id: string } = AdminUser>({
     );
   }
 
-  if (!data || data.data.length === 0) {
+  if (!data || (data.data?.length ?? 0) === 0) {
     return (
       <div className="rounded-lg border border-dashed border-gray-300 p-12 text-center">
         <p className="text-gray-600">No users found</p>

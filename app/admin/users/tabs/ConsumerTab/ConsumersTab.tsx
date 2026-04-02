@@ -16,7 +16,7 @@ import {
 } from '@/hooks/useAdminMutations';
 import { useUser } from '@/providers/UserContext';
 import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
-import { PaginatedResponse } from '@/services/api/paginationService';
+import { PaginatedResponse } from '@/services';
 
 interface ConsumersTabProps {
   data: PaginatedResponse<AdminUser> | null;
@@ -48,10 +48,10 @@ export default function ConsumersTab({
     setIsMounted(true);
   }, []);
 
-  // Update cache when data changes
-  if (consumerData && consumersDataCache !== consumerData) {
-    setConsumersDataCache(consumerData);
-  }
+  // Sync incoming prop to local cache when it changes
+  useEffect(() => {
+    setConsumersDataCache(consumerData ?? null);
+  }, [consumerData]);
 
   /**
    * Patch a single user record in the cached data with only the changed fields
@@ -97,20 +97,25 @@ export default function ConsumersTab({
         };
       }
 
-      // Add new consumer to the beginning of the list
-      const updatedData = {
+      // Add new consumer to the beginning of the list and recompute pagination
+      const prevTotal =
+        prevData.pagination?.totalItems ?? prevData.data?.length ?? 0;
+      const pageSize =
+        prevData.pagination?.pageSize ?? ADMIN_CONFIG.ITEMS_PER_PAGE;
+      const newTotal = prevTotal + 1;
+      const newList = [newConsumer, ...(prevData.data ?? [])];
+      const trimmed = newList.slice(0, pageSize);
+
+      return {
         ...prevData,
-        data: [newConsumer, ...prevData.data.slice(0, -1)], // Add at top, remove last if exceeds limit
+        data: trimmed,
         pagination: {
-          ...prevData.pagination,
-          totalItems: prevData.pagination.totalItems + 1,
-          totalPages: Math.ceil(
-            (prevData.pagination.totalItems + 1) / ADMIN_CONFIG.ITEMS_PER_PAGE,
-          ),
+          ...(prevData.pagination ?? {}),
+          totalItems: newTotal,
+          totalPages: Math.max(1, Math.ceil(newTotal / pageSize)),
+          pageSize,
         },
       };
-
-      return updatedData;
     });
   }, []);
 
@@ -123,25 +128,25 @@ export default function ConsumersTab({
       if (!prevData) return prevData;
 
       // Remove the deleted consumer from the list
-      const updatedData = {
+      const filtered = (prevData.data ?? []).filter(
+        (consumer) => consumer.id !== deletedConsumerId,
+      );
+      const prevTotal =
+        prevData.pagination?.totalItems ?? prevData.data?.length ?? 0;
+      const newTotal = Math.max(0, prevTotal - 1);
+      const pageSize =
+        prevData.pagination?.pageSize ?? ADMIN_CONFIG.ITEMS_PER_PAGE;
+
+      return {
         ...prevData,
-        data: prevData.data.filter(
-          (consumer) => consumer.id !== deletedConsumerId,
-        ),
+        data: filtered,
         pagination: {
-          ...prevData.pagination,
-          totalItems: Math.max(0, prevData.pagination.totalItems - 1),
-          totalPages: Math.max(
-            1,
-            Math.ceil(
-              (prevData.pagination.totalItems - 1) /
-                ADMIN_CONFIG.ITEMS_PER_PAGE,
-            ),
-          ),
+          ...(prevData.pagination ?? {}),
+          totalItems: newTotal,
+          totalPages: Math.max(1, Math.ceil(newTotal / pageSize)),
+          pageSize,
         },
       };
-
-      return updatedData;
     });
   }, []);
 
@@ -331,7 +336,7 @@ export default function ConsumersTab({
             Consumer Accounts
           </h2>
           <p className="mt-1 text-sm text-gray-600">
-            Total consumers: {consumersDataCache?.pagination.totalItems || 0}
+            Total consumers: {consumersDataCache?.pagination?.totalItems || 0}
           </p>
         </div>
         <Button

@@ -5,7 +5,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { FieldPath, useForm, UseFormReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  FormData,
+  BusinessProps,
   fullSchema,
 } from '../validator/business-registration-form-schema';
 
@@ -16,7 +16,7 @@ type ContextType = {
   nextStep: () => Promise<void>;
   prevStep: () => void;
   canProceed: boolean;
-  form: UseFormReturn<FormData>;
+  form: UseFormReturn<BusinessProps>;
 };
 
 const multiStepFormContext = createContext<ContextType | null>(null);
@@ -27,7 +27,7 @@ export const useMultiStepForm = () => {
   return ctx;
 };
 
-const stepFields: Record<Step, FieldPath<FormData>[]> = {
+const stepFields: Record<Step, FieldPath<BusinessProps>[]> = {
   1: ['business_category'],
   2: [
     'shop_name',
@@ -39,7 +39,7 @@ const stepFields: Record<Step, FieldPath<FormData>[]> = {
     'location.zip_code',
     'location.geometry',
   ],
-  3: ['shop_logo', 'interior_images'],
+  3: ['shop_logo', 'interior_images', 'shop_banner'],
   4: ['business_license', 'tax_certificate'],
 };
 
@@ -51,7 +51,7 @@ export function MultiStepFormProvider({
   const [step, setStep] = useState<Step>(1);
   const [canProceed, setCanProceed] = useState(false);
 
-  const form = useForm<FormData>({
+  const form = useForm<BusinessProps>({
     mode: 'onChange',
     resolver: zodResolver(fullSchema),
     defaultValues: {
@@ -71,6 +71,7 @@ export function MultiStepFormProvider({
         geometry: 'lat:10.73,lng:122.55',
       },
       shop_logo: undefined,
+      shop_banner: undefined,
       interior_images: [],
       business_license: undefined,
       tax_certificate: undefined,

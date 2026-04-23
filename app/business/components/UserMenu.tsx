@@ -18,18 +18,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { type User } from '@/lib/types/user';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { SidebarMenuButton } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
+import { useUser } from '@/providers/UserContext';
 
-interface UserMenuProps {
-  user?: User | null;
-}
-
-export function UserMenu({ user }: UserMenuProps) {
+export function UserMenu() {
   const { logout } = useAuth();
+  const user = useUser();
   const isMobile = useIsMobile();
   return (
     <DropdownMenu>

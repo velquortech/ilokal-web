@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Rocket, CheckCircle } from 'lucide-react';
-import Image from 'next/image';
+import { OnboardingCard } from './OnboardingSection';
 
 interface TourDialogProps {
   isOpen: boolean;
@@ -49,12 +49,7 @@ export function TourDialog({
         showCloseButton={false}
       >
         <div className="bg-primary/10 flex w-1/2 items-center justify-center rounded-xl">
-          <Image
-            alt="document-icon"
-            src={'/document.svg'}
-            width={200}
-            height={200}
-          />
+          <OnboardingCard />
         </div>
         <div className="flex flex-1 flex-col">
           <DialogHeader>

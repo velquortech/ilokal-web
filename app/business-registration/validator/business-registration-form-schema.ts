@@ -38,6 +38,9 @@ export const step2Schema = z.object({
 
 export const step3Schema = z.object({
   shop_logo: z.any().refine((file) => file instanceof File, 'Logo is required'),
+  shop_banner: z
+    .any()
+    .refine((file) => file instanceof File, 'Banner is required'),
   interior_images: z
     .any()
     .refine(
@@ -56,4 +59,4 @@ export const fullSchema = step1Schema
   .merge(step3Schema)
   .merge(step4Schema);
 
-export type FormData = z.infer<typeof fullSchema>;
+export type BusinessProps = z.infer<typeof fullSchema>;

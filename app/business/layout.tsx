@@ -1,52 +1,19 @@
-'use client';
+import { getBusinessUserOrRedirect } from '@/lib/api/getCurrentUser';
+import BusinessLayout from './components/BusinessLayout';
+import { getMyBusinesses } from '@/lib/api/business/business';
 
-import React, { useEffect, useState } from 'react';
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
-import {
-  BusinessHeader,
-  BusinessSidebar,
-  AIChatSheet,
-} from '@/app/business/components';
-import { cn } from '@/lib/utils';
+export const dynamic = 'force-dynamic';
 
-export default function BusinessLayout({
+export default async function Layout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
-
-  useEffect(() => {
-    if (isAIChatOpen) {
-      document.body.classList.add('ai-chat-sheet-open');
-    } else {
-      document.body.classList.remove('ai-chat-sheet-open');
-    }
-  }, [isAIChatOpen]);
-
+  const user = await getBusinessUserOrRedirect();
+  const business_shop = await getMyBusinesses();
   return (
-    <div className="bg-background font-geist flex h-screen overflow-hidden">
-      <SidebarProvider
-        defaultOpen
-        style={
-          {
-            '--sidebar-width': '18rem',
-            '--sidebar-width-mobile': '18rem',
-          } as React.CSSProperties
-        }
-      >
-        <BusinessSidebar />
-        <SidebarInset className="flex flex-1 flex-col overflow-hidden">
-          <BusinessHeader
-            onAIChatClick={() => setIsAIChatOpen((prev) => !prev)}
-          />
-          <div className="flex flex-1 overflow-auto px-10 py-6">{children}</div>
-        </SidebarInset>
-      </SidebarProvider>
-
-      <div className={cn('w-0 transition-all', isAIChatOpen && 'w-lg p-2')}>
-        <AIChatSheet />
-      </div>
-    </div>
+    <BusinessLayout user={user} shop={business_shop}>
+      {children}
+    </BusinessLayout>
   );
 }

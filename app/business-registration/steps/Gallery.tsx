@@ -24,6 +24,19 @@ export function ShopGallery() {
         </ul>
       </div>
 
+      <ShopBanner />
+      <div className="bg-muted/50 border-border space-y-2 rounded-lg border p-4">
+        <p className="text-foreground text-sm font-medium">
+          Banner Guidelines:
+        </p>
+        <ul className="text-foreground list-inside list-disc space-y-1 text-sm">
+          <li>Use a square or circular logo for best results</li>
+          <li>Minimum dimensions: 500x500 pixels</li>
+          <li>High contrast colors work best</li>
+          <li>Avoid text-heavy logos if possible</li>
+        </ul>
+      </div>
+
       <InteriorImages />
       <div className="bg-muted/50 border-border space-y-2 rounded-lg border p-4">
         <p className="text-foreground text-sm font-medium">Photo Tips:</p>
@@ -131,6 +144,112 @@ function ShopLogo() {
                 setPreview(previewUrl);
 
                 form.setValue('shop_logo', file, {
+                  shouldValidate: true,
+                });
+              }}
+            />
+
+            {fieldState.error && <FieldError errors={[fieldState.error]} />}
+          </div>
+        </Field>
+      )}
+    />
+  );
+}
+
+function ShopBanner() {
+  const { form } = useMultiStepForm();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<string>();
+
+  return (
+    <Controller
+      name="shop_banner"
+      control={form.control}
+      render={({ fieldState }) => (
+        <Field data-invalid={fieldState.invalid}>
+          <div className="h-max flex-col">
+            <h2 className="mb-4 font-semibold">Shop Banner</h2>
+
+            <div
+              className="border-border hover:border-primary hover:bg-muted/50 cursor-pointer rounded-lg border-2 border-dashed p-12 text-center transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {preview ? (
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative">
+                    <div className="bg-card h-48 w-48 overflow-hidden rounded-lg border-2">
+                      <Image
+                        src={preview}
+                        alt="Logo preview"
+                        className="h-full w-full object-contain"
+                        height={0}
+                        width={0}
+                      />
+                    </div>
+
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -top-2 -right-2 rounded-full"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        if (preview) URL.revokeObjectURL(preview);
+                        setPreview('');
+
+                        form.setValue('shop_banner', undefined, {
+                          shouldValidate: true,
+                        });
+
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = '';
+                        }
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-4">
+                  <div className="bg-primary/10 text-primary rounded-full p-4">
+                    <ImageIcon className="h-8 w-8" />
+                  </div>
+
+                  <div>
+                    <p className="mb-1 font-medium">Upload your banner</p>
+                    <p className="text-muted-foreground text-sm">
+                      PNG, JPG or SVG (max. 5MB)
+                    </p>
+                  </div>
+
+                  <Button type="button" variant="secondary">
+                    <Upload className="mr-2 h-4 w-4" />
+                    Choose File
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+
+                if (!file) return;
+
+                if (preview) URL.revokeObjectURL(preview);
+
+                const previewUrl = URL.createObjectURL(file);
+                setPreview(previewUrl);
+
+                form.setValue('shop_banner', file, {
                   shouldValidate: true,
                 });
               }}

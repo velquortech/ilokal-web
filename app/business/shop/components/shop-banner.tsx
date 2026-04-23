@@ -1,13 +1,13 @@
-import { businessTypes } from '@/app/business-registration/data/categories';
 import { Badge, Check, CircleDotDashed, MapPin } from 'lucide-react';
 import Image from 'next/image';
+import { masonryData } from '../../data/shop';
 
 export function ShopBanner() {
   return (
     <div className="bg-muted border-border relative flex h-72 w-full flex-row items-end justify-between overflow-hidden rounded-xl border p-6 shadow-sm">
       <Image
         alt="background-image"
-        src={businessTypes[0].items[0].imageURL}
+        src={masonryData.images[0].src ?? ''}
         fill
         className="absolute top-0 left-0 h-full w-full object-cover"
         loading="eager"

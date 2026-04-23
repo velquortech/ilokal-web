@@ -36,7 +36,7 @@ class ApiManager {
 
     // Response interceptor
     this.instance.interceptors.response.use(
-      (response) => response.data,
+      (response) => response, // Return the actual response instead of response data only for typescript purposes
       (error: AxiosError) => {
         // Extract the actual error message from the response data
         const responseData = error.response?.data;

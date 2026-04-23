@@ -2,18 +2,42 @@
 
 import { ThemeToggle } from '@/components/custom/ThemeTogge';
 import { useMultiStepForm } from './provider/registration-form-provider';
-import { FormData } from './validator/business-registration-form-schema';
+import { BusinessProps } from './validator/business-registration-form-schema';
 import { STEPS } from './data/steps';
 import { StepProgress } from './components/step-progress';
 import { RegistrationNav } from './components/register-nav';
+import { registerBusiness } from './api/register-business';
 
 export default function ShopRegistration() {
   const { step, form } = useMultiStepForm();
 
   const { component: stepComponent, title, description } = STEPS[step - 1];
 
-  const handleSubmitForm = (data: FormData) => {
-    console.info(data);
+  const handleSubmitForm = async (data: BusinessProps) => {
+    const formData = new FormData();
+
+    formData.append('shop_logo', data.shop_logo);
+    formData.append('shop_banner', data.shop_banner);
+    formData.append('business_license', data.business_license);
+    formData.append('tax_certificate', data.tax_certificate);
+
+    // 2. Append Arrays (Interior Images)
+    data.interior_images.forEach((file: File) => {
+      formData.append('interior_images', file);
+    });
+
+    // 3. Append Nested Objects (JSON Stringified)
+    formData.append(
+      'business_category',
+      JSON.stringify(data.business_category),
+    );
+    formData.append('location', JSON.stringify(data.location));
+
+    // 4. Append Simple Fields
+    formData.append('shop_name', data.shop_name);
+    formData.append('description', data.description);
+
+    await registerBusiness(formData);
   };
 
   return (

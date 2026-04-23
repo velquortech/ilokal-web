@@ -76,10 +76,6 @@ export const storeNavigation: NavItem[] = [
     icon: ShoppingBasket,
   },
   {
-    title: 'Shop Settings',
-    icon: Settings,
-  },
-  {
     title: 'Vouchers & Coupons',
     icon: Ticket,
     items: [
@@ -88,6 +84,10 @@ export const storeNavigation: NavItem[] = [
       { title: 'Auto-Apply Rules', href: '/business/vouchers/rules' },
       { title: 'Redemption History', href: '/business/vouchers/history' },
     ],
+  },
+  {
+    title: 'Shop Settings',
+    icon: Settings,
   },
 ];
 

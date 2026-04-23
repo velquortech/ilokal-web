@@ -1,11 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import {
+  createContext,
+  Dispatch,
+  PropsWithChildren,
+  SetStateAction,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 import { Send, Bot, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface Message {
   id: string;
@@ -15,6 +24,7 @@ interface Message {
 }
 
 export function AIChatSheet() {
+  const { isAIChatOpen } = useAIContext();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -63,87 +73,121 @@ export function AIChatSheet() {
   };
 
   return (
-    <Card className="m-0 flex h-full flex-col p-0 sm:max-w-sm">
-      <div className="border-b px-6 py-4">
-        <div className="flex items-center gap-2">
-          <Bot className="size-5" />
-          AI Assistant
+    <div className={cn('w-0 transition-all', isAIChatOpen && 'w-lg p-2')}>
+      <Card className="m-0 flex h-full flex-col p-0 sm:max-w-sm">
+        <div className="border-b px-6 py-4">
+          <div className="flex items-center gap-2">
+            <Bot className="size-5" />
+            AI Assistant
+          </div>
         </div>
-      </div>
 
-      <ScrollArea className="flex-1 px-4 py-4">
-        <div className="space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex gap-3 ${
-                message.role === 'user' ? 'justify-end' : 'justify-start'
-              }`}
-            >
-              {message.role === 'assistant' && (
+        <ScrollArea className="flex-1 px-4 py-4">
+          <div className="space-y-4">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex gap-3 ${
+                  message.role === 'user' ? 'justify-end' : 'justify-start'
+                }`}
+              >
+                {message.role === 'assistant' && (
+                  <div className="bg-primary/10 flex size-8 shrink-0 items-center justify-center rounded-full">
+                    <Bot className="text-primary size-4" />
+                  </div>
+                )}
+                <div
+                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                    message.role === 'user'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted'
+                  }`}
+                >
+                  <p className="text-sm">{message.content}</p>
+                  <p className="mt-1 text-xs opacity-70">
+                    {message.timestamp.toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+                {message.role === 'user' && (
+                  <div className="bg-primary flex size-8 shrink-0 items-center justify-center rounded-full">
+                    <User className="text-primary-foreground size-4" />
+                  </div>
+                )}
+              </div>
+            ))}
+            {isLoading && (
+              <div className="flex gap-3">
                 <div className="bg-primary/10 flex size-8 shrink-0 items-center justify-center rounded-full">
                   <Bot className="text-primary size-4" />
                 </div>
-              )}
-              <div
-                className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                  message.role === 'user'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted'
-                }`}
-              >
-                <p className="text-sm">{message.content}</p>
-                <p className="mt-1 text-xs opacity-70">
-                  {message.timestamp.toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </p>
-              </div>
-              {message.role === 'user' && (
-                <div className="bg-primary flex size-8 shrink-0 items-center justify-center rounded-full">
-                  <User className="text-primary-foreground size-4" />
-                </div>
-              )}
-            </div>
-          ))}
-          {isLoading && (
-            <div className="flex gap-3">
-              <div className="bg-primary/10 flex size-8 shrink-0 items-center justify-center rounded-full">
-                <Bot className="text-primary size-4" />
-              </div>
-              <div className="bg-muted rounded-lg px-4 py-2">
-                <div className="flex gap-1">
-                  <div className="bg-foreground/50 size-2 animate-bounce rounded-full" />
-                  <div className="bg-foreground/50 size-2 animate-bounce rounded-full [animation-delay:0.1s]" />
-                  <div className="bg-foreground/50 size-2 animate-bounce rounded-full [animation-delay:0.2s]" />
+                <div className="bg-muted rounded-lg px-4 py-2">
+                  <div className="flex gap-1">
+                    <div className="bg-foreground/50 size-2 animate-bounce rounded-full" />
+                    <div className="bg-foreground/50 size-2 animate-bounce rounded-full [animation-delay:0.1s]" />
+                    <div className="bg-foreground/50 size-2 animate-bounce rounded-full [animation-delay:0.2s]" />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-      </ScrollArea>
+            )}
+          </div>
+        </ScrollArea>
 
-      <div className="border-t p-4">
-        <div className="flex gap-2">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask about your business data..."
-            className="max-h-30 min-h-15 resize-none"
-            rows={2}
-          />
-          <Button
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading}
-            size="icon"
-            className="h-15 w-15 shrink-0"
-          >
-            <Send className="size-4" />
-          </Button>
+        <div className="border-t p-4">
+          <div className="flex gap-2">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask about your business data..."
+              className="max-h-30 min-h-15 resize-none"
+              rows={2}
+            />
+            <Button
+              onClick={handleSend}
+              disabled={!input.trim() || isLoading}
+              size="icon"
+              className="h-15 w-15 shrink-0"
+            >
+              <Send className="size-4" />
+            </Button>
+          </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+    </div>
   );
+}
+
+type AIContextProps = {
+  isAIChatOpen: boolean;
+  setIsAIChatOpen: Dispatch<SetStateAction<boolean>>;
+};
+
+export const aiChatContext = createContext<AIContextProps>({
+  isAIChatOpen: false,
+  setIsAIChatOpen: () => {},
+});
+
+export function AIChatProvider(props: PropsWithChildren) {
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+
+  useEffect(() => {
+    if (isAIChatOpen) {
+      document.body.classList.add('ai-chat-sheet-open');
+    } else {
+      document.body.classList.remove('ai-chat-sheet-open');
+    }
+  }, [isAIChatOpen]);
+
+  return (
+    <aiChatContext.Provider value={{ isAIChatOpen, setIsAIChatOpen }}>
+      {props.children}
+    </aiChatContext.Provider>
+  );
+}
+
+export function useAIContext() {
+  return useContext(aiChatContext);
 }

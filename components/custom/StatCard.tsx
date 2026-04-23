@@ -32,17 +32,17 @@ export function StatCard({
   trend,
 }: StatCardProps) {
   return (
-    <Card className="gap-0">
-      <CardHeader className="flex flex-row justify-between space-y-0">
+    <Card className="gap-0 py-5">
+      <CardHeader className="relative flex flex-row justify-between space-y-0">
         <CardTitle className="text-muted-foreground text-sm font-medium">
           {title}
         </CardTitle>
-        <div className="bg-primary/10 rounded-md p-2">
+        <div className="bg-primary/10 absolute top-0 right-4 rounded-md p-2">
           <Icon className="text-primary size-4" />
         </div>
       </CardHeader>
       <CardContent>
-        <div className="mb-1 text-2xl font-bold">{value}</div>
+        <div className="my-1 text-2xl font-bold">{value}</div>
         {trend ? (
           <p
             className={cn(

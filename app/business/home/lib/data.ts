@@ -6,7 +6,6 @@ import type {
   Order,
   TopProduct,
   TourFeature,
-  OnboardingStep,
 } from './types';
 
 export const SALES_DATA: SalesData[] = [
@@ -103,13 +102,6 @@ export const TOUR_FEATURES: TourFeature[] = [
   { icon: 'check', text: 'Upload products and start selling immediately' },
   { icon: 'check', text: 'Get verified badge to build customer trust' },
   { icon: 'check', text: 'Access analytics and insights dashboard' },
-];
-
-export const ONBOARDING_STEPS: OnboardingStep[] = [
-  { label: 'Business Info', completed: false },
-  { label: 'Documents', completed: false },
-  { label: 'Products', completed: false },
-  { label: 'Review', completed: false },
 ];
 
 export const calculateDashboardMetrics = (salesData: SalesData[]) => {

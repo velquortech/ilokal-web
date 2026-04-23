@@ -20,6 +20,7 @@ import {
 } from './lib';
 import { TourDialog } from './components/TourDialog';
 import { ROUTES } from '@/config/routeConfig';
+import { useBusinessShop } from '@/providers/BusinessProvider';
 
 export default function BusinessHome() {
   const router = useRouter();
@@ -40,12 +41,11 @@ export default function BusinessHome() {
   const metrics = calculateDashboardMetrics(SALES_DATA);
   const statMetrics = getStatMetrics(metrics);
 
+  const { business } = useBusinessShop();
+
   return (
     <div className="h-max flex-1 space-y-6">
-      <OnboardingSection
-        onStartTour={openTour}
-        onViewRequirements={() => router.push('/business/register')}
-      />
+      {!business && <OnboardingSection onStartTour={openTour} />}
 
       <StatsOverview metrics={statMetrics} />
 

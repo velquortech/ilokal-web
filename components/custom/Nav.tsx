@@ -87,8 +87,7 @@ export function SidebarLogo() {
           <Store className="text-primary-foreground size-4" />
         </div>
         <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-          <span className="text-sm font-semibold">iLokal Business</span>
-          <span className="text-muted-foreground text-xs">Admin</span>
+          <span className="text-sm font-semibold">Ilokal</span>
         </div>
       </div>
     </SidebarHeader>

@@ -64,10 +64,27 @@ const buildCSPImageSources = (): string => {
   return sources.join(' ');
 };
 
+// Build script-src for CSP. In production we disallow 'unsafe-inline' and 'unsafe-eval'.
+// For any inline scripts in production, prefer using nonces or CSP hashes.
+const buildScriptSrc = (): string => {
+  const sources = [`'self'`];
+  if (process.env.NODE_ENV !== 'production') {
+    // Keep relaxed CSP in development for convenience
+    sources.push("'unsafe-inline'", "'unsafe-eval'");
+  }
+  return sources.join(' ');
+};
+
+// Build style-src for CSP. Allow 'unsafe-inline' only in development.
+const buildStyleSrc = (): string => {
+  const sources = [`'self'`];
+  if (process.env.NODE_ENV !== 'production') {
+    sources.push("'unsafe-inline'");
+  }
+  return sources.join(' ');
+};
+
 const nextConfig: NextConfig = {
-  turbopack: {
-    root: process.cwd(),
-  },
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
@@ -75,10 +92,6 @@ const nextConfig: NextConfig = {
     NEXT_IMAGE_PUBLIC_URL: process.env.NEXT_IMAGE_PUBLIC_URL,
     NEXT_PUBLIC_DESTINATION: process.env.NEXT_PUBLIC_DESTINATION,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    NEXT_PUBLIC_SUPABASE_SERVICE_SECRET_KEY:
-      process.env.NEXT_PUBLIC_SUPABASE_SERVICE_SECRET_KEY,
-    NEXT_PUBLIC_SUPABASE_DB_URL: process.env.NEXT_PUBLIC_SUPABASE_DB_URL,
-    NEXT_PUBLIC_SUPABASE_TOKEN: process.env.NEXT_PUBLIC_SUPABASE_TOKEN,
   },
   images: {
     remotePatterns: imageRemotePatterns,

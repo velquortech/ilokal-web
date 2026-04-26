@@ -1,19 +1,16 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { CreateUserInput } from '@/services/api/userService';
+import type { AdminCreateUserInput } from '@/lib/types/admin';
 import { AdminActionResponse, AdminUser } from '@/lib/types/admin';
 import { verifyCurrentUserIsAdmin } from '@/lib/api/admin/adminActionHelpers';
-import {
-  createAdmin,
-  createConsumer,
-  createBusinessOwner,
-  updateUser,
-  updateUserStatus,
-  deleteUser,
-  restoreUser,
-} from '@/lib/api/admin/userAPIClient';
+import adminService from '@/lib/services/adminService';
 import { AdminUpdateUserInput } from '@/lib/api/admin/adminActionHelpers';
+
+function normalizeError(e?: unknown): string | undefined {
+  if (!e) return undefined;
+  return typeof e === 'string' ? e : e instanceof Error ? e.message : String(e);
+}
 
 // Re-export for backward compatibility
 export type ActionState<T = unknown> = AdminActionResponse<T>;
@@ -23,16 +20,17 @@ export type ActionState<T = unknown> = AdminActionResponse<T>;
 // ============================================================================
 
 export async function createAdminAction(
-  formData: CreateUserInput,
+  formData: AdminCreateUserInput,
 ): Promise<AdminActionResponse<AdminUser>> {
   try {
     const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
-    if (!authorized) return { success: false, error: authError };
+    if (!authorized)
+      return { success: false, error: normalizeError(authError) };
 
-    const { data, error } = await createAdmin(formData);
+    const { data, error } = await adminService.createAdmin(formData);
 
     if (error) {
-      return { success: false, error };
+      return { success: false, error: normalizeError(error) };
     }
 
     revalidatePath('/admin');
@@ -51,12 +49,13 @@ export async function updateAdminAction(
 ): Promise<AdminActionResponse<AdminUser>> {
   try {
     const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
-    if (!authorized) return { success: false, error: authError };
+    if (!authorized)
+      return { success: false, error: normalizeError(authError) };
 
-    const { data, error } = await updateUser(id, changes);
+    const { data, error } = await adminService.updateUser(id, changes);
 
     if (error) {
-      return { success: false, error };
+      return { success: false, error: normalizeError(error) };
     }
 
     revalidatePath('/admin');
@@ -75,10 +74,11 @@ export async function deleteAdminAction(
 ): Promise<AdminActionResponse> {
   try {
     const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
-    if (!authorized) return { success: false, error: authError };
+    if (!authorized)
+      return { success: false, error: normalizeError(authError) };
 
-    const { error } = await deleteUser(id);
-    if (error) return { success: false, error };
+    const { error } = await adminService.deleteUser(id);
+    if (error) return { success: false, error: normalizeError(error) };
 
     revalidatePath('/admin');
     return { success: true };
@@ -96,11 +96,12 @@ export async function updateAdminStatusAction(
 ): Promise<AdminActionResponse<AdminUser>> {
   try {
     const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
-    if (!authorized) return { success: false, error: authError };
+    if (!authorized)
+      return { success: false, error: normalizeError(authError) };
 
-    const { data, error } = await updateUserStatus(id, status);
+    const { data, error } = await adminService.updateUserStatus(id, status);
     if (error) {
-      return { success: false, error };
+      return { success: false, error: normalizeError(error) };
     }
 
     revalidatePath('/admin');
@@ -122,16 +123,17 @@ export async function updateAdminStatusAction(
 // ============================================================================
 
 export async function createConsumerAction(
-  formData: CreateUserInput,
+  formData: AdminCreateUserInput,
 ): Promise<AdminActionResponse<AdminUser>> {
   try {
     const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
-    if (!authorized) return { success: false, error: authError };
+    if (!authorized)
+      return { success: false, error: normalizeError(authError) };
 
-    const { data, error } = await createConsumer(formData);
+    const { data, error } = await adminService.createConsumer(formData);
 
     if (error) {
-      return { success: false, error };
+      return { success: false, error: normalizeError(error) };
     }
 
     revalidatePath('/admin');
@@ -151,9 +153,10 @@ export async function updateConsumerAction(
 ): Promise<AdminActionResponse<AdminUser>> {
   try {
     const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
-    if (!authorized) return { success: false, error: authError };
+    if (!authorized)
+      return { success: false, error: normalizeError(authError) };
 
-    const { data, error } = await updateUser(id, changes);
+    const { data, error } = await adminService.updateUser(id, changes);
 
     if (error) {
       return { success: false, error };
@@ -178,8 +181,8 @@ export async function deleteConsumerAction(
     const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
     if (!authorized) return { success: false, error: authError };
 
-    const { error } = await deleteUser(id);
-    if (error) return { success: false, error };
+    const { error } = await adminService.deleteUser(id);
+    if (error) return { success: false, error: normalizeError(error) };
 
     revalidatePath('/admin');
     return { success: true };
@@ -197,16 +200,17 @@ export async function deleteConsumerAction(
 // ============================================================================
 
 export async function createBusinessOwnerAction(
-  formData: CreateUserInput,
+  formData: AdminCreateUserInput,
 ): Promise<AdminActionResponse<AdminUser>> {
   try {
     const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
-    if (!authorized) return { success: false, error: authError };
+    if (!authorized)
+      return { success: false, error: normalizeError(authError) };
 
-    const { data, error } = await createBusinessOwner(formData);
+    const { data, error } = await adminService.createBusinessOwner(formData);
 
     if (error) {
-      return { success: false, error };
+      return { success: false, error: normalizeError(error) };
     }
 
     revalidatePath('/admin');
@@ -230,7 +234,7 @@ export async function updateBusinessOwnerAction(
     const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
     if (!authorized) return { success: false, error: authError };
 
-    const { data, error } = await updateUser(id, changes);
+    const { data, error } = await adminService.updateUser(id, changes);
 
     if (error) {
       return { success: false, error };
@@ -255,10 +259,11 @@ export async function deleteBusinessOwnerAction(
 ): Promise<AdminActionResponse> {
   try {
     const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
-    if (!authorized) return { success: false, error: authError };
+    if (!authorized)
+      return { success: false, error: normalizeError(authError) };
 
-    const { error } = await deleteUser(id);
-    if (error) return { success: false, error };
+    const { error } = await adminService.deleteUser(id);
+    if (error) return { success: false, error: normalizeError(error) };
 
     revalidatePath('/admin');
     return { success: true };
@@ -288,7 +293,7 @@ export async function restoreUserAction(
     const { authorized, error: authError } = await verifyCurrentUserIsAdmin();
     if (!authorized) return { success: false, error: authError };
 
-    const { data, error } = await restoreUser(id);
+    const { data, error } = await adminService.restoreUser(id);
 
     if (error) {
       return { success: false, error };

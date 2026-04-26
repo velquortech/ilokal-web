@@ -55,7 +55,7 @@ export async function updateCurrentUserProfileAction(
       };
     }
 
-    // Update profile using shared service
+    // Update profile using server API client (server-only)
     const updatedUser = await updateUserProfile(auth.user.id, validation.data);
 
     return {

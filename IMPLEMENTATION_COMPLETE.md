@@ -6,6 +6,33 @@
 
 ---
 
+## 🆕 March 30, 2026 - Isomorphic service layer, typed wrappers, and frontend docs
+
+### What's New
+
+- **Isomorphic service layer (`lib/services`)**: added an isomorphic HTTP client at `lib/services/client.ts` that uses `fetch` server-side and delegates to the browser `axios` client in `services/api/apiClient.ts`. This centralizes HTTP semantics, error shaping, and reduces duplication between Server Actions and client code.
+- **Typed service wrappers**: many `lib/services/*` wrappers were tightened to use concrete domain types from `lib/types/*` and avoid `any`/`unknown` primitives. Callers can migrate incrementally; server-only implementations remain available for direct server imports.
+- **Client barrel hardening**: `lib/services/index.ts` was adjusted to avoid re-exporting server-only modules so server runtime helpers do not get bundled into client code.
+- **Optimistic-update fixes & UI guards**: admin user-management tabs (AdminTab, BusinessOwnerTab, ConsumersTab) had optimistic add/patch/remove helpers and prop→cache sync moved into `useEffect`. Defensive guards were added to prevent runtime errors (missing pagination/undefined data).
+- **Auth UX improvements**: `useUserTabsData` now detects 401 responses and surfaces an `authRequired` flag; the admin users page shows a sign-in CTA when unauthenticated dev requests return 401 rather than silently showing empty lists.
+- **Docs & workflow**: added `API_WRAPPER_FOR_FRONTEND.md` at repo root with migration checklist, usage examples, and troubleshooting guidance; added `WORKFLOW/CHANGELOG.md` entry and PR notes referencing the new doc.
+
+### Key files
+
+- `lib/services/client.ts` — isomorphic HTTP client (fetch server, axios browser)
+- `lib/services/index.ts` — client-facing barrel (server-only exports removed)
+- `lib/services/*` — typed service wrappers delegating to server implementations when appropriate
+- `app/admin/users/hooks/useUserTabsData.ts` — 401 detection + `authRequired`
+- `app/admin/users/tabs/*` — optimistic-update fixes + useEffect sync
+- `API_WRAPPER_FOR_FRONTEND.md` — frontend guidance (repo root)
+- `WORKFLOW/CHANGELOG.md` — changelog entry for the docs
+
+### Why this matters
+
+- Centralizes HTTP behavior and error handling, making client and server code consistent.
+- Prevents server-only helpers from being included in client bundles, avoiding build/runtime issues.
+- Guides frontend teams to adopt typed wrappers and safer import patterns, improving developer experience and reducing subtle runtime bugs.
+
 ## 🆕 March 21, 2026 - Format Consistency & Architecture Standardization
 
 ### What's New

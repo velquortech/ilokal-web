@@ -16,7 +16,7 @@ import {
   createCategorySchema,
   updateCategorySchema,
 } from '@/lib/validation/products';
-import * as productService from '@/lib/api/products/productService';
+import categoryService from '@/lib/services/categoryService';
 
 // ===== Admin Category Actions =====
 
@@ -72,7 +72,7 @@ export async function createCategoryAction(
       };
     }
 
-    return await productService.createCategory(validation.data);
+    return await categoryService.create(validation.data);
   } catch (error) {
     console.error('[createCategoryAction]', error);
     return {
@@ -138,7 +138,7 @@ export async function updateCategoryAction(
       };
     }
 
-    return await productService.updateCategory(id, validation.data);
+    return await categoryService.update(id, validation.data);
   } catch (error) {
     console.error('[updateCategoryAction]', error);
     return {
@@ -191,7 +191,7 @@ export async function deleteCategoryAction(
       };
     }
 
-    return await productService.deleteCategory(id);
+    return await categoryService.delete(id);
   } catch (error) {
     console.error('[deleteCategoryAction]', error);
     return {

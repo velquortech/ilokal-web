@@ -19,7 +19,7 @@ import {
   createFeaturedDealSchema,
   updateFeaturedDealSchema,
 } from '@/lib/validation/coupons';
-import * as couponService from '@/lib/api/coupons/couponService';
+import couponService from '@/lib/services/couponService';
 
 // ===== Coupon Management Actions =====
 
@@ -47,10 +47,10 @@ export async function createCouponAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    return await couponService.createCoupon(
+    return (await couponService.create(
       verify.business!.id,
       validation.data,
-    );
+    )) as ApiResponse<Coupon>;
   } catch (error) {
     console.error('[createCouponAction]', error);
     return {
@@ -111,7 +111,10 @@ export async function updateCouponAction(
       };
     }
 
-    return await couponService.updateCoupon(id, validation.data);
+    return (await couponService.update(
+      id,
+      validation.data,
+    )) as ApiResponse<Coupon>;
   } catch (error) {
     console.error('[updateCouponAction]', error);
     return {
@@ -158,7 +161,7 @@ export async function deleteCouponAction(
       };
     }
 
-    return await couponService.deleteCoupon(id);
+    return (await couponService.delete(id)) as ApiResponse<null>;
   } catch (error) {
     console.error('[deleteCouponAction]', error);
     return {
@@ -193,7 +196,10 @@ export async function redeemCouponAction(
       };
     }
 
-    return await couponService.redeemCoupon(couponCode, user.id);
+    return (await couponService.redeem(
+      couponCode,
+      user.id,
+    )) as ApiResponse<CouponDetailResponse>;
   } catch (error) {
     console.error('[redeemCouponAction]', error);
     return {
@@ -230,10 +236,10 @@ export async function createFeaturedDealAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    return await couponService.createFeaturedDeal(
+    return (await couponService.createFeaturedDeal(
       verify.business!.id,
       validation.data,
-    );
+    )) as ApiResponse<FeaturedDeal>;
   } catch (error) {
     console.error('[createFeaturedDealAction]', error);
     return {
@@ -294,7 +300,10 @@ export async function updateFeaturedDealAction(
       };
     }
 
-    return await couponService.updateFeaturedDeal(id, validation.data);
+    return (await couponService.updateFeaturedDeal(
+      id,
+      validation.data,
+    )) as ApiResponse<FeaturedDeal>;
   } catch (error) {
     console.error('[updateFeaturedDealAction]', error);
     return {
@@ -341,7 +350,7 @@ export async function deleteFeaturedDealAction(
       };
     }
 
-    return await couponService.deleteFeaturedDeal(id);
+    return (await couponService.deleteFeaturedDeal(id)) as ApiResponse<null>;
   } catch (error) {
     console.error('[deleteFeaturedDealAction]', error);
     return {

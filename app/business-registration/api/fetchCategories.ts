@@ -1,4 +1,4 @@
-import apiClient from '@/services/api/apiClient';
+import { http } from '@/services';
 import { Coffee, Store, Scissors, Plane, LucideIcon } from 'lucide-react';
 
 // A map to turn the string stored in the DB back into a Component
@@ -30,8 +30,7 @@ type BusinessTypeReturnProps = Omit<BusinessType, 'icon' | 'items'> & {
 };
 
 export const fetchBusinessData = async (): Promise<BusinessType[]> => {
-  const { data } =
-    await apiClient.get<BusinessTypeReturnProps[]>('/business-types');
+  const data = await http.get<BusinessTypeReturnProps[]>('/business-types');
 
   // Transform the DB structure back to your original format
   return data.map((type) => ({

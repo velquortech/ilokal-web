@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { createPaginatedResponse } from '@/services/api/paginationService';
+import { createPaginatedResponse } from '@/services';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 
 export async function GET(request: NextRequest) {

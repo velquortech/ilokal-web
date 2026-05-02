@@ -5,6 +5,7 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
   SidebarRail,
@@ -20,16 +21,14 @@ import { UserMenu } from './UserMenu';
 import { ProCard } from './ProCard';
 import { GlobalSearch } from '@/components/custom/GlobalSearch';
 import { useBusinessShop } from '@/providers/BusinessProvider';
-import { StatusBadge } from '@/components/custom/StatusBadge';
 
 export function BusinessSidebar() {
   const { business } = useBusinessShop();
   return (
     <Sidebar collapsible="icon" variant="sidebar" className="border-r">
-      <div className="inline-flex items-center">
-        <SidebarLogo />
-        {business && <StatusBadge isVerified={business.is_verified} />}
-      </div>
+      <SidebarHeader className="space-y-1 border-b px-4 py-3 group-data-[collapsible=icon]:px-2.5">
+        <SidebarLogo shopName={business?.shop_name} logo={business?.logo_url} />
+      </SidebarHeader>
 
       <SidebarContent className="overflow-y-auto py-3">
         <SidebarGroup>

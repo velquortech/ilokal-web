@@ -13,6 +13,7 @@ import {
   BusinessShop,
   BusinessShopProvider,
 } from '@/providers/BusinessProvider';
+import { ShopPendingBanner } from '../home/components/PendingBanner';
 
 export default function BusinessLayout({
   children,
@@ -40,6 +41,11 @@ export default function BusinessLayout({
               <BusinessSidebar />
               <SidebarInset className="flex flex-1 flex-col overflow-hidden">
                 <BusinessHeader />
+                {shop?.status === 'pending' && (
+                  <div className="px-3 pt-3 pb-1">
+                    <ShopPendingBanner />
+                  </div>
+                )}
                 <div className="flex flex-1 overflow-auto px-10 py-6">
                   {children}
                 </div>

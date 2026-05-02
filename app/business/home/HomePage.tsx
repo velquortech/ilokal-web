@@ -32,7 +32,7 @@ export default function BusinessHome() {
   };
 
   return (
-    <div className="h-max flex-1 space-y-6">
+    <div className="flex flex-1 flex-col space-y-6">
       {!business && (
         <>
           <OnboardingSection onStartTour={openTour} />

@@ -37,7 +37,7 @@ export function BusinessSidebar() {
         {SIDEBAR_SECTIONS.map(({ items, header }, idx) => (
           <Fragment key={idx}>
             {header && <NavSectionHeader title={header} />}
-            <NavSection items={items} />
+            <NavSection items={items} disabled={!business} />
           </Fragment>
         ))}
       </SidebarContent>

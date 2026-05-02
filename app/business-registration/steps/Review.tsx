@@ -59,7 +59,7 @@ export function ShopReview() {
 
             <div>
               <Label>Description</Label>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground max-w-xl">
                 {data.description || 'N/A'}
               </p>
             </div>
@@ -76,7 +76,7 @@ export function ShopReview() {
         </div>
 
         {/* MAP (unchanged) */}
-        <div className="bg-muted ml-auto h-full overflow-hidden rounded-md">
+        <div className="bg-muted ml-auto h-full w-sm overflow-hidden rounded-md">
           <iframe
             src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d62720.67739692793!2d122.54770015!3d10.7312181!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33aee56fe538d781%3A0xe8250cd6bc30a488!2sIloilo%20City%2C%20Iloilo!5e0!3m2!1sen!2sph!4v1774010152358!5m2!1sen!2sph"
             width="100%"

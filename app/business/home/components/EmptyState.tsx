@@ -1,4 +1,10 @@
-import { Package, ArrowRight, BarChart2 } from 'lucide-react';
+import {
+  Package,
+  ArrowRight,
+  BarChart2,
+  PackageOpen,
+  ChartArea,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -15,11 +21,19 @@ interface EmptyStateProps {
 
 export function EmptyState({ onAddProduct, onViewOrders }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <Card className="w-full max-w-5xl border-dashed">
+    <div className="bg-muted/30 flex flex-1 flex-col items-center justify-center py-12 text-center">
+      <Card className="w-full max-w-5xl border-dashed p-20">
         <CardHeader>
-          <div className="bg-muted mx-auto flex h-16 w-16 items-center justify-center rounded-full">
-            <Package className="text-muted-foreground h-8 w-8" />
+          <div className="mx-auto flex -space-x-4">
+            <div className="bg-background -rotate-6 rounded-2xl border p-4 shadow-sm">
+              <BarChart2 className="text-primary/40 h-8 w-8" />
+            </div>
+            <div className="bg-background z-10 scale-110 rounded-2xl border p-4 shadow-lg">
+              <PackageOpen className="text-primary h-8 w-8 animate-pulse" />
+            </div>
+            <div className="bg-background rotate-6 rounded-2xl border p-4 shadow-sm">
+              <ChartArea className="text-primary/40 h-8 w-8" />
+            </div>
           </div>
           <CardTitle className="mt-4 text-xl">No products yet</CardTitle>
           <CardDescription className="mx-auto max-w-md text-center">

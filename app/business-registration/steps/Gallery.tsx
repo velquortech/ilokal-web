@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { ImageIcon, Upload, X } from 'lucide-react';
 import Image from 'next/image';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 import { Controller } from 'react-hook-form';
 import { useMultiStepForm } from '../provider/registration-form-provider';
@@ -52,10 +52,21 @@ export function ShopGallery() {
 }
 
 function ShopLogo() {
-  const { form } = useMultiStepForm();
-
+  const { form, cacheFile, clearFileCache } = useMultiStepForm();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const shopLogoFile = form.watch('shop_logo');
   const [preview, setPreview] = useState<string>();
+
+  // Sync preview from form file changes (including on restore)
+  useEffect(() => {
+    if (shopLogoFile) {
+      const url = URL.createObjectURL(shopLogoFile);
+      setPreview(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setPreview(undefined);
+    }
+  }, [shopLogoFile]);
 
   return (
     <Controller
@@ -91,12 +102,12 @@ function ShopLogo() {
                         event.preventDefault();
                         event.stopPropagation();
 
-                        if (preview) URL.revokeObjectURL(preview);
-                        setPreview('');
-
                         form.setValue('shop_logo', undefined, {
                           shouldValidate: true,
                         });
+
+                        // Clear cached file
+                        clearFileCache('shop_logo');
 
                         if (fileInputRef.current) {
                           fileInputRef.current.value = '';
@@ -135,17 +146,18 @@ function ShopLogo() {
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-
                 if (!file) return;
-
-                if (preview) URL.revokeObjectURL(preview);
-
-                const previewUrl = URL.createObjectURL(file);
-                setPreview(previewUrl);
 
                 form.setValue('shop_logo', file, {
                   shouldValidate: true,
                 });
+
+                // Cache the file
+                cacheFile('shop_logo', file);
+
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = '';
+                }
               }}
             />
 
@@ -158,10 +170,22 @@ function ShopLogo() {
 }
 
 function ShopBanner() {
-  const { form } = useMultiStepForm();
+  const { form, cacheFile, clearFileCache } = useMultiStepForm();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const shopBannerFile = form.watch('shop_banner');
   const [preview, setPreview] = useState<string>();
+
+  // Sync preview from form file changes (including on restore)
+  useEffect(() => {
+    if (shopBannerFile) {
+      const url = URL.createObjectURL(shopBannerFile);
+      setPreview(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setPreview(undefined);
+    }
+  }, [shopBannerFile]);
 
   return (
     <Controller
@@ -182,7 +206,7 @@ function ShopBanner() {
                     <div className="bg-card h-48 w-48 overflow-hidden rounded-lg border-2">
                       <Image
                         src={preview}
-                        alt="Logo preview"
+                        alt="Banner preview"
                         className="h-full w-full object-contain"
                         height={0}
                         width={0}
@@ -197,12 +221,12 @@ function ShopBanner() {
                         event.preventDefault();
                         event.stopPropagation();
 
-                        if (preview) URL.revokeObjectURL(preview);
-                        setPreview('');
-
                         form.setValue('shop_banner', undefined, {
                           shouldValidate: true,
                         });
+
+                        // Clear cached file
+                        clearFileCache('shop_banner');
 
                         if (fileInputRef.current) {
                           fileInputRef.current.value = '';
@@ -241,17 +265,18 @@ function ShopBanner() {
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-
                 if (!file) return;
-
-                if (preview) URL.revokeObjectURL(preview);
-
-                const previewUrl = URL.createObjectURL(file);
-                setPreview(previewUrl);
 
                 form.setValue('shop_banner', file, {
                   shouldValidate: true,
                 });
+
+                // Cache the file
+                cacheFile('shop_banner', file);
+
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = '';
+                }
               }}
             />
 
@@ -263,11 +288,90 @@ function ShopBanner() {
   );
 }
 
+function InteriorImageItem({
+  file,
+  index,
+  onRemove,
+}: {
+  file: File;
+  index: number;
+  onRemove: (index: number) => void;
+}) {
+  const [preview, setPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  if (!preview) return null;
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <div className="relative">
+        <div className="bg-card border-border aspect-video h-64 overflow-hidden rounded-lg border-2">
+          <Image
+            src={preview}
+            alt={`Interior ${index + 1}`}
+            className="h-full w-full object-contain"
+            width={0}
+            height={0}
+          />
+        </div>
+
+        <Button
+          variant="destructive"
+          size="icon"
+          className="absolute -top-2 -right-2 rounded-full"
+          onClick={(event) => {
+            event.stopPropagation();
+            onRemove(index);
+          }}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function InteriorImages() {
-  const { form } = useMultiStepForm();
+  const { form, cacheFiles, clearFileCache } = useMultiStepForm();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const interiorImages = form.watch('interior_images') || [];
+
+  const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const currentFiles = form.getValues('interior_images') || [];
+    const newFiles = [...currentFiles, ...files];
+    form.setValue('interior_images', newFiles, { shouldValidate: true });
+
+    // Cache all interior images
+    cacheFiles('interior_images', newFiles);
+
+    // Reset input value to allow selecting same files again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveImage = (indexToRemove: number) => {
+    const currentFiles = form.getValues('interior_images') || [];
+    const newFiles = currentFiles.filter(
+      (_: File, i: number) => i !== indexToRemove,
+    );
+    form.setValue('interior_images', newFiles, { shouldValidate: true });
+
+    // Clear file cache and recache remaining files
+    clearFileCache('interior_images');
+    if (newFiles.length > 0) {
+      cacheFiles('interior_images', newFiles);
+    }
+  };
 
   return (
     <Controller
@@ -281,54 +385,18 @@ function InteriorImages() {
             <div
               className={cn(
                 'border-border hover:border-primary hover:bg-muted/50 min-h-96 cursor-pointer grid-cols-2 gap-10 rounded-lg border-2 border-dashed p-12 text-center transition-colors',
-                previews.length > 0 && 'grid',
+                interiorImages.length > 0 && 'grid',
               )}
               onClick={() => fileInputRef.current?.click()}
             >
-              {previews.length > 0 ? (
-                previews.map((preview, index) => (
-                  <div key={index} className="flex flex-col items-center gap-4">
-                    <div className="relative">
-                      <div className="bg-card border-border aspect-video h-64 overflow-hidden rounded-lg border-2">
-                        <Image
-                          src={preview}
-                          alt="Interior Preview"
-                          className="h-full w-full object-contain"
-                          height={0}
-                          width={0}
-                        />
-                      </div>
-
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute -top-2 -right-2 rounded-full"
-                        onClick={(event) => {
-                          event.stopPropagation();
-
-                          URL.revokeObjectURL(preview);
-
-                          const newPreviews = previews.filter(
-                            (_, i) => i !== index,
-                          );
-                          setPreviews(newPreviews);
-
-                          const currentFiles =
-                            form.getValues('interior_images') || [];
-
-                          const newFiles = currentFiles.filter(
-                            (_: File, i: number) => i !== index,
-                          );
-
-                          form.setValue('interior_images', newFiles, {
-                            shouldValidate: true,
-                          });
-                        }}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+              {interiorImages.length > 0 ? (
+                interiorImages.map((file: File, index: number) => (
+                  <InteriorImageItem
+                    key={`${file.name}-${file.size}-${file.lastModified}`}
+                    file={file}
+                    index={index}
+                    onRemove={handleRemoveImage}
+                  />
                 ))
               ) : (
                 <div className="m-auto flex flex-col items-center gap-4 p-4">
@@ -357,23 +425,7 @@ function InteriorImages() {
               accept="image/*"
               multiple
               className="hidden"
-              onChange={(e) => {
-                const files = Array.from(e.target.files || []);
-                if (!files.length) return;
-
-                const newPreviews = files.map((file) =>
-                  URL.createObjectURL(file),
-                );
-
-                const updatedPreviews = [...previews, ...newPreviews];
-                setPreviews(updatedPreviews);
-
-                const currentFiles = form.getValues('interior_images') || [];
-
-                form.setValue('interior_images', [...currentFiles, ...files], {
-                  shouldValidate: true,
-                });
-              }}
+              onChange={handleAddImages}
             />
 
             {fieldState.error && <FieldError errors={[fieldState.error]} />}

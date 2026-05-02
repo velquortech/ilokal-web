@@ -11,10 +11,12 @@ import {
 import { Label } from '@/components/ui/label';
 import Image from 'next/image';
 import { FileText, HandCoins } from 'lucide-react';
+import { useWatch } from 'react-hook-form';
+import { BusinessProps } from '../validator/business-registration-form-schema';
 
 export function ShopReview() {
   const { form } = useMultiStepForm();
-  const data = form.getValues(); // Get all form values
+  const data = useWatch<BusinessProps>({ control: form.control });
 
   return (
     <div className="flex flex-col space-y-6">

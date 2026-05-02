@@ -6,11 +6,9 @@ import {
   DialogContent,
   DialogDescription,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Clock, Store } from 'lucide-react';
-import { ReactNode } from 'react';
 import { ROUTES } from '@/config/routeConfig';
 import {
   Card,
@@ -22,9 +20,11 @@ import {
 import { VisuallyHidden } from 'radix-ui';
 
 export function ApplicationSuccessDialog({
-  children,
+  open,
+  onOpenChange,
 }: {
-  children: ReactNode;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
 
@@ -33,8 +33,7 @@ export function ApplicationSuccessDialog({
   };
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="min-w-3xl p-10"
         showCloseButton={false}

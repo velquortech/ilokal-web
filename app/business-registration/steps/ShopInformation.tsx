@@ -4,10 +4,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 import { Controller } from 'react-hook-form';
 import { useMultiStepForm } from '../provider/registration-form-provider';
 import { Field, FieldError } from '@/components/ui/field';
+import {
+  getProvinces,
+  getCitiesByProvince,
+  getBarangaysByCity,
+} from '@/lib/ph-locations';
 
 export function ShopInformation() {
   return (
@@ -80,6 +92,30 @@ function BasicInformation() {
 
 function Location() {
   const { form } = useMultiStepForm();
+  const provinces = getProvinces();
+
+  const selectedProvince = form.watch('location.province');
+  const selectedCity = form.watch('location.city');
+  const cities = selectedProvince ? getCitiesByProvince(selectedProvince) : [];
+  const barangays =
+    selectedProvince && selectedCity
+      ? getBarangaysByCity(selectedCity, selectedProvince)
+      : [];
+
+  const handleProvinceChange = (value: string) => {
+    form.setValue('location.province', value);
+    form.setValue('location.city', '');
+    form.setValue('location.barangay', '');
+  };
+
+  const handleCityChange = (value: string) => {
+    form.setValue('location.city', value);
+    form.setValue('location.barangay', '');
+  };
+
+  const handleBarangayChange = (value: string) => {
+    form.setValue('location.barangay', value);
+  };
 
   return (
     <>
@@ -94,8 +130,22 @@ function Location() {
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
                 <div className="space-y-2">
-                  <Label htmlFor="state">Province</Label>
-                  <Input id="state" placeholder="Iloilo" {...field} />
+                  <Label htmlFor="province">Province</Label>
+                  <Select
+                    onValueChange={handleProvinceChange}
+                    value={field.value}
+                  >
+                    <SelectTrigger id="province" className="w-full">
+                      <SelectValue placeholder="Select province" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {provinces.map((province) => (
+                        <SelectItem key={province} value={province}>
+                          {province}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </Field>
@@ -110,7 +160,22 @@ function Location() {
               <Field data-invalid={fieldState.invalid}>
                 <div className="space-y-2">
                   <Label htmlFor="city">City/Municipality</Label>
-                  <Input id="city" placeholder="Pavia" {...field} />
+                  <Select
+                    onValueChange={handleCityChange}
+                    value={field.value}
+                    disabled={!selectedProvince}
+                  >
+                    <SelectTrigger id="city" className="w-full">
+                      <SelectValue placeholder="Select city/municipality" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cities.map((city) => (
+                        <SelectItem key={city} value={city}>
+                          {city}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </Field>
@@ -124,8 +189,23 @@ function Location() {
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
                 <div className="space-y-2">
-                  <Label>Barangay</Label>
-                  <Input placeholder="Barangay" {...field} />
+                  <Label htmlFor="barangay">Barangay</Label>
+                  <Select
+                    onValueChange={handleBarangayChange}
+                    value={field.value}
+                    disabled={!selectedCity}
+                  >
+                    <SelectTrigger id="barangay" className="w-full">
+                      <SelectValue placeholder="Select barangay" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {barangays.map((brgy) => (
+                        <SelectItem key={brgy} value={brgy}>
+                          {brgy}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </Field>

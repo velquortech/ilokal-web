@@ -12,7 +12,9 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_SUPABASE_TOKEN: process.env.NEXT_PUBLIC_SUPABASE_TOKEN,
   },
   images: {
-    remotePatterns: [new URL(`${process.env.NEXT_IMAGE_PUBLIC_URL}`)],
+    remotePatterns: process.env.NEXT_IMAGE_PUBLIC_URL
+      ? [new URL(process.env.NEXT_IMAGE_PUBLIC_URL)]
+      : [],
   },
   async redirects() {
     return [

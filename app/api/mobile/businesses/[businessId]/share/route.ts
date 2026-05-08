@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
     const { data, error } = await supabase
       .from('businesses')
-      .select('id, shop_name, description, logo_url')
+      .select('id, name, description, logo_url')
       .eq('id', businessId)
       .eq('status', 'verified')
       .is('archived_at', null)
@@ -30,7 +30,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
     return successResponse({
       share_url: shareUrl,
-      title: data.shop_name,
+      title: data.name,
       description: data.description ?? '',
       image_url: data.logo_url ?? '',
       platforms: {

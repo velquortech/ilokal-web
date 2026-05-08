@@ -104,7 +104,7 @@ Business detail — includes `interior_images` and branch list.
 ```json
 {
   "business": {
-    "id": "uuid", "shop_name": "string", "description": "string",
+    "id": "uuid", "name": "string", "description": "string",
     "logo_url": "string", "interior_images": ["url"],
     "status": "verified",
     "branches": [{ "id": "uuid", "name": "string", "address": "string" }]
@@ -172,7 +172,7 @@ List all businesses the user follows.
 {
   "subscriptions": [
     { "id": "uuid", "created_at": "iso",
-      "businesses": { "id": "uuid", "shop_name": "string", "logo_url": "string" } }
+      "businesses": { "id": "uuid", "name": "string", "logo_url": "string" } }
   ]
 }
 ```
@@ -196,7 +196,7 @@ List coupon redemptions. **Query:** `filter=active|claimed|expired` (omit for al
     { "id": "uuid", "redeemed_at": "iso", "expires_at": "iso", "is_claimed": false,
       "coupons": { "id": "uuid", "title": "string", "type": "discount",
         "redeem_time_limit_minutes": 30,
-        "businesses": { "id": "uuid", "shop_name": "string", "logo_url": "string" } },
+        "businesses": { "id": "uuid", "name": "string", "logo_url": "string" } },
       "branches": { "id": "uuid", "name": "string", "address": "string" } }
   ]
 }
@@ -243,9 +243,7 @@ Combines active redemptions + followed businesses for the in-app trip planner.
 
 | Migration says | Actual DB column | Affected routes |
 |---|---|---|
-| `businesses.name` | `businesses.shop_name` | detail, share, subscriptions, redemptions, itinerary |
-| `profiles.role = 'user'` | must be `'app_user'` (check constraint) | signup, profile insert |
-| `profiles.status` | required: `'active'/'inactive'/'suspended'` | signup, profile insert |
+| `profiles.role = 'user'` | must be `'business_owner'` or `'admin'` — see profiles check constraint | signup, profile insert |
 
 `products` and `coupons` had RLS enabled but no public SELECT policy — fixed in `supabase/migrations/20260508000002_products_coupons_rls.sql`.
 
@@ -254,10 +252,10 @@ Combines active redemptions + followed businesses for the in-app trip planner.
 Run after `make migrate-reset`:
 
 ```sql
-INSERT INTO businesses (id, owner_id, shop_name, description, logo_url, interior_images, status, is_verified)
+INSERT INTO businesses (id, owner_id, name, description, logo_url, interior_images, status)
 VALUES ('aaaaaaaa-0000-0000-0000-000000000001', '<any profile id>', 'Test Cafe',
   'A cozy test cafe', 'https://picsum.photos/seed/testcafe/400/400',
-  ARRAY['https://picsum.photos/seed/interior1/800/500'], 'verified', true);
+  ARRAY['https://picsum.photos/seed/interior1/800/500'], 'verified');
 
 INSERT INTO branches (id, business_id, name, address, location)
 VALUES ('bbbbbbbb-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001',

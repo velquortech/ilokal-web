@@ -86,7 +86,15 @@ migrate-diff:
 migrate-reset:
 	@yarn supabase db reset
 
+seed:
+	@echo "Seeding local database..."
+	@docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < supabase/seeders/businesses.sql
+	@docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < supabase/seeders/products.sql
+	@docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < supabase/seeders/coupons.sql
+	@docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < supabase/seeders/app_user.sql
+	@echo "Done."
+
 generate-types:
 	yarn supabase gen types typescript --local
 
-.PHONY: all init-log setup-supabase clean migrate-new migrate-up migrate-diff migrate-reset stop-db run-dev
+.PHONY: all init-log setup-supabase clean migrate-new migrate-up migrate-diff migrate-reset seed stop-db run-dev

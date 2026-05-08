@@ -88,10 +88,10 @@ migrate-reset:
 
 seed:
 	@echo "Seeding local database..."
+	@docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < supabase/seeders/users.sql
 	@docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < supabase/seeders/businesses.sql
 	@docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < supabase/seeders/products.sql
 	@docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < supabase/seeders/coupons.sql
-	@docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < supabase/seeders/app_user.sql
 	@echo "Done."
 
 generate-types:

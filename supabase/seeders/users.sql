@@ -1,12 +1,65 @@
--- Dev seed: test mobile user with subscriptions, redemptions, and ratings
--- Depends on: businesses.sql, coupons.sql
+-- Dev seed: loginable accounts for admin dashboard, business dashboard, and mobile testing
+-- Password for all accounts: ilokal@dev (local dev only — never use in production)
+--
+-- Accounts created:
+--   admin@ilokal.dev       → role: admin       (access admin dashboard)
+--   owner@ilokal.dev       → role: business_owner (owns all 5 seed businesses)
+--   testuser@ilokal.dev    → role: user        (mobile app test account)
 
 SET session_replication_role = replica;
 
--- Test mobile user profile (bypasses auth.users FK for local dev)
-INSERT INTO public.profiles (id, email, full_name, role)
-VALUES ('ffffffff-ffff-ffff-ffff-ffffffffffff', 'testuser@ilokal.dev', 'Test User', 'user')
+-- ── Auth users ────────────────────────────────────────────────────────────────
+
+INSERT INTO auth.users (
+  id, instance_id, aud, role,
+  email, encrypted_password, email_confirmed_at,
+  raw_app_meta_data, raw_user_meta_data,
+  created_at, updated_at, is_sso_user, is_anonymous
+)
+VALUES
+  (
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated', 'authenticated',
+    'admin@ilokal.dev',
+    crypt('ilokal@dev', gen_salt('bf')),
+    NOW(),
+    '{"provider":"email","providers":["email"]}', '{}',
+    NOW(), NOW(), false, false
+  ),
+  (
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated', 'authenticated',
+    'owner@ilokal.dev',
+    crypt('ilokal@dev', gen_salt('bf')),
+    NOW(),
+    '{"provider":"email","providers":["email"]}', '{}',
+    NOW(), NOW(), false, false
+  ),
+  (
+    'ffffffff-ffff-ffff-ffff-ffffffffffff',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated', 'authenticated',
+    'testuser@ilokal.dev',
+    crypt('ilokal@dev', gen_salt('bf')),
+    NOW(),
+    '{"provider":"email","providers":["email"]}', '{}',
+    NOW(), NOW(), false, false
+  )
 ON CONFLICT (id) DO NOTHING;
+
+-- ── Profiles ──────────────────────────────────────────────────────────────────
+
+INSERT INTO public.profiles (id, email, full_name, role)
+VALUES
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'admin@ilokal.dev',    'Seed Admin',          'admin'),
+  ('00000000-0000-0000-0000-000000000001', 'owner@ilokal.dev',    'Seed Business Owner', 'business_owner'),
+  ('ffffffff-ffff-ffff-ffff-ffffffffffff', 'testuser@ilokal.dev', 'Test User',           'user')
+ON CONFLICT (id) DO NOTHING;
+
+-- ── Test user domain data (subscriptions, redemptions, ratings) ───────────────
+-- Depends on: businesses.sql, coupons.sql
 
 -- Subscriptions: follows Artisan Roastery, Flora & Flour, Luna & Leaf
 INSERT INTO public.subscriptions (id, user_id, business_id)
@@ -41,7 +94,7 @@ VALUES
     NOW() - INTERVAL '3 hours', NOW() - INTERVAL '2 hours', false)
 ON CONFLICT (id) DO NOTHING;
 
--- Ratings: one per business (tests all filter states in the ratings endpoint)
+-- Ratings: one per business
 INSERT INTO public.business_ratings (id, user_id, business_id, rating, comment)
 VALUES
   ('77777777-7777-7777-7777-777777777701', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111101', 5, 'Best specialty coffee in Manila. The pour over is exceptional.'),

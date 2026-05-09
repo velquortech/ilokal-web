@@ -104,7 +104,7 @@ Business detail — includes `interior_images` and branch list.
 ```json
 {
   "business": {
-    "id": "uuid", "name": "string", "description": "string",
+    "id": "uuid", "shop_name": "string", "description": "string",
     "logo_url": "string", "interior_images": ["url"],
     "status": "verified",
     "branches": [{ "id": "uuid", "name": "string", "address": "string" }]
@@ -172,7 +172,7 @@ List all businesses the user follows.
 {
   "subscriptions": [
     { "id": "uuid", "created_at": "iso",
-      "businesses": { "id": "uuid", "name": "string", "logo_url": "string" } }
+      "businesses": { "id": "uuid", "shop_name": "string", "logo_url": "string" } }
   ]
 }
 ```
@@ -196,7 +196,7 @@ List coupon redemptions. **Query:** `filter=active|claimed|expired` (omit for al
     { "id": "uuid", "redeemed_at": "iso", "expires_at": "iso", "is_claimed": false,
       "coupons": { "id": "uuid", "title": "string", "type": "discount",
         "redeem_time_limit_minutes": 30,
-        "businesses": { "id": "uuid", "name": "string", "logo_url": "string" } },
+        "businesses": { "id": "uuid", "shop_name": "string", "logo_url": "string" } },
       "branches": { "id": "uuid", "name": "string", "address": "string" } }
   ]
 }

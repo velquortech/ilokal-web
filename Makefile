@@ -87,15 +87,15 @@ migrate-reset:
 	@yarn supabase db reset
 
 seed-storage:
-	@bash supabase/seeders/seed-storage.sh
+	@bash supabase/seeds/seed-storage.sh
 
 seed-db:
 	@psql "$(shell grep NEXT_PUBLIC_SUPABASE_DB_URL .env | cut -d= -f2-)" \
-		-f supabase/seeders/users.sql \
-		-f supabase/seeders/subscription_plans.sql \
-		-f supabase/seeders/businesses.sql \
-		-f supabase/seeders/products.sql \
-		-f supabase/seeders/coupons.sql
+		-f supabase/seeds/users.sql \
+		-f supabase/seeds/subscription_plans.sql \
+		-f supabase/seeds/businesses.sql \
+		-f supabase/seeds/products.sql \
+		-f supabase/seeds/coupons.sql
 	@echo "DB seed complete."
 
 seed: seed-storage seed-db

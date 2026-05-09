@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
         .select(`
           id, expires_at, is_claimed,
           coupons(id, title, type,
-            businesses(id, name, logo_url, description)
+            businesses(id, shop_name, logo_url, description)
           ),
           branches(id, name, address)
         `)

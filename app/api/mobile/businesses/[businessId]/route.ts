@@ -16,7 +16,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const { data, error } = await supabase
       .from('businesses')
       .select(`
-        id, name, description, logo_url, interior_images, status,
+        id, shop_name, description, logo_url, interior_images, status,
         branches(id, name, address)
       `)
       .eq('id', businessId)

@@ -4,6 +4,7 @@ import {
   notFoundResponse,
   successResponse,
 } from '@/app/api/helpers/response';
+import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { NextRequest } from 'next/server';
 
 type Params = { params: Promise<{ businessId: string }> };
@@ -28,7 +29,15 @@ export async function GET(_req: NextRequest, { params }: Params) {
       return notFoundResponse({ message: 'Business not found' });
     }
 
-    return successResponse({ business: data });
+    const business = {
+      ...data,
+      logo_url: resolveStorageUrl(supabase, 'shop-logos', data.logo_url),
+      interior_images: data.interior_images?.map((url: string) =>
+        resolveStorageUrl(supabase, 'interior-images', url),
+      ) ?? [],
+    };
+
+    return successResponse({ business });
   } catch {
     return generalErrorResponse();
   }

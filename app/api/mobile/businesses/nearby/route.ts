@@ -4,6 +4,7 @@ import {
   generalErrorResponse,
   successResponse,
 } from '@/app/api/helpers/response';
+import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { NextRequest } from 'next/server';
 
 export async function GET(req: NextRequest) {
@@ -29,7 +30,15 @@ export async function GET(req: NextRequest) {
       return generalErrorResponse({ message: error.message });
     }
 
-    return successResponse({ businesses: data });
+    const businesses = data.map((b: Record<string, unknown>) => ({
+      ...b,
+      logo_url: resolveStorageUrl(supabase, 'shop-logos', b.logo_url as string | null),
+      interior_images: (b.interior_images as string[] | null)?.map((url) =>
+        resolveStorageUrl(supabase, 'interior-images', url),
+      ) ?? [],
+    }));
+
+    return successResponse({ businesses });
   } catch {
     return generalErrorResponse();
   }

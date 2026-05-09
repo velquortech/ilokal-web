@@ -132,19 +132,20 @@ export async function getMyBusinesses() {
 
   if (!data) return null;
 
-  const logoUrl = data?.logo_url
-    ? supabase.storage.from('shop-logos').getPublicUrl(data.logo_url).data
-        .publicUrl
-    : null;
+  // Seeds store full public URLs; real registration stores raw storage paths.
+  // Resolve to a public URL only when the stored value is a path (not already a URL).
+  const resolveUrl = (bucket: string, pathOrUrl: string | null): string | null => {
+    if (!pathOrUrl) return null;
+    if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
+      return pathOrUrl;
+    }
+    return supabase.storage.from(bucket).getPublicUrl(pathOrUrl).data.publicUrl;
+  };
 
-  const bannerUrl = data?.banner_url
-    ? supabase.storage.from('shop-banners').getPublicUrl(data.banner_url).data
-        .publicUrl
-    : null;
-
-  const interiorPaths = data?.interior_images?.map(
-    (url: string) =>
-      supabase.storage.from('interior-images').getPublicUrl(url).data.publicUrl,
+  const logoUrl = resolveUrl('shop-logos', data.logo_url);
+  const bannerUrl = resolveUrl('shop-banners', data.banner_url);
+  const interiorPaths = data?.interior_images?.map((url: string) =>
+    resolveUrl('interior-images', url) ?? url,
   );
 
   return {

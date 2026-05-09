@@ -86,15 +86,21 @@ migrate-diff:
 migrate-reset:
 	@yarn supabase db reset
 
-seed:
-	@echo "Seeding local database..."
-	@docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < supabase/seeders/users.sql
-	@docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < supabase/seeders/businesses.sql
-	@docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < supabase/seeders/products.sql
-	@docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < supabase/seeders/coupons.sql
-	@echo "Done."
+seed-storage:
+	@bash supabase/seeders/seed-storage.sh
+
+seed-db:
+	@psql "$(shell grep NEXT_PUBLIC_SUPABASE_DB_URL .env | cut -d= -f2-)" \
+		-f supabase/seeders/users.sql \
+		-f supabase/seeders/subscription_plans.sql \
+		-f supabase/seeders/businesses.sql \
+		-f supabase/seeders/products.sql \
+		-f supabase/seeders/coupons.sql
+	@echo "DB seed complete."
+
+seed: seed-storage seed-db
 
 generate-types:
 	yarn supabase gen types typescript --local
 
-.PHONY: all init-log setup-supabase clean migrate-new migrate-up migrate-diff migrate-reset seed stop-db run-dev
+.PHONY: all init-log setup-supabase clean migrate-new migrate-up migrate-diff migrate-reset stop-db run-dev test test-run test-ui test-coverage seed-storage seed-db seed

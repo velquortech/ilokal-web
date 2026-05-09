@@ -7,7 +7,7 @@ INSERT INTO public.profiles (id, email, full_name, role)
 VALUES ('00000000-0000-0000-0000-000000000001', 'seedowner@ilokal.dev', 'Seed Owner', 'business_owner')
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO public.businesses (id, owner_id, name, description, logo_url, interior_images, status)
+INSERT INTO public.businesses (id, owner_id, shop_name, description, logo_url, interior_images, status)
 VALUES
   (
     '11111111-1111-1111-1111-111111111101',

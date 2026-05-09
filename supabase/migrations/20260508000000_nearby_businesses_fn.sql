@@ -24,7 +24,7 @@ AS $$
     b.address,
     ST_Distance(b.location, ST_MakePoint(lng, lat)::geography) AS distance_meters,
     biz.id          AS business_id,
-    biz.name        AS business_name,
+    biz.shop_name   AS business_name,
     biz.description AS business_description,
     biz.logo_url,
     biz.interior_images

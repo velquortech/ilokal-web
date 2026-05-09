@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
       .from('subscriptions')
       .select(`
         id, created_at,
-        businesses(id, name, description, logo_url, status)
+        businesses(id, shop_name, description, logo_url, status)
       `)
       .eq('user_id', auth.user.id)
       .order('created_at', { ascending: false });

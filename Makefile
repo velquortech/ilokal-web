@@ -106,12 +106,10 @@ seed-storage:
 	@bash supabase/seeds/seed-storage.sh
 
 seed-db:
-	@psql "$(shell grep NEXT_PUBLIC_SUPABASE_DB_URL .env | cut -d= -f2-)" \
-		-f supabase/seeds/users.sql \
-		-f supabase/seeds/subscription_plans.sql \
-		-f supabase/seeds/businesses.sql \
-		-f supabase/seeds/products.sql \
-		-f supabase/seeds/coupons.sql
+	@for f in supabase/seeds/users.sql supabase/seeds/subscription_plans.sql supabase/seeds/business_categories.sql supabase/seeds/businesses.sql supabase/seeds/products.sql supabase/seeds/coupons.sql; do \
+		echo "  seeding $$f..."; \
+		docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < $$f; \
+	done
 	@echo "DB seed complete."
 
 seed: seed-storage seed-db

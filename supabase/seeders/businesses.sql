@@ -1,5 +1,7 @@
 -- Dev seed: 5 verified businesses near Manila Bay (lat 14.5995, lng 120.9842)
 -- Run as service role. session_replication_role bypasses auth.users FK for the seed owner.
+-- Images are served from local Supabase storage (interior-images / shop-logos buckets).
+-- Storage URL base: http://127.0.0.1:54321/storage/v1/object/public
 
 SET session_replication_role = replica;
 
@@ -14,11 +16,11 @@ VALUES
     '00000000-0000-0000-0000-000000000001',
     'The Artisan Roastery',
     'Specialty coffee roasted in-house daily using single-origin beans from Benguet and Sagada.',
-    'https://picsum.photos/seed/artisancafe/400/400',
+    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111101/logo.jpg',
     ARRAY[
-      'https://picsum.photos/seed/artisancafe-hero/800/500',
-      'https://picsum.photos/seed/artisan-g1/800/520',
-      'https://picsum.photos/seed/artisan-g2/800/520'
+      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111101/hero.jpg',
+      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111101/gallery1.jpg',
+      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111101/gallery2.jpg'
     ],
     'verified'
   ),
@@ -27,10 +29,10 @@ VALUES
     '00000000-0000-0000-0000-000000000001',
     'Flora & Flour Bakery',
     'Artisanal Filipino breads and pastries baked fresh every morning.',
-    'https://picsum.photos/seed/florabakery/400/400',
+    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111102/logo.jpg',
     ARRAY[
-      'https://picsum.photos/seed/florabakery-hero/800/500',
-      'https://picsum.photos/seed/flora-g1/800/520'
+      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111102/hero.jpg',
+      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111102/gallery1.jpg'
     ],
     'verified'
   ),
@@ -39,9 +41,9 @@ VALUES
     '00000000-0000-0000-0000-000000000001',
     'The Handy Corner',
     'Your trusted neighborhood hardware and home improvement store.',
-    'https://picsum.photos/seed/handystore/400/400',
+    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111103/logo.jpg',
     ARRAY[
-      'https://picsum.photos/seed/handystore-hero/800/500'
+      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111103/hero.jpg'
     ],
     'verified'
   ),
@@ -50,11 +52,11 @@ VALUES
     '00000000-0000-0000-0000-000000000001',
     'Aura Hair Studio',
     'Premium hair styling, coloring, and treatments by certified and experienced stylists.',
-    'https://picsum.photos/seed/aurasalon/400/400',
+    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111104/logo.jpg',
     ARRAY[
-      'https://picsum.photos/seed/aurasalon-hero/800/500',
-      'https://picsum.photos/seed/aura-g1/800/520',
-      'https://picsum.photos/seed/aura-g2/800/520'
+      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111104/hero.jpg',
+      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111104/gallery1.jpg',
+      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111104/gallery2.jpg'
     ],
     'verified'
   ),
@@ -63,11 +65,11 @@ VALUES
     '00000000-0000-0000-0000-000000000001',
     'Luna & Leaf Bistro',
     'Farm-to-table bistro serving organic coffee and healthy Filipino-inspired bowls.',
-    'https://picsum.photos/seed/lunaleaf/400/400',
+    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111105/logo.jpg',
     ARRAY[
-      'https://picsum.photos/seed/lunaleaf-hero/800/500',
-      'https://picsum.photos/seed/luna-g1/800/520',
-      'https://picsum.photos/seed/luna-g2/800/520'
+      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111105/hero.jpg',
+      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111105/gallery1.jpg',
+      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111105/gallery2.jpg'
     ],
     'verified'
   )

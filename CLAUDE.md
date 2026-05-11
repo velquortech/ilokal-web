@@ -55,6 +55,12 @@ Always loaded:
 @.claude/CHANGELOG.md
 
 Load on request (read when topic is relevant):
+- `.claude/docs/DESIGN.md` — color tokens, typography, radius scale, UI patterns from business registration
+- `.claude/docs/ui-standards.md` — approved libraries, component rules, responsive strategy, dark mode
+- `.claude/docs/code-principles.md` — TypeScript rules, state management, file/folder conventions, modular architecture strategy
+- `.claude/docs/component-standards.md` — file structure, named exports, Server vs Client, hook extraction, form and loading patterns
+- `.claude/docs/caching-strategy.md` — Next.js caching layers, ISR rules, Supabase cache patterns, what not to cache
+- `.claude/docs/git-workflow.md` — conventional commits, branch naming, merge strategy, high-risk change rules
 - `.claude/docs/architecture.md` — system design, auth flow diagrams
 - `.claude/docs/folder-structure.md` — where to put new files
 - `.claude/docs/authentication.md` — auth flows, signup/login/session detail

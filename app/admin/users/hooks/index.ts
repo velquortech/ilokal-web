@@ -1,0 +1,1 @@
+export { useUserTabsData } from './useUserTabsData';

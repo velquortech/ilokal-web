@@ -1,30 +1,12 @@
-# 📅 Session Management & Expiration
-
-> Last Updated: March 21, 2026  
-> Status: **✅ Phase 1-2 Complete | All Session Features Active | Role-Based with Server-Side Verification**
+# Session Management & Expiration
 
 Complete guide to session configuration, management, expiration, and monitoring.
 
 ---
 
-## 🎯 Overview
+## Overview
 
-The application implements automatic session management with:
-
-- ✅ **Role-based timeouts** (Admin: 60min, Business: 4h, User: 24h)
-- ✅ **Activity detection** (auto-extends on mouse, keyboard, scroll, touch)
-- ✅ **Session verification** (every 60 seconds with server)
-- ✅ **Expiration warnings** (dialog 5 minutes before logout)
-- ✅ **Automatic logout** (clears cookies and redirects)
-- ✅ **Server-side truth** (can't be faked on client)
-- ✅ **Type-safe monitoring** (useSessionMonitor hook, 100% typed)
-
-### Session Monitoring Quality (March 21, 2026)
-
-- ✅ **Zero `any` types** in session monitoring code
-- ✅ **100% coverage** for role-based timeouts
-- ✅ **Activity debouncing** (5s delay) prevents excessive server calls
-- ✅ **Graceful degradation** if verification fails (auto-logout)
+Role-based timeouts (Admin: 60min, Business: 4h, User: 24h), with activity detection, 60-second server verification, 5-minute expiration warnings, and automatic logout. Session state lives server-side in HTTP-only cookies; the client calculates expiration locally but the server is the authoritative source.
 
 ---
 
@@ -39,41 +21,6 @@ The application implements automatic session management with:
 | **Regular User**   | **1440 minutes** (24h) | Shopping & browsing  | 🟢 Extended    | 1435 min   |
 
 > **Architecture:** Session is stored server-side in HTTP-only cookies. Client calculates expiration based on role-specific timeouts and server verification. Activity detection is debounced (5s) to optimize performance. Server is the authoritative source of truth (cannot be faked on client).
-
-### Why These Timeouts?
-
-#### Admin: 60 Minutes
-
-**Risk Profile:**
-
-- Manages users, data, settings
-- Account compromise = major breach
-- Minimal daily tasks (check once per hour)
-
-**Security Trade-off:** 100% security, 0% convenience
-**Best for:** Financial/medical/critical systems
-
-#### Business Owner: 240 Minutes (4 Hours)
-
-**Risk Profile:**
-
-- Manages shop, products, orders
-- Can access customer data
-- Multiple hours of continuous work
-
-**Security Trade-off:** 80% security, 20% convenience
-**Best for:** E-commerce, SaaS platforms
-
-#### Regular User: 1440 Minutes (24 Hours)
-
-**Risk Profile:**
-
-- Limited data access (own profiles)
-- Lower privilege level
-- Extended shopping/browsing session
-
-**Security Trade-off:** 50% security, 50% convenience
-**Best for:** Consumer-facing apps (Shopify, Amazon model)
 
 ---
 
@@ -98,35 +45,6 @@ NEXT_PUBLIC_SESSION_WARNING_INTERVAL=5
 
 # Check interval - verify session every X seconds - default: 60
 NEXT_PUBLIC_SESSION_CHECK_INTERVAL=60
-```
-
-### Example: Custom Timeouts
-
-**Development (Quick Testing):**
-
-```bash
-NEXT_PUBLIC_SESSION_ADMIN_TIMEOUT=1
-NEXT_PUBLIC_SESSION_BUSINESS_TIMEOUT=2
-NEXT_PUBLIC_SESSION_USER_TIMEOUT=3
-NEXT_PUBLIC_SESSION_WARNING_INTERVAL=0.5
-```
-
-**Production (Strict Security):**
-
-```bash
-NEXT_PUBLIC_SESSION_ADMIN_TIMEOUT=30       # 30 min
-NEXT_PUBLIC_SESSION_BUSINESS_TIMEOUT=120   # 2 hours
-NEXT_PUBLIC_SESSION_USER_TIMEOUT=720       # 12 hours
-NEXT_PUBLIC_SESSION_WARNING_INTERVAL=10    # Warn 10 min before
-```
-
-**Production (User Friendly):**
-
-```bash
-NEXT_PUBLIC_SESSION_ADMIN_TIMEOUT=120      # 2 hours
-NEXT_PUBLIC_SESSION_BUSINESS_TIMEOUT=480   # 8 hours
-NEXT_PUBLIC_SESSION_USER_TIMEOUT=2880      # 48 hours
-NEXT_PUBLIC_SESSION_WARNING_INTERVAL=15    # Warn 15 min before
 ```
 
 ---

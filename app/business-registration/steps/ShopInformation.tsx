@@ -18,7 +18,7 @@ import { useMultiStepForm } from '../provider/registration-form-provider';
 import { Field, FieldError } from '@/components/ui/field';
 import { getCitiesByProvince, getBarangaysByCity } from '@/lib/ph-locations';
 
-const LOCKED_PROVINCE = 'Iloilo';
+const LOCKED_PROVINCE = 'ILOILO';
 
 export function ShopInformation() {
   return (
@@ -117,7 +117,7 @@ function Location() {
         <div className="flex h-full flex-col space-y-6">
           <h2 className="font-semibold">Location</h2>
 
-          {/* PROVINCE */}
+          {/* PROVINCE — locked to Iloilo for current scope */}
           <Controller
             name="location.province"
             control={form.control}
@@ -125,13 +125,16 @@ function Location() {
               <Field data-invalid={fieldState.invalid}>
                 <div className="space-y-2">
                   <Label htmlFor="province">Province</Label>
-                  <Input
-                    id="province"
-                    value={LOCKED_PROVINCE}
-                    readOnly
-                    disabled
-                    ref={field.ref}
-                  />
+                  <Select value={field.value} disabled>
+                    <SelectTrigger id="province" className="w-full">
+                      <SelectValue placeholder="Iloilo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={LOCKED_PROVINCE}>
+                        {LOCKED_PROVINCE}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </Field>
@@ -146,7 +149,11 @@ function Location() {
               <Field data-invalid={fieldState.invalid}>
                 <div className="space-y-2">
                   <Label htmlFor="city">City/Municipality</Label>
-                  <Select onValueChange={handleCityChange} value={field.value}>
+                  <Select
+                    onValueChange={handleCityChange}
+                    value={field.value}
+                    disabled={cities.length === 0}
+                  >
                     <SelectTrigger id="city" className="w-full">
                       <SelectValue placeholder="Select city/municipality" />
                     </SelectTrigger>

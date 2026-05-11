@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const { data, error } = await supabase
       .from('products')
       .select(
-        'id, name, description, price, image_url, is_available, ratings(rating)',
+        'id, name, description, price, price_type, price_unit, image_url, is_available, ratings(rating)',
       )
       .eq('business_id', businessId)
       .eq('is_available', true)
@@ -38,6 +38,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
         name: product.name,
         description: product.description,
         price: product.price,
+        price_type: product.price_type as string,
+        price_unit: product.price_unit as string | null,
         image_url: product.image_url,
         is_available: product.is_available,
         average_rating: Math.round(average * 10) / 10,

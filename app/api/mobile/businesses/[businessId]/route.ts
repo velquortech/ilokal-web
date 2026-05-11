@@ -20,7 +20,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
         `
         id, shop_name, description, logo_url, interior_images, status,
         branches(id, name, address),
-        profiles!owner_id(full_name, email)
+        profiles!owner_id(full_name, email),
+        business_categories!category_id(name, business_types!business_type_id(name, icon))
       `,
       )
       .eq('id', businessId)
@@ -42,8 +43,18 @@ export async function GET(_req: NextRequest, { params }: Params) {
       ? (owner.full_name?.split(' ')[0] ?? owner.email.split('@')[0])
       : null;
 
+    type CategoryRow = { name: string; business_types: { name: string; icon: string } | null } | null;
+    const categoryRow = data.business_categories as unknown as CategoryRow;
+    const category = categoryRow
+      ? {
+          name: categoryRow.name,
+          business_type: categoryRow.business_types?.name ?? null,
+          icon: categoryRow.business_types?.icon ?? null,
+        }
+      : null;
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { profiles, ...rest } = data;
+    const { profiles, business_categories, ...rest } = data;
 
     const business = {
       ...rest,
@@ -53,6 +64,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
           resolveStorageUrl(supabase, 'interior-images', url),
         ) ?? [],
       owner_handle: ownerHandle,
+      category,
     };
 
     return successResponse({ business });

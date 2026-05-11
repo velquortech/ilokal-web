@@ -1,6 +1,5 @@
 import type { NextConfig } from 'next';
 
-// Helper to safely parse URLs from environment variables
 function parseImageUrl(
   url: string | undefined,
 ): { protocol: 'http' | 'https'; hostname: string } | null {
@@ -17,13 +16,11 @@ function parseImageUrl(
   }
 }
 
-// Build image remote patterns
 const imageRemotePatterns: Array<{
   protocol: 'http' | 'https';
   hostname: string;
   port?: string;
 }> = [
-  // Local Supabase storage (development)
   {
     protocol: 'http',
     hostname: '127.0.0.1',
@@ -35,7 +32,6 @@ const imageRemotePatterns: Array<{
   },
 ];
 
-// Add production Supabase storage if configured
 const prodImageUrl = parseImageUrl(process.env.NEXT_IMAGE_PUBLIC_URL);
 if (prodImageUrl) {
   imageRemotePatterns.push({
@@ -44,23 +40,15 @@ if (prodImageUrl) {
   });
 }
 
-// Build CSP image sources that match remote patterns
 const buildCSPImageSources = (): string => {
   const sources = ["'self'", 'data:', 'blob:'];
-
-  // Always allow local Supabase storage for development
   sources.push('http://127.0.0.1:54321');
-
-  // Allow HTTPS in production
   if (process.env.NODE_ENV === 'production') {
     sources.push('https:');
   }
-
-  // Add specific production image domain if configured (for both dev and prod)
   if (prodImageUrl) {
     sources.push(`${prodImageUrl.protocol}://${prodImageUrl.hostname}`);
   }
-
   return sources.join(' ');
 };
 
@@ -87,11 +75,13 @@ const buildStyleSrc = (): string => {
 const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_IMAGE_PUBLIC_URL: process.env.NEXT_IMAGE_PUBLIC_URL,
     NEXT_PUBLIC_DESTINATION: process.env.NEXT_PUBLIC_DESTINATION,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY:
+      process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY,
+    NEXT_PUBLIC_SUPABASE_TOKEN: process.env.NEXT_PUBLIC_SUPABASE_TOKEN,
   },
   images: {
     remotePatterns: imageRemotePatterns,
@@ -110,7 +100,6 @@ const nextConfig: NextConfig = {
       {
         source: '/:path*',
         headers: [
-          // CORS and Origin headers
           {
             key: 'Access-Control-Allow-Credentials',
             value: 'true',
@@ -119,18 +108,17 @@ const nextConfig: NextConfig = {
             key: 'Access-Control-Allow-Origin',
             value: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
           },
-          // Security headers
           {
             key: 'X-Content-Type-Options',
-            value: 'nosniff', // Prevents MIME-type sniffing
+            value: 'nosniff',
           },
           {
             key: 'X-Frame-Options',
-            value: 'DENY', // Prevents clickjacking
+            value: 'DENY',
           },
           {
             key: 'X-XSS-Protection',
-            value: '1; mode=block', // XSS protection
+            value: '1; mode=block',
           },
           {
             key: 'Referrer-Policy',
@@ -140,7 +128,6 @@ const nextConfig: NextConfig = {
             key: 'Permissions-Policy',
             value: 'geolocation=(), microphone=(), camera=()',
           },
-          // HTTPS enforcement (in production)
           ...(process.env.NODE_ENV === 'production'
             ? [
                 {
@@ -149,7 +136,6 @@ const nextConfig: NextConfig = {
                 },
               ]
             : []),
-          // Content-Security-Policy - dynamically built to include all image sources
           {
             key: 'Content-Security-Policy',
             value: `

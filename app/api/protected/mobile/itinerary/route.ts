@@ -18,13 +18,15 @@ export async function GET(req: NextRequest) {
     const [redemptionsResult, subscriptionsResult] = await Promise.all([
       auth.supabase
         .from('user_redemptions')
-        .select(`
+        .select(
+          `
           id, expires_at, is_claimed,
           coupons(id, title, type,
             businesses(id, shop_name, logo_url, description)
           ),
           branches(id, name, address)
-        `)
+        `,
+        )
         .eq('user_id', auth.user.id)
         .eq('is_claimed', false)
         .gt('expires_at', now)
@@ -32,13 +34,15 @@ export async function GET(req: NextRequest) {
 
       auth.supabase
         .from('subscriptions')
-        .select(`
+        .select(
+          `
           id,
           businesses(
             id, name, logo_url, description,
             coupons(id, title, type, end_date)
           )
-        `)
+        `,
+        )
         .eq('user_id', auth.user.id)
         .order('created_at', { ascending: false }),
     ]);
@@ -47,7 +51,9 @@ export async function GET(req: NextRequest) {
       return generalErrorResponse({ message: redemptionsResult.error.message });
     }
     if (subscriptionsResult.error) {
-      return generalErrorResponse({ message: subscriptionsResult.error.message });
+      return generalErrorResponse({
+        message: subscriptionsResult.error.message,
+      });
     }
 
     return successResponse({

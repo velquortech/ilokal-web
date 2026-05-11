@@ -14,7 +14,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, description, price, image_url, is_available, ratings(rating)')
+      .select(
+        'id, name, description, price, image_url, is_available, ratings(rating)',
+      )
       .eq('business_id', businessId)
       .eq('is_available', true)
       .is('archived_at', null)
@@ -28,7 +30,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
       const ratingValues = (product.ratings as { rating: number }[]) ?? [];
       const total = ratingValues.length;
       const average =
-        total > 0 ? ratingValues.reduce((sum, r) => sum + r.rating, 0) / total : 0;
+        total > 0
+          ? ratingValues.reduce((sum, r) => sum + r.rating, 0) / total
+          : 0;
       return {
         id: product.id,
         name: product.name,

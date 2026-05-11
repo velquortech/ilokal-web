@@ -1,52 +1,6 @@
-# 🔐 Authentication Implementation & Security Guide
+# Authentication Implementation & Security Guide
 
-> Last Updated: March 21, 2026  
-> Status: **✅ Phase 1-2 Complete | Grade A+ | Zero `any` types**
-
-Complete guide to the authentication and authorization system for Ilokal, built with Next.js Server Actions, Supabase SSR, and modern React patterns.
-
----
-
-## 📊 Implementation Status
-
-### Phase 1: Authentication & User Management ✅ COMPLETE
-
-**6 Auth Endpoints:**
-
-- ✅ POST /api/auth/login
-- ✅ POST /api/auth/signup
-- ✅ POST /api/auth/logout
-- ✅ POST /api/auth/refresh-token
-- ✅ POST /api/auth/verify-email
-- ✅ POST /api/auth/reset-password
-
-**5 User Profile Endpoints:**
-
-- ✅ GET /api/users/me (current user)
-- ✅ PUT /api/users/me (update profile)
-- ✅ GET /api/users/:id (admin)
-- ✅ PUT /api/users/:id (admin)
-- ✅ DELETE /api/users/:id (admin)
-
-**6 Server Actions:**
-
-- ✅ loginAction()
-- ✅ signupAction()
-- ✅ logoutAction()
-- ✅ verifySessionAction()
-- ✅ updateProfileAction()
-- ✅ redirectByRole()
-
-### Code Quality Metrics ✅
-
-| Metric                   | Value                          | Status   |
-| ------------------------ | ------------------------------ | -------- |
-| TypeScript Strict Mode   | ✅ 0 `any` types               | VERIFIED |
-| Error Format Consistency | ✅ 100% (6/6 codes)            | VERIFIED |
-| Pylance Issues           | ✅ 0 errors                    | VERIFIED |
-| Code Duplication         | ✅ 80% eliminated              | VERIFIED |
-| Type Exports             | ✅ Centralized in `/lib/types` | VERIFIED |
-| Service Layer DRY        | ✅ No duplicate logic          | VERIFIED |
+Complete guide to the authentication and authorization system for iLokal, built with Next.js Server Actions, Supabase SSR, and modern React patterns.
 
 ---
 
@@ -62,68 +16,6 @@ Complete guide to the authentication and authorization system for Ilokal, built 
 - **React Hook Form** - Form management (validation only)
 - **React Context** - User data via `UserContext` (provides authenticated user info)
 - **shadcn/ui & Radix UI** - UI components
-
-### Project Structure
-
-```
-app/
-├── (auth)/                   # Authentication routes
-│   ├── actions/              # ✅ Server Actions folder (split structure)
-│   │   ├── authActions.ts    # Core auth (login, signup, logout, etc.)
-│   │   ├── userActions.ts    # User profile management
-│   │   └── index.ts          # Barrel export for backward compatibility
-│   ├── layout.tsx
-│   ├── login/page.tsx        # Login page
-│   └── signup/page.tsx       # Signup page
-│
-├── api/
-│   ├── auth/                 # Auth endpoints
-│   └── users/                # User management endpoints
-│       ├── me/route.ts       # ✅ GET/PUT current user profile
-│       └── [id]/route.ts     # ✅ GET/PUT/DELETE user profiles (admin)
-│
-├── admin/                    # Admin dashboard
-├── business/                 # Business owner dashboard
-└── layout.tsx                # Root layout with SessionWarningDialog
-
-config/
-├── sessionConfig.ts          # ✅ Session timeouts & verification config
-├── routeConfig.ts            # ✅ Centralized route definitions
-
-supabase/
-├── server.ts                 # Secure server-side Supabase config (moved from `config/`)
-└── client.ts                 # Client-side Supabase config (moved from `config/`)
-
-lib/
-├── api/
-│   ├── users/                # User service layer
-│   ├── admin/                # Admin service layer
-│   └── business/             # Business service layer
-├── types/
-│   ├── index.ts              # ✅ Central export point for all types
-│   ├── user.ts               # User domain types
-│   ├── admin.ts              # Admin domain types
-│   ├── business.ts           # Business domain types
-│   └── common.ts             # Shared types (ApiResponse<T>, etc)
-└── validation/
-    └── auth.ts               # Zod validation schemas
-
-components/
-├── auth/
-│   ├── LoginForm.tsx         # ✅ Uses useActionState for Server Actions
-│   ├── SignupForm.tsx        # ✅ Uses useActionState for Server Actions
-│   ├── SessionWarningDialog.tsx # ✅ Session expiration warning
-│   └── SessionTracker.tsx    # ✅ Initializes session monitoring on mount
-└── providers/
-    ├── AuthProvider.tsx      # ✅ Sets up SessionTracker + monitoring
-    └── UserContext.tsx       # ✅ Provides user data via React Context
-
-hooks/
-├── useSessionMonitor.ts      # ✅ Session monitoring (debounced 5s, role-based verification)
-├── useAuth.ts                # ✅ useAuth() hook for logout functionality
-├── useAdminMutations.ts      # ✅ Admin CRUD Server Actions
-└── useProfiles.ts            # ✅ Manual profile data fetching with pagination
-```
 
 ---
 
@@ -328,22 +220,7 @@ if (!validation.success) {
 
 ### Cookie Security
 
-```typescript
-// supabase/server.ts
-const secureOptions = {
-  httpOnly: true, // ✅ JavaScript cannot access (XSS protection)
-  secure: true, // ✅ HTTPS only (in production)
-  sameSite: 'lax' as const, // ✅ CSRF protection
-  path: '/', // ✅ Available app-wide
-};
-```
-
-**What Each Flag Does:**
-
-- **HttpOnly**: Even if attacker injects JavaScript, can't steal token
-- **Secure**: Token can't be intercepted over plain HTTP
-- **SameSite: Lax**: Prevents cross-site request forgery
-- **Path**: Ensures token is available where needed
+See `security.md` for full cookie configuration. In short: `httpOnly: true`, `secure: true`, `sameSite: 'lax'`.
 
 ### Authorization
 

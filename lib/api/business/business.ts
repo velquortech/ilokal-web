@@ -134,7 +134,10 @@ export async function getMyBusinesses() {
 
   // Seeds store full public URLs; real registration stores raw storage paths.
   // Resolve to a public URL only when the stored value is a path (not already a URL).
-  const resolveUrl = (bucket: string, pathOrUrl: string | null): string | null => {
+  const resolveUrl = (
+    bucket: string,
+    pathOrUrl: string | null,
+  ): string | null => {
     if (!pathOrUrl) return null;
     if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
       return pathOrUrl;
@@ -144,8 +147,8 @@ export async function getMyBusinesses() {
 
   const logoUrl = resolveUrl('shop-logos', data.logo_url);
   const bannerUrl = resolveUrl('shop-banners', data.banner_url);
-  const interiorPaths = data?.interior_images?.map((url: string) =>
-    resolveUrl('interior-images', url) ?? url,
+  const interiorPaths = data?.interior_images?.map(
+    (url: string) => resolveUrl('interior-images', url) ?? url,
   );
 
   return {

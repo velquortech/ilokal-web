@@ -57,33 +57,6 @@ Make sure the following are installed on your machine:
 
 ---
 
-## 🧪 Testing with Vitest
-
-- Run tests in watch mode (development):
-
-  ```bash
-  make test
-  ```
-
-- Run all tests once (CI mode):
-
-  ```bash
-  make test-run
-  ```
-
-- Open interactive test UI dashboard:
-
-  ```bash
-  make test-ui
-  ```
-
-- Generate coverage report:
-  ```bash
-  make test-coverage
-  ```
-
----
-
 ## 👀 Production Preview (Local)
 
 - Start the app in production mode locally:
@@ -150,5 +123,3 @@ After a reset the database and storage buckets are empty. Run these to populate 
 
 - Replace `[file-name]` with a descriptive name for the migration.
 - Ensure Docker is running before executing any Supabase-related commands.
-
----

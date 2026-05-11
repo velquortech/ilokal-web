@@ -1,5 +1,5 @@
 import React from 'react';
-import { phFormat } from '@/lib/helpers/currency';
+import { phFormat } from '@/helpers/currency';
 import FadeInOnScroll from './FadeInOnScroll';
 
 interface CheckIconProps {

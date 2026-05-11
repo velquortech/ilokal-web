@@ -17,13 +17,15 @@ export async function GET(req: NextRequest) {
 
     let query = auth.supabase
       .from('user_redemptions')
-      .select(`
+      .select(
+        `
         id, redeemed_at, expires_at, is_claimed,
         coupons(id, title, description, type, redeem_time_limit_minutes,
           businesses(id, shop_name, logo_url)
         ),
         branches(id, name, address)
-      `)
+      `,
+      )
       .eq('user_id', auth.user.id)
       .order('redeemed_at', { ascending: false });
 
@@ -55,7 +57,9 @@ export async function POST(req: NextRequest) {
     const { coupon_id, branch_id } = body;
 
     if (!coupon_id || !branch_id) {
-      return badRequestResponse({ message: 'coupon_id and branch_id are required' });
+      return badRequestResponse({
+        message: 'coupon_id and branch_id are required',
+      });
     }
 
     const { data: coupon, error: couponError } = await auth.supabase
@@ -70,7 +74,9 @@ export async function POST(req: NextRequest) {
     }
 
     const expires_at = coupon.redeem_time_limit_minutes
-      ? new Date(Date.now() + coupon.redeem_time_limit_minutes * 60 * 1000).toISOString()
+      ? new Date(
+          Date.now() + coupon.redeem_time_limit_minutes * 60 * 1000,
+        ).toISOString()
       : null;
 
     const { data, error } = await auth.supabase

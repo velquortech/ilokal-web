@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
           `
           id,
           businesses(
-            id, name, logo_url, description,
+            id, shop_name, logo_url, description,
             coupons(id, title, type, end_date)
           )
         `,

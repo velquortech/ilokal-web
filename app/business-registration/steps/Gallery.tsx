@@ -67,7 +67,7 @@ function ShopLogo() {
             <h2 className="mb-4 font-semibold">Shop Logo</h2>
 
             <div
-              className="border-border hover:border-primary hover:bg-muted/50 cursor-pointer rounded-lg border-2 border-dashed p-12 text-center transition-colors"
+              className="border-border hover:border-primary hover:bg-muted/50 cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors sm:p-12"
               onClick={() => fileInputRef.current?.click()}
             >
               {preview ? (
@@ -173,7 +173,7 @@ function ShopBanner() {
             <h2 className="mb-4 font-semibold">Shop Banner</h2>
 
             <div
-              className="border-border hover:border-primary hover:bg-muted/50 cursor-pointer rounded-lg border-2 border-dashed p-12 text-center transition-colors"
+              className="border-border hover:border-primary hover:bg-muted/50 cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors sm:p-12"
               onClick={() => fileInputRef.current?.click()}
             >
               {preview ? (
@@ -280,7 +280,7 @@ function InteriorImages() {
 
             <div
               className={cn(
-                'border-border hover:border-primary hover:bg-muted/50 min-h-96 cursor-pointer grid-cols-2 gap-10 rounded-lg border-2 border-dashed p-12 text-center transition-colors',
+                'border-border hover:border-primary hover:bg-muted/50 min-h-64 cursor-pointer grid-cols-1 gap-4 rounded-lg border-2 border-dashed p-6 text-center transition-colors sm:min-h-96 sm:grid-cols-2 sm:gap-8 sm:p-12',
                 previews.length > 0 && 'grid',
               )}
               onClick={() => fileInputRef.current?.click()}

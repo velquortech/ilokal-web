@@ -147,7 +147,7 @@ export function ShopCategoryStep() {
             {/* PREDEFINED */}
             {selected !== 'Custom' ? (
               <div className="mt-4 text-sm">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {items?.map((item, idx) => {
                     const isSelected =
                       category?.type === 'predefined' &&
@@ -271,7 +271,7 @@ function CategoryCard(item: {
           <Check className="text-primary m-auto size-3" />
         </div>
       )}
-      <div className="bg-muted border-border z-10 h-52 w-full overflow-hidden rounded-md border">
+      <div className="bg-muted border-border z-10 h-36 w-full overflow-hidden rounded-md border sm:h-52">
         <Image
           alt={item.name}
           src={item.imageURL}

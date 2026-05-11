@@ -23,7 +23,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       .eq('business_id', businessId);
 
     if (error) return generalErrorResponse({ message: error.message });
-    if (count === 0) return notFoundResponse({ message: 'Subscription not found' });
+    if (count === 0)
+      return notFoundResponse({ message: 'Subscription not found' });
 
     return successResponse({ message: 'Unsubscribed successfully' });
   } catch {

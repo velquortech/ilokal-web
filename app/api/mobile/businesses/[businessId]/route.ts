@@ -15,10 +15,12 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
     const { data, error } = await supabase
       .from('businesses')
-      .select(`
+      .select(
+        `
         id, shop_name, description, logo_url, interior_images, status,
         branches(id, name, address)
-      `)
+      `,
+      )
       .eq('id', businessId)
       .eq('status', 'verified')
       .is('archived_at', null)

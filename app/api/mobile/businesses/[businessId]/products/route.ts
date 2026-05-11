@@ -14,7 +14,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, description, price, image_url, is_available')
+      .select('id, name, description, price, image_url, is_available, ratings(rating)')
       .eq('business_id', businessId)
       .eq('is_available', true)
       .is('archived_at', null)
@@ -24,7 +24,24 @@ export async function GET(_req: NextRequest, { params }: Params) {
       return generalErrorResponse({ message: error.message });
     }
 
-    return successResponse({ products: data });
+    const products = (data ?? []).map((product) => {
+      const ratingValues = (product.ratings as { rating: number }[]) ?? [];
+      const total = ratingValues.length;
+      const average =
+        total > 0 ? ratingValues.reduce((sum, r) => sum + r.rating, 0) / total : 0;
+      return {
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        image_url: product.image_url,
+        is_available: product.is_available,
+        average_rating: Math.round(average * 10) / 10,
+        rating_count: total,
+      };
+    });
+
+    return successResponse({ products });
   } catch {
     return generalErrorResponse();
   }

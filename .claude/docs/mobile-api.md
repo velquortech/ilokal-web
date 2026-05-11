@@ -2,14 +2,7 @@
 
 Base path: `/api/`
 
-## Local development
-
-```bash
-make setup-supabase   # First-time setup: start Supabase and auto-generate .env
-make run-dev          # Daily dev (starts Supabase + Next.js)
-make stop-db          # Stop Supabase DB only
-make clean            # Full teardown (stops Supabase, deletes .env)
-```
+> For dev commands (`make run-dev`, `make migrate-*`, etc.) see `CLAUDE.md`.
 
 ## Environment variables
 
@@ -22,18 +15,6 @@ make clean            # Full teardown (stops Supabase, deletes .env)
 | `NEXT_PUBLIC_SUPABASE_TOKEN` | Used to name the auth cookie (`sb-<token>-auth-token`) |
 | `NEXT_IMAGE_PUBLIC_URL` | Supabase Storage base URL for `next/image` |
 | `NEXT_PUBLIC_SUPABASE_DB_URL` | Direct Postgres connection string |
-
-## Database migrations
-
-```bash
-make migrate-new name=<migration_name>   # create a new migration file
-make migrate-up                          # apply pending migrations
-make migrate-reset                       # reset and re-apply all migrations
-make migrate-diff                        # diff local DB and write a migration file
-make generate-types                      # regenerate lib/types/database.ts from local DB
-```
-
-Migrations live in `supabase/migrations/`. Apply them in timestamp order.
 
 ## Supabase clients
 

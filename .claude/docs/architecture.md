@@ -2,33 +2,12 @@
 
 ---
 
-## ✅ Current Implementation Status - March 21, 2026
+## Key Architecture Decisions
 
-### Quality Metrics
-
-- **Total Endpoints Implemented:** 28/28 (Phase 1-2 complete)
-- **Server Actions:** 27/27 (100% mutation coverage)
-- **Type Safety:** 100% (Pylance strict mode, zero `any` types)
-- **Code Quality:** Grade A+ (80% duplication eliminated)
-- **Format Consistency:** 100% (after March 21 fixes)
-- **TypeScript Errors:** 0
-
-### Architecture Improvements (March 21, 2026)
-
-- ✅ **Business API Client Refactoring:** Eliminated HTTP loops between server actions → API routes
-  - Before: Server actions called API routes via fetch()
-  - After: Server actions call services directly
-  - Impact: ~2ms latency improvement per operation, better type safety
-- ✅ **Format Standardization:** Fixed 6 inconsistencies in avatar upload error handling
-- ✅ **Type Deduplication:** Removed duplicate `ApiResponse<T>` definitions, centralized in `/lib/types/common.ts`
-- ✅ **Service Layer Pattern:** All 3 domains (auth/user, admin, business) follow DRY architecture
-
-### Key Architecture Decisions
-
-1. **No HTTP Loops:** Server actions never call API routes; both call shared service layer
-2. **Centralized Types:** All response types exported from `/lib/types/index.ts`
-3. **Standardized Errors:** 6 canonical error codes across all endpoints
-4. **DRY Services:** Shared service functions prevent code duplication
+1. **No HTTP Loops:** Server actions never call API routes; both call the shared service layer directly.
+2. **Centralized Types:** All response types exported from `/lib/types/index.ts`.
+3. **Standardized Errors:** 6 canonical error codes across all endpoints (`ApiResponse<T>`).
+4. **DRY Services:** Shared service functions in `lib/api/` prevent duplication across Server Actions and API routes.
 
 ---
 
@@ -177,120 +156,9 @@
         └──────────────────────────────────────┘
 ```
 
-## Authentication Flow: Server Actions Pattern
+## Authentication Flows
 
-### Sign Up Flow
-
-```
-User enters signup form (role selection + details)
-         │
-         ▼
-Client validates with Zod schema
-         │
-         ▼
-handleSubmit triggers formAction (useActionState)
-         │
-         ▼
-signupAction() runs on server (never exposed to client):
-  1. Validate input (server-side)
-  2. Check if user exists
-  3. Create Supabase auth user
-  4. Create user profile
-  5. Set HTTP-only secure cookie
-  6. Return { user, role, message, error }
-         │
-         ▼
-useActionState updates state (isPending, errors, etc)
-         │
-         ▼
-SignupForm receives result
-  - If error: show message
-  - If success: call redirectByRole
-         │
-         ▼
-Server-side redirect to role dashboard
-  - /admin/users (admin)
-  - /business/dashboard (business_owner)
-  - /home (user)
-```
-
-### Login Flow
-
-```
-User enters credentials (email + password)
-         │
-         ▼
-Client validates with Zod schema
-         │
-         ▼
-handleSubmit triggers formAction (useActionState)
-         │
-         ▼
-loginAction() runs on server:
-  1. Validate input
-  2. Authenticate with Supabase
-  3. Fetch user profile with role
-  4. Set HTTP-only secure cookie
-  5. Return { user, role, message, error }
-         │
-         ▼
-useActionState updates state (isPending, errors, result)
-         │
-         ▼
-LoginForm receives result
-  - If error: show error message
-  - If success: call redirectByRole
-         │
-         ▼
-Server-side redirect to dashboard
-```
-
-### Session Monitoring & Expiration Flow
-
-```
-App loads
-    │
-    ▼
-AuthProvider mounts
-    │
-    ├─ Calls verifySessionAction() to restore session
-    │
-    └─ Initializes useSessionMonitor hook
-         │
-         ▼
-Session timeout calculated from role:
-  Admin (60 min) → Business (240 min) → User (1440 min)
-         │
-         ▼
-Activity listeners attached:
-  (mouse, keyboard, scroll, touch events)
-         │
-         ├─────────────────────────────────┐
-         │                                 │
-    Activity detected?             No activity
-         │                              │
-         ▼                              ▼
-Session extended              Every 60 seconds:
-(timer reset)                 Call verifySessionAction()
-                                   │
-                                   ▼
-                          Session still valid?
-                          ├─ YES: continue
-                          └─ NO: logout
-
-         Time remaining < 5 min?
-                 │
-                 ├─ YES: Show SessionWarningDialog
-                 │        ├─ "Continue Session" → refreshSession
-                 │        └─ "Logout" → logoutAction
-                 │
-                 └─ NO: continue monitoring
-
-         Time expired?
-                 │
-                 └─ YES: Auto-logout (logoutAction)
-                          Redirect to /auth/login
-```
+See `authentication.md` for detailed sign-up, login, session verification, and logout flow diagrams.
 
 ## Component Architecture: Server Actions + useActionState
 

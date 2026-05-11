@@ -1,22 +1,4 @@
-# 📁 Ilokal-Web Folder Structure Documentation
-
-> Last Updated: March 21, 2026  
-> Status: **✅ Phase 1-2 Complete | All Folders Organized | 100% TypeScript Strict Mode**
-
-This document provides a comprehensive overview of the project folder structure, describing the purpose and contents of each directory.
-
----
-
-## ✅ Structure Verification - March 21, 2026
-
-### Key Features ✅
-
-- ✅ **Type Safety:** All types in centralized `/lib/types` folder
-- ✅ **Service Layer:** DRY pattern across `/lib/api/` subdirectories
-- ✅ **Server Actions:** Organized by feature in `/actions/` folder structure (prevents merge conflicts)
-- ✅ **Validation:** Centralized in `/lib/validation/` with Zod schemas
-- ✅ **No Code Duplication:** Helper functions in `/lib/utils/` and `/lib/helpers/`
-- ✅ **Component Organization:** Separated by feature with sub-components
+# Folder Structure
 
 ---
 
@@ -542,21 +524,6 @@ helpers/
 - Validation schemas in `/app/admin/schemas/`
 
 ---
-
-## ✅ Migration Status
-
-| Folder                          | Status      | Notes                                     |
-| ------------------------------- | ----------- | ----------------------------------------- |
-| `config/routeConfig.ts`         | ✅ Complete | Centralized route config                  |
-| `services/api`                  | ✅ Complete | Moved from `lib/api`                      |
-| `services/stores`               | ✅ Complete | Moved from `lib/stores`                   |
-| `lib/validation/auth.ts`        | ✅ Complete | Consolidated from multiple files          |
-| `lib/schemas/userFormSchema.ts` | ✅ Complete | User form schemas                         |
-| `lib/api/verifyAdminAccess.ts`  | ✅ Complete | Shared admin authorization utility        |
-| `/app/api/admin/profiles/`      | ✅ Complete | Admin-only endpoints with clean REST API  |
-| Optimistic Updates              | ✅ Complete | Mutations update cache (no full refetch)  |
-| API routes                      | ⏳ Legacy   | Can be removed (Server Actions preferred) |
-| Old middleware files            | ✅ Deleted  | Replaced by `proxy.ts`                    |
 
 ---
 

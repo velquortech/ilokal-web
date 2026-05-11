@@ -1,3 +1,5 @@
+> **MERGED** — Content consolidated into `security.md` under "Rate Limiting & Abuse Protection". This file is kept for historical reference only.
+
 # Auth Rate Limiting & Abuse Protections
 
 Purpose: summarise minimal, non-breaking protections for auth-related endpoints and public mutating routes.

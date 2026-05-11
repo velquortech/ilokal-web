@@ -1,3 +1,5 @@
+> **ARCHIVED** — This file is a March 2026 project-status snapshot. For current API status use `git log` or the project board. For implementation patterns see `mobile-api.md` and `server-actions.md`.
+
 # Strategic API Endpoint Implementation Plan
 
 ### Test Coverage Summary

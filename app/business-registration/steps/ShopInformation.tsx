@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -15,11 +16,9 @@ import {
 import { Controller } from 'react-hook-form';
 import { useMultiStepForm } from '../provider/registration-form-provider';
 import { Field, FieldError } from '@/components/ui/field';
-import {
-  getProvinces,
-  getCitiesByProvince,
-  getBarangaysByCity,
-} from '@/lib/ph-locations';
+import { getCitiesByProvince, getBarangaysByCity } from '@/lib/ph-locations';
+
+const LOCKED_PROVINCE = 'Iloilo';
 
 export function ShopInformation() {
   return (
@@ -92,21 +91,16 @@ function BasicInformation() {
 
 function Location() {
   const { form } = useMultiStepForm();
-  const provinces = getProvinces();
 
-  const selectedProvince = form.watch('location.province');
+  useEffect(() => {
+    form.setValue('location.province', LOCKED_PROVINCE);
+  }, [form]);
+
   const selectedCity = form.watch('location.city');
-  const cities = selectedProvince ? getCitiesByProvince(selectedProvince) : [];
-  const barangays =
-    selectedProvince && selectedCity
-      ? getBarangaysByCity(selectedCity, selectedProvince)
-      : [];
-
-  const handleProvinceChange = (value: string) => {
-    form.setValue('location.province', value);
-    form.setValue('location.city', '');
-    form.setValue('location.barangay', '');
-  };
+  const cities = getCitiesByProvince(LOCKED_PROVINCE);
+  const barangays = selectedCity
+    ? getBarangaysByCity(selectedCity, LOCKED_PROVINCE)
+    : [];
 
   const handleCityChange = (value: string) => {
     form.setValue('location.city', value);
@@ -131,21 +125,13 @@ function Location() {
               <Field data-invalid={fieldState.invalid}>
                 <div className="space-y-2">
                   <Label htmlFor="province">Province</Label>
-                  <Select
-                    onValueChange={handleProvinceChange}
-                    value={field.value}
-                  >
-                    <SelectTrigger id="province" className="w-full">
-                      <SelectValue placeholder="Select province" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {provinces.map((province) => (
-                        <SelectItem key={province} value={province}>
-                          {province}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    id="province"
+                    value={LOCKED_PROVINCE}
+                    readOnly
+                    disabled
+                    ref={field.ref}
+                  />
                 </div>
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </Field>
@@ -160,11 +146,7 @@ function Location() {
               <Field data-invalid={fieldState.invalid}>
                 <div className="space-y-2">
                   <Label htmlFor="city">City/Municipality</Label>
-                  <Select
-                    onValueChange={handleCityChange}
-                    value={field.value}
-                    disabled={!selectedProvince}
-                  >
+                  <Select onValueChange={handleCityChange} value={field.value}>
                     <SelectTrigger id="city" className="w-full">
                       <SelectValue placeholder="Select city/municipality" />
                     </SelectTrigger>

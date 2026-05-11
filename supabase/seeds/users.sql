@@ -14,7 +14,9 @@ INSERT INTO auth.users (
   id, instance_id, aud, role,
   email, encrypted_password, email_confirmed_at,
   raw_app_meta_data, raw_user_meta_data,
-  created_at, updated_at, is_sso_user, is_anonymous
+  created_at, updated_at, is_sso_user, is_anonymous,
+  confirmation_token, recovery_token, email_change_token_new,
+  email_change, email_change_token_current, reauthentication_token
 )
 VALUES
   (
@@ -25,7 +27,8 @@ VALUES
     crypt('ilokal@dev', gen_salt('bf')),
     NOW(),
     '{"provider":"email","providers":["email"]}', '{}',
-    NOW(), NOW(), false, false
+    NOW(), NOW(), false, false,
+    '', '', '', '', '', ''
   ),
   (
     '00000000-0000-0000-0000-000000000001',
@@ -35,7 +38,8 @@ VALUES
     crypt('ilokal@dev', gen_salt('bf')),
     NOW(),
     '{"provider":"email","providers":["email"]}', '{}',
-    NOW(), NOW(), false, false
+    NOW(), NOW(), false, false,
+    '', '', '', '', '', ''
   ),
   (
     'ffffffff-ffff-ffff-ffff-ffffffffffff',
@@ -45,9 +49,46 @@ VALUES
     crypt('ilokal@dev', gen_salt('bf')),
     NOW(),
     '{"provider":"email","providers":["email"]}', '{}',
-    NOW(), NOW(), false, false
+    NOW(), NOW(), false, false,
+    '', '', '', '', '', ''
   )
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET
+  confirmation_token        = '',
+  recovery_token            = '',
+  email_change_token_new    = '',
+  email_change              = '',
+  email_change_token_current= '',
+  reauthentication_token    = '';
+
+-- ── Auth identities (required for email login) ────────────────────────────────
+
+INSERT INTO auth.identities (
+  id, provider_id, user_id, identity_data, provider,
+  last_sign_in_at, created_at, updated_at
+)
+VALUES
+  (
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","email":"admin@ilokal.dev","email_verified":true,"phone_verified":false}',
+    'email', NOW(), NOW(), NOW()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    '{"sub":"00000000-0000-0000-0000-000000000001","email":"owner@ilokal.dev","email_verified":true,"phone_verified":false}',
+    'email', NOW(), NOW(), NOW()
+  ),
+  (
+    'ffffffff-ffff-ffff-ffff-ffffffffffff',
+    'ffffffff-ffff-ffff-ffff-ffffffffffff',
+    'ffffffff-ffff-ffff-ffff-ffffffffffff',
+    '{"sub":"ffffffff-ffff-ffff-ffff-ffffffffffff","email":"testuser@ilokal.dev","email_verified":true,"phone_verified":false}',
+    'email', NOW(), NOW(), NOW()
+  )
+ON CONFLICT (provider, provider_id) DO NOTHING;
 
 -- ── Profiles ──────────────────────────────────────────────────────────────────
 
@@ -55,7 +96,7 @@ INSERT INTO public.profiles (id, email, full_name, role)
 VALUES
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'admin@ilokal.dev',    'Seed Admin',          'admin'),
   ('00000000-0000-0000-0000-000000000001', 'owner@ilokal.dev',    'Seed Business Owner', 'business_owner'),
-  ('ffffffff-ffff-ffff-ffff-ffffffffffff', 'testuser@ilokal.dev', 'Test User',           'user')
+  ('ffffffff-ffff-ffff-ffff-ffffffffffff', 'testuser@ilokal.dev', 'Test User',           'app_user')
 ON CONFLICT (id) DO NOTHING;
 
 -- ── Test user domain data (subscriptions, redemptions, ratings) ───────────────
@@ -103,5 +144,153 @@ VALUES
   ('77777777-7777-7777-7777-777777777704', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111104', 5, 'Amazing stylists. Hair color came out exactly as I wanted.'),
   ('77777777-7777-7777-7777-777777777705', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111105', 4, 'Healthy and filling bowls. Turmeric latte is a must-try.')
 ON CONFLICT (id) DO NOTHING;
+
+-- ── Bulk test users (60 total: 20 per role) ───────────────────────────────────
+-- admin1-20@test.local | business_owner1-20@test.local | user1-20@test.local
+-- Password for all: sample123
+
+DO $$
+DECLARE
+  _user_id uuid;
+  _email   text;
+  _num     int;
+BEGIN
+  FOR _num IN 1..20 LOOP
+    _email := 'admin' || _num::text || '@test.local';
+    SELECT id INTO _user_id FROM auth.users WHERE email = _email;
+    IF _user_id IS NULL THEN
+      _user_id := gen_random_uuid();
+      INSERT INTO auth.users (
+        id, instance_id, aud, role, email, encrypted_password,
+        email_confirmed_at, created_at, updated_at,
+        raw_app_meta_data, raw_user_meta_data,
+        is_super_admin, is_sso_user, is_anonymous,
+        confirmation_token, recovery_token, email_change_token_new,
+        email_change, email_change_token_current, reauthentication_token
+      ) VALUES (
+        _user_id, '00000000-0000-0000-0000-000000000000',
+        'authenticated', 'authenticated',
+        _email, crypt('sample123', gen_salt('bf')),
+        NOW(), NOW(), NOW(),
+        jsonb_build_object('provider', 'email', 'providers', ARRAY['email']),
+        jsonb_build_object('role', 'admin'),
+        false, false, false, '', '', '', '', '', ''
+      );
+      INSERT INTO auth.identities (
+        id, provider_id, user_id, identity_data, provider,
+        last_sign_in_at, created_at, updated_at
+      ) VALUES (
+        _user_id, _user_id::text, _user_id,
+        jsonb_build_object('sub', _user_id::text, 'email', _email,
+          'email_verified', true, 'phone_verified', false),
+        'email', NOW(), NOW(), NOW()
+      );
+      INSERT INTO public.profiles (
+        id, email, full_name, phone_number, role, status, created_at, updated_at
+      ) VALUES (
+        _user_id, _email,
+        'Admin User ' || _num::text,
+        '+123456' || LPAD(_num::text, 4, '0'),
+        'admin', 'active', NOW(), NOW()
+      );
+    END IF;
+  END LOOP;
+END $$;
+
+DO $$
+DECLARE
+  _user_id uuid;
+  _email   text;
+  _num     int;
+BEGIN
+  FOR _num IN 1..20 LOOP
+    _email := 'business_owner' || _num::text || '@test.local';
+    SELECT id INTO _user_id FROM auth.users WHERE email = _email;
+    IF _user_id IS NULL THEN
+      _user_id := gen_random_uuid();
+      INSERT INTO auth.users (
+        id, instance_id, aud, role, email, encrypted_password,
+        email_confirmed_at, created_at, updated_at,
+        raw_app_meta_data, raw_user_meta_data,
+        is_super_admin, is_sso_user, is_anonymous,
+        confirmation_token, recovery_token, email_change_token_new,
+        email_change, email_change_token_current, reauthentication_token
+      ) VALUES (
+        _user_id, '00000000-0000-0000-0000-000000000000',
+        'authenticated', 'authenticated',
+        _email, crypt('sample123', gen_salt('bf')),
+        NOW(), NOW(), NOW(),
+        jsonb_build_object('provider', 'email', 'providers', ARRAY['email']),
+        jsonb_build_object('role', 'business_owner'),
+        false, false, false, '', '', '', '', '', ''
+      );
+      INSERT INTO auth.identities (
+        id, provider_id, user_id, identity_data, provider,
+        last_sign_in_at, created_at, updated_at
+      ) VALUES (
+        _user_id, _user_id::text, _user_id,
+        jsonb_build_object('sub', _user_id::text, 'email', _email,
+          'email_verified', true, 'phone_verified', false),
+        'email', NOW(), NOW(), NOW()
+      );
+      INSERT INTO public.profiles (
+        id, email, full_name, phone_number, role, status, created_at, updated_at
+      ) VALUES (
+        _user_id, _email,
+        'Business Owner ' || _num::text,
+        '+234567' || LPAD(_num::text, 4, '0'),
+        'business_owner', 'active', NOW(), NOW()
+      );
+    END IF;
+  END LOOP;
+END $$;
+
+DO $$
+DECLARE
+  _user_id uuid;
+  _email   text;
+  _num     int;
+BEGIN
+  FOR _num IN 1..20 LOOP
+    _email := 'user' || _num::text || '@test.local';
+    SELECT id INTO _user_id FROM auth.users WHERE email = _email;
+    IF _user_id IS NULL THEN
+      _user_id := gen_random_uuid();
+      INSERT INTO auth.users (
+        id, instance_id, aud, role, email, encrypted_password,
+        email_confirmed_at, created_at, updated_at,
+        raw_app_meta_data, raw_user_meta_data,
+        is_super_admin, is_sso_user, is_anonymous,
+        confirmation_token, recovery_token, email_change_token_new,
+        email_change, email_change_token_current, reauthentication_token
+      ) VALUES (
+        _user_id, '00000000-0000-0000-0000-000000000000',
+        'authenticated', 'authenticated',
+        _email, crypt('sample123', gen_salt('bf')),
+        NOW(), NOW(), NOW(),
+        jsonb_build_object('provider', 'email', 'providers', ARRAY['email']),
+        jsonb_build_object('role', 'app_user'),
+        false, false, false, '', '', '', '', '', ''
+      );
+      INSERT INTO auth.identities (
+        id, provider_id, user_id, identity_data, provider,
+        last_sign_in_at, created_at, updated_at
+      ) VALUES (
+        _user_id, _user_id::text, _user_id,
+        jsonb_build_object('sub', _user_id::text, 'email', _email,
+          'email_verified', true, 'phone_verified', false),
+        'email', NOW(), NOW(), NOW()
+      );
+      INSERT INTO public.profiles (
+        id, email, full_name, phone_number, role, status, created_at, updated_at
+      ) VALUES (
+        _user_id, _email,
+        'User ' || _num::text,
+        '+345678' || LPAD(_num::text, 4, '0'),
+        'app_user', 'active', NOW(), NOW()
+      );
+    END IF;
+  END LOOP;
+END $$;
 
 SET session_replication_role = DEFAULT;

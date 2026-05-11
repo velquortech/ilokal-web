@@ -2,7 +2,6 @@
 
 import { motion } from 'motion/react';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 export function FeatureCard({
@@ -29,13 +28,13 @@ export function SkeletonOne() {
             alt="header"
             width={800}
             height={800}
-            className="aspect-square h-full w-full rounded-sm object-cover object-top-left"
+            className="aspect-square h-full w-full rounded-sm object-cover object-left-top"
           />
         </div>
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 h-60 w-full bg-linear-to-t from-white via-white to-transparent dark:from-black dark:via-black" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-40 h-60 w-full bg-linear-to-b from-white via-transparent to-transparent dark:from-black" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 h-60 w-full bg-gradient-to-t from-white via-white to-transparent dark:from-black dark:via-black" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-40 h-60 w-full bg-gradient-to-b from-white via-transparent to-transparent dark:from-black" />
     </div>
   );
 }
@@ -66,17 +65,6 @@ export function SkeletonTwo() {
     '/images/dashboard-sample.png',
   ];
 
-  // Generate random rotations after mount to prevent hydration mismatch
-  const [firstRowRotations, setFirstRowRotations] = useState<number[]>([]);
-  const [secondRowRotations, setSecondRowRotations] = useState<number[]>([]);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setFirstRowRotations(images.map(() => Math.random() * 20 - 10));
-    setSecondRowRotations(images.map(() => Math.random() * 20 - 10));
-    setIsMounted(true);
-  }, []);
-
   const imageVariants = {
     whileHover: {
       scale: 1.1,
@@ -89,26 +77,16 @@ export function SkeletonTwo() {
       zIndex: 100,
     },
   };
-
-  // Prevent hydration mismatch before client hydration
-  if (!isMounted) {
-    return (
-      <div className="relative flex h-full flex-col items-start gap-10 overflow-hidden p-8">
-        <div className="-ml-20 flex flex-row" />
-        <div className="flex flex-row" />
-      </div>
-    );
-  }
-
   return (
     <div className="relative flex h-full flex-col items-start gap-10 overflow-hidden p-8">
       <div className="-ml-20 flex flex-row">
         {images.map((image, idx) => (
           <motion.div
+            suppressHydrationWarning
             variants={imageVariants}
             key={'images-first' + idx}
             style={{
-              rotate: firstRowRotations[idx] || 0,
+              rotate: Math.random() * 20 - 10,
             }}
             whileHover="whileHover"
             whileTap="whileTap"
@@ -127,9 +105,10 @@ export function SkeletonTwo() {
       <div className="flex flex-row">
         {images.map((image, idx) => (
           <motion.div
+            suppressHydrationWarning
             key={'images-second' + idx}
             style={{
-              rotate: secondRowRotations[idx] || 0,
+              rotate: Math.random() * 20 - 10,
             }}
             variants={imageVariants}
             whileHover="whileHover"
@@ -147,8 +126,8 @@ export function SkeletonTwo() {
         ))}
       </div>
 
-      <div className="pointer-events-none absolute inset-y-0 left-0 z-100 h-full w-20 bg-linear-to-r from-white to-transparent dark:from-black" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 z-100 h-full w-20 bg-linear-to-l from-white to-transparent dark:from-black" />
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-[100] h-full w-20 bg-gradient-to-r from-white to-transparent dark:from-black" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-[100] h-full w-20 bg-gradient-to-l from-white to-transparent dark:from-black" />
     </div>
   );
 }
@@ -161,7 +140,7 @@ export function SkeletonFour() {
         alt="header"
         width={800}
         height={800}
-        className="aspect-square h-screen w-full rounded-sm object-cover object-top-left"
+        className="aspect-square h-screen w-full rounded-sm object-cover object-left-top"
       />
     </div>
   );

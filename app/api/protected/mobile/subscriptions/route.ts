@@ -15,10 +15,12 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await auth.supabase
       .from('subscriptions')
-      .select(`
+      .select(
+        `
         id, created_at,
         businesses(id, shop_name, description, logo_url, status)
-      `)
+      `,
+      )
       .eq('user_id', auth.user.id)
       .order('created_at', { ascending: false });
 
@@ -50,7 +52,9 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       if (error.code === '23505') {
-        return conflictRequestResponse({ message: 'Already subscribed to this business' });
+        return conflictRequestResponse({
+          message: 'Already subscribed to this business',
+        });
       }
       return generalErrorResponse({ message: error.message });
     }

@@ -42,10 +42,3 @@ next-env.d.ts
 
 # claude
 claude.md
-
-# Ignore everything in WORKFLOW/ except essential files/directories
-WORKFLOW/
-!WORKFLOW/tools/
-!WORKFLOW/permanent-rules.md
-!WORKFLOW/CHANGELOG.md
-!WORKFLOW/agent-types.ts

@@ -15,7 +15,9 @@ export async function GET(req: NextRequest) {
     const radius = parseInt(searchParams.get('radius') ?? '5000', 10);
 
     if (isNaN(lat) || isNaN(lng)) {
-      return badRequestResponse({ message: 'lat and lng query params are required' });
+      return badRequestResponse({
+        message: 'lat and lng query params are required',
+      });
     }
 
     const supabase = createBearerClient();
@@ -30,7 +32,9 @@ export async function GET(req: NextRequest) {
       return generalErrorResponse({ message: error.message });
     }
 
-    const businessIds: string[] = data.map((b: Record<string, unknown>) => b.business_id as string);
+    const businessIds: string[] = data.map(
+      (b: Record<string, unknown>) => b.business_id as string,
+    );
 
     const { data: ratingsData } = await supabase
       .from('business_ratings')
@@ -49,11 +53,18 @@ export async function GET(req: NextRequest) {
       const stats = ratingsMap.get(b.business_id as string);
       return {
         ...b,
-        logo_url: resolveStorageUrl(supabase, 'shop-logos', b.logo_url as string | null),
-        interior_images: (b.interior_images as string[] | null)?.map((url) =>
-          resolveStorageUrl(supabase, 'interior-images', url),
-        ) ?? [],
-        average_rating: stats ? Math.round((stats.sum / stats.count) * 10) / 10 : 0,
+        logo_url: resolveStorageUrl(
+          supabase,
+          'shop-logos',
+          b.logo_url as string | null,
+        ),
+        interior_images:
+          (b.interior_images as string[] | null)?.map((url) =>
+            resolveStorageUrl(supabase, 'interior-images', url),
+          ) ?? [],
+        average_rating: stats
+          ? Math.round((stats.sum / stats.count) * 10) / 10
+          : 0,
         rating_count: stats?.count ?? 0,
       };
     });

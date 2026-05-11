@@ -11,6 +11,7 @@ import { registerBusiness } from './api/register-business';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { AxiosError } from 'axios';
+import { cn } from '@/lib/utils';
 
 export default function ShopRegistration() {
   const { step, form, clearFormCache } = useMultiStepForm();
@@ -86,7 +87,25 @@ export default function ShopRegistration() {
         className="flex flex-1 flex-col overflow-hidden pt-5"
         onSubmit={form.handleSubmit(handleSubmitForm)}
       >
-        <div className="flex flex-1 flex-col overflow-y-auto px-10 pb-5">
+        <div className="flex flex-1 flex-col overflow-y-auto px-4 pb-5 sm:px-6 lg:px-10">
+          {/* Mobile step progress — hidden on md+ where sidebar is visible */}
+          <div className="mb-4 flex items-center justify-between md:hidden">
+            <span className="text-muted-foreground text-xs">
+              Step {step} of {STEPS.length}
+            </span>
+            <div className="flex gap-1.5">
+              {STEPS.map((_, idx) => (
+                <div
+                  key={idx}
+                  className={cn(
+                    'h-1.5 w-6 rounded-full transition-colors',
+                    idx + 1 <= step ? 'bg-primary' : 'bg-muted',
+                  )}
+                />
+              ))}
+            </div>
+          </div>
+
           <header className="inline-flex items-center justify-between pb-5">
             <div>
               <p className="text-xl font-semibold">{title}</p>

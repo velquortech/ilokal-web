@@ -16,11 +16,13 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
     const { data, error } = await supabase
       .from('businesses')
-      .select(`
+      .select(
+        `
         id, shop_name, description, logo_url, interior_images, status,
         branches(id, name, address),
         profiles!owner_id(full_name, email)
-      `)
+      `,
+      )
       .eq('id', businessId)
       .eq('status', 'verified')
       .is('archived_at', null)
@@ -30,20 +32,26 @@ export async function GET(_req: NextRequest, { params }: Params) {
       return notFoundResponse({ message: 'Business not found' });
     }
 
-    const owner = (data.profiles as unknown as { full_name: string | null; email: string }[] | null)?.[0] ?? null;
+    const owner =
+      (
+        data.profiles as unknown as
+          | { full_name: string | null; email: string }[]
+          | null
+      )?.[0] ?? null;
     const ownerHandle = owner
       ? (owner.full_name?.split(' ')[0] ?? owner.email.split('@')[0])
       : null;
 
-    const { profiles: _profiles, ...rest } = data;
-    void _profiles;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { profiles, ...rest } = data;
 
     const business = {
       ...rest,
       logo_url: resolveStorageUrl(supabase, 'shop-logos', data.logo_url),
-      interior_images: data.interior_images?.map((url: string) =>
-        resolveStorageUrl(supabase, 'interior-images', url),
-      ) ?? [],
+      interior_images:
+        data.interior_images?.map((url: string) =>
+          resolveStorageUrl(supabase, 'interior-images', url),
+        ) ?? [],
       owner_handle: ownerHandle,
     };
 

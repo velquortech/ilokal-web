@@ -30,7 +30,7 @@ export function RegistrationNav({
   };
 
   return (
-    <div className="border-border px-auto mt-auto flex justify-between border-t px-10 py-4">
+    <div className="border-border px-auto mt-auto flex justify-between border-t px-4 py-4 sm:px-10">
       <div className="inline-flex w-full items-center justify-between">
         {step > 1 ? (
           <Button variant="outline" onClick={prevStep} disabled={isSubmitting}>

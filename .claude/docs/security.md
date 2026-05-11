@@ -1,31 +1,6 @@
-# 🛡️ Security Hardening & Verification
+# Security Reference
 
-> Last Updated: March 21, 2026  
-> Status: **✅ Production-Ready | Phase 1-2 Verified | All Security Layers Active**
-
-Complete guide to security hardening, configuration, and verification for Ilokal.
-
----
-
-## 🚀 March 21, 2026 Security Audit Summary
-
-### Verification Status ✅
-
-- ✅ **Input Validation:** All endpoints use Zod schemas (server + client)
-- ✅ **Authentication:** Server Actions with HTTP-only cookies, Supabase SSR
-- ✅ **Authorization:** RBAC enforcement via admin access verification
-- ✅ **Database Layer:** Row-Level Security (RLS) policies active
-- ✅ **HTTP Headers:** CSP, CORS, X-Frame-Options configured
-- ✅ **Code Quality:** Zero vulnerabilities, Grade A+ (Pylance strict mode)
-- ✅ **Response Format:** Standardized error responses (no sensitive data leakage)
-- ✅ **Type Safety:** 100% TypeScript strict, zero `any` types
-- ✅ **Session Management:** Role-based timeouts, activity monitoring, warning dialogs
-
-### Security Improvements (Phase 1-2)
-
-- ✅ **API Client Refactoring:** Eliminated unnecessary HTTP calls between services
-- ✅ **Error Format Consistency:** Standardized 6 error codes across all endpoints
-- ✅ **Type Centralization:** Single source of truth for response types prevents type confusion
+Complete guide to security hardening, configuration, and verification for iLokal.
 
 ---
 
@@ -284,39 +259,6 @@ Prevents: Malicious scripts stealing user data
 
 ---
 
-## 🔍 Security Comparison
-
-### Before (❌ Vulnerable)
-
-```typescript
-// ❌ HttpOnly: FALSE - JavaScript can steal token!
-cookieStore.set(name, value, { path: '/' });
-
-// ❌ No security headers - vulnerable to multiple attacks
-// ❌ Insecure CORS - any domain can access
-// ❌ No CSP - XSS scripts can load external resources
-```
-
-### After (✅ Secure)
-
-```typescript
-// ✅ HttpOnly: TRUE - JavaScript can't access
-// ✅ Secure: TRUE - HTTPS only
-// ✅ SameSite: Lax - CSRF protected
-const secureOptions = {
-  httpOnly: true,
-  secure: true,
-  sameSite: 'lax' as const,
-  path: '/',
-};
-
-// ✅ Complete security headers
-// ✅ Origin-specific CORS
-// ✅ Full CSP configuration
-```
-
----
-
 ## 🧪 Security Verification
 
 ### 1. Verify Cookie Security
@@ -506,6 +448,32 @@ NEXT_IMAGE_PUBLIC_URL=https://your-storage-url.com
 - [ ] Monitor for security headers errors
 - [ ] Regular security audits
 - [ ] Keep dependencies updated
+
+---
+
+## 🚦 Rate Limiting & Abuse Protection
+
+### Rules
+
+- Rate-limit login / signup / reset endpoints: **10 req/min per IP**, **100/day per account**.
+- After **5 failed logins**: 15-minute account lockout with exponential backoff.
+- Apply global rate limits to public mutating endpoints (reviews, uploads) to mitigate abuse.
+- Revoke refresh tokens server-side on logout.
+- Log auth failures and suspicious activity to the audit stream.
+
+### Implementation options
+
+| Layer | Tool |
+|---|---|
+| Edge (preferred) | Cloudflare Rate Limiting / Vercel edge rules |
+| App | Redis sliding-window middleware → return 429 |
+| Long-term | WAF / dedicated bot-detection service |
+
+### Acceptance criteria
+
+- Login, signup, and reset-password endpoints have an operational rate limit.
+- Failed login attempts escalate to lockout after threshold.
+- Integration tests emulate rate-limit behavior.
 
 ---
 

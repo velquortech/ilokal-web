@@ -15,7 +15,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
     const { data, error } = await supabase
       .from('coupons')
-      .select('id, title, description, type, start_date, end_date, redeem_time_limit_minutes')
+      .select(
+        'id, title, description, type, start_date, end_date, redeem_time_limit_minutes',
+      )
       .eq('business_id', businessId)
       .is('archived_at', null)
       .or(`end_date.is.null,end_date.gte.${now}`)

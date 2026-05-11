@@ -60,22 +60,6 @@ build-app:
 	yarn build
 	@echo "Finish checking linter and building"
 
-test:
-	yarn test
-	@echo "Running Vitest in watch mode"
-
-test-run:
-	yarn test:run
-	@echo "Running all tests (CI mode)"
-
-test-ui:
-	yarn test:ui
-	@echo "Opening Vitest UI dashboard"
-
-test-coverage:
-	yarn test:coverage
-	@echo "Generating test coverage report"
-
 stop-db:
 	@yarn supabase stop
 	@echo "stopping supabase db"

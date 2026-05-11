@@ -14,7 +14,9 @@ export async function GET(req: NextRequest) {
     const radius = parseInt(searchParams.get('radius') ?? '5000', 10);
 
     if (isNaN(lat) || isNaN(lng)) {
-      return badRequestResponse({ message: 'lat and lng query params are required' });
+      return badRequestResponse({
+        message: 'lat and lng query params are required',
+      });
     }
 
     const supabase = createBearerClient();

@@ -186,12 +186,12 @@ BEGIN
         'email', NOW(), NOW(), NOW()
       );
       INSERT INTO public.profiles (
-        id, email, full_name, phone_number, role, status, created_at, updated_at
+        id, email, full_name, phone_number, role, created_at, updated_at
       ) VALUES (
         _user_id, _email,
         'Admin User ' || _num::text,
         '+123456' || LPAD(_num::text, 4, '0'),
-        'admin', 'active', NOW(), NOW()
+        'admin', NOW(), NOW()
       );
     END IF;
   END LOOP;
@@ -234,12 +234,12 @@ BEGIN
         'email', NOW(), NOW(), NOW()
       );
       INSERT INTO public.profiles (
-        id, email, full_name, phone_number, role, status, created_at, updated_at
+        id, email, full_name, phone_number, role, created_at, updated_at
       ) VALUES (
         _user_id, _email,
         'Business Owner ' || _num::text,
         '+234567' || LPAD(_num::text, 4, '0'),
-        'business_owner', 'active', NOW(), NOW()
+        'business_owner', NOW(), NOW()
       );
     END IF;
   END LOOP;
@@ -282,12 +282,12 @@ BEGIN
         'email', NOW(), NOW(), NOW()
       );
       INSERT INTO public.profiles (
-        id, email, full_name, phone_number, role, status, created_at, updated_at
+        id, email, full_name, phone_number, role, created_at, updated_at
       ) VALUES (
         _user_id, _email,
         'User ' || _num::text,
         '+345678' || LPAD(_num::text, 4, '0'),
-        'app_user', 'active', NOW(), NOW()
+        'app_user', NOW(), NOW()
       );
     END IF;
   END LOOP;

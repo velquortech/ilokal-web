@@ -19,6 +19,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       .select(
         `
         id, shop_name, description, logo_url, interior_images, status,
+        business_category,
         branches(id, name, address),
         profiles!owner_id(full_name, email),
         business_categories!category_id(name, business_types!business_type_id(name, icon))
@@ -45,16 +46,22 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
     type CategoryRow = { name: string; business_types: { name: string; icon: string } | null } | null;
     const categoryRow = data.business_categories as unknown as CategoryRow;
+
+    type JsonbCategory = { type: 'predefined' | 'custom'; name: string; description?: string } | null;
+    const jsonbCategory = data.business_category as unknown as JsonbCategory;
+
     const category = categoryRow
       ? {
           name: categoryRow.name,
           business_type: categoryRow.business_types?.name ?? null,
           icon: categoryRow.business_types?.icon ?? null,
         }
-      : null;
+      : jsonbCategory?.name
+        ? { name: jsonbCategory.name, business_type: null, icon: null }
+        : null;
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { profiles, business_categories, ...rest } = data;
+    const { profiles, business_categories, business_category, ...rest } = data;
 
     const business = {
       ...rest,

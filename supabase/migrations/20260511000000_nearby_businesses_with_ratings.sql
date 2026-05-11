@@ -1,3 +1,5 @@
+DROP FUNCTION IF EXISTS public.nearby_businesses(FLOAT, FLOAT, INT);
+
 CREATE OR REPLACE FUNCTION public.nearby_businesses(
   lat FLOAT,
   lng FLOAT,

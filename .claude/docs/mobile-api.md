@@ -259,7 +259,7 @@ VALUES ('aaaaaaaa-0000-0000-0000-000000000001', '<any profile id>', 'Test Cafe',
 
 INSERT INTO branches (id, business_id, name, address, location)
 VALUES ('bbbbbbbb-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001',
-  'Main Branch', '123 Ayala Ave, Makati', ST_MakePoint(120.9842, 14.5547)::geography);
+  'Main Branch', 'Iznart St., City Proper, Iloilo City', ST_MakePoint(122.5649, 10.6973)::geography);
 
 INSERT INTO products (id, business_id, name, description, price, image_url, is_available)
 VALUES ('cccccccc-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001',

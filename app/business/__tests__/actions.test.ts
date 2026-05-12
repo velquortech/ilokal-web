@@ -334,7 +334,7 @@ describe('Business Server Actions', () => {
         const validBranch = {
           name: 'Main Branch',
           address: '123 Main St',
-          city: 'Manila',
+          city: 'Iloilo City',
         };
         expect('name' in validBranch).toBe(true);
       });
@@ -346,8 +346,8 @@ describe('Business Server Actions', () => {
 
       it('should validate location coordinates if provided', () => {
         const location = {
-          latitude: 14.5995,
-          longitude: 120.9842,
+          latitude: 10.6973,
+          longitude: 122.5649,
         };
         expect(location.latitude).toBeDefined();
         expect(location.longitude).toBeDefined();

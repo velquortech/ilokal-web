@@ -92,11 +92,11 @@ ON CONFLICT (provider, provider_id) DO NOTHING;
 
 -- ── Profiles ──────────────────────────────────────────────────────────────────
 
-INSERT INTO public.profiles (id, email, full_name, role)
+INSERT INTO public.profiles (id, email, full_name, role, status)
 VALUES
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'admin@ilokal.dev',    'Seed Admin',          'admin'),
-  ('00000000-0000-0000-0000-000000000001', 'owner@ilokal.dev',    'Seed Business Owner', 'business_owner'),
-  ('ffffffff-ffff-ffff-ffff-ffffffffffff', 'testuser@ilokal.dev', 'Test User',           'app_user')
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'admin@ilokal.dev',    'Seed Admin',          'admin',          'active'),
+  ('00000000-0000-0000-0000-000000000001', 'owner@ilokal.dev',    'Seed Business Owner', 'business_owner', 'active'),
+  ('ffffffff-ffff-ffff-ffff-ffffffffffff', 'testuser@ilokal.dev', 'Test User',           'app_user',       'active')
 ON CONFLICT (id) DO NOTHING;
 
 -- ── Test user domain data (subscriptions, redemptions, ratings) ───────────────
@@ -186,12 +186,12 @@ BEGIN
         'email', NOW(), NOW(), NOW()
       );
       INSERT INTO public.profiles (
-        id, email, full_name, phone_number, role, created_at, updated_at
+        id, email, full_name, phone_number, role, status, created_at, updated_at
       ) VALUES (
         _user_id, _email,
         'Admin User ' || _num::text,
         '+123456' || LPAD(_num::text, 4, '0'),
-        'admin', NOW(), NOW()
+        'admin', 'active', NOW(), NOW()
       );
     END IF;
   END LOOP;
@@ -234,12 +234,12 @@ BEGIN
         'email', NOW(), NOW(), NOW()
       );
       INSERT INTO public.profiles (
-        id, email, full_name, phone_number, role, created_at, updated_at
+        id, email, full_name, phone_number, role, status, created_at, updated_at
       ) VALUES (
         _user_id, _email,
         'Business Owner ' || _num::text,
         '+234567' || LPAD(_num::text, 4, '0'),
-        'business_owner', NOW(), NOW()
+        'business_owner', 'active', NOW(), NOW()
       );
     END IF;
   END LOOP;
@@ -282,12 +282,12 @@ BEGIN
         'email', NOW(), NOW(), NOW()
       );
       INSERT INTO public.profiles (
-        id, email, full_name, phone_number, role, created_at, updated_at
+        id, email, full_name, phone_number, role, status, created_at, updated_at
       ) VALUES (
         _user_id, _email,
         'User ' || _num::text,
         '+345678' || LPAD(_num::text, 4, '0'),
-        'app_user', NOW(), NOW()
+        'app_user', 'active', NOW(), NOW()
       );
     END IF;
   END LOOP;

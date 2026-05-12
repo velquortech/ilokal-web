@@ -44,10 +44,17 @@ export async function GET(_req: NextRequest, { params }: Params) {
       ? (owner.full_name?.split(' ')[0] ?? owner.email.split('@')[0])
       : null;
 
-    type CategoryRow = { name: string; business_types: { name: string; icon: string } | null } | null;
+    type CategoryRow = {
+      name: string;
+      business_types: { name: string; icon: string } | null;
+    } | null;
     const categoryRow = data.business_categories as unknown as CategoryRow;
 
-    type JsonbCategory = { type: 'predefined' | 'custom'; name: string; description?: string } | null;
+    type JsonbCategory = {
+      type: 'predefined' | 'custom';
+      name: string;
+      description?: string;
+    } | null;
     const jsonbCategory = data.business_category as unknown as JsonbCategory;
 
     const category = categoryRow

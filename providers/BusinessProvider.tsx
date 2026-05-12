@@ -14,7 +14,6 @@ export interface BusinessShop {
   created_at: string;
   updated_at: string;
   archived_at: string | null;
-  is_verified: boolean;
   business_category: {
     name: string;
     type: 'predefined' | 'custom';

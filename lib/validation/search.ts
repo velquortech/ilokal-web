@@ -49,7 +49,7 @@ export const searchFiltersSchema = z.object({
     .min(0)
     .optional()
     .describe('Maximum price in cents'),
-  is_verified: z
+  verified_only: z
     .boolean()
     .optional()
     .describe('Filter verified businesses only'),
@@ -134,7 +134,7 @@ export const advancedFilterSchema = z.object({
   max_rating: z.number().min(0).max(5).optional(),
   min_price: z.number().int().min(0).optional(),
   max_price: z.number().int().min(0).optional(),
-  is_verified: z.boolean().optional(),
+  verified_only: z.boolean().optional(),
   is_featured: z.boolean().optional(),
   location: z.string().optional(),
 });

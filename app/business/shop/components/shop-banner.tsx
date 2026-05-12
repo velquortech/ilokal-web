@@ -50,7 +50,7 @@ export function ShopBanner({ business }: ShopBannerProps) {
           <div className="flex flex-col pb-1">
             <div className="flex items-center gap-3 text-3xl font-extrabold tracking-tight text-white">
               {hasBusinessData ? business.shop_name : 'Ilokal Shop'}
-              {business?.is_verified && (
+              {business?.status === 'verified' && (
                 <div className="bg-primary flex h-6 w-6 items-center justify-center rounded-full shadow-lg ring-2 ring-white/20">
                   <Check className="text-primary-foreground size-3.5 stroke-4" />
                 </div>

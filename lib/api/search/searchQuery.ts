@@ -41,7 +41,7 @@ export async function searchBusinesses(
       category,
       average_rating,
       review_count,
-      is_verified,
+      status,
       address,
       avatar_url
     `,
@@ -66,8 +66,8 @@ export async function searchBusinesses(
     if (filters.max_rating !== undefined) {
       searchQuery = searchQuery.lte('average_rating', filters.max_rating);
     }
-    if (filters.is_verified !== undefined) {
-      searchQuery = searchQuery.eq('is_verified', filters.is_verified);
+    if (filters.verified_only) {
+      searchQuery = searchQuery.eq('status', 'verified');
     }
   }
 
@@ -108,7 +108,7 @@ export async function searchBusinesses(
     category: business.category,
     rating: business.average_rating,
     review_count: business.review_count || 0,
-    is_verified: business.is_verified || false,
+    status: (business.status as BusinessSearchResult['status']) ?? 'pending',
     location: business.address,
     image_url: business.avatar_url,
   }));

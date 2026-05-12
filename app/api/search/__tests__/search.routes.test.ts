@@ -95,7 +95,7 @@ describe('Search API Routes', () => {
             category: 'retail',
             rating: 4.5,
             review_count: 10,
-            is_verified: true,
+            status: 'verified' as const,
             location: 'Manila',
             image_url: 'https://example.com/image.jpg',
           },

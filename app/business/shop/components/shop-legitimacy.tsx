@@ -7,7 +7,7 @@ interface ShopLegitimacyProps {
 
 export function ShopLegitimacy({ business }: ShopLegitimacyProps) {
   const hasBusinessData = business && business.shop_name;
-  const isVerified = business?.is_verified || business?.status === 'verified';
+  const isVerified = business?.status === 'verified';
   const hasVerificationDocs =
     business?.verification_documents?.business_license &&
     business?.verification_documents?.tax_certificate;

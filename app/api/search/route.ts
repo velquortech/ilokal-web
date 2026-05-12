@@ -54,8 +54,8 @@ export async function GET(request: NextRequest) {
       max_price: searchParams.get('max_price')
         ? parseInt(searchParams.get('max_price')!, 10)
         : undefined,
-      is_verified: searchParams.get('is_verified')
-        ? searchParams.get('is_verified') === 'true'
+      verified_only: searchParams.get('verified_only')
+        ? searchParams.get('verified_only') === 'true'
         : undefined,
       is_featured: searchParams.get('is_featured')
         ? searchParams.get('is_featured') === 'true'

@@ -49,8 +49,8 @@ export async function GET(request: NextRequest) {
       max_rating: searchParams.get('max_rating')
         ? parseFloat(searchParams.get('max_rating')!)
         : undefined,
-      is_verified: searchParams.get('is_verified')
-        ? searchParams.get('is_verified') === 'true'
+      verified_only: searchParams.get('verified_only')
+        ? searchParams.get('verified_only') === 'true'
         : undefined,
     };
 

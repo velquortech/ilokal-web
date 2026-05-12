@@ -9,7 +9,7 @@ INSERT INTO public.profiles (id, email, full_name, role)
 VALUES ('00000000-0000-0000-0000-000000000001', 'seedowner@ilokal.dev', 'Seed Owner', 'business_owner')
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO public.businesses (id, owner_id, shop_name, description, logo_url, interior_images, status)
+INSERT INTO public.businesses (id, owner_id, shop_name, description, logo_url, interior_images, status, category_id)
 VALUES
   (
     '11111111-1111-1111-1111-111111111101',
@@ -22,7 +22,8 @@ VALUES
       'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111101/gallery1.jpg',
       'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111101/gallery2.jpg'
     ],
-    'verified'
+    'verified',
+    (SELECT id FROM public.business_categories WHERE name = 'Café' LIMIT 1)
   ),
   (
     '11111111-1111-1111-1111-111111111102',
@@ -34,7 +35,8 @@ VALUES
       'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111102/hero.jpg',
       'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111102/gallery1.jpg'
     ],
-    'verified'
+    'verified',
+    (SELECT id FROM public.business_categories WHERE name = 'Bakery / Pastry Shop' LIMIT 1)
   ),
   (
     '11111111-1111-1111-1111-111111111103',
@@ -45,7 +47,8 @@ VALUES
     ARRAY[
       'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111103/hero.jpg'
     ],
-    'verified'
+    'verified',
+    (SELECT id FROM public.business_categories WHERE name = 'Specialty Shop' LIMIT 1)
   ),
   (
     '11111111-1111-1111-1111-111111111104',
@@ -58,7 +61,8 @@ VALUES
       'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111104/gallery1.jpg',
       'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111104/gallery2.jpg'
     ],
-    'verified'
+    'verified',
+    (SELECT id FROM public.business_categories WHERE name = 'Salon / Barbershop' LIMIT 1)
   ),
   (
     '11111111-1111-1111-1111-111111111105',
@@ -71,9 +75,10 @@ VALUES
       'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111105/gallery1.jpg',
       'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111105/gallery2.jpg'
     ],
-    'verified'
+    'verified',
+    (SELECT id FROM public.business_categories WHERE name = 'Restaurant' LIMIT 1)
   )
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET category_id = EXCLUDED.category_id;
 
 -- Branches within 5 km of Manila Bay (lat 14.5995, lng 120.9842)
 -- PostGIS POINT order is (lng, lat)
@@ -114,40 +119,6 @@ VALUES
     'General Luna St., San Miguel, Manila',
     ST_MakePoint(120.9985, 14.6076)::geography   -- ~1.8 km
   )
-ON CONFLICT (id) DO NOTHING;
-
--- Products
-INSERT INTO public.products (id, business_id, name, description, price, image_url, is_available)
-VALUES
-  -- The Artisan Roastery
-  ('33333333-3333-3333-3333-333333333301', '11111111-1111-1111-1111-111111111101', 'Single Origin Pour Over', 'Ethiopian Yirgacheffe, floral and citrus notes', 220.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333301/product.jpg', true),
-  ('33333333-3333-3333-3333-333333333302', '11111111-1111-1111-1111-111111111101', 'Flat White', 'Double ristretto with silky microfoam', 185.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333302/product.jpg', true),
-  ('33333333-3333-3333-3333-333333333303', '11111111-1111-1111-1111-111111111101', 'Cold Brew', 'Slow-steeped 18 hours, served over ice', 160.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333303/product.jpg', true),
-  -- Flora & Flour Bakery
-  ('33333333-3333-3333-3333-333333333304', '11111111-1111-1111-1111-111111111102', 'Ube Cream Cheese Pandesal', 'Soft rolls filled with ube halaya and cream cheese', 65.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333304/product.jpg', true),
-  ('33333333-3333-3333-3333-333333333305', '11111111-1111-1111-1111-111111111102', 'Ensaymada', 'Brioche topped with butter, sugar, and queso', 85.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333305/product.jpg', true),
-  ('33333333-3333-3333-3333-333333333306', '11111111-1111-1111-1111-111111111102', 'Leche Flan Tart', 'Crisp pastry shell with silky Filipino custard', 120.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333306/product.jpg', true),
-  -- The Handy Corner
-  ('33333333-3333-3333-3333-333333333307', '11111111-1111-1111-1111-111111111103', 'LED Bulb Pack (6pcs)', 'Energy-saving 9W daylight bulbs', 299.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333307/product.jpg', true),
-  ('33333333-3333-3333-3333-333333333308', '11111111-1111-1111-1111-111111111103', 'Heavy Duty Extension Cord', '3-outlet, 5 meter, with surge protection', 450.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333308/product.jpg', true),
-  -- Aura Hair Studio
-  ('33333333-3333-3333-3333-333333333309', '11111111-1111-1111-1111-111111111104', 'Haircut & Blowdry', 'Precision cut and professional blowout', 450.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333309/product.jpg', true),
-  ('33333333-3333-3333-3333-333333333310', '11111111-1111-1111-1111-111111111104', 'Hair Color (Full)', 'Global color with toning treatment included', 1800.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333310/product.jpg', true),
-  ('33333333-3333-3333-3333-333333333311', '11111111-1111-1111-1111-111111111104', 'Keratin Treatment', 'Smoothing treatment, results last 3–4 months', 3500.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333311/product.jpg', true),
-  -- Luna & Leaf Bistro
-  ('33333333-3333-3333-3333-333333333312', '11111111-1111-1111-1111-111111111105', 'Signature Latte', 'Oat milk, honey, and cinnamon', 380.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333312/product.jpg', true),
-  ('33333333-3333-3333-3333-333333333313', '11111111-1111-1111-1111-111111111105', 'Avocado Zen Bowl', 'Fresh greens, seeds, and lemon vinaigrette', 820.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333313/product.jpg', true),
-  ('33333333-3333-3333-3333-333333333314', '11111111-1111-1111-1111-111111111105', 'Matcha Affogato', 'Ceremonial matcha poured over vanilla ice cream', 320.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333314/product.jpg', true)
-ON CONFLICT (id) DO NOTHING;
-
--- Coupons (end dates in 2026 so they stay active)
-INSERT INTO public.coupons (id, business_id, title, description, type, start_date, end_date, redeem_time_limit_minutes)
-VALUES
-  ('44444444-4444-4444-4444-444444444401', '11111111-1111-1111-1111-111111111101', 'Morning Brew Deal', 'Buy any pour over, get a pastry 50% off before 10am', 'deal', '2026-01-01', '2026-12-31', 15),
-  ('44444444-4444-4444-4444-444444444402', '11111111-1111-1111-1111-111111111101', '10% Off Your 3rd Visit', 'Loyalty discount — show this on your third order', 'discount', '2026-01-01', '2026-12-31', 10),
-  ('44444444-4444-4444-4444-444444444403', '11111111-1111-1111-1111-111111111102', 'Free Pandesal with Any Order', 'Get one Ube Pandesal free with any purchase over ₱200', 'voucher', '2026-01-01', '2026-12-31', 20),
-  ('44444444-4444-4444-4444-444444444404', '11111111-1111-1111-1111-111111111104', '₱200 Off Keratin Treatment', 'Valid on full keratin service, weekdays only', 'discount', '2026-01-01', '2026-09-30', 30),
-  ('44444444-4444-4444-4444-444444444405', '11111111-1111-1111-1111-111111111105', 'Zen Bowl + Latte Combo', 'Get the Avocado Zen Bowl and Signature Latte for ₱1,050', 'deal', '2026-01-01', '2026-12-31', 15)
 ON CONFLICT (id) DO NOTHING;
 
 SET session_replication_role = DEFAULT;

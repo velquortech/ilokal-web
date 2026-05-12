@@ -14,7 +14,7 @@ export type BusinessSearchResult = {
   category: string | null;
   rating: number | null;
   review_count: number;
-  is_verified: boolean;
+  status: 'pending' | 'verified' | 'suspended' | 'rejected';
   location: string | null;
   image_url: string | null;
 };
@@ -65,10 +65,10 @@ export type SearchFilters = {
   max_rating?: number;
   min_price?: number;
   max_price?: number;
-  is_verified?: boolean;
+  verified_only?: boolean;
   is_featured?: boolean;
   location?: string;
-  distance_km?: number; // For geolocation search
+  distance_km?: number;
 };
 
 export type SearchRequest = {
@@ -124,7 +124,7 @@ export type AdvancedFilterRequest = {
   max_rating?: number;
   min_price?: number;
   max_price?: number;
-  is_verified?: boolean;
+  verified_only?: boolean;
   is_featured?: boolean;
   location?: string;
 };

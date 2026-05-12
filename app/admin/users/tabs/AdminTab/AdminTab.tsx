@@ -16,7 +16,7 @@ import {
 } from '@/hooks/useAdminMutations';
 import { useUser } from '@/providers/UserContext';
 import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
-import { PaginatedResponse } from '@/services/api/paginationService';
+import { PaginatedResponse } from '@/services';
 
 interface AdminTabProps {
   data: PaginatedResponse<AdminUser> | null;
@@ -46,10 +46,10 @@ export default function AdminTab({
     setIsMounted(true);
   }, []);
 
-  // Update cache when data changes
-  if (adminData && adminsDataCache !== adminData) {
-    setAdminsDataCache(adminData);
-  }
+  // Sync incoming prop to local cache when it changes
+  useEffect(() => {
+    setAdminsDataCache(adminData ?? null);
+  }, [adminData]);
 
   /**
    * Patch a single user record in the cached data with only the changed fields
@@ -95,20 +95,25 @@ export default function AdminTab({
         };
       }
 
-      // Add new admin to the beginning of the list
-      const updatedData = {
+      // Add new admin to the beginning of the list and recompute pagination
+      const prevTotal =
+        prevData.pagination?.totalItems ?? prevData.data?.length ?? 0;
+      const pageSize =
+        prevData.pagination?.pageSize ?? ADMIN_CONFIG.ITEMS_PER_PAGE;
+      const newTotal = prevTotal + 1;
+      const newList = [newAdmin, ...(prevData.data ?? [])];
+      const trimmed = newList.slice(0, pageSize);
+
+      return {
         ...prevData,
-        data: [newAdmin, ...prevData.data.slice(0, -1)], // Add at top, remove last if exceeds limit
+        data: trimmed,
         pagination: {
-          ...prevData.pagination,
-          totalItems: prevData.pagination.totalItems + 1,
-          totalPages: Math.ceil(
-            (prevData.pagination.totalItems + 1) / ADMIN_CONFIG.ITEMS_PER_PAGE,
-          ),
+          ...(prevData.pagination ?? {}),
+          totalItems: newTotal,
+          totalPages: Math.max(1, Math.ceil(newTotal / pageSize)),
+          pageSize,
         },
       };
-
-      return updatedData;
     });
   }, []);
 
@@ -121,23 +126,25 @@ export default function AdminTab({
       if (!prevData) return prevData;
 
       // Remove the deleted admin from the list
-      const updatedData = {
+      const filtered = (prevData.data ?? []).filter(
+        (admin) => admin.id !== deletedAdminId,
+      );
+      const prevTotal =
+        prevData.pagination?.totalItems ?? prevData.data?.length ?? 0;
+      const newTotal = Math.max(0, prevTotal - 1);
+      const pageSize =
+        prevData.pagination?.pageSize ?? ADMIN_CONFIG.ITEMS_PER_PAGE;
+
+      return {
         ...prevData,
-        data: prevData.data.filter((admin) => admin.id !== deletedAdminId),
+        data: filtered,
         pagination: {
-          ...prevData.pagination,
-          totalItems: Math.max(0, prevData.pagination.totalItems - 1),
-          totalPages: Math.max(
-            1,
-            Math.ceil(
-              (prevData.pagination.totalItems - 1) /
-                ADMIN_CONFIG.ITEMS_PER_PAGE,
-            ),
-          ),
+          ...(prevData.pagination ?? {}),
+          totalItems: newTotal,
+          totalPages: Math.max(1, Math.ceil(newTotal / pageSize)),
+          pageSize,
         },
       };
-
-      return updatedData;
     });
   }, []);
 
@@ -330,7 +337,7 @@ export default function AdminTab({
             Admin Accounts
           </h2>
           <p className="mt-1 text-sm text-gray-600">
-            Total admins: {adminsDataCache?.pagination.totalItems || 0}
+            Total admins: {adminsDataCache?.pagination?.totalItems || 0}
           </p>
         </div>
         <Button

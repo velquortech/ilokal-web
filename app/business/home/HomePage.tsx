@@ -2,28 +2,21 @@
 
 import { useRouter } from 'next/navigation';
 import { useDashboardTour } from '@/app/business/hooks/useDashboardTour';
-import {
-  OnboardingSection,
-  StatsOverview,
-  RevenueOverview,
-  CategoryDistribution,
-  WeeklyPerformance,
-  RecentOrders,
-  TopProducts,
-  QuickInsights,
-} from './components';
-import {
-  SALES_DATA,
-  TOUR_FEATURES,
-  calculateDashboardMetrics,
-  getStatMetrics,
-} from './lib';
+import { OnboardingSection, EmptyState } from './components';
+import { TOUR_FEATURES } from './lib';
 import { TourDialog } from './components/TourDialog';
 import { ROUTES } from '@/config/routeConfig';
 import { useBusinessShop } from '@/providers/BusinessProvider';
 
+import WhyRegisterCard from './components/WhyRegisterSection';
+import LockedAnalyticsCard from './components/AlmosstThereSection';
+import { RegistrationSteps } from './components/RegistrationSteps';
+
 export default function BusinessHome() {
   const router = useRouter();
+
+  const { business } = useBusinessShop();
+
   const {
     isOpen: showTour,
     openTour,
@@ -38,30 +31,28 @@ export default function BusinessHome() {
     router.push(ROUTES.BUSINESS.registration);
   };
 
-  const metrics = calculateDashboardMetrics(SALES_DATA);
-  const statMetrics = getStatMetrics(metrics);
-
-  const { business } = useBusinessShop();
-
   return (
-    <div className="h-max flex-1 space-y-6">
-      {!business && <OnboardingSection onStartTour={openTour} />}
+    <div className="flex flex-1 flex-col space-y-6">
+      {!business && (
+        <>
+          <OnboardingSection onStartTour={openTour} />
+          <div className="grid h-max grid-cols-2 gap-6">
+            <RegistrationSteps />
+            <WhyRegisterCard />
+          </div>
+          <LockedAnalyticsCard />
+        </>
+      )}
 
-      <StatsOverview metrics={statMetrics} />
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <RevenueOverview />
-        <CategoryDistribution />
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <WeeklyPerformance />
-        <RecentOrders onViewAll={() => router.push('/business/orders')} />
-      </div>
-
-      <QuickInsights />
-
-      <TopProducts onViewAll={() => router.push('/business/products')} />
+      {business && (
+        <>
+          {/* Empty State - shown when business exists but has no data */}
+          <EmptyState
+            onAddProduct={() => router.push('/business/product-catalogues')}
+            onViewOrders={() => router.push('/business/shop')}
+          />
+        </>
+      )}
 
       <TourDialog
         isOpen={showTour}

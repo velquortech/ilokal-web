@@ -14,7 +14,7 @@ import {
   LucideIcon,
   HandCoins,
 } from 'lucide-react';
-import { MouseEvent, useRef, useState } from 'react';
+import { MouseEvent, useRef } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export function ShopDocuments() {
@@ -60,9 +60,9 @@ function DocumentFileUpload(props: {
   fieldName: 'business_license' | 'tax_certificate';
   icon: LucideIcon;
 }) {
-  const { form } = useMultiStepForm();
+  const { form, cacheFile, clearFileCache } = useMultiStepForm();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [documentPreview, setDocumentPreview] = useState<File>();
+  const fieldFile = form.watch(props.fieldName);
 
   return (
     <Controller
@@ -81,18 +81,16 @@ function DocumentFileUpload(props: {
                 <props.icon />
               </div>
 
-              {documentPreview ? (
+              {fieldFile ? (
                 <>
                   <div className="flex flex-col text-start">
-                    <span className="font-semibold">
-                      {documentPreview.name}
-                    </span>
+                    <span className="font-semibold">{fieldFile.name}</span>
                     <p className="text-muted-foreground inline-flex items-center gap-2">
                       {props.name}
                       <span>
                         <Dot />
                       </span>
-                      {(documentPreview.size / (1024 * 1024)).toFixed(2)} MB
+                      {(fieldFile.size / (1024 * 1024)).toFixed(2)} MB
                     </p>
                   </div>
 
@@ -104,10 +102,12 @@ function DocumentFileUpload(props: {
                       event.preventDefault();
                       event.stopPropagation();
 
-                      setDocumentPreview(undefined);
                       form.setValue(props.fieldName, undefined, {
                         shouldValidate: true,
                       });
+
+                      // Clear file cache
+                      clearFileCache(props.fieldName);
 
                       if (fileInputRef.current) {
                         fileInputRef.current.value = '';
@@ -140,8 +140,14 @@ function DocumentFileUpload(props: {
                 const file = e.target.files?.[0];
                 if (!file) return;
 
-                setDocumentPreview(file);
                 form.setValue(props.fieldName, file, { shouldValidate: true });
+
+                // Cache the file
+                cacheFile(props.fieldName, file);
+
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = '';
+                }
               }}
             />
 

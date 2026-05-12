@@ -5,6 +5,8 @@ import { USER_MANAGEMENT_TABS } from '../config/tabsConfig';
 import { AdminErrorBoundary } from '../components/shared/AdminErrorBoundary';
 import { useUserTabsData } from './hooks/useUserTabsData';
 import { AdminTab, BusinessOwnerTab, ConsumersTab } from './tabs';
+import { ROUTES } from '@/config/routeConfig';
+import { Button } from '@/components/ui/button';
 import { AdminTabFilterState } from '@/lib/types/admin';
 import { UserRole } from '@/lib/types/user';
 
@@ -53,13 +55,19 @@ export default function UserManagementHub() {
   const activeRole = getActiveRole(activeTab);
 
   // Use centralized data fetching with caching
-  const { adminData, businessOwnerData, appUserData, tabLoading, refetchTab } =
-    useUserTabsData(
-      activeRole,
-      adminFilters,
-      businessOwnerFilters,
-      appUserFilters,
-    );
+  const {
+    adminData,
+    businessOwnerData,
+    appUserData,
+    tabLoading,
+    refetchTab,
+    authRequired,
+  } = useUserTabsData(
+    activeRole,
+    adminFilters,
+    businessOwnerFilters,
+    appUserFilters,
+  );
 
   return (
     <div className="space-y-8">
@@ -97,6 +105,24 @@ export default function UserManagementHub() {
 
         {/* Tab Content */}
         <div className="mt-4 space-y-4">
+          {authRequired && (
+            <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-6">
+              <h3 className="text-lg font-semibold text-yellow-800">
+                Authentication required
+              </h3>
+              <p className="mt-2 text-sm text-yellow-700">
+                You must sign in to view and manage users.
+              </p>
+              <div className="mt-4">
+                <Button
+                  onClick={() => (window.location.href = ROUTES.AUTH.LOGIN)}
+                  className="gap-2"
+                >
+                  Sign in
+                </Button>
+              </div>
+            </div>
+          )}
           <AdminErrorBoundary>
             {activeTab === 'admins' && (
               <AdminTab

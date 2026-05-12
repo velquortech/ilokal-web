@@ -39,7 +39,7 @@ export function ShopCategoryStep() {
       try {
         const data = await fetchBusinessData();
         setBusinessTypes(data);
-      } catch (error) {
+      } catch (error: unknown) {
         console.error(error);
       } finally {
         setLoading(false);

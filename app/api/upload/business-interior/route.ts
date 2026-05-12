@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     const filePath = `${businessId}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
-      .from('business-interior')
+      .from('interior-images')
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false,
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
     // Get public URL
     const {
       data: { publicUrl },
-    } = supabase.storage.from('business-interior').getPublicUrl(filePath);
+    } = supabase.storage.from('interior-images').getPublicUrl(filePath);
 
     return NextResponse.json(
       {

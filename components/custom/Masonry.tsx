@@ -17,9 +17,10 @@ type MasonryProps = {
     src: string;
     alt?: string;
   }[];
+  unoptimized?: boolean;
 };
 
-export function Masonry({ images }: MasonryProps) {
+export function Masonry({ images, unoptimized }: MasonryProps) {
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
 
   if (images.length < 4) {
@@ -101,7 +102,7 @@ export function Masonry({ images }: MasonryProps) {
                   <div
                     key={i}
                     className={cn(
-                      'group bg-muted relative cursor-pointer overflow-hidden rounded-xl',
+                      'group bg-muted border-border relative cursor-pointer overflow-hidden rounded-xl border',
                       position,
                     )}
                     onClick={() => setCurrentIndex(globalIndex)}
@@ -111,7 +112,7 @@ export function Masonry({ images }: MasonryProps) {
                       alt={img.alt || 'Product gallery image'}
                       fill
                       sizes={sizeHint}
-                      // unoptimized
+                      unoptimized={unoptimized}
                       className="object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-black/0 transition group-hover:bg-black/20" />
@@ -147,7 +148,7 @@ export function Masonry({ images }: MasonryProps) {
                 priority
                 sizes="(max-width: 1280px) 90vw, 1280px"
                 className="object-contain p-4"
-                // unoptimized
+                unoptimized={unoptimized}
               />
 
               {/* CONTROLS */}

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronDown, Store } from 'lucide-react';
+import { AlertTriangle, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -20,10 +20,10 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-  SidebarHeader,
 } from '@/components/ui/sidebar';
 
 import { LucideIcon } from 'lucide-react';
+import Image from 'next/image';
 
 export type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline';
 
@@ -47,6 +47,7 @@ export interface NavItem {
 export interface NavSectionProps {
   items: NavItem[];
   label?: string;
+  disabled?: boolean;
 }
 
 function isItemActive(
@@ -79,18 +80,39 @@ export function NavSectionHeader({ title }: SectionHeaderProps) {
   );
 }
 
-export function SidebarLogo() {
+export function SidebarLogo({
+  shopName,
+  logo,
+}: {
+  shopName?: string;
+  logo?: string;
+}) {
   return (
-    <SidebarHeader className="border-b px-4 py-3 group-data-[collapsible=icon]:px-2.5">
-      <div className="flex items-center gap-3">
-        <div className="bg-primary shadow-primary/20 flex size-8 shrink-0 items-center justify-center rounded-lg shadow-lg group-data-[collapsible=icon]:size-7">
-          <Store className="text-primary-foreground size-4" />
+    <div className="font-giest flex items-center gap-3">
+      {logo ? (
+        <div className="relative size-8 shrink-0 overflow-hidden rounded-lg group-data-[collapsible=icon]:size-7">
+          <Image
+            src={logo}
+            alt={shopName ?? 'Shop Logo'}
+            width={32}
+            height={32}
+            className="aspect-square object-cover"
+            unoptimized
+          />
         </div>
-        <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-          <span className="text-sm font-semibold">Ilokal</span>
+      ) : (
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-zinc-700/20 text-zinc-600 group-data-[collapsible=icon]:size-7 dark:text-zinc-400">
+          <AlertTriangle className="size-4" />
         </div>
+      )}
+      <div className="flex flex-col capitalize group-data-[collapsible=icon]:hidden">
+        <span
+          className={cn('font-semibold', !shopName && 'font-normal opacity-60')}
+        >
+          {shopName ?? 'Unregistered'}
+        </span>
       </div>
-    </SidebarHeader>
+    </div>
   );
 }
 
@@ -126,9 +148,10 @@ function NavItemBadge({ badge, variant = 'default' }: NavItemBadgeProps) {
 interface NavSubItemsProps {
   items: NavSubItem[];
   pathname: string;
+  disabled?: boolean;
 }
 
-function NavSubItems({ items, pathname }: NavSubItemsProps) {
+function NavSubItems({ items, pathname, disabled = false }: NavSubItemsProps) {
   return (
     <SidebarMenuSub>
       {items.map((subItem) => {
@@ -136,7 +159,10 @@ function NavSubItems({ items, pathname }: NavSubItemsProps) {
         return (
           <SidebarMenuSubItem key={subItem.title}>
             <SidebarMenuSubButton asChild isActive={isSubActive}>
-              <Link href={subItem.href}>
+              <Link
+                href={disabled ? '#' : subItem.href}
+                aria-disabled={disabled}
+              >
                 <span>{subItem.title}</span>
                 {subItem.badge && (
                   <NavItemBadge badge={subItem.badge} variant="secondary" />
@@ -154,18 +180,24 @@ interface CollapsibleNavItemProps {
   item: NavItem;
   isActive: boolean;
   pathname: string;
+  disabled?: boolean;
 }
 
 function CollapsibleNavItem({
   item,
   isActive,
   pathname,
+  disabled = false,
 }: CollapsibleNavItemProps) {
   return (
     <Collapsible defaultOpen={isActive}>
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
-          <SidebarMenuButton isActive={isActive} tooltip={item.title}>
+          <SidebarMenuButton
+            isActive={isActive}
+            tooltip={item.title}
+            disabled={disabled}
+          >
             <NavItemIcon icon={item.icon} />
             <span>{item.title}</span>
             {item.badge && (
@@ -175,7 +207,11 @@ function CollapsibleNavItem({
           </SidebarMenuButton>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <NavSubItems items={item.items!} pathname={pathname} />
+          <NavSubItems
+            items={item.items!}
+            pathname={pathname}
+            disabled={disabled}
+          />
         </CollapsibleContent>
       </SidebarMenuItem>
     </Collapsible>
@@ -185,13 +221,23 @@ function CollapsibleNavItem({
 interface SimpleNavItemProps {
   item: NavItem;
   isActive: boolean;
+  disabled?: boolean;
 }
 
-function SimpleNavItem({ item, isActive }: SimpleNavItemProps) {
+function SimpleNavItem({
+  item,
+  isActive,
+  disabled = false,
+}: SimpleNavItemProps) {
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
-        <Link href={item.href || '#'}>
+      <SidebarMenuButton
+        asChild
+        isActive={isActive}
+        tooltip={item.title}
+        disabled={disabled}
+      >
+        <Link href={item.href || '#'} aria-disabled={disabled}>
           <NavItemIcon icon={item.icon} />
           <span>{item.title}</span>
           {item.badge && (
@@ -203,7 +249,11 @@ function SimpleNavItem({ item, isActive }: SimpleNavItemProps) {
   );
 }
 
-export function NavSection({ items, label }: NavSectionProps) {
+export function NavSection({
+  items,
+  label,
+  disabled = false,
+}: NavSectionProps) {
   const pathname = usePathname();
 
   return (
@@ -221,12 +271,18 @@ export function NavSection({ items, label }: NavSectionProps) {
                   item={item}
                   isActive={isActive}
                   pathname={pathname}
+                  disabled={disabled}
                 />
               );
             }
 
             return (
-              <SimpleNavItem key={item.title} item={item} isActive={isActive} />
+              <SimpleNavItem
+                key={item.title}
+                item={item}
+                isActive={isActive}
+                disabled={disabled}
+              />
             );
           })}
         </SidebarMenu>

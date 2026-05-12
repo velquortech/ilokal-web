@@ -1,52 +1,41 @@
-# Protected Routes & Authorization
+# Protected routes and auth responsibilities
+
+## Purpose
+
+This document explains the responsibilities and quick usage examples for the route-protection utilities in `lib/utils`.
 
 ## Responsibilities
 
-| Layer | File | Job |
-|---|---|---|
-| Middleware (page routes) | `proxy.ts` | Fast static-prefix checks; redirect unauthenticated users to `/login`. Keep matcher static. |
-| Route constants | `config/routeConfig.ts` | Single source of truth for all route strings. Import everywhere; never use literals. |
-| Policy helpers | `lib/utils/protectedRoutes.ts` | `isProtectedPath`, `roleAllowedForPath`, `PROTECTED_ROUTE_PREFIXES`, `API_PROTECTED_PREFIXES`. Keep deterministic. |
-| API/Action guard | `lib/utils/assertAuthorized.ts` | Runtime auth for API handlers and Server Actions. Looks up user, checks role, returns 401/403. |
+- `proxy.ts` (middleware): perform fast, static-match checks and redirects for page routes. Use only static prefixes (build-time matcher).
+- `config/routeConfig.ts`: canonical route strings. Import this file everywhere — do not use literal strings.
+- `lib/utils/protectedRoutes.ts`: policy helpers used by middleware and other code (`isProtectedPath`, `roleAllowedForPath`, `PROTECTED_ROUTE_PREFIXES`, `API_PROTECTED_PREFIXES`). Keep logic small and deterministic.
+- `lib/utils/assertAuthorized.ts`: runtime authorization for API handlers and server actions. Performs user lookup, profile checks, and optional role enforcement.
 
-## Key principles
+## Usage examples
 
-- Authorization is always enforced server-side. Middleware and client-side checks are conveniences, not the guardrail.
-- Keep decision logic centralized in `lib/utils/protectedRoutes`; import from middleware, handlers, and actions.
-- Middleware matchers must use static strings — no dynamic generation at runtime.
+- Middleware (pages): use `isProtectedPath()` only for redirects and early rejects; rely on static matcher for performance.
 
-## Decision matrix
+  Example: in `proxy.ts`:
+  - check `isProtectedPath(request.nextUrl.pathname)` and redirect unauthenticated users to `/login`.
 
-| Request origin | Guard |
-|---|---|
-| Browser → page (SSR) | Middleware `isProtectedPath()` + redirect |
-| Client fetch / browser-initiated API | API route handler `assertAuthorized()` |
-| Server Component → Server Action | `assertAuthorized()` inside the action |
+- API handlers / Server Actions: call `assertAuthorized(request, { roles: ['admin'] })` at the top of the handler to enforce authentication and roles.
 
-## Usage
+## Recommendations
 
-**Middleware:**
-```ts
-// proxy.ts
-if (isProtectedPath(request.nextUrl.pathname)) {
-  // redirect unauthenticated users to /login
-}
-```
+- Single source of truth: import route strings from `config/routeConfig.ts` only.
+- Expose a single `lib/utils/auth/index.ts` that re-exports `assertAuthorized` and `protectedRoutes` helpers for discoverability.
+- Add unit tests for `isProtectedPath`, `roleAllowedForPath`, and `assertAuthorized`.
+- Use code reviews or automated codemods to eliminate remaining literal route strings.
 
-**API handler / Server Action:**
-```ts
-const user = await assertAuthorized(request, { roles: ['admin'] });
-// only reaches here if authorized
-```
+## Where to look
 
-## Reviewer checklist
+- Middleware: `/proxy.ts`
+- API guard: `/lib/utils/assertAuthorized.ts`
+- Policy helpers: `/lib/utils/protectedRoutes.ts`
+- Route canonicalization: `/config/routeConfig.ts`
 
-- Route strings imported from `config/routeConfig.ts` (no literals)?
-- Runtime role checks in handlers, not just middleware?
-- Policy helpers small and unit-tested?
-- Integration tests assert 401 for unauthenticated calls to representative endpoints?
+## Short checklist for reviewers
 
-## Risks
-
-- Over-broad middleware matcher may hit edge runtime/env limits — keep middleware for page-level blocking; use handler guards for `/api`.
-- A missed API handler leaves data exposed — enforce via code review checklist and integration tests.
+- Are route strings imported from `config/routeConfig.ts`?
+- Are runtime role checks performed in handlers (not only middleware)?
+- Are policy helpers small and unit-tested?

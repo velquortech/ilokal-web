@@ -54,6 +54,12 @@ export default function ShopRegistration() {
         'business_category',
         JSON.stringify(data.business_category),
       );
+      if (
+        data.business_category.type === 'predefined' &&
+        data.business_category.id
+      ) {
+        formData.append('category_id', data.business_category.id);
+      }
       formData.append('location', JSON.stringify(data.location));
       formData.append('shop_name', data.shop_name);
       formData.append('description', data.description);

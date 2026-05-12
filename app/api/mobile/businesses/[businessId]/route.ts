@@ -37,9 +37,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const owner =
       (
         data.profiles as unknown as
-          | { full_name: string | null; email: string }[]
+          | { full_name: string | null; email: string }
           | null
-      )?.[0] ?? null;
+      ) ?? null;
     const ownerHandle = owner
       ? (owner.full_name?.split(' ')[0] ?? owner.email.split('@')[0])
       : null;

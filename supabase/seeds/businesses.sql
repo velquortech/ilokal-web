@@ -1,4 +1,4 @@
--- Dev seed: 5 verified businesses near Manila Bay (lat 14.5995, lng 120.9842)
+-- Dev seed: 5 verified businesses near Iloilo City Plaza (lat 10.6973, lng 122.5649)
 -- Run as service role. session_replication_role bypasses auth.users FK for the seed owner.
 -- Images are served from local Supabase storage (interior-images / shop-logos buckets).
 -- Storage URL base: http://127.0.0.1:54321/storage/v1/object/public
@@ -80,44 +80,44 @@ VALUES
   )
 ON CONFLICT (id) DO UPDATE SET category_id = EXCLUDED.category_id;
 
--- Branches within 5 km of Manila Bay (lat 14.5995, lng 120.9842)
+-- Branches within 5 km of Iloilo City Plaza (lat 10.6973, lng 122.5649)
 -- PostGIS POINT order is (lng, lat)
 INSERT INTO public.branches (id, business_id, name, address, location)
 VALUES
   (
     '22222222-2222-2222-2222-222222222201',
     '11111111-1111-1111-1111-111111111101',
-    'Ermita',
-    'Mabini St., Ermita, Manila',
-    ST_MakePoint(120.9836, 14.5826)::geography   -- ~1.9 km
+    'City Proper',
+    'Iznart St., City Proper, Iloilo City',
+    ST_MakePoint(122.5732, 10.6969)::geography   -- ~0.9 km
   ),
   (
     '22222222-2222-2222-2222-222222222202',
     '11111111-1111-1111-1111-111111111102',
-    'Binondo',
-    'Ongpin St., Binondo, Manila',
-    ST_MakePoint(120.9760, 14.5985)::geography   -- ~0.9 km
+    'Jaro',
+    'Rizal St., Jaro, Iloilo City',
+    ST_MakePoint(122.5660, 10.7300)::geography   -- ~3.6 km
   ),
   (
     '22222222-2222-2222-2222-222222222203',
     '11111111-1111-1111-1111-111111111103',
-    'Paco',
-    'San Andres St., Paco, Manila',
-    ST_MakePoint(120.9975, 14.5738)::geography   -- ~3.2 km
+    'Mandurriao',
+    'Benigno Aquino Ave., Mandurriao, Iloilo City',
+    ST_MakePoint(122.5440, 10.7162)::geography   -- ~3.0 km
   ),
   (
     '22222222-2222-2222-2222-222222222204',
     '11111111-1111-1111-1111-111111111104',
-    'Malate',
-    'Adriatico St., Malate, Manila',
-    ST_MakePoint(120.9836, 14.5797)::geography   -- ~2.2 km
+    'Molo',
+    'Yulo St., Molo, Iloilo City',
+    ST_MakePoint(122.5572, 10.6847)::geography   -- ~1.6 km
   ),
   (
     '22222222-2222-2222-2222-222222222205',
     '11111111-1111-1111-1111-111111111105',
-    'San Miguel',
-    'General Luna St., San Miguel, Manila',
-    ST_MakePoint(120.9985, 14.6076)::geography   -- ~1.8 km
+    'La Paz',
+    'Jalandoni St., La Paz, Iloilo City',
+    ST_MakePoint(122.5566, 10.7200)::geography   -- ~2.6 km
   )
 ON CONFLICT (id) DO NOTHING;
 

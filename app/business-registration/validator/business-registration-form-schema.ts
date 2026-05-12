@@ -36,22 +36,30 @@ export const step2Schema = z.object({
   }),
 });
 
+const fileSchema = z.custom<File>((val) => val instanceof File);
+const fileArraySchema = z.custom<File[]>(
+  (val) => Array.isArray(val) && val.every((item) => item instanceof File),
+);
+
 export const step3Schema = z.object({
-  shop_logo: z.any().refine((file) => file instanceof File, 'Logo is required'),
-  shop_banner: z
-    .any()
-    .refine((file) => file instanceof File, 'Banner is required'),
-  interior_images: z
-    .any()
-    .refine(
-      (files) => files && files.length >= 4,
-      'At least 4 images required',
-    ),
+  shop_logo: fileSchema
+    .refine((file) => file && file.size > 0, 'Logo is required')
+    .optional(),
+  shop_banner: fileSchema
+    .refine((file) => file && file.size > 0, 'Banner is required')
+    .optional(),
+  interior_images: fileArraySchema
+    .refine((files) => files && files.length >= 4, 'At least 4 images required')
+    .optional(),
 });
 
 export const step4Schema = z.object({
-  business_license: z.any().refine((file) => file instanceof File, 'Required'),
-  tax_certificate: z.any().refine((file) => file instanceof File, 'Required'),
+  business_license: fileSchema
+    .refine((file) => file && file.size > 0, 'Required')
+    .optional(),
+  tax_certificate: fileSchema
+    .refine((file) => file && file.size > 0, 'Required')
+    .optional(),
 });
 
 export const fullSchema = step1Schema

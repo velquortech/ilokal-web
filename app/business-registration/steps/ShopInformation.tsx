@@ -92,10 +92,6 @@ function BasicInformation() {
 function Location() {
   const { form } = useMultiStepForm();
 
-  useEffect(() => {
-    form.setValue('location.province', LOCKED_PROVINCE);
-  }, [form]);
-
   const selectedCity = form.watch('location.city');
   const cities = getCitiesByProvince(LOCKED_PROVINCE);
   const barangays = selectedCity
@@ -110,6 +106,10 @@ function Location() {
   const handleBarangayChange = (value: string) => {
     form.setValue('location.barangay', value);
   };
+
+  useEffect(() => {
+    form.setValue('location.province', LOCKED_PROVINCE);
+  }, [form]);
 
   return (
     <>

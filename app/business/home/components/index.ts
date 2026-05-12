@@ -8,3 +8,4 @@ export {
 export { RecentOrders } from './RecentOrders';
 export { TopProducts } from './TopProducts';
 export { QuickInsights } from './QuickInsights';
+export { EmptyState } from './EmptyState';

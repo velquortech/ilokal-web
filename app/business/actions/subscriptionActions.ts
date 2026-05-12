@@ -24,7 +24,7 @@ import {
 } from '@/lib/validation/subscriptions';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import * as subscriptionQuery from '@/lib/api/subscriptions/subscriptionQuery';
-import * as subscriptionService from '@/lib/api/subscriptions/subscriptionService';
+import subscriptionService from '@/lib/services/subscriptionService';
 
 /**
  * Subscribe business to subscription plan
@@ -65,10 +65,10 @@ export async function subscribeToplanAction(
     }
 
     // Create subscription via service layer
-    return await subscriptionService.createSubscription(
+    return (await subscriptionService.createSubscription(
       businessId,
       validated.data,
-    );
+    )) as ApiResponse<SubscriptionResponse>;
   } catch (error) {
     console.error('[subscribeToplanAction]', error);
     return {
@@ -119,10 +119,10 @@ export async function updateSubscriptionAction(
     }
 
     // Update subscription via service layer
-    return await subscriptionService.updateSubscription(
+    return (await subscriptionService.updateSubscription(
       subResult.data.id,
       validated.data,
-    );
+    )) as ApiResponse<SubscriptionResponse>;
   } catch (error) {
     console.error('[updateSubscriptionAction]', error);
     return {
@@ -173,10 +173,10 @@ export async function upgradeSubscriptionAction(
     }
 
     // Upgrade subscription via service layer
-    return await subscriptionService.upgradeSubscription(
+    return (await subscriptionService.upgradeSubscription(
       subResult.data.id,
       validated.data,
-    );
+    )) as ApiResponse<SubscriptionResponse>;
   } catch (error) {
     console.error('[upgradeSubscriptionAction]', error);
     return {
@@ -227,10 +227,10 @@ export async function downgradeSubscriptionAction(
     }
 
     // Downgrade subscription via service layer
-    return await subscriptionService.downgradeSubscription(
+    return (await subscriptionService.downgradeSubscription(
       subResult.data.id,
       validated.data,
-    );
+    )) as ApiResponse<SubscriptionResponse>;
   } catch (error) {
     console.error('[downgradeSubscriptionAction]', error);
     return {
@@ -281,10 +281,10 @@ export async function cancelSubscriptionAction(
     }
 
     // Cancel subscription via service layer
-    return await subscriptionService.cancelSubscription(
+    return (await subscriptionService.cancelSubscription(
       subResult.data.id,
       validated.data,
-    );
+    )) as ApiResponse<SubscriptionResponse>;
   } catch (error) {
     console.error('[cancelSubscriptionAction]', error);
     return {

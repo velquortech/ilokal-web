@@ -1,5 +1,3 @@
-> **MERGED** — Content consolidated into `protected-routes.md`. This file is kept for historical reference only.
-
 # Protected Route Strategy
 
 Generated: 2026-03-25

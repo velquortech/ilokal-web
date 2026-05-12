@@ -1,9 +1,22 @@
 import { Masonry } from '@/components/custom/Masonry';
 import { Button } from '@/components/ui/button';
-import { ChevronDown } from 'lucide-react';
-import { masonryData } from '../../data/shop';
+import { ChevronDown, Image as ImageIcon } from 'lucide-react';
+import { BusinessShop } from '@/providers/BusinessProvider';
 
-export function ShopGallery() {
+interface ShopGalleryProps {
+  business?: BusinessShop | null;
+}
+
+export function ShopGallery({ business }: ShopGalleryProps) {
+  const hasImages =
+    business?.interior_images && business.interior_images.length > 0;
+  const images = hasImages
+    ? business.interior_images.map((src, index) => ({
+        src,
+        alt: `${business.shop_name} interior ${index + 1}`,
+      }))
+    : [];
+
   return (
     <div className="space-y-4">
       <div className="inline-flex w-full items-center justify-between">
@@ -12,7 +25,16 @@ export function ShopGallery() {
           See All <ChevronDown />
         </Button>
       </div>
-      <Masonry images={masonryData.images} />
+      {hasImages ? (
+        <Masonry images={images} unoptimized />
+      ) : (
+        <div className="border-muted-foreground/25 bg-muted/50 flex h-64 items-center justify-center rounded-xl border border-dashed">
+          <div className="text-muted-foreground flex flex-col items-center gap-2">
+            <ImageIcon className="size-12 opacity-50" />
+            <span className="text-sm">No gallery images available</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

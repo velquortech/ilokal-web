@@ -1,5 +1,3 @@
-> **ARCHIVED** — This file is an April 2026 test-coverage snapshot. For current test status run `npm run test:run`. For test templates and patterns see `permanent-rules.md`.
-
 # Quick Reference: Untested Routes & Actions Matrix
 
 **Use this to quickly find what needs testing and understand dependencies.**

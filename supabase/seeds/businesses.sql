@@ -120,24 +120,24 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.products (id, business_id, name, description, price, image_url, is_available)
 VALUES
   -- The Artisan Roastery
-  ('33333333-3333-3333-3333-333333333301', '11111111-1111-1111-1111-111111111101', 'Single Origin Pour Over', 'Ethiopian Yirgacheffe, floral and citrus notes', 220.00, 'https://picsum.photos/seed/pourover/200/200', true),
-  ('33333333-3333-3333-3333-333333333302', '11111111-1111-1111-1111-111111111101', 'Flat White', 'Double ristretto with silky microfoam', 185.00, 'https://picsum.photos/seed/flatwhite/200/200', true),
-  ('33333333-3333-3333-3333-333333333303', '11111111-1111-1111-1111-111111111101', 'Cold Brew', 'Slow-steeped 18 hours, served over ice', 160.00, 'https://picsum.photos/seed/coldbrew/200/200', true),
+  ('33333333-3333-3333-3333-333333333301', '11111111-1111-1111-1111-111111111101', 'Single Origin Pour Over', 'Ethiopian Yirgacheffe, floral and citrus notes', 220.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333301/product.jpg', true),
+  ('33333333-3333-3333-3333-333333333302', '11111111-1111-1111-1111-111111111101', 'Flat White', 'Double ristretto with silky microfoam', 185.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333302/product.jpg', true),
+  ('33333333-3333-3333-3333-333333333303', '11111111-1111-1111-1111-111111111101', 'Cold Brew', 'Slow-steeped 18 hours, served over ice', 160.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333303/product.jpg', true),
   -- Flora & Flour Bakery
-  ('33333333-3333-3333-3333-333333333304', '11111111-1111-1111-1111-111111111102', 'Ube Cream Cheese Pandesal', 'Soft rolls filled with ube halaya and cream cheese', 65.00, 'https://picsum.photos/seed/pandesal/200/200', true),
-  ('33333333-3333-3333-3333-333333333305', '11111111-1111-1111-1111-111111111102', 'Ensaymada', 'Brioche topped with butter, sugar, and queso', 85.00, 'https://picsum.photos/seed/ensaymada/200/200', true),
-  ('33333333-3333-3333-3333-333333333306', '11111111-1111-1111-1111-111111111102', 'Leche Flan Tart', 'Crisp pastry shell with silky Filipino custard', 120.00, 'https://picsum.photos/seed/flan/200/200', true),
+  ('33333333-3333-3333-3333-333333333304', '11111111-1111-1111-1111-111111111102', 'Ube Cream Cheese Pandesal', 'Soft rolls filled with ube halaya and cream cheese', 65.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333304/product.jpg', true),
+  ('33333333-3333-3333-3333-333333333305', '11111111-1111-1111-1111-111111111102', 'Ensaymada', 'Brioche topped with butter, sugar, and queso', 85.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333305/product.jpg', true),
+  ('33333333-3333-3333-3333-333333333306', '11111111-1111-1111-1111-111111111102', 'Leche Flan Tart', 'Crisp pastry shell with silky Filipino custard', 120.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333306/product.jpg', true),
   -- The Handy Corner
-  ('33333333-3333-3333-3333-333333333307', '11111111-1111-1111-1111-111111111103', 'LED Bulb Pack (6pcs)', 'Energy-saving 9W daylight bulbs', 299.00, 'https://picsum.photos/seed/bulbs/200/200', true),
-  ('33333333-3333-3333-3333-333333333308', '11111111-1111-1111-1111-111111111103', 'Heavy Duty Extension Cord', '3-outlet, 5 meter, with surge protection', 450.00, 'https://picsum.photos/seed/extension/200/200', true),
+  ('33333333-3333-3333-3333-333333333307', '11111111-1111-1111-1111-111111111103', 'LED Bulb Pack (6pcs)', 'Energy-saving 9W daylight bulbs', 299.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333307/product.jpg', true),
+  ('33333333-3333-3333-3333-333333333308', '11111111-1111-1111-1111-111111111103', 'Heavy Duty Extension Cord', '3-outlet, 5 meter, with surge protection', 450.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333308/product.jpg', true),
   -- Aura Hair Studio
-  ('33333333-3333-3333-3333-333333333309', '11111111-1111-1111-1111-111111111104', 'Haircut & Blowdry', 'Precision cut and professional blowout', 450.00, 'https://picsum.photos/seed/haircut/200/200', true),
-  ('33333333-3333-3333-3333-333333333310', '11111111-1111-1111-1111-111111111104', 'Hair Color (Full)', 'Global color with toning treatment included', 1800.00, 'https://picsum.photos/seed/haircolor/200/200', true),
-  ('33333333-3333-3333-3333-333333333311', '11111111-1111-1111-1111-111111111104', 'Keratin Treatment', 'Smoothing treatment, results last 3–4 months', 3500.00, 'https://picsum.photos/seed/keratin/200/200', true),
+  ('33333333-3333-3333-3333-333333333309', '11111111-1111-1111-1111-111111111104', 'Haircut & Blowdry', 'Precision cut and professional blowout', 450.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333309/product.jpg', true),
+  ('33333333-3333-3333-3333-333333333310', '11111111-1111-1111-1111-111111111104', 'Hair Color (Full)', 'Global color with toning treatment included', 1800.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333310/product.jpg', true),
+  ('33333333-3333-3333-3333-333333333311', '11111111-1111-1111-1111-111111111104', 'Keratin Treatment', 'Smoothing treatment, results last 3–4 months', 3500.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333311/product.jpg', true),
   -- Luna & Leaf Bistro
-  ('33333333-3333-3333-3333-333333333312', '11111111-1111-1111-1111-111111111105', 'Signature Latte', 'Oat milk, honey, and cinnamon', 380.00, 'https://picsum.photos/seed/signaturelatte/200/200', true),
-  ('33333333-3333-3333-3333-333333333313', '11111111-1111-1111-1111-111111111105', 'Avocado Zen Bowl', 'Fresh greens, seeds, and lemon vinaigrette', 820.00, 'https://picsum.photos/seed/zenbowl/200/200', true),
-  ('33333333-3333-3333-3333-333333333314', '11111111-1111-1111-1111-111111111105', 'Matcha Affogato', 'Ceremonial matcha poured over vanilla ice cream', 320.00, 'https://picsum.photos/seed/matcha/200/200', true)
+  ('33333333-3333-3333-3333-333333333312', '11111111-1111-1111-1111-111111111105', 'Signature Latte', 'Oat milk, honey, and cinnamon', 380.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333312/product.jpg', true),
+  ('33333333-3333-3333-3333-333333333313', '11111111-1111-1111-1111-111111111105', 'Avocado Zen Bowl', 'Fresh greens, seeds, and lemon vinaigrette', 820.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333313/product.jpg', true),
+  ('33333333-3333-3333-3333-333333333314', '11111111-1111-1111-1111-111111111105', 'Matcha Affogato', 'Ceremonial matcha poured over vanilla ice cream', 320.00, 'http://127.0.0.1:54321/storage/v1/object/public/product-images/33333333-3333-3333-3333-333333333314/product.jpg', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Coupons (end dates in 2026 so they stay active)

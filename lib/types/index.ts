@@ -5,7 +5,7 @@
  * Instead of scattered imports, use:
  *
  * ✅ CORRECT:
- * import type { User, CreateUserInput, ApiResponse } from '@/lib/types';
+ * import type { User, AdminCreateUserInput, ApiResponse } from '@/lib/types';
  *
  * ❌ WRONG:
  * import type { User } from '@/lib/types/user';
@@ -29,6 +29,8 @@ export type {
   User,
   AuthUser,
   DatabaseProfile,
+  DatabaseInsertProfile,
+  DatabaseUpdateProfile,
 } from './user';
 
 // Business Domain Types
@@ -203,6 +205,14 @@ export type {
   PaginatedReviewsResponse,
   RatingResponse,
 } from './review';
+
+// Rating types
+export type {
+  Rating,
+  CreateRatingRequest,
+  UpdateRatingRequest,
+  RatingStats,
+} from './rating';
 
 // Analytics Types
 export type { PlatformAnalytics, AdminAnalyticsResponse } from './analytics';

@@ -1,15 +1,21 @@
-// MultiStepFormContext.tsx
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from 'react';
 import { FieldPath, useForm, UseFormReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   BusinessProps,
   fullSchema,
 } from '../validator/business-registration-form-schema';
+import { useFormCache } from '../hooks/useFormCache';
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3 | 4 | 5; // 5 = Review/Submit
 
 type ContextType = {
   step: Step;
@@ -17,6 +23,10 @@ type ContextType = {
   prevStep: () => void;
   canProceed: boolean;
   form: UseFormReturn<BusinessProps>;
+  clearFormCache: () => void;
+  cacheFile: (fieldName: string, file: File) => Promise<void>;
+  cacheFiles: (fieldName: string, files: File[]) => Promise<void>;
+  clearFileCache: (fieldName: string) => void;
 };
 
 const multiStepFormContext = createContext<ContextType | null>(null);
@@ -41,6 +51,7 @@ const stepFields: Record<Step, FieldPath<BusinessProps>[]> = {
   ],
   3: ['shop_logo', 'interior_images', 'shop_banner'],
   4: ['business_license', 'tax_certificate'],
+  5: [], // Review step has no required fields
 };
 
 export function MultiStepFormProvider({
@@ -78,24 +89,50 @@ export function MultiStepFormProvider({
     },
   });
 
-  // 🔥 AUTO UPDATE canProceed
-  useEffect(() => {
-    const subscription = form.watch(async () => {
-      const fields = stepFields[step];
+  const {
+    clearCache: clearFormCache,
+    cacheFile,
+    cacheFiles,
+    clearFileCache,
+    isHydrated,
+  } = useFormCache(form);
 
-      const isValid = await form.trigger(fields);
-      setCanProceed(isValid);
+  // Restore step from cache on mount (synchronously before paint)
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return;
+    const savedStep = localStorage.getItem('ilokal-registration-step');
+    if (savedStep) {
+      const stepNum = parseInt(savedStep, 10);
+      if ([1, 2, 3, 4, 5].includes(stepNum)) {
+        setStep(stepNum as Step);
+      }
+    }
+  }, []);
+
+  // Persist step to cache
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('ilokal-registration-step', step.toString());
+  }, [step]);
+
+  // Validate current step and update canProceed
+  useEffect(() => {
+    if (!isHydrated) return;
+
+    const subscription = form.watch(() => {
+      form.trigger(stepFields[step]).then(setCanProceed);
     });
 
+    // Initial validation after hydration or step change
+    form.trigger(stepFields[step]).then(setCanProceed);
+
     return () => subscription.unsubscribe();
-  }, [form, step]);
+  }, [form, step, isHydrated]);
 
   const validateStep = async () => {
     const fields = stepFields[step];
-
-    const result = await form.trigger(fields); // RHF typing limitation
+    const result = await form.trigger(fields);
     setCanProceed(result);
-
     return result;
   };
 
@@ -114,7 +151,17 @@ export function MultiStepFormProvider({
 
   return (
     <multiStepFormContext.Provider
-      value={{ step, nextStep, prevStep, canProceed, form }}
+      value={{
+        step,
+        nextStep,
+        prevStep,
+        canProceed,
+        form,
+        clearFormCache,
+        cacheFile,
+        cacheFiles,
+        clearFileCache,
+      }}
     >
       {children}
     </multiStepFormContext.Provider>

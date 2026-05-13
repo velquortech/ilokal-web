@@ -192,10 +192,11 @@ export async function signupAction(
       profileData.avatar_url = data.avatar_url.trim();
     }
 
-    // Create profile in database
+    // Upsert profile — the on_auth_user_created trigger fires first and inserts
+    // a minimal row; upsert merges in the user's actual name, role, and extras.
     const { error: profileError } = await supabase
       .from('profiles')
-      .insert(profileData);
+      .upsert(profileData, { onConflict: 'id' });
 
     if (profileError) {
       console.error(

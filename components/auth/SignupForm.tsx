@@ -35,7 +35,17 @@ import {
   User,
 } from 'lucide-react';
 
-type SignupFormState = { message?: string; error?: string };
+type SignupFormState = {
+  message?: string;
+  error?: string;
+  fieldErrors?: Partial<Record<string, string>>;
+};
+
+const EMAIL_ERRORS = new Set([
+  'Email already registered',
+  'Invalid email format',
+  'User already registered',
+]);
 
 async function handleSignup(
   _state: SignupFormState,
@@ -49,9 +59,18 @@ async function handleSignup(
     role: formData.get('role') as string,
     avatar_url: (formData.get('avatar_url') as string) || null,
   };
+
+  const result = signupSchema.safeParse(data);
+  if (!result.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of result.error.issues) {
+      const field = String(issue.path[0] ?? 'root');
+      if (!fieldErrors[field]) fieldErrors[field] = issue.message;
+    }
+    return { fieldErrors };
+  }
+
   try {
-    const result = signupSchema.safeParse(data);
-    if (!result.success) return { error: result.error.issues[0].message };
     const response = await signupAction(result.data);
     await redirectByRole(response.user.role);
     return { message: response.message };
@@ -59,12 +78,19 @@ async function handleSignup(
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
       return { message: 'Account created! Redirecting...' };
     }
-    return {
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to sign up. Please try again.',
-    };
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Failed to sign up. Please try again.';
+
+    if (
+      EMAIL_ERRORS.has(message) ||
+      message.toLowerCase().includes('email already')
+    ) {
+      return { fieldErrors: { email: message } };
+    }
+
+    return { error: message };
   }
 }
 
@@ -89,11 +115,13 @@ export default function SignupForm() {
   const {
     control,
     register,
+    trigger,
     formState: { errors },
     watch,
   } = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
     defaultValues: { role: 'app_user' },
+    mode: 'onBlur',
   });
   const selectedRole = watch('role');
   const [state, formAction, isPending] = useActionState(handleSignup, {
@@ -134,7 +162,7 @@ export default function SignupForm() {
         </Alert>
       )}
 
-      {state.error && (
+      {state.error && !state.fieldErrors && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{state.error}</AlertDescription>
@@ -210,10 +238,22 @@ export default function SignupForm() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form action={formAction} className="space-y-4">
+            <form
+              action={formAction}
+              onSubmit={async (e) => {
+                const valid = await trigger([
+                  'name',
+                  'email',
+                  'password',
+                  'confirmPassword',
+                ]);
+                if (!valid) e.preventDefault();
+              }}
+              className="space-y-4"
+            >
               <input type="hidden" name="role" value={selectedRole} />
 
-              <Field data-invalid={!!errors.name}>
+              <Field data-invalid={!!errors.name || !!state.fieldErrors?.name}>
                 <FieldLabel htmlFor="name">Full Name</FieldLabel>
                 <Input
                   id="name"
@@ -225,10 +265,19 @@ export default function SignupForm() {
                   {...register('name')}
                   disabled={isPending}
                 />
-                <FieldError errors={[errors.name]} />
+                <FieldError
+                  errors={[
+                    errors.name,
+                    state.fieldErrors?.name
+                      ? { message: state.fieldErrors.name }
+                      : undefined,
+                  ]}
+                />
               </Field>
 
-              <Field data-invalid={!!errors.email}>
+              <Field
+                data-invalid={!!errors.email || !!state.fieldErrors?.email}
+              >
                 <FieldLabel htmlFor="email">Email Address</FieldLabel>
                 <Input
                   id="email"
@@ -237,10 +286,21 @@ export default function SignupForm() {
                   {...register('email')}
                   disabled={isPending}
                 />
-                <FieldError errors={[errors.email]} />
+                <FieldError
+                  errors={[
+                    errors.email,
+                    state.fieldErrors?.email
+                      ? { message: state.fieldErrors.email }
+                      : undefined,
+                  ]}
+                />
               </Field>
 
-              <Field data-invalid={!!errors.password}>
+              <Field
+                data-invalid={
+                  !!errors.password || !!state.fieldErrors?.password
+                }
+              >
                 <FieldLabel htmlFor="password">Password</FieldLabel>
                 <div className="relative">
                   <Input
@@ -269,10 +329,22 @@ export default function SignupForm() {
                 <FieldDescription>
                   At least 6 characters with uppercase, lowercase, and a number
                 </FieldDescription>
-                <FieldError errors={[errors.password]} />
+                <FieldError
+                  errors={[
+                    errors.password,
+                    state.fieldErrors?.password
+                      ? { message: state.fieldErrors.password }
+                      : undefined,
+                  ]}
+                />
               </Field>
 
-              <Field data-invalid={!!errors.confirmPassword}>
+              <Field
+                data-invalid={
+                  !!errors.confirmPassword ||
+                  !!state.fieldErrors?.confirmPassword
+                }
+              >
                 <FieldLabel htmlFor="confirmPassword">
                   Confirm Password
                 </FieldLabel>
@@ -302,7 +374,14 @@ export default function SignupForm() {
                     )}
                   </button>
                 </div>
-                <FieldError errors={[errors.confirmPassword]} />
+                <FieldError
+                  errors={[
+                    errors.confirmPassword,
+                    state.fieldErrors?.confirmPassword
+                      ? { message: state.fieldErrors.confirmPassword }
+                      : undefined,
+                  ]}
+                />
               </Field>
 
               <div className="flex gap-3 pt-2">

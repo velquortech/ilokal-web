@@ -1,4 +1,4 @@
-import LoginForm from '@/components/auth/LoginForm';
+import { PortalSelector } from '@/components/auth/PortalSelector';
 
 export const metadata = {
   title: 'Login - Ilokal',
@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function LoginPage() {
-  return <LoginForm />;
+  return <PortalSelector />;
 }

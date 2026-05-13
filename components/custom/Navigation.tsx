@@ -47,7 +47,9 @@ export const Navigation = (): JSX.Element => {
           >
             {theme === 'dark' ? <Sun /> : <Moon />}
           </button>
-          <NavbarButton variant="secondary">Login</NavbarButton>
+          <NavbarButton href="/login" variant="secondary">
+            Login
+          </NavbarButton>
           <NavbarButton variant="primary">Book a call</NavbarButton>
         </div>
       </NavBody>
@@ -78,6 +80,7 @@ export const Navigation = (): JSX.Element => {
           ))}
           <div className="flex w-full flex-col gap-4">
             <NavbarButton
+              href="/login"
               onClick={() => setIsMobileMenuOpen(false)}
               variant="primary"
               className="w-full"

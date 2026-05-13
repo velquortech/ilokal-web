@@ -32,7 +32,7 @@ DECLARE
   -- 4 comments per business stored flat (index = (_i-1)*4 + (_j%4) + 1)
   _biz_comments CONSTANT text[] := ARRAY[
     -- Artisan Roastery
-    'Best specialty coffee near Manila Bay. The pour over is exceptional.',
+    'Best specialty coffee in Iloilo. The pour over is exceptional.',
     'Really love the single-origin selection. Skilled baristas.',
     'Cosy vibe and great beans — gets crowded on weekends though.',
     'Top-tier roast quality. The cold brew is a must-try.',
@@ -48,13 +48,13 @@ DECLARE
     'Decent selection for most home repair needs.',
     -- Aura Hair Studio
     'Amazing stylists — my hair colour came out exactly as I wanted.',
-    'Best precision cut in Manila. Very professional team.',
+    'Best precision cut in Iloilo City. Very professional team.',
     'Love the keratin treatment result. Will definitely be back.',
     'Skilled staff, transparent pricing, and great results.',
     -- Luna & Leaf Bistro
     'Turmeric latte is a must-try. Freshest ingredients around.',
     'Love the farm-to-table concept. Bowls are filling and healthy.',
-    'Best healthy dining spot near the bay without question.',
+    'Best healthy dining spot in Iloilo City without question.',
     'The acai bowl and grain bowl are both fantastic.'
   ];
 

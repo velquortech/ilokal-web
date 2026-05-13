@@ -36,6 +36,7 @@ export async function createBusiness(payload: FormData) {
     payload.get('business_category') as string,
   );
   const location = JSON.parse(payload.get('location') as string);
+  const category_id = (payload.get('category_id') as string) || null;
 
   // 4. Perform Uploads
   const logoPath = await uploadFile(
@@ -79,6 +80,7 @@ export async function createBusiness(payload: FormData) {
         shop_name,
         description,
         business_category,
+        category_id,
         location,
         logo_url: logoPath,
         banner_url: bannerPath,
@@ -92,6 +94,38 @@ export async function createBusiness(payload: FormData) {
     .select()
     .single();
   if (error) throw error;
+
+  // 6. Create a branch so the business appears in nearby searches.
+  // The nearby_businesses SQL function JOINs on branches.location (PostGIS GEOGRAPHY),
+  // but registration only stores a JSON address — no branch row means the business
+  // is invisible to the mobile app regardless of verification status.
+  const geometryStr = (location.geometry as string) ?? '';
+  const latMatch = geometryStr.match(/lat:([^,]+)/);
+  const lngMatch = geometryStr.match(/lng:(.+)/);
+  const lat = latMatch ? parseFloat(latMatch[1]) : null;
+  const lng = lngMatch ? parseFloat(lngMatch[1]) : null;
+
+  const formattedAddress = [
+    location.street_address,
+    location.barangay,
+    location.city,
+    location.province,
+    location.zip_code,
+  ]
+    .filter(Boolean)
+    .join(', ');
+
+  const branchPayload: Record<string, unknown> = {
+    business_id: data.id,
+    name: shop_name,
+    address: formattedAddress,
+  };
+  if (lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng)) {
+    branchPayload.location = `POINT(${lng} ${lat})`;
+  }
+
+  await supabase.from('branches').insert(branchPayload);
+
   return data;
 }
 

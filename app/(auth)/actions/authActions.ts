@@ -192,10 +192,11 @@ export async function signupAction(
       profileData.avatar_url = data.avatar_url.trim();
     }
 
-    // Create profile in database
+    // Upsert profile — the on_auth_user_created trigger fires first and inserts
+    // a minimal row; upsert merges in the user's actual name, role, and extras.
     const { error: profileError } = await supabase
       .from('profiles')
-      .insert(profileData);
+      .upsert(profileData, { onConflict: 'id' });
 
     if (profileError) {
       console.error(
@@ -230,6 +231,48 @@ export async function signupAction(
     console.error('[signupAction] Error:', errorMessage);
     throw new Error(errorMessage);
   }
+}
+
+/**
+ * Server Action: Login restricted to admin role only.
+ * Signs the user out and throws if the account is not an admin.
+ */
+export async function loginAsAdmin(
+  email: string,
+  password: string,
+): Promise<{ user: User; message: string }> {
+  const result = await loginAction(email, password);
+
+  if (result.user.role !== 'admin') {
+    const supabase = await createServerSupabaseClient();
+    await supabase.auth.signOut();
+    throw new Error(
+      'This portal is for admins only. Please use the Business portal.',
+    );
+  }
+
+  return result;
+}
+
+/**
+ * Server Action: Login restricted to business_owner role only.
+ * Signs the user out and throws if the account is not a business owner.
+ */
+export async function loginAsBusiness(
+  email: string,
+  password: string,
+): Promise<{ user: User; message: string }> {
+  const result = await loginAction(email, password);
+
+  if (result.user.role !== 'business_owner') {
+    const supabase = await createServerSupabaseClient();
+    await supabase.auth.signOut();
+    throw new Error(
+      'This portal is for business owners only. Please use the Admin portal.',
+    );
+  }
+
+  return result;
 }
 
 /**
@@ -278,5 +321,90 @@ export async function verifySessionAction(): Promise<{ user: User } | null> {
   } catch (error) {
     console.error('[verifySessionAction] Error:', error);
     return null;
+  }
+}
+
+/**
+ * Server Action: Handle signup form submission
+ * Wraps signupAction with validation and error handling for useActionState
+ */
+export async function signupFormAction(
+  _state: unknown,
+  formData: FormData,
+): Promise<{
+  message?: string;
+  error?: string;
+  fieldErrors?: Partial<Record<string, string>>;
+  success?: boolean;
+  role?: string;
+}> {
+  try {
+    const { signupSchema } = await import('@/lib/validation/auth');
+
+    const data = {
+      name: formData.get('name') as string,
+      email: formData.get('email') as string,
+      password: formData.get('password') as string,
+      confirmPassword: formData.get('confirmPassword') as string,
+      phone_number: (formData.get('phone_number') as string) || '',
+      role: formData.get('role') as string,
+      avatar_url: (formData.get('avatar_url') as string) || '',
+    };
+
+    console.log('[signupFormAction] Received form data:', {
+      name: data.name,
+      email: data.email,
+      role: data.role,
+    });
+
+    // Client-side validation with Zod
+    const result = signupSchema.safeParse(data);
+    if (!result.success) {
+      console.log('[signupFormAction] Validation failed:', result.error.issues);
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of result.error.issues) {
+        const field = String(issue.path[0] ?? 'root');
+        if (!fieldErrors[field]) fieldErrors[field] = issue.message;
+      }
+      return { fieldErrors };
+    }
+
+    console.log('[signupFormAction] Validation passed, calling signupAction...');
+
+    // Call the signup server action
+    const response = await signupAction(result.data);
+
+    console.log('[signupFormAction] Signup successful for user:', response.user.id);
+
+    return {
+      success: true,
+      role: response.user.role,
+      message: response.message,
+    };
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : 'Failed to sign up. Please try again.';
+
+    console.error('[signupFormAction] Error:', errorMessage);
+
+    // Check if it's a redirect (from Next.js)
+    if (errorMessage.includes('NEXT_REDIRECT')) {
+      return { success: true };
+    }
+
+    // Check if error is email-related
+    const isEmailError =
+      errorMessage.toLowerCase().includes('email') ||
+      errorMessage.toLowerCase().includes('already registered') ||
+      errorMessage.toLowerCase().includes('already exists') ||
+      errorMessage.toLowerCase().includes('user already');
+
+    if (isEmailError) {
+      return { fieldErrors: { email: errorMessage } };
+    }
+
+    return { error: errorMessage };
   }
 }

@@ -5,21 +5,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { signupSchema, SignupInput } from '@/lib/validation/auth';
-import { signupAction } from '@/app/(auth)/actions';
+import { signupFormAction } from '@/app/(auth)/actions';
 import { ROUTES } from '@/config/routeConfig';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   Field,
   FieldLabel,
@@ -33,23 +26,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  AlertCircle,
-  CheckCircle2,
-  Eye,
-  EyeOff,
-  Loader2,
-  Store,
-  User,
-} from 'lucide-react';
-
-type SignupFormState = {
-  message?: string;
-  error?: string;
-  fieldErrors?: Partial<Record<string, string>>;
-  success?: boolean;
-  role?: string;
-};
+import { Eye, EyeOff, Store, User, Loader2 } from 'lucide-react';
 
 function getRouteForRole(role?: string) {
   switch (role) {
@@ -59,63 +36,6 @@ function getRouteForRole(role?: string) {
       return ROUTES.DASHBOARD.BUSINESS;
     default:
       return ROUTES.BUSINESS.home;
-  }
-}
-
-const EMAIL_ERRORS = new Set([
-  'Email already registered',
-  'Invalid email format',
-  'User already registered',
-]);
-
-async function handleSignup(
-  _state: SignupFormState,
-  formData: FormData,
-): Promise<SignupFormState> {
-  const data = {
-    name: formData.get('name') as string,
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
-    confirmPassword: formData.get('confirmPassword') as string,
-    phone_number: (formData.get('phone_number') as string) || null,
-    role: formData.get('role') as string,
-    avatar_url: (formData.get('avatar_url') as string) || null,
-  };
-
-  const result = signupSchema.safeParse(data);
-  if (!result.success) {
-    const fieldErrors: Record<string, string> = {};
-    for (const issue of result.error.issues) {
-      const field = String(issue.path[0] ?? 'root');
-      if (!fieldErrors[field]) fieldErrors[field] = issue.message;
-    }
-    return { fieldErrors };
-  }
-
-  try {
-    const response = await signupAction(result.data);
-    return {
-      success: true,
-      role: response.user.role,
-      message: response.message,
-    };
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
-      return { success: true };
-    }
-    const message =
-      error instanceof Error
-        ? error.message
-        : 'Failed to sign up. Please try again.';
-
-    if (
-      EMAIL_ERRORS.has(message) ||
-      message.toLowerCase().includes('email already')
-    ) {
-      return { fieldErrors: { email: message } };
-    }
-
-    return { error: message };
   }
 }
 
@@ -150,16 +70,44 @@ export default function SignupForm() {
     mode: 'onBlur',
   });
   const selectedRole = watch('role');
-  const [state, formAction, isPending] = useActionState(handleSignup, {});
+  const [state, formAction, isPending] = useActionState(signupFormAction, {});
   const [step, setStep] = useState<'role' | 'details'>('role');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [lastErrorShown, setLastErrorShown] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isPending) {
+      toast.loading('Creating your account...');
+    }
+  }, [isPending]);
+
+  useEffect(() => {
+    if (state.error && state.error !== lastErrorShown) {
+      toast.error(state.error);
+      setLastErrorShown(state.error);
+    }
+  }, [state.error, lastErrorShown]);
+
+  useEffect(() => {
+    if (state.fieldErrors && Object.keys(state.fieldErrors).length > 0) {
+      const firstError = Object.values(state.fieldErrors)[0];
+      if (firstError && firstError !== lastErrorShown) {
+        toast.error(firstError);
+        setLastErrorShown(firstError);
+      }
+    }
+  }, [state.fieldErrors, lastErrorShown]);
 
   useEffect(() => {
     if (!state.success) return;
-    setShowSuccess(true);
-    const t = setTimeout(() => router.push(getRouteForRole(state.role)), 2500);
+    const message =
+      state.role === 'business_owner'
+        ? 'Welcome! Your business account is ready.'
+        : 'Welcome! Your account is ready.';
+    toast.dismiss();
+    toast.success(message);
+    const t = setTimeout(() => router.push(getRouteForRole(state.role)), 2000);
     return () => clearTimeout(t);
   }, [state.success, state.role, router]);
 
@@ -183,34 +131,6 @@ export default function SignupForm() {
         />
         <StepDot index={2} active={step === 'details'} />
       </div>
-
-      <Dialog open={showSuccess}>
-        <DialogContent showCloseButton={false} className="sm:max-w-sm">
-          <DialogHeader>
-            <div className="bg-primary/10 mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-full">
-              <CheckCircle2 className="text-primary animate-in zoom-in-50 h-8 w-8 duration-300" />
-            </div>
-            <DialogTitle className="text-center text-xl">
-              Welcome to Ilokal!
-            </DialogTitle>
-            <DialogDescription className="text-center">
-              {state.role === 'business_owner'
-                ? 'Your business account is ready. Taking you to your dashboard…'
-                : 'Your account is ready. Taking you to discover local businesses…'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-center pt-2">
-            <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {state.error && !state.fieldErrors && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{state.error}</AlertDescription>
-        </Alert>
-      )}
 
       {step === 'role' && (
         <Card>

@@ -1,5 +1,6 @@
 'use client';
 
+import { Toaster } from 'sonner';
 import { ThemeToggle } from '@/components/custom/ThemeTogge';
 import { AuthHeader } from './component/header';
 
@@ -10,6 +11,7 @@ export default function AuthLayout({
 }) {
   return (
     <div className="flex min-h-screen flex-col">
+      <Toaster position="top-center" />
       <div className="flex shrink-0 items-center justify-between px-8 py-5">
         <AuthHeader />
         <ThemeToggle />

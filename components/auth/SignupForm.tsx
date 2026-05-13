@@ -55,6 +55,7 @@ async function handleSignup(
     name: formData.get('name') as string,
     email: formData.get('email') as string,
     password: formData.get('password') as string,
+    confirmPassword: formData.get('confirmPassword') as string,
     phone_number: (formData.get('phone_number') as string) || null,
     role: formData.get('role') as string,
     avatar_url: (formData.get('avatar_url') as string) || null,

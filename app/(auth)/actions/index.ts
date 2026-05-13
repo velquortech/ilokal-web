@@ -4,6 +4,7 @@ export {
   loginAsAdmin,
   loginAsBusiness,
   signupAction,
+  signupFormAction,
   redirectByRole,
   logoutAction,
   verifySessionAction,

@@ -1,7 +1,8 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useActionState, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,7 +10,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { signupSchema, SignupInput } from '@/lib/validation/auth';
 import { signupFormAction } from '@/app/(auth)/actions';
-import { ROUTES, getDashboardRoute } from '@/config/routeConfig';
+import { ROUTES } from '@/config/routeConfig';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -26,10 +27,24 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Eye, EyeOff, Store, User, Loader2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Eye, EyeOff, Store, User, Loader2, CheckCircle2 } from 'lucide-react';
 
 function getRouteForRole(role?: string) {
-  return getDashboardRoute(role);
+  switch (role) {
+    case 'admin':
+      return ROUTES.DASHBOARD.ADMIN;
+    case 'business_owner':
+      return ROUTES.DASHBOARD.BUSINESS;
+    default:
+      return ROUTES.BUSINESS.home;
+  }
 }
 
 const ROLE_OPTIONS = [
@@ -49,8 +64,10 @@ const ROLE_OPTIONS = [
   },
 ];
 
-export default function SignupForm() {
+function SignupFormContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isMobile = searchParams.get('mobile') === 'true';
   const {
     control,
     register,
@@ -68,6 +85,7 @@ export default function SignupForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [lastErrorShown, setLastErrorShown] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     if (isPending) {
@@ -94,18 +112,55 @@ export default function SignupForm() {
 
   useEffect(() => {
     if (!state.success) return;
-    const message =
-      state.role === 'business_owner'
-        ? 'Welcome! Your business account is ready.'
-        : 'Welcome! Your account is ready.';
-    toast.dismiss();
-    toast.success(message);
-    const t = setTimeout(() => router.push(getRouteForRole(state.role)), 2000);
-    return () => clearTimeout(t);
-  }, [state.success, state.role, router]);
+    if (isMobile) {
+      // For mobile app signups, show modal instead of redirecting
+      toast.dismiss();
+      setShowSuccessModal(true);
+    } else {
+      // For web signups, redirect after showing toast
+      const message =
+        state.role === 'business_owner'
+          ? 'Welcome! Your business account is ready.'
+          : 'Welcome! Your account is ready.';
+      toast.dismiss();
+      toast.success(message);
+      const t = setTimeout(
+        () => router.push(getRouteForRole(state.role)),
+        2000,
+      );
+      return () => clearTimeout(t);
+    }
+  }, [state.success, state.role, router, isMobile]);
 
   return (
     <div className="w-full max-w-md space-y-6">
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent showCloseButton={false} className="sm:max-w-sm">
+          <DialogHeader>
+            <div className="bg-primary/10 mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-full">
+              <CheckCircle2 className="text-primary animate-in zoom-in-50 h-8 w-8 duration-300" />
+            </div>
+            <DialogTitle className="text-center text-xl">
+              Account Created Successfully!
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              {state.role === 'business_owner'
+                ? 'Your business account is ready to use. You can now manage your shop from the mobile app.'
+                : 'Your account is ready to use. Start exploring local businesses and discovering amazing deals!'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 pt-4">
+            <Button
+              onClick={() => setShowSuccessModal(false)}
+              className="w-full"
+              size="lg"
+            >
+              Get Started
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="space-y-1 text-center">
         <h1 className="text-3xl font-bold tracking-tight">Create Account</h1>
         <p className="text-muted-foreground">
@@ -382,6 +437,14 @@ export default function SignupForm() {
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function SignupForm() {
+  return (
+    <Suspense fallback={<div />}>
+      <SignupFormContent />
+    </Suspense>
   );
 }
 

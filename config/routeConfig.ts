@@ -9,6 +9,8 @@ export const ROUTES = {
   // Authentication routes
   AUTH: {
     LOGIN: '/login',
+    ADMIN_LOGIN: '/login/admin',
+    BUSINESS_LOGIN: '/login/business',
     SIGNUP: '/signup',
   },
 

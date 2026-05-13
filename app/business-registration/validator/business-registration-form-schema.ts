@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 export const businessCategorySchema = z
   .object({
+    id: z.string().uuid().optional(),
     type: z.enum(['predefined', 'custom']),
     name: z.string().min(1, 'Category is required'),
     description: z.string().optional(),

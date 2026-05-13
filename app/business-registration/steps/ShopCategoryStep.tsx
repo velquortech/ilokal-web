@@ -165,6 +165,7 @@ export function ShopCategoryStep() {
                           form.setValue(
                             'business_category',
                             {
+                              id: isSelected ? undefined : item.id,
                               type: 'predefined',
                               name: isSelected ? '' : item.name,
                               description: item.description,

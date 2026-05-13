@@ -96,7 +96,7 @@ describe('Search API Routes', () => {
             rating: 4.5,
             review_count: 10,
             status: 'verified' as const,
-            location: 'Manila',
+            location: 'Iloilo City',
             image_url: 'https://example.com/image.jpg',
           },
         ],

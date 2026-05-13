@@ -10,6 +10,7 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 export type BusinessCategory = {
+  id: string;
   name: string;
   description: string;
   imageURL: string;
@@ -32,13 +33,12 @@ type BusinessTypeReturnProps = Omit<BusinessType, 'icon' | 'items'> & {
 export const fetchBusinessData = async (): Promise<BusinessType[]> => {
   const data = await http.get<BusinessTypeReturnProps[]>('/business-types');
 
-  // Transform the DB structure back to your original format
   return data.map((type) => ({
     name: type.name,
     description: type.description,
-    // Map the string back to the Lucide component
     icon: iconMap[type.icon] || Coffee,
     items: type.business_categories.map((cat) => ({
+      id: cat.id,
       name: cat.name,
       description: cat.description,
       imageURL: cat.image_url,

@@ -233,6 +233,48 @@ export async function signupAction(
 }
 
 /**
+ * Server Action: Login restricted to admin role only.
+ * Signs the user out and throws if the account is not an admin.
+ */
+export async function loginAsAdmin(
+  email: string,
+  password: string,
+): Promise<{ user: User; message: string }> {
+  const result = await loginAction(email, password);
+
+  if (result.user.role !== 'admin') {
+    const supabase = await createServerSupabaseClient();
+    await supabase.auth.signOut();
+    throw new Error(
+      'This portal is for admins only. Please use the Business portal.',
+    );
+  }
+
+  return result;
+}
+
+/**
+ * Server Action: Login restricted to business_owner role only.
+ * Signs the user out and throws if the account is not a business owner.
+ */
+export async function loginAsBusiness(
+  email: string,
+  password: string,
+): Promise<{ user: User; message: string }> {
+  const result = await loginAction(email, password);
+
+  if (result.user.role !== 'business_owner') {
+    const supabase = await createServerSupabaseClient();
+    await supabase.auth.signOut();
+    throw new Error(
+      'This portal is for business owners only. Please use the Admin portal.',
+    );
+  }
+
+  return result;
+}
+
+/**
  * Server Action: Redirect user to appropriate dashboard
  */
 export async function redirectByRole(role: string): Promise<void> {

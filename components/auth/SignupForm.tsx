@@ -1,17 +1,25 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { cn } from '@/lib/utils';
 import { signupSchema, SignupInput } from '@/lib/validation/auth';
-import { signupAction, redirectByRole } from '@/app/(auth)/actions';
+import { signupAction } from '@/app/(auth)/actions';
 import { ROUTES } from '@/config/routeConfig';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Field,
   FieldLabel,
@@ -39,7 +47,20 @@ type SignupFormState = {
   message?: string;
   error?: string;
   fieldErrors?: Partial<Record<string, string>>;
+  success?: boolean;
+  role?: string;
 };
+
+function getRouteForRole(role?: string) {
+  switch (role) {
+    case 'admin':
+      return ROUTES.DASHBOARD.ADMIN;
+    case 'business_owner':
+      return ROUTES.DASHBOARD.BUSINESS;
+    default:
+      return ROUTES.BUSINESS.home;
+  }
+}
 
 const EMAIL_ERRORS = new Set([
   'Email already registered',
@@ -73,11 +94,14 @@ async function handleSignup(
 
   try {
     const response = await signupAction(result.data);
-    await redirectByRole(response.user.role);
-    return { message: response.message };
+    return {
+      success: true,
+      role: response.user.role,
+      message: response.message,
+    };
   } catch (error) {
     if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
-      return { message: 'Account created! Redirecting...' };
+      return { success: true };
     }
     const message =
       error instanceof Error
@@ -113,6 +137,7 @@ const ROLE_OPTIONS = [
 ];
 
 export default function SignupForm() {
+  const router = useRouter();
   const {
     control,
     register,
@@ -125,13 +150,18 @@ export default function SignupForm() {
     mode: 'onBlur',
   });
   const selectedRole = watch('role');
-  const [state, formAction, isPending] = useActionState(handleSignup, {
-    message: '',
-    error: '',
-  });
+  const [state, formAction, isPending] = useActionState(handleSignup, {});
   const [step, setStep] = useState<'role' | 'details'>('role');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!state.success) return;
+    setShowSuccess(true);
+    const t = setTimeout(() => router.push(getRouteForRole(state.role)), 2500);
+    return () => clearTimeout(t);
+  }, [state.success, state.role, router]);
 
   return (
     <div className="w-full max-w-md space-y-6">
@@ -154,14 +184,26 @@ export default function SignupForm() {
         <StepDot index={2} active={step === 'details'} />
       </div>
 
-      {state.message && (
-        <Alert className="border-primary/30 bg-primary/5 text-primary dark:bg-primary/10">
-          <CheckCircle2 className="h-4 w-4" />
-          <AlertDescription className="text-foreground">
-            {state.message}
-          </AlertDescription>
-        </Alert>
-      )}
+      <Dialog open={showSuccess}>
+        <DialogContent showCloseButton={false} className="sm:max-w-sm">
+          <DialogHeader>
+            <div className="bg-primary/10 mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-full">
+              <CheckCircle2 className="text-primary animate-in zoom-in-50 h-8 w-8 duration-300" />
+            </div>
+            <DialogTitle className="text-center text-xl">
+              Welcome to Ilokal!
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              {state.role === 'business_owner'
+                ? 'Your business account is ready. Taking you to your dashboard…'
+                : 'Your account is ready. Taking you to discover local businesses…'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center pt-2">
+            <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {state.error && !state.fieldErrors && (
         <Alert variant="destructive">

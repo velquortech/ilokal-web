@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { signupSchema, SignupInput } from '@/lib/validation/auth';
 import { signupFormAction } from '@/app/(auth)/actions';
-import { ROUTES } from '@/config/routeConfig';
+import { ROUTES, getDashboardRoute } from '@/config/routeConfig';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -29,14 +29,7 @@ import {
 import { Eye, EyeOff, Store, User, Loader2 } from 'lucide-react';
 
 function getRouteForRole(role?: string) {
-  switch (role) {
-    case 'admin':
-      return ROUTES.DASHBOARD.ADMIN;
-    case 'business_owner':
-      return ROUTES.DASHBOARD.BUSINESS;
-    default:
-      return ROUTES.BUSINESS.home;
-  }
+  return getDashboardRoute(role);
 }
 
 const ROLE_OPTIONS = [

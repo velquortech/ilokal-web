@@ -11,6 +11,7 @@ export default async function Layout({
 }) {
   const user = await getBusinessUserOrRedirect();
   const business_shop = await getMyBusinesses();
+
   return (
     <BusinessLayout user={user} shop={business_shop}>
       {children}

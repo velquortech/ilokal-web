@@ -8,6 +8,7 @@
  */
 
 import { redirect } from 'next/navigation';
+import { isRedirectError } from 'next/dist/client/components/redirect-error';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { User } from '@/lib/types/user';
 import { ROUTES } from '@/config/routeConfig';
@@ -106,6 +107,7 @@ export async function getAdminUserOrRedirect(): Promise<User> {
       avatar_url: profile.avatar_url,
     };
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     console.error('[getAdminUserOrRedirect] Error:', error);
     redirect(ROUTES.AUTH.LOGIN);
   }
@@ -165,6 +167,7 @@ export async function getBusinessUserOrRedirect(): Promise<User> {
       avatar_url: profile.avatar_url,
     };
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     console.error('[getBusinessUserOrRedirect] Error:', error);
     redirect(ROUTES.AUTH.LOGIN);
   }

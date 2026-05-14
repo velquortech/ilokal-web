@@ -369,12 +369,17 @@ export async function signupFormAction(
       return { fieldErrors };
     }
 
-    console.log('[signupFormAction] Validation passed, calling signupAction...');
+    console.log(
+      '[signupFormAction] Validation passed, calling signupAction...',
+    );
 
     // Call the signup server action
     const response = await signupAction(result.data);
 
-    console.log('[signupFormAction] Signup successful for user:', response.user.id);
+    console.log(
+      '[signupFormAction] Signup successful for user:',
+      response.user.id,
+    );
 
     return {
       success: true,

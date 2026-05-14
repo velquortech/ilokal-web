@@ -2,19 +2,12 @@
 
 import Link from 'next/link';
 import { motion } from 'motion/react';
-import { Building2, ChevronRight, ShieldCheck } from 'lucide-react';
+import { Building2, ChevronRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ROUTES } from '@/config/routeConfig';
 import { cn } from '@/lib/utils';
 
 const portals = [
-  {
-    href: ROUTES.AUTH.ADMIN_LOGIN,
-    label: 'Admin Portal',
-    description: 'Manage the platform, users, and settings',
-    icon: ShieldCheck,
-    iconClass: 'bg-foreground text-background',
-  },
   {
     href: ROUTES.AUTH.BUSINESS_LOGIN,
     label: 'Business Portal',

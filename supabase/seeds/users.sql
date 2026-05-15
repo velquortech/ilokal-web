@@ -145,6 +145,30 @@ VALUES
   ('77777777-7777-7777-7777-777777777705', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111105', 4, 'Healthy and filling bowls. Turmeric latte is a must-try.')
 ON CONFLICT (id) DO NOTHING;
 
+-- Subscriptions: testuser follows 3 of the new businesses
+INSERT INTO public.subscriptions (id, user_id, business_id)
+VALUES
+  ('55555555-5555-5555-5555-555555555504', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111106'),
+  ('55555555-5555-5555-5555-555555555505', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111111'),
+  ('55555555-5555-5555-5555-555555555506', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111116')
+ON CONFLICT (user_id, business_id) DO NOTHING;
+
+-- Ratings: testuser rates all 11 new businesses
+INSERT INTO public.business_ratings (id, user_id, business_id, rating, comment)
+VALUES
+  ('77777777-7777-7777-7777-777777777706', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111106', 5, 'Great craft beer selection and the pulutan platter is massive. Perfect night out.'),
+  ('77777777-7777-7777-7777-777777777707', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111107', 5, 'Best isaw in Iloilo. Sauce is perfectly balanced. Always comes back here.'),
+  ('77777777-7777-7777-7777-777777777708', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111108', 4, 'Everything I need just around the corner. Tita Nena is so welcoming.'),
+  ('77777777-7777-7777-7777-777777777709', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111109', 5, 'Beautiful hablon pieces — bought a blouse and a scarf. Proudly Ilonggo.'),
+  ('77777777-7777-7777-7777-777777777710', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111110', 5, 'Amazing Filipino lit selection. Staff recommended a great local author novel.'),
+  ('77777777-7777-7777-7777-777777777711', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111111', 5, 'The hilot massage was incredible. Most relaxed I have felt in months.'),
+  ('77777777-7777-7777-7777-777777777712', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111112', 4, 'Clean gym, great equipment, and the yoga class instructor is excellent.'),
+  ('77777777-7777-7777-7777-777777777713', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111113', 4, 'Screen replacement done in under an hour at a very fair price.'),
+  ('77777777-7777-7777-7777-777777777714', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111114', 5, 'Charming guesthouse with the most genuine Filipino hospitality. Highly recommend.'),
+  ('77777777-7777-7777-7777-777777777715', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111115', 5, 'Hablon weaving class was eye-opening. Took home a piece I made myself.'),
+  ('77777777-7777-7777-7777-777777777716', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111116', 5, 'Amazing live band on Friday night. The cocktail pitcher was great value too.')
+ON CONFLICT (id) DO NOTHING;
+
 -- ── Bulk test users (60 total: 20 per role) ───────────────────────────────────
 -- admin1-20@test.local | business_owner1-20@test.local | user1-20@test.local
 -- Password for all: sample123

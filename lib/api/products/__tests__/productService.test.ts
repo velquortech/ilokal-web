@@ -16,9 +16,11 @@ describe('productService', () => {
 
   describe('createCategory()', () => {
     it('returns CONFLICT when slug already exists', async () => {
-      vi.mocked(q.getCategoryBySlug).mockResolvedValueOnce(
-        { id: 'cat-1', name: 'Existing', slug: 'food' } as unknown as Awaited<ReturnType<typeof q.getCategoryBySlug>>,
-      );
+      vi.mocked(q.getCategoryBySlug).mockResolvedValueOnce({
+        id: 'cat-1',
+        name: 'Existing',
+        slug: 'food',
+      } as unknown as Awaited<ReturnType<typeof q.getCategoryBySlug>>);
 
       const res = await svc.createCategory({ name: 'Food', slug: 'food' });
       expect(res.success).toBe(false);
@@ -38,7 +40,9 @@ describe('productService', () => {
           })),
         })),
       } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
-      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(supabaseClient);
+      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+        supabaseClient,
+      );
 
       const res = await svc.createCategory({ name: 'Food', slug: 'food' });
       expect(res.success).toBe(true);
@@ -52,12 +56,17 @@ describe('productService', () => {
         from: vi.fn(() => ({
           insert: vi.fn(() => ({
             select: vi.fn(() => ({
-              single: vi.fn(async () => ({ data: null, error: { message: 'DB error' } })),
+              single: vi.fn(async () => ({
+                data: null,
+                error: { message: 'DB error' },
+              })),
             })),
           })),
         })),
       } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
-      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(supabaseClient);
+      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+        supabaseClient,
+      );
 
       const res = await svc.createCategory({ name: 'Food', slug: 'food' });
       expect(res.success).toBe(false);
@@ -75,12 +84,16 @@ describe('productService', () => {
     });
 
     it('returns CONFLICT when new slug already taken by another category', async () => {
-      vi.mocked(q.getCategoryById).mockResolvedValueOnce(
-        { id: 'cat-1', slug: 'food', name: 'Food' } as unknown as Awaited<ReturnType<typeof q.getCategoryById>>,
-      );
-      vi.mocked(q.getCategoryBySlug).mockResolvedValueOnce(
-        { id: 'cat-2', slug: 'drinks', name: 'Drinks' } as unknown as Awaited<ReturnType<typeof q.getCategoryBySlug>>,
-      );
+      vi.mocked(q.getCategoryById).mockResolvedValueOnce({
+        id: 'cat-1',
+        slug: 'food',
+        name: 'Food',
+      } as unknown as Awaited<ReturnType<typeof q.getCategoryById>>);
+      vi.mocked(q.getCategoryBySlug).mockResolvedValueOnce({
+        id: 'cat-2',
+        slug: 'drinks',
+        name: 'Drinks',
+      } as unknown as Awaited<ReturnType<typeof q.getCategoryBySlug>>);
 
       const res = await svc.updateCategory('cat-1', { slug: 'drinks' });
       expect(res.success).toBe(false);
@@ -88,23 +101,34 @@ describe('productService', () => {
     });
 
     it('succeeds when category exists and update works', async () => {
-      vi.mocked(q.getCategoryById).mockResolvedValueOnce(
-        { id: 'cat-1', slug: 'food', name: 'Food' } as unknown as Awaited<ReturnType<typeof q.getCategoryById>>,
-      );
+      vi.mocked(q.getCategoryById).mockResolvedValueOnce({
+        id: 'cat-1',
+        slug: 'food',
+        name: 'Food',
+      } as unknown as Awaited<ReturnType<typeof q.getCategoryById>>);
 
-      const updatedCategory = { id: 'cat-1', name: 'Updated Food', slug: 'food' };
+      const updatedCategory = {
+        id: 'cat-1',
+        name: 'Updated Food',
+        slug: 'food',
+      };
       const supabaseClient = {
         from: vi.fn(() => ({
           update: vi.fn(() => ({
             eq: vi.fn(() => ({
               select: vi.fn(() => ({
-                single: vi.fn(async () => ({ data: updatedCategory, error: null })),
+                single: vi.fn(async () => ({
+                  data: updatedCategory,
+                  error: null,
+                })),
               })),
             })),
           })),
         })),
       } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
-      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(supabaseClient);
+      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+        supabaseClient,
+      );
 
       const res = await svc.updateCategory('cat-1', { name: 'Updated Food' });
       expect(res.success).toBe(true);
@@ -122,12 +146,14 @@ describe('productService', () => {
     });
 
     it('returns CONFLICT when category has products', async () => {
-      vi.mocked(q.getCategoryById).mockResolvedValueOnce(
-        { id: 'cat-1', name: 'Food', slug: 'food' } as unknown as Awaited<ReturnType<typeof q.getCategoryById>>,
-      );
-      vi.mocked(q.getProductsByCategory).mockResolvedValueOnce(
-        [{ id: 'p1', name: 'Latte' }] as unknown as Awaited<ReturnType<typeof q.getProductsByCategory>>,
-      );
+      vi.mocked(q.getCategoryById).mockResolvedValueOnce({
+        id: 'cat-1',
+        name: 'Food',
+        slug: 'food',
+      } as unknown as Awaited<ReturnType<typeof q.getCategoryById>>);
+      vi.mocked(q.getProductsByCategory).mockResolvedValueOnce([
+        { id: 'p1', name: 'Latte' },
+      ] as unknown as Awaited<ReturnType<typeof q.getProductsByCategory>>);
 
       const res = await svc.deleteCategory('cat-1');
       expect(res.success).toBe(false);
@@ -135,9 +161,11 @@ describe('productService', () => {
     });
 
     it('succeeds when category is empty', async () => {
-      vi.mocked(q.getCategoryById).mockResolvedValueOnce(
-        { id: 'cat-1', name: 'Food', slug: 'food' } as unknown as Awaited<ReturnType<typeof q.getCategoryById>>,
-      );
+      vi.mocked(q.getCategoryById).mockResolvedValueOnce({
+        id: 'cat-1',
+        name: 'Food',
+        slug: 'food',
+      } as unknown as Awaited<ReturnType<typeof q.getCategoryById>>);
       vi.mocked(q.getProductsByCategory).mockResolvedValueOnce([]);
 
       const supabaseClient = {
@@ -147,7 +175,9 @@ describe('productService', () => {
           })),
         })),
       } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
-      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(supabaseClient);
+      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+        supabaseClient,
+      );
 
       const res = await svc.deleteCategory('cat-1');
       expect(res.success).toBe(true);
@@ -201,7 +231,9 @@ describe('productService', () => {
         is_available: true,
       };
       vi.mocked(q.getCategoryById).mockResolvedValueOnce(
-        mockCategory as unknown as Awaited<ReturnType<typeof q.getCategoryById>>,
+        mockCategory as unknown as Awaited<
+          ReturnType<typeof q.getCategoryById>
+        >,
       );
 
       const insertSpy = vi.fn(() => ({
@@ -212,7 +244,9 @@ describe('productService', () => {
       const supabaseClient = {
         from: vi.fn(() => ({ insert: insertSpy })),
       } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
-      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(supabaseClient);
+      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+        supabaseClient,
+      );
 
       const res = await svc.createProduct('b1', {
         category_id: 'c1',
@@ -236,7 +270,9 @@ describe('productService', () => {
         price_unit: 'session',
       };
       vi.mocked(q.getCategoryById).mockResolvedValueOnce(
-        mockCategory as unknown as Awaited<ReturnType<typeof q.getCategoryById>>,
+        mockCategory as unknown as Awaited<
+          ReturnType<typeof q.getCategoryById>
+        >,
       );
 
       const insertSpy = vi.fn(() => ({
@@ -247,7 +283,9 @@ describe('productService', () => {
       const supabaseClient = {
         from: vi.fn(() => ({ insert: insertSpy })),
       } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
-      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(supabaseClient);
+      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+        supabaseClient,
+      );
 
       const res = await svc.createProduct('b1', {
         category_id: 'c1',
@@ -259,15 +297,25 @@ describe('productService', () => {
 
       expect(res.success).toBe(true);
       expect(insertSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ price_type: 'per_hour', price_unit: 'session' }),
+        expect.objectContaining({
+          price_type: 'per_hour',
+          price_unit: 'session',
+        }),
       );
     });
 
     it('passes is_available: false through to insert', async () => {
       const mockCategory = { id: 'c1', name: 'Cat' };
-      const mockProduct = { id: 'p1', name: 'Draft', business_id: 'b1', is_available: false };
+      const mockProduct = {
+        id: 'p1',
+        name: 'Draft',
+        business_id: 'b1',
+        is_available: false,
+      };
       vi.mocked(q.getCategoryById).mockResolvedValueOnce(
-        mockCategory as unknown as Awaited<ReturnType<typeof q.getCategoryById>>,
+        mockCategory as unknown as Awaited<
+          ReturnType<typeof q.getCategoryById>
+        >,
       );
 
       const insertSpy = vi.fn(() => ({
@@ -278,7 +326,9 @@ describe('productService', () => {
       const supabaseClient = {
         from: vi.fn(() => ({ insert: insertSpy })),
       } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
-      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(supabaseClient);
+      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+        supabaseClient,
+      );
 
       const res = await svc.createProduct('b1', {
         category_id: 'c1',
@@ -294,19 +344,25 @@ describe('productService', () => {
     });
 
     it('returns INTERNAL_ERROR when DB insert fails', async () => {
-      vi.mocked(q.getCategoryById).mockResolvedValueOnce(
-        { id: 'c1', name: 'Cat' } as unknown as Awaited<ReturnType<typeof q.getCategoryById>>,
-      );
+      vi.mocked(q.getCategoryById).mockResolvedValueOnce({
+        id: 'c1',
+        name: 'Cat',
+      } as unknown as Awaited<ReturnType<typeof q.getCategoryById>>);
       const supabaseClient = {
         from: vi.fn(() => ({
           insert: vi.fn(() => ({
             select: vi.fn(() => ({
-              single: vi.fn(async () => ({ data: null, error: { message: 'DB error' } })),
+              single: vi.fn(async () => ({
+                data: null,
+                error: { message: 'DB error' },
+              })),
             })),
           })),
         })),
       } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
-      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(supabaseClient);
+      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+        supabaseClient,
+      );
 
       const res = await svc.createProduct('b1', {
         category_id: 'c1',
@@ -357,13 +413,18 @@ describe('productService', () => {
           update: vi.fn(() => ({
             eq: vi.fn(() => ({
               select: vi.fn(() => ({
-                single: vi.fn(async () => ({ data: updatedProduct, error: null })),
+                single: vi.fn(async () => ({
+                  data: updatedProduct,
+                  error: null,
+                })),
               })),
             })),
           })),
         })),
       } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
-      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(supabaseClient);
+      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+        supabaseClient,
+      );
 
       const res = await svc.updateProduct('p1', 'b1', {
         name: 'Updated',
@@ -402,7 +463,9 @@ describe('productService', () => {
       const supabaseClient = {
         from: vi.fn(() => ({ update: updateSpy })),
       } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
-      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(supabaseClient);
+      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+        supabaseClient,
+      );
 
       const res = await svc.deleteProduct('p1', 'b1');
       expect(res.success).toBe(true);

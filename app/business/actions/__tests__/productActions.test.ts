@@ -91,7 +91,11 @@ describe('createProductAction', () => {
   });
 
   it('delegates to productService.createProduct and returns success', async () => {
-    const mockProduct: Partial<Product> = { id: 'prod-1', name: 'Test', price: 100 };
+    const mockProduct: Partial<Product> = {
+      id: 'prod-1',
+      name: 'Test',
+      price: 100,
+    };
     const productService = await import('@/lib/api/products/productService');
     vi.mocked(productService.createProduct).mockResolvedValueOnce({
       success: true,
@@ -123,7 +127,9 @@ describe('getBusinessProductsAction', () => {
     mockAuthorized();
     vi.mocked(productQuery.getProductsByBusinessId).mockResolvedValueOnce({
       products: [{ id: 'p1', name: 'Test' }],
-    } as unknown as Awaited<ReturnType<typeof productQuery.getProductsByBusinessId>>);
+    } as unknown as Awaited<
+      ReturnType<typeof productQuery.getProductsByBusinessId>
+    >);
 
     const res = await getBusinessProductsAction();
     expect(res.success).toBe(true);
@@ -134,7 +140,9 @@ describe('getBusinessProductsAction', () => {
     mockAuthorized();
     vi.mocked(productQuery.getProductsByBusinessId).mockResolvedValueOnce({
       error: 'Failed to fetch business products',
-    } as unknown as Awaited<ReturnType<typeof productQuery.getProductsByBusinessId>>);
+    } as unknown as Awaited<
+      ReturnType<typeof productQuery.getProductsByBusinessId>
+    >);
 
     const res = await getBusinessProductsAction();
     expect(res.success).toBe(false);
@@ -195,7 +203,10 @@ describe('uploadProductImageAction', () => {
   it('returns VALIDATION_ERROR when file exceeds 5 MB', async () => {
     const bigContent = new Uint8Array(6 * 1024 * 1024);
     const fd = new FormData();
-    fd.append('file', new File([bigContent], 'big.jpg', { type: 'image/jpeg' }));
+    fd.append(
+      'file',
+      new File([bigContent], 'big.jpg', { type: 'image/jpeg' }),
+    );
     const res = await uploadProductImageAction(fd);
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('VALIDATION_ERROR');
@@ -204,7 +215,10 @@ describe('uploadProductImageAction', () => {
 
   it('returns VALIDATION_ERROR for a disallowed file type', async () => {
     const fd = new FormData();
-    fd.append('file', new File(['data'], 'doc.pdf', { type: 'application/pdf' }));
+    fd.append(
+      'file',
+      new File(['data'], 'doc.pdf', { type: 'application/pdf' }),
+    );
     const res = await uploadProductImageAction(fd);
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('VALIDATION_ERROR');
@@ -215,12 +229,16 @@ describe('uploadProductImageAction', () => {
     const mockSupabase = {
       storage: {
         from: vi.fn(() => ({
-          upload: vi.fn().mockResolvedValue({ error: { message: 'bucket not found' } }),
+          upload: vi
+            .fn()
+            .mockResolvedValue({ error: { message: 'bucket not found' } }),
           getPublicUrl: vi.fn(),
         })),
       },
     };
-    (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(mockSupabase);
+    (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+      mockSupabase,
+    );
 
     const fd = new FormData();
     fd.append('file', new File(['data'], 'img.png', { type: 'image/png' }));
@@ -240,7 +258,9 @@ describe('uploadProductImageAction', () => {
         })),
       },
     };
-    (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(mockSupabase);
+    (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+      mockSupabase,
+    );
 
     const fd = new FormData();
     fd.append('file', new File(['data'], 'img.png', { type: 'image/png' }));

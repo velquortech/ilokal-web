@@ -10,9 +10,8 @@ vi.mock('@/lib/services/client', () => ({
 
 // Import after mock is registered
 const { default: http } = await import('@/lib/services/client');
-const { default: productCategoryService } = await import(
-  '@/lib/services/productCategoryService'
-);
+const { default: productCategoryService } =
+  await import('@/lib/services/productCategoryService');
 
 interface CategoriesResponse {
   categories: Category[];

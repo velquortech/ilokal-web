@@ -404,7 +404,10 @@ describe('productQuery', () => {
         { id: 'p2', name: 'Latte', business_id: 'biz-1' },
       ];
 
-      chainedMock.order.mockResolvedValueOnce({ data: mockProducts, error: null });
+      chainedMock.order.mockResolvedValueOnce({
+        data: mockProducts,
+        error: null,
+      });
 
       const result = await productQuery.getProductsByBusinessId('biz-1');
 
@@ -446,8 +449,15 @@ describe('productQuery', () => {
 
   describe('getProductById()', () => {
     it('should return the product when found', async () => {
-      const mockProduct = { id: 'p1', name: 'Flat White', business_id: 'biz-1' };
-      chainedMock.single.mockResolvedValueOnce({ data: mockProduct, error: null });
+      const mockProduct = {
+        id: 'p1',
+        name: 'Flat White',
+        business_id: 'biz-1',
+      };
+      chainedMock.single.mockResolvedValueOnce({
+        data: mockProduct,
+        error: null,
+      });
 
       const result = await productQuery.getProductById('p1');
 

@@ -48,54 +48,32 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { data: userData } = await supabase
-    .from('users')
+    .from('profiles')
     .select('role, id')
     .eq('id', user?.id)
     .single();
 
-  const baseAdminURL = `/backend/${userData?.id}`;
-  const baseUserURL = `/employee/${userData?.id}`;
-  const baseStaffURL = `/staff/${userData?.id}`;
+  const baseAdminURL = `/admin/${userData?.id}`;
+  const baseUserURL = `/business/${userData?.id}`;
 
-  const protectedAdminRoutes = [
-    'dashboard',
-    'users',
-    'leave-categories',
-    'leaves',
-    'user_credits',
-    'attendance',
-    'personal_management',
-    'document_request',
-    'requested_documents',
-    'awards',
-    'nominated_awards',
-  ];
-  const employeeRestrictedRoutes = ['/backend', '/staff'];
-  const staffRestrictedRoutes = ['/backend', '/employee'];
+  const protectedRoutes = ['business', 'shop', 'product-catalogues'];
+
+  const businessRestrictedRoutes = ['/admin'];
   const adminRestrictedRoutes = ['/employee', '/staff'];
 
-  const isProtected = protectedAdminRoutes.some((route) =>
-    pathname.endsWith(route),
-  );
+  const isProtected = protectedRoutes.some((route) => pathname.endsWith(route));
 
   if (!user && isProtected) {
     return NextResponse.redirect(new URL('/auth/sign-in', request.url));
   }
 
   if (
-    userData?.role === 'employee' &&
-    isRestrictedPath(employeeRestrictedRoutes, pathname)
+    userData?.role === 'business_owner' &&
+    isRestrictedPath(businessRestrictedRoutes, pathname)
   ) {
     return NextResponse.redirect(
-      new URL(`${baseUserURL}/dashboard`, request.url),
+      new URL(`${baseUserURL}/business`, request.url),
     );
-  }
-
-  if (
-    userData?.role === 'staff' &&
-    isRestrictedPath(staffRestrictedRoutes, pathname)
-  ) {
-    return NextResponse.redirect(new URL(`${baseStaffURL}/user`, request.url));
   }
 
   if (

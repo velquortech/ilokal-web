@@ -1,12 +1,10 @@
-import { http } from '@/services';
 import { Coffee, Store, Scissors, Plane, LucideIcon } from 'lucide-react';
 
-// A map to turn the string stored in the DB back into a Component
 const iconMap: Record<string, LucideIcon> = {
-  Coffee: Coffee,
-  Store: Store,
-  Scissors: Scissors,
-  Plane: Plane,
+  Coffee,
+  Store,
+  Scissors,
+  Plane,
 };
 
 export type BusinessCategory = {
@@ -23,20 +21,25 @@ export type BusinessType = {
   items: BusinessCategory[];
 };
 
-type BusinessTypeReturnProps = Omit<BusinessType, 'icon' | 'items'> & {
-  icon: keyof typeof iconMap;
-  business_categories: (Omit<BusinessCategory, 'imageURL'> & {
-    image_url: string;
-  })[];
+export type RawBusinessCategory = {
+  id: string;
+  name: string;
+  description: string;
+  image_url: string;
 };
 
-export const fetchBusinessData = async (): Promise<BusinessType[]> => {
-  const data = await http.get<BusinessTypeReturnProps[]>('/business-types');
+export type RawBusinessType = {
+  name: string;
+  description: string;
+  icon: string;
+  business_categories: RawBusinessCategory[];
+};
 
-  return data.map((type) => ({
+export function transformBusinessTypes(raw: RawBusinessType[]): BusinessType[] {
+  return raw.map((type) => ({
     name: type.name,
     description: type.description,
-    icon: iconMap[type.icon] || Coffee,
+    icon: iconMap[type.icon] ?? Coffee,
     items: type.business_categories.map((cat) => ({
       id: cat.id,
       name: cat.name,
@@ -44,4 +47,4 @@ export const fetchBusinessData = async (): Promise<BusinessType[]> => {
       imageURL: cat.image_url,
     })),
   }));
-};
+}

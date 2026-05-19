@@ -99,9 +99,9 @@ describe('authActions', () => {
           }),
         };
       }
-      // Second call: insert -> return success
+      // Second call: upsert -> return success
       if (fromCall === 2) {
-        return { insert: () => Promise.resolve({ error: null }) };
+        return { upsert: () => Promise.resolve({ error: null }) };
       }
       // Third call: fetch created profile
       return {

@@ -19,37 +19,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { Settings, Check, List, LucideIcon } from 'lucide-react';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useMultiStepForm } from '../provider/registration-form-provider';
 
 import { Field, FieldError } from '@/components/ui/field';
 import { Controller } from 'react-hook-form';
-import { BusinessType, fetchBusinessData } from '../api/fetchCategories';
 
 export function ShopCategoryStep() {
-  const { form } = useMultiStepForm();
+  const { form, businessTypes } = useMultiStepForm();
   const [selected, setSelected] = useState<string>();
   const category = form.watch('business_category');
-
-  const [businessTypes, setBusinessTypes] = useState<BusinessType[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const data = await fetchBusinessData();
-        setBusinessTypes(data);
-      } catch (error: unknown) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, []);
-
-  if (loading) return <div>Loading directory...</div>;
 
   const items =
     selected !== 'All' && selected !== undefined

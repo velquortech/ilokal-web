@@ -126,7 +126,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Permissions-Policy',
-            value: 'geolocation=(), microphone=(), camera=()',
+            value: 'geolocation=(self), microphone=(), camera=()',
           },
           ...(process.env.NODE_ENV === 'production'
             ? [
@@ -142,7 +142,7 @@ const nextConfig: NextConfig = {
                 default-src 'self';
                 script-src 'self' 'unsafe-eval' 'unsafe-inline' https://maps.googleapis.com https://www.youtube.com https://s.ytimg.com;
                 style-src 'self' 'unsafe-inline';
-                img-src ${buildCSPImageSources()} https://i.ytimg.com;
+                img-src ${buildCSPImageSources()} https://i.ytimg.com https://*.tile.openstreetmap.org;
                 frame-src 'self' https://www.google.com https://www.youtube.com https://youtube.com;
                 connect-src 'self' https://maps.googleapis.com http://127.0.0.1:54321 ${process.env.NEXT_PUBLIC_SUPABASE_URL || ''};
                 font-src 'self' data:;

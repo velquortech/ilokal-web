@@ -33,7 +33,17 @@ export const step2Schema = z.object({
     barangay: z.string().min(1),
     street_address: z.string().min(1),
     zip_code: z.string().min(1),
-    geometry: z.string().min(1), // could be lat/lng JSON
+    latitude: z
+      .number({ error: 'Must be a number' })
+      .min(-90, 'Invalid latitude')
+      .max(90, 'Invalid latitude')
+      .optional(),
+    longitude: z
+      .number({ error: 'Must be a number' })
+      .min(-180, 'Invalid longitude')
+      .max(180, 'Invalid longitude')
+      .optional(),
+    geometry: z.string().min(1, 'Set your location coordinates to continue'),
   }),
 });
 

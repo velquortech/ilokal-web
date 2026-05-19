@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -12,11 +14,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Loader2, LocateFixed } from 'lucide-react';
 
 import { Controller } from 'react-hook-form';
 import { useMultiStepForm } from '../provider/registration-form-provider';
 import { Field, FieldError } from '@/components/ui/field';
 import { getCitiesByProvince, getBarangaysByCity } from '@/lib/ph-locations';
+
+const LocationPicker = dynamic(
+  () => import('../components/LocationPicker').then((m) => m.LocationPicker),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="bg-muted h-full w-full animate-pulse rounded-md" />
+    ),
+  },
+);
 
 const LOCKED_PROVINCE = 'ILOILO';
 
@@ -91,8 +104,13 @@ function BasicInformation() {
 
 function Location() {
   const { form } = useMultiStepForm();
+  const [isGeolocating, setIsGeolocating] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
 
   const selectedCity = form.watch('location.city');
+  const latitude = form.watch('location.latitude');
+  const longitude = form.watch('location.longitude');
+
   const cities = getCitiesByProvince(LOCKED_PROVINCE);
   const barangays = selectedCity
     ? getBarangaysByCity(selectedCity, LOCKED_PROVINCE)
@@ -110,6 +128,53 @@ function Location() {
   useEffect(() => {
     form.setValue('location.province', LOCKED_PROVINCE);
   }, [form]);
+
+  // Derive geometry string whenever lat/lng change
+  useEffect(() => {
+    if (
+      latitude != null &&
+      longitude != null &&
+      !isNaN(latitude) &&
+      !isNaN(longitude)
+    ) {
+      form.setValue('location.geometry', `lat:${latitude},lng:${longitude}`, {
+        shouldValidate: true,
+      });
+    } else {
+      form.setValue('location.geometry', '', { shouldValidate: true });
+    }
+  }, [latitude, longitude, form]);
+
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      setGeoError('Geolocation is not supported by your browser.');
+      return;
+    }
+    setIsGeolocating(true);
+    setGeoError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = parseFloat(pos.coords.latitude.toFixed(6));
+        const lng = parseFloat(pos.coords.longitude.toFixed(6));
+        form.setValue('location.latitude', lat, { shouldValidate: true });
+        form.setValue('location.longitude', lng, { shouldValidate: true });
+        setIsGeolocating(false);
+      },
+      () => {
+        setGeoError(
+          'Unable to detect location. Please click the map or enter coordinates manually.',
+        );
+        setIsGeolocating(false);
+      },
+    );
+  };
+
+  const handleLocationSelect = (lat: number, lng: number) => {
+    form.setValue('location.latitude', lat, { shouldValidate: true });
+    form.setValue('location.longitude', lng, { shouldValidate: true });
+  };
+
+  const geometryError = form.formState.errors.location?.geometry;
 
   return (
     <>
@@ -234,17 +299,116 @@ function Location() {
               </Field>
             )}
           />
+
+          {/* COORDINATES */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium">Exact Coordinates</h3>
+                <p className="text-muted-foreground text-xs">
+                  Click the map or use your device location
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleDetectLocation}
+                disabled={isGeolocating}
+              >
+                {isGeolocating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <LocateFixed className="mr-2 h-4 w-4" />
+                )}
+                {isGeolocating ? 'Detecting...' : 'Use My Location'}
+              </Button>
+            </div>
+
+            {geoError && <p className="text-destructive text-sm">{geoError}</p>}
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* LATITUDE */}
+              <Controller
+                name="location.latitude"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <div className="space-y-2">
+                      <Label htmlFor="latitude">Latitude</Label>
+                      <Input
+                        id="latitude"
+                        type="number"
+                        step="any"
+                        placeholder="e.g. 10.7312"
+                        value={field.value ?? ''}
+                        onChange={(e) =>
+                          field.onChange(
+                            e.target.value === ''
+                              ? undefined
+                              : parseFloat(e.target.value),
+                          )
+                        }
+                        onBlur={field.onBlur}
+                      />
+                    </div>
+                    {fieldState.error && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+
+              {/* LONGITUDE */}
+              <Controller
+                name="location.longitude"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <div className="space-y-2">
+                      <Label htmlFor="longitude">Longitude</Label>
+                      <Input
+                        id="longitude"
+                        type="number"
+                        step="any"
+                        placeholder="e.g. 122.5649"
+                        value={field.value ?? ''}
+                        onChange={(e) =>
+                          field.onChange(
+                            e.target.value === ''
+                              ? undefined
+                              : parseFloat(e.target.value),
+                          )
+                        }
+                        onBlur={field.onBlur}
+                      />
+                    </div>
+                    {fieldState.error && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+            </div>
+
+            {geometryError && (
+              <p className="text-destructive text-sm">
+                {geometryError.message}
+              </p>
+            )}
+          </div>
         </div>
 
-        {/* MAP — hidden on mobile */}
-        <div className="bg-muted hidden overflow-hidden rounded-md md:block">
-          <iframe
-            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d62720.67739692793!2d122.54770015!3d10.7312181!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33aee56fe538d781%3A0xe8250cd6bc30a488!2sIloilo%20City%2C%20Iloilo!5e0!3m2!1sen!2sph!4v1774010152358!5m2!1sen!2sph"
-            width="100%"
-            height="100%"
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          ></iframe>
+        {/* INTERACTIVE MAP — click to pin, drag to adjust */}
+        <div
+          className="hidden overflow-hidden rounded-md md:block"
+          style={{ minHeight: '400px' }}
+        >
+          <LocationPicker
+            latitude={latitude}
+            longitude={longitude}
+            onLocationSelect={handleLocationSelect}
+          />
         </div>
       </div>
 
@@ -252,7 +416,7 @@ function Location() {
       <div className="mt-5 rounded-md border border-amber-200 bg-amber-50 p-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-50">
         <p className="text-sm">
           <strong>Note:</strong> This address will be used for verification
-          purposes and may be displayed to customers. Please ensure it's
+          purposes and may be displayed to customers. Please ensure it&apos;s
           accurate.
         </p>
       </div>

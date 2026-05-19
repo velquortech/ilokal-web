@@ -9,12 +9,24 @@ import { z } from 'zod';
 
 export const productStatusSchema = z.enum(['active', 'inactive', 'archived']);
 
+export const priceTypeSchema = z.enum([
+  'fixed',
+  'from',
+  'per_hour',
+  'per_day',
+  'per_person',
+  'per_event',
+]);
+
 export const createProductSchema = z.object({
   name: z.string().min(1, 'Product name is required').max(255),
   description: z.string().optional(),
   price: z.number().min(0, 'Price must be positive'),
+  price_type: priceTypeSchema.default('fixed'),
+  price_unit: z.string().optional(),
   category_id: z.string().uuid('Invalid category ID'),
   image_url: z.string().url().optional(),
+  is_available: z.boolean().default(true),
 });
 
 export const updateProductSchema = createProductSchema.partial().extend({
@@ -54,7 +66,7 @@ export const updateCategorySchema = createCategorySchema.partial();
 
 export const categoryFiltersSchema = z.object({
   page: z.number().min(1).default(1),
-  per_page: z.number().min(1).max(100).default(10),
+  per_page: z.number().min(1).max(500).default(10),
   search: z.string().optional(),
   sort_by: z
     .enum(['name_asc', 'name_desc', 'newest', 'oldest'])

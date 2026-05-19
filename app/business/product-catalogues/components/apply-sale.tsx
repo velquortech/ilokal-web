@@ -17,10 +17,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { calculatePercentage } from '@/lib/product-helper';
-import { Product } from '../../libs/types/product.type';
+import type { ProductResponse } from '@/lib/types';
 
 interface ApplySaleProps {
-  product: Product;
+  product: ProductResponse;
   children: React.ReactNode;
 }
 
@@ -36,10 +36,14 @@ export function ApplySale({ product, children }: ApplySaleProps) {
     watch,
     setValue,
     formState: { errors },
-  } = useForm({
+  } = useForm<{
+    price: number;
+    salePrice: number | undefined;
+    percentInput: string;
+  }>({
     defaultValues: {
       price: product.price,
-      salePrice: product.salePrice || undefined,
+      salePrice: undefined,
       percentInput: '',
     },
   });

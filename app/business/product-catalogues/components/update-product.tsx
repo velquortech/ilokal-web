@@ -23,18 +23,20 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ImageUploadField } from '@/components/custom/upload/image-upload';
-import { Product } from '../../libs/types/product.type';
-import { calculateSalePercentage } from '../../libs/helper';
+import type { ProductResponse } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface UpdateProductDialogProps {
-  product: Product;
+  product: ProductResponse;
   children: React.ReactNode;
 }
 
-// Updated type: image can be a File (new) or a string (existing URL)
-type ProductFormValues = Omit<Product, 'id' | 'badge' | 'image'> & {
-  image: File | string;
+type ProductFormValues = {
+  name: string;
+  description: string | null;
+  price: number;
+  status: 'active' | 'inactive' | 'archived';
+  image_url: File | string | null;
 };
 
 export function UpdateProductDialog({
@@ -46,7 +48,6 @@ export function UpdateProductDialog({
   const {
     register,
     handleSubmit,
-    watch,
     control,
     formState: { errors },
   } = useForm<ProductFormValues>({
@@ -55,18 +56,14 @@ export function UpdateProductDialog({
       description: product.description,
       price: product.price,
       status: product.status,
-      image: product.image, // Directly set the URL as the default value
+      image_url: product.image_url,
     },
   });
 
   const onSubmit = (data: ProductFormValues) => {
-    // If data.image is a string, no new file was uploaded.
-    // If data.image is an instance of File, you'll need to upload it.
     console.info('Updated Product Data:', data);
     setOpen(false);
   };
-
-  const discount = calculateSalePercentage(watch('price'), watch('salePrice'));
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -92,80 +89,60 @@ export function UpdateProductDialog({
               <Textarea {...register('description')} className="resize-none" />
             </Field>
 
-            <div className="grid grid-cols-2 gap-4">
-              {/* Base Price */}
-              <Field>
-                <FieldLabel className={errors.price ? 'text-destructive' : ''}>
-                  Base Price
-                </FieldLabel>
-                <div className="relative">
-                  <span className="absolute top-1/2 left-3 -translate-y-1/2">
-                    ₱
-                  </span>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    {...register('price', {
-                      required: 'Price is required',
-                      valueAsNumber: true,
-                      min: {
-                        value: 0.01,
-                        message: 'Price must be at least 0.01',
-                      },
-                    })}
-                    placeholder="0.00"
-                    className={cn(
-                      'pl-8',
-                      errors.price ? 'border-destructive' : '',
-                    )}
-                  />
-                </div>
-
-                {errors.price && (
-                  <FieldError>{errors.price.message}</FieldError>
-                )}
-              </Field>
-
-              <Field>
-                <FieldLabel className="text-primary">
-                  Sale Price (Optional)
-                </FieldLabel>
-                <div className="relative">
-                  <span className="absolute top-1/2 left-3 -translate-y-1/2">
-                    ₱
-                  </span>
-                  <Input
-                    type="number"
-                    className="border-primary/50 bg-primary/5 [appearance:textfield] pl-8 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                    {...register('salePrice')}
-                  />
-                  {discount > 0 && (
-                    <span className="bg-primary absolute -top-2 -right-2 rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm">
-                      -{discount}%
-                    </span>
+            <Field>
+              <FieldLabel className={errors.price ? 'text-destructive' : ''}>
+                Price
+              </FieldLabel>
+              <div className="relative">
+                <span className="absolute top-1/2 left-3 -translate-y-1/2">
+                  ₱
+                </span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  {...register('price', {
+                    required: 'Price is required',
+                    valueAsNumber: true,
+                    min: {
+                      value: 0.01,
+                      message: 'Price must be at least 0.01',
+                    },
+                  })}
+                  placeholder="0.00"
+                  className={cn(
+                    'pl-8',
+                    errors.price ? 'border-destructive' : '',
                   )}
-                </div>
-              </Field>
-            </div>
+                />
+              </div>
+              {errors.price && <FieldError>{errors.price.message}</FieldError>}
+            </Field>
 
             <Field className="flex flex-col">
-              <FieldLabel className={errors.image ? 'text-destructive' : ''}>
+              <FieldLabel
+                className={errors.image_url ? 'text-destructive' : ''}
+              >
                 Product Image
               </FieldLabel>
               <div className="relative min-h-30 flex-1">
                 <Controller
                   control={control}
-                  name="image"
-                  rules={{ required: 'Image is required' }}
+                  name="image_url"
                   render={({ field }) => (
                     <ImageUploadField
-                      defaultValue={field.value}
+                      defaultValue={
+                        typeof field.value === 'string'
+                          ? field.value
+                          : undefined
+                      }
                       onChange={(file) => field.onChange(file)}
                     />
                   )}
                 />
               </div>
-              {errors.image && <FieldError>{errors.image.message}</FieldError>}
+              {errors.image_url && (
+                <FieldError>{errors.image_url.message}</FieldError>
+              )}
             </Field>
 
             <Field>
@@ -180,8 +157,8 @@ export function UpdateProductDialog({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="unlisted">Unlisted</SelectItem>
-                      <SelectItem value="disabled">Disabled</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="archived">Archived</SelectItem>
                     </SelectContent>
                   </Select>
                 )}

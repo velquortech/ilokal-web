@@ -49,6 +49,7 @@ export type {
   Product,
   Category,
   ProductStatus,
+  PriceType,
   ProductSortOrder,
   CreateProductRequest,
   UpdateProductRequest,

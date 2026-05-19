@@ -23,6 +23,7 @@ export default tseslint.config(
       'dist/**',
       'next.**',
       'next-**',
+      'lib/types/database.ts',
     ],
   },
 

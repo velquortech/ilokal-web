@@ -5,7 +5,9 @@ import {
   type RawBusinessType,
 } from '../api/fetchCategories';
 
-const makeRaw = (overrides: Partial<RawBusinessType> = {}): RawBusinessType => ({
+const makeRaw = (
+  overrides: Partial<RawBusinessType> = {},
+): RawBusinessType => ({
   name: 'Food & Drink',
   description: 'Restaurants and cafes',
   icon: 'Coffee',
@@ -37,7 +39,10 @@ describe('transformBusinessTypes', () => {
 
   it('renames image_url to imageURL in items', () => {
     const [result] = transformBusinessTypes([makeRaw()]);
-    expect(result.items[0]).toHaveProperty('imageURL', 'https://example.com/cafe.jpg');
+    expect(result.items[0]).toHaveProperty(
+      'imageURL',
+      'https://example.com/cafe.jpg',
+    );
     expect(result.items[0]).not.toHaveProperty('image_url');
   });
 
@@ -56,7 +61,9 @@ describe('transformBusinessTypes', () => {
   });
 
   it('handles a type with no business_categories', () => {
-    const [result] = transformBusinessTypes([makeRaw({ business_categories: [] })]);
+    const [result] = transformBusinessTypes([
+      makeRaw({ business_categories: [] }),
+    ]);
     expect(result.items).toHaveLength(0);
   });
 

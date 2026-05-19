@@ -8,7 +8,14 @@ import {
 } from './products';
 
 describe('priceTypeSchema', () => {
-  const valid = ['fixed', 'from', 'per_hour', 'per_day', 'per_person', 'per_event'] as const;
+  const valid = [
+    'fixed',
+    'from',
+    'per_hour',
+    'per_day',
+    'per_person',
+    'per_event',
+  ] as const;
 
   it.each(valid)('accepts "%s"', (type) => {
     expect(priceTypeSchema.parse(type)).toBe(type);
@@ -42,19 +49,34 @@ describe('createProductSchema', () => {
   });
 
   it('accepts all valid price types', () => {
-    const types = ['fixed', 'from', 'per_hour', 'per_day', 'per_person', 'per_event'] as const;
+    const types = [
+      'fixed',
+      'from',
+      'per_hour',
+      'per_day',
+      'per_person',
+      'per_event',
+    ] as const;
     for (const price_type of types) {
-      expect(createProductSchema.parse({ ...base, price_type }).price_type).toBe(price_type);
+      expect(
+        createProductSchema.parse({ ...base, price_type }).price_type,
+      ).toBe(price_type);
     }
   });
 
   it('accepts optional price_unit', () => {
-    const result = createProductSchema.parse({ ...base, price_unit: 'per table' });
+    const result = createProductSchema.parse({
+      ...base,
+      price_unit: 'per table',
+    });
     expect(result.price_unit).toBe('per table');
   });
 
   it('accepts optional description', () => {
-    const result = createProductSchema.parse({ ...base, description: 'Smooth espresso' });
+    const result = createProductSchema.parse({
+      ...base,
+      description: 'Smooth espresso',
+    });
     expect(result.description).toBe('Smooth espresso');
   });
 
@@ -76,7 +98,9 @@ describe('createProductSchema', () => {
   });
 
   it('rejects an invalid category_id (not a UUID)', () => {
-    expect(() => createProductSchema.parse({ ...base, category_id: 'not-a-uuid' })).toThrow();
+    expect(() =>
+      createProductSchema.parse({ ...base, category_id: 'not-a-uuid' }),
+    ).toThrow();
   });
 });
 
@@ -124,7 +148,9 @@ describe('categoryFiltersSchema', () => {
   });
 
   it('rejects an invalid sort_by value', () => {
-    expect(() => categoryFiltersSchema.parse({ sort_by: 'price_low' })).toThrow();
+    expect(() =>
+      categoryFiltersSchema.parse({ sort_by: 'price_low' }),
+    ).toThrow();
   });
 });
 
@@ -141,7 +167,14 @@ describe('productFiltersSchema', () => {
   });
 
   it('accepts all product sort_by values', () => {
-    const values = ['newest', 'oldest', 'name_asc', 'name_desc', 'price_low', 'price_high'] as const;
+    const values = [
+      'newest',
+      'oldest',
+      'name_asc',
+      'name_desc',
+      'price_low',
+      'price_high',
+    ] as const;
     for (const sort_by of values) {
       expect(productFiltersSchema.parse({ sort_by }).sort_by).toBe(sort_by);
     }

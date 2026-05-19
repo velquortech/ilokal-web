@@ -3,9 +3,14 @@ import { NextFetchEvent, NextProxy, NextRequest } from 'next/server';
 
 export function authMiddlware(next: NextProxy) {
   return async (req: NextRequest, event: NextFetchEvent) => {
-    const isAuthenticated = req.cookies.get(
+    const cookieAuth = req.cookies.get(
       `sb-${process.env.NEXT_PUBLIC_SUPABASE_TOKEN}-auth-token`,
     );
+    const bearerAuth = req.headers.get('Authorization')?.startsWith('Bearer ')
+      ? req.headers.get('Authorization')
+      : null;
+
+    const isAuthenticated = cookieAuth ?? bearerAuth;
 
     if (req.nextUrl.pathname.startsWith('/api/protected')) {
       if (!isAuthenticated) {

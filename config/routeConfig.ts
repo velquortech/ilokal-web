@@ -1,0 +1,75 @@
+/**
+ * Route Configuration
+ *
+ * Centralized route definitions for the application.
+ * Used throughout the app for redirects, navigation, and route protection.
+ */
+
+export const ROUTES = {
+  // Authentication routes
+  AUTH: {
+    LOGIN: '/login',
+    ADMIN_LOGIN: '/login/admin',
+    BUSINESS_LOGIN: '/login/business',
+    SIGNUP: '/signup',
+  },
+
+  // Dashboard/Protected routes by role
+  DASHBOARD: {
+    ADMIN: '/admin',
+    BUSINESS: '/business',
+    HOME: '/home',
+  },
+
+  // API routes
+  API: {
+    ADMIN: {
+      PROFILES: '/api/admin/profiles',
+    },
+    AUTH: {
+      LOGIN: '/api/auth/login',
+      SIGNUP: '/api/auth/signup',
+      LOGOUT: '/api/auth/logout',
+    },
+    UPLOAD: '/api/upload',
+    // Canonical API base prefixes (use these to build matchers and guards)
+    ADMIN_BASE: '/api/admin',
+    BILLING_BASE: '/api/billing',
+    PAYMENTS_BASE: '/api/payments',
+    SUBSCRIPTIONS_BASE: '/api/subscriptions',
+    USERS_BASE: '/api/users',
+  },
+  BUSINESS: {
+    home: '/business',
+    registration: '/business-registration',
+  },
+} as const;
+
+/**
+ * Protected routes that require authentication
+ * Used by middleware to determine which routes need auth verification
+ */
+export const PROTECTED_ROUTES = {
+  ADMIN: '/admin',
+  BUSINESS: '/business',
+};
+
+/**
+ * Role-based route mapping
+ * Determines which dashboard route each role is redirected to after login
+ */
+export const ROLE_ROUTES = {
+  admin: ROUTES.DASHBOARD.ADMIN,
+  business_owner: ROUTES.DASHBOARD.BUSINESS,
+  app_user: ROUTES.DASHBOARD.HOME,
+} as const;
+
+/**
+ * Get the dashboard route for a given role
+ * @param role - User role (admin, business_owner, app_user)
+ * @returns The corresponding dashboard route
+ */
+export function getDashboardRoute(role?: string): string {
+  if (!role) return ROUTES.DASHBOARD.HOME;
+  return ROLE_ROUTES[role as keyof typeof ROLE_ROUTES] ?? ROUTES.DASHBOARD.HOME;
+}

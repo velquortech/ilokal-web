@@ -15,7 +15,7 @@
     "check:protected": "node WORKFLOW/tools/checkProtectedRoutes.js",
     "check:imports": "node WORKFLOW/tools/validateServiceImports.js",
     "analyze:usage": "node WORKFLOW/tools/analyzeServiceUsage.js",
-    "ci:checks": "npm run lint -- --fix && npm run check:protected && npm run check:imports && npm run analyze:usage && npm run test:run"
+    "ci:checks": "yarn lint --fix && yarn check:protected && yarn check:imports && yarn analyze:usage && yarn test:run"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

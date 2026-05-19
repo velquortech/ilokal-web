@@ -43,25 +43,71 @@ jobs:
       - run: yarn run build
       - run: yarn run lint
 
-  Deploy-preview:
-    runs-on: ${{ matrix.os }}
+  Unit-tests:
+    runs-on: ubuntu-latest
     needs: Setup
 
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        node-version: [22.x]
+
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      NEXT_IMAGE_PUBLIC_URL: ${{ secrets.NEXT_IMAGE_PUBLIC_URL }}
 
     steps:
-      - name: Yarn Install
-        run: yarn install
-      - name: Install Vercel
-        run: yarn global add vercel@latest
       - uses: actions/checkout@v4
-      - name: Install Vercel CLI
-        run: echo ${{ secrets.VERCEL_PROJECT_ID }}
-      - name: Pull Vercel Environment Information
-        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
-      - name: Build Project Artifacts
-        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
-      - name: Deploy Project Artifacts to Vercel
-        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'yarn'
+      - run: yarn install
+      - name: Run unit tests
+        run: yarn vitest run --reporter=verbose --exclude="**/*.integration.test.ts"
+
+  Integration-tests:
+    runs-on: ubuntu-latest
+    needs: Setup
+
+    strategy:
+      matrix:
+        node-version: [22.x]
+
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      NEXT_IMAGE_PUBLIC_URL: ${{ secrets.NEXT_IMAGE_PUBLIC_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'yarn'
+      - run: yarn install
+      - name: Run integration tests
+        run: yarn vitest run --reporter=verbose "integration.test"
+
+  # Deploy-preview:
+  #   runs-on: ${{ matrix.os }}
+  #   needs: [Setup, Unit-tests, Integration-tests]
+  #
+  #   strategy:
+  #     matrix:
+  #       os: [ubuntu-latest]
+  #
+  #   steps:
+  #     - name: Yarn Install
+  #       run: yarn install
+  #     - name: Install Vercel
+  #       run: yarn global add vercel@latest
+  #     - uses: actions/checkout@v4
+  #     - name: Install Vercel CLI
+  #       run: echo ${{ secrets.VERCEL_PROJECT_ID }}
+  #     - name: Pull Vercel Environment Information
+  #       run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+  #     - name: Build Project Artifacts
+  #       run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+  #     - name: Deploy Project Artifacts to Vercel
+  #       run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}

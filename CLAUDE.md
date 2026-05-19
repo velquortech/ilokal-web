@@ -23,7 +23,7 @@ make migrate-reset   # Reset and re-apply all
 make generate-types  # Regenerate lib/types/database.ts
 ```
 
-Soft test step: `npm run lint -- --fix && npm run build`
+Soft test step: `yarn lint --fix && yarn build` (or `make review` to include tests)
 
 ## Stack
 
@@ -53,6 +53,7 @@ Always loaded:
 @.claude/docs/protected-routes.md
 @.claude/docs/auth-rate-limits.md
 @.claude/CHANGELOG.md
+@.claude/skill.md
 
 Load on request (read when topic is relevant):
 - `.claude/docs/architecture.md` — system design, auth flow diagrams

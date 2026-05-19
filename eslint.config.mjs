@@ -80,7 +80,7 @@ export default tseslint.config(
         'error',
         {
           selector: ['variable'],
-          format: ['camelCase', 'snake_case', 'UPPER_CASE'],
+          format: ['camelCase', 'snake_case', 'UPPER_CASE', 'PascalCase'],
         },
       ],
 

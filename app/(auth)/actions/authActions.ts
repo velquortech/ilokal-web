@@ -351,7 +351,7 @@ export async function signupFormAction(
       avatar_url: (formData.get('avatar_url') as string) || '',
     };
 
-    console.log('[signupFormAction] Received form data:', {
+    console.info('[signupFormAction] Received form data:', {
       name: data.name,
       email: data.email,
       role: data.role,
@@ -360,7 +360,10 @@ export async function signupFormAction(
     // Client-side validation with Zod
     const result = signupSchema.safeParse(data);
     if (!result.success) {
-      console.log('[signupFormAction] Validation failed:', result.error.issues);
+      console.info(
+        '[signupFormAction] Validation failed:',
+        result.error.issues,
+      );
       const fieldErrors: Record<string, string> = {};
       for (const issue of result.error.issues) {
         const field = String(issue.path[0] ?? 'root');
@@ -369,14 +372,14 @@ export async function signupFormAction(
       return { fieldErrors };
     }
 
-    console.log(
+    console.info(
       '[signupFormAction] Validation passed, calling signupAction...',
     );
 
     // Call the signup server action
     const response = await signupAction(result.data);
 
-    console.log(
+    console.info(
       '[signupFormAction] Signup successful for user:',
       response.user.id,
     );

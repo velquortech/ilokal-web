@@ -12,11 +12,11 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Product } from '../../libs/types/product.type';
+import type { ProductResponse } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
 
 interface DeleteProductDialogProps {
-  product: Product;
+  product: ProductResponse;
   children: React.ReactNode;
 }
 

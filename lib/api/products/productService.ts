@@ -255,7 +255,10 @@ export async function createProduct(
         name: input.name,
         description: input.description || null,
         price: input.price,
+        price_type: input.price_type ?? 'fixed',
+        price_unit: input.price_unit || null,
         image_url: input.image_url || null,
+        is_available: input.is_available ?? true,
         status: 'active',
       })
       .select()

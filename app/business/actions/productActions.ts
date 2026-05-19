@@ -1,6 +1,7 @@
 'use server';
 
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
+import { createServerSupabaseClient } from '@/supabase/server';
 import type {
   ApiResponse,
   ApiError,
@@ -186,6 +187,82 @@ export async function getCategoriesAction(): Promise<ApiResponse<Category[]>> {
         code: 'INTERNAL_ERROR',
         message: 'Failed to fetch categories',
       },
+    };
+  }
+}
+
+const ALLOWED_IMAGE_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+];
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+
+export async function uploadProductImageAction(
+  formData: FormData,
+): Promise<ApiResponse<{ url: string }>> {
+  try {
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized) {
+      return { success: false, error: verify.error as ApiError };
+    }
+
+    const file = formData.get('file') as File | null;
+    if (!file) {
+      return {
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'No file provided' },
+      };
+    }
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'File must be less than 5 MB',
+        },
+      };
+    }
+
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Only JPEG, PNG, GIF, or WebP images are allowed',
+        },
+      };
+    }
+
+    const supabase = await createServerSupabaseClient();
+    const businessId = verify.business!.id;
+    const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+    const filePath = `${businessId}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('product-images')
+      .upload(filePath, file, { cacheControl: '3600', upsert: false });
+
+    if (uploadError) {
+      console.error('[uploadProductImageAction] Upload error:', uploadError);
+      return {
+        success: false,
+        error: { code: 'UPLOAD_ERROR', message: uploadError.message },
+      };
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from('product-images').getPublicUrl(filePath);
+
+    return { success: true, data: { url: publicUrl } };
+  } catch (error) {
+    console.error('[uploadProductImageAction]', error);
+    return {
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'Failed to upload image' },
     };
   }
 }

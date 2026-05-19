@@ -72,6 +72,16 @@ export function ShopReview() {
                   : 'N/A'}
               </p>
             </div>
+
+            <div>
+              <Label>Coordinates</Label>
+              <p className="text-muted-foreground">
+                {data.location?.latitude != null &&
+                data.location?.longitude != null
+                  ? `${data.location.latitude}, ${data.location.longitude}`
+                  : 'N/A'}
+              </p>
+            </div>
           </CardContent>
         </div>
 

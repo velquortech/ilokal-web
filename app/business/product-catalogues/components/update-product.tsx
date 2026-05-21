@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/select';
 import { ImageUploadField } from '@/components/custom/upload/image-upload';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import type { ProductResponse } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
@@ -82,7 +83,9 @@ export function UpdateProductDialog({
         fd.append('file', data.image_url);
         const uploadResult = await uploadProductImageAction(fd);
         if (!uploadResult.success) {
-          setServerError(uploadResult.error?.message ?? 'Image upload failed');
+          const msg = uploadResult.error?.message ?? 'Image upload failed';
+          setServerError(msg);
+          toast.error(msg);
           return;
         }
         image_url = uploadResult.data?.url;
@@ -99,14 +102,19 @@ export function UpdateProductDialog({
       });
 
       if (!result.success) {
-        setServerError(result.error?.message ?? 'Failed to update product');
+        const msg = result.error?.message ?? 'Failed to update product';
+        setServerError(msg);
+        toast.error(msg);
         return;
       }
 
+      toast.success(`"${data.name}" updated successfully`);
       setOpen(false);
       router.refresh();
     } catch {
-      setServerError('An unexpected error occurred');
+      const msg = 'An unexpected error occurred';
+      setServerError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }

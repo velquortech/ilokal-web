@@ -2,8 +2,10 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 import Image from 'next/image';
+import { ImageOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { calculatePercentage } from '@/lib/product-helper';
 import type { ProductResponse } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ViewProduct } from '../view-product';
@@ -38,13 +40,19 @@ export const columns: ColumnDef<ProductResponse>[] = [
     cell: ({ row }) => (
       <ViewProduct {...row.original}>
         <div className="group relative size-12 shrink-0 cursor-pointer overflow-hidden rounded-md border">
-          <Image
-            src={row.original.image_url ?? '/placeholder.png'}
-            alt={row.original.name}
-            fill
-            sizes="48px"
-            className="object-cover transition group-hover:scale-105"
-          />
+          {row.original.image_url ? (
+            <Image
+              src={row.original.image_url}
+              alt={row.original.name}
+              fill
+              sizes="48px"
+              className="object-cover transition group-hover:scale-105"
+            />
+          ) : (
+            <div className="bg-muted text-muted-foreground flex h-full w-full items-center justify-center">
+              <ImageOff className="size-5" />
+            </div>
+          )}
         </div>
       </ViewProduct>
     ),
@@ -71,7 +79,20 @@ export const columns: ColumnDef<ProductResponse>[] = [
   {
     accessorKey: 'price',
     header: 'Price',
-    cell: ({ row }) => <span>₱{row.original.price}</span>,
+    cell: ({ row }) => {
+      const { price, sale_price } = row.original;
+      if (sale_price !== null && sale_price !== undefined) {
+        return (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-primary font-semibold">₱{sale_price}</span>
+            <span className="text-muted-foreground text-xs line-through">
+              ₱{price} (-{calculatePercentage(price, sale_price)}%)
+            </span>
+          </div>
+        );
+      }
+      return <span>₱{price}</span>;
+    },
   },
   {
     accessorKey: 'status',

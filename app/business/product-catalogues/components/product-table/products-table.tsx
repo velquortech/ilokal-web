@@ -3,40 +3,49 @@
 import * as React from 'react';
 import { DataTable } from '@/components/custom/data-table/DataTable';
 import { columns } from './columns';
-import { SortingState, PaginationState } from '@tanstack/react-table';
+import {
+  SortingState,
+  PaginationState,
+  OnChangeFn,
+} from '@tanstack/react-table';
 import type { ProductResponse } from '@/lib/types';
-import { Loader2 } from 'lucide-react';
 
 interface ProductTableProps {
   products: ProductResponse[];
-  isLoading: boolean;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  total: number;
+  onPaginationChange: (page: number, pageSize: number) => void;
 }
 
-export function ProductTable({ products, isLoading }: ProductTableProps) {
+export function ProductTable({
+  products,
+  page,
+  pageSize,
+  totalPages,
+  onPaginationChange,
+}: ProductTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [pagination, setPagination] = React.useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 10,
-  });
 
-  const pageCount = Math.ceil(products.length / pagination.pageSize);
+  const pagination: PaginationState = {
+    pageIndex: page - 1,
+    pageSize,
+  };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-40 items-center justify-center">
-        <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
-      </div>
-    );
-  }
+  const handlePaginationChange: OnChangeFn<PaginationState> = (updater) => {
+    const next = typeof updater === 'function' ? updater(pagination) : updater;
+    onPaginationChange(next.pageIndex + 1, next.pageSize);
+  };
 
   return (
     <div className="w-full">
       <DataTable
         columns={columns}
         data={products}
-        pageCount={pageCount}
+        pageCount={totalPages}
         pagination={pagination}
-        onPaginationChange={setPagination}
+        onPaginationChange={handlePaginationChange}
         sorting={sorting}
         onSortingChange={setSorting}
       />

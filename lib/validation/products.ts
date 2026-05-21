@@ -54,6 +54,20 @@ export const productFiltersSchema = z.object({
   max_price: z.number().optional(),
 });
 
+export const applySaleSchema = z
+  .object({
+    sale_price: z.number().positive('Sale price must be positive'),
+    sale_starts_at: z.string().datetime({ offset: true }).nullable().optional(),
+    sale_ends_at: z.string().datetime({ offset: true }).nullable().optional(),
+  })
+  .refine(
+    (data) => {
+      if (!data.sale_starts_at || !data.sale_ends_at) return true;
+      return data.sale_ends_at > data.sale_starts_at;
+    },
+    { message: 'End date must be after start date', path: ['sale_ends_at'] },
+  );
+
 // ===== Category Schemas =====
 
 export const createCategorySchema = z.object({
@@ -75,6 +89,7 @@ export const categoryFiltersSchema = z.object({
 
 // ===== Type Exports =====
 
+export type ApplySaleInput = z.infer<typeof applySaleSchema>;
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 export type ProductFiltersInput = z.infer<typeof productFiltersSchema>;

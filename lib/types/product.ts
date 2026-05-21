@@ -42,6 +42,10 @@ export type Product = {
   image_url: string | null;
   is_available: boolean;
   status: ProductStatus;
+  sale_price: number | null;
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -61,6 +65,12 @@ export type CreateProductRequest = {
 
 export type UpdateProductRequest = Partial<CreateProductRequest> & {
   status?: ProductStatus;
+};
+
+export type ApplySaleRequest = {
+  sale_price: number;
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
 };
 
 export type ProductResponse = Product & {

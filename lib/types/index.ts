@@ -53,6 +53,7 @@ export type {
   ProductSortOrder,
   CreateProductRequest,
   UpdateProductRequest,
+  ApplySaleRequest,
   ProductResponse,
   PaginatedProductsResponse,
   CreateCategoryRequest,

@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import type { ProductResponse } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { deleteProductAction } from '../../actions/productActions';
 
 interface DeleteProductDialogProps {
@@ -37,13 +38,18 @@ export function DeleteProductDialog({
     try {
       const result = await deleteProductAction(product.id);
       if (!result.success) {
-        setServerError(result.error?.message ?? 'Failed to delete product');
+        const msg = result.error?.message ?? 'Failed to delete product';
+        setServerError(msg);
+        toast.error(msg);
         return;
       }
+      toast.success(`"${product.name}" deleted`);
       setOpen(false);
       router.refresh();
     } catch {
-      setServerError('An unexpected error occurred');
+      const msg = 'An unexpected error occurred';
+      setServerError(msg);
+      toast.error(msg);
     } finally {
       setIsDeleting(false);
     }

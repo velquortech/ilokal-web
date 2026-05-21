@@ -1,6 +1,7 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import * as React from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { Catalogues } from './catalogues';
@@ -13,16 +14,95 @@ import { ProductStats } from './product-stats';
 import { Card, CardContent } from '@/components/ui/card';
 import type { ProductResponse, Category } from '@/lib/types';
 
+type Stats = {
+  total: number;
+  active: number;
+  inactive: number;
+  archived: number;
+};
+
 interface ProductCataloguesContentProps {
-  initialProducts: ProductResponse[];
+  products: ProductResponse[];
+  metadata: {
+    total: number;
+    page: number;
+    per_page: number;
+    total_pages: number;
+  };
   categories: Category[];
+  stats: Stats;
 }
 
 export function ProductCataloguesContent({
-  initialProducts,
+  products,
+  metadata,
   categories,
+  stats,
 }: ProductCataloguesContentProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [searchInput, setSearchInput] = React.useState(
+    searchParams.get('search') ?? '',
+  );
+
+  React.useEffect(() => {
+    setSearchInput(searchParams.get('search') ?? '');
+  }, [searchParams]);
+
+  const updateParams = React.useCallback(
+    (newParams: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      Object.entries(newParams).forEach(([key, value]) => {
+        if (value === null || value === '') {
+          params.delete(key);
+        } else {
+          params.set(key, value);
+        }
+      });
+      router.replace(`?${params.toString()}`);
+    },
+    [router, searchParams],
+  );
+
+  // Debounce search input → URL update
+  React.useEffect(() => {
+    const timeout = setTimeout(() => {
+      const current = searchParams.get('search') ?? '';
+      if (searchInput !== current) {
+        updateParams({ search: searchInput || null, page: '1' });
+      }
+    }, 400);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput]);
+
+  const handleCategoryChange = React.useCallback(
+    (categoryId: string) => {
+      updateParams({ category: categoryId || null, page: '1' });
+    },
+    [updateParams],
+  );
+
+  const handleStatusChange = React.useCallback(
+    (status: string) => {
+      updateParams({ status: status || null, page: '1' });
+    },
+    [updateParams],
+  );
+
+  const handlePaginationChange = React.useCallback(
+    (page: number, pageSize: number) => {
+      updateParams({
+        page: page === 1 ? null : String(page),
+        perPage: pageSize === 10 ? null : String(pageSize),
+      });
+    },
+    [updateParams],
+  );
+
+  const selectedCategory = searchParams.get('category') ?? '';
+  const selectedStatus = searchParams.get('status') ?? '';
 
   return (
     <div className="font-giest flex h-max flex-1 flex-col space-y-6 pb-8">
@@ -44,19 +124,36 @@ export function ProductCataloguesContent({
         </AddProductDialog>
       </div>
 
-      <ProductStats products={initialProducts} isLoading={false} />
+      <ProductStats stats={stats} />
 
       <Card>
         <CardContent className="space-y-2">
           <div className="inline-flex h-10 w-full justify-between">
-            <Catalogues categories={categories} />
+            <Catalogues
+              categories={categories}
+              selectedCategory={selectedCategory}
+              onCategoryChange={handleCategoryChange}
+            />
             <div className="inline-flex w-max gap-2">
               <ManageCatalogues categories={categories} />
-              <FilterProducts />
-              <SearchBar />
+              <FilterProducts
+                selectedStatus={selectedStatus}
+                onStatusChange={handleStatusChange}
+              />
+              <SearchBar
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
             </div>
           </div>
-          <ProductTable products={initialProducts} isLoading={false} />
+          <ProductTable
+            products={products}
+            page={metadata.page}
+            pageSize={metadata.per_page}
+            totalPages={metadata.total_pages}
+            total={metadata.total}
+            onPaginationChange={handlePaginationChange}
+          />
         </CardContent>
       </Card>
     </div>

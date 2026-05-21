@@ -8,12 +8,16 @@ import type {
   Product,
   CreateProductRequest,
   UpdateProductRequest,
+  ApplySaleRequest,
   Category,
+  ProductFilters,
+  PaginatedProductsResponse,
 } from '@/lib/types';
 
 import {
   createProductSchema,
   updateProductSchema,
+  applySaleSchema,
 } from '@/lib/validation/products';
 // productService is not used here; we import the API client dynamically on server
 import * as productQuery from '@/lib/api/products/productQuery';
@@ -162,6 +166,127 @@ export async function getBusinessProductsAction(): Promise<
         code: 'INTERNAL_ERROR',
         message: 'Failed to fetch products',
       },
+    };
+  }
+}
+
+/**
+ * Apply a sale price to a product
+ */
+export async function applySaleAction(
+  id: string,
+  input: ApplySaleRequest,
+): Promise<ApiResponse<Product>> {
+  try {
+    const validation = applySaleSchema.safeParse(input);
+    if (!validation.success) {
+      const firstError = Object.values(
+        validation.error.flatten().fieldErrors,
+      ).flat()[0];
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: firstError || 'Invalid sale data',
+        },
+      };
+    }
+
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+
+    const api = await import('@/lib/api/products/productService');
+    return await api.applySale(id, verify.business!.id, validation.data);
+  } catch (error) {
+    console.error('[applySaleAction]', error);
+    return {
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'Failed to apply sale' },
+    };
+  }
+}
+
+/**
+ * Remove an active sale from a product
+ */
+export async function removeSaleAction(
+  id: string,
+): Promise<ApiResponse<Product>> {
+  try {
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+
+    const api = await import('@/lib/api/products/productService');
+    return await api.removeSale(id, verify.business!.id);
+  } catch (error) {
+    console.error('[removeSaleAction]', error);
+    return {
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'Failed to remove sale' },
+    };
+  }
+}
+
+/**
+ * Get paginated products for the authenticated business owner
+ */
+export async function getBusinessProductsPaginatedAction(
+  filters: Omit<ProductFilters, 'business_id'>,
+): Promise<ApiResponse<PaginatedProductsResponse>> {
+  try {
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+
+    const result = await productQuery.getProductsPaginated({
+      ...filters,
+      business_id: verify.business!.id,
+    });
+
+    if ('error' in result) {
+      return {
+        success: false,
+        error: { code: 'INTERNAL_ERROR', message: result.error },
+      };
+    }
+
+    return { success: true, data: result as PaginatedProductsResponse };
+  } catch (error) {
+    console.error('[getBusinessProductsPaginatedAction]', error);
+    return {
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch products' },
+    };
+  }
+}
+
+/**
+ * Get product status counts for the authenticated business owner
+ */
+export async function getBusinessProductStatsAction(): Promise<
+  ApiResponse<{
+    total: number;
+    active: number;
+    inactive: number;
+    archived: number;
+  }>
+> {
+  try {
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+
+    const stats = await productQuery.getProductStatsByBusiness(
+      verify.business!.id,
+    );
+    return { success: true, data: stats };
+  } catch (error) {
+    console.error('[getBusinessProductStatsAction]', error);
+    return {
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch stats' },
     };
   }
 }

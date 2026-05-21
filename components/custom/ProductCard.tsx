@@ -1,6 +1,8 @@
-// components/product-cards.tsx
 import Image from 'next/image';
+import { ImageOff } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { calculatePercentage } from '@/lib/product-helper';
 import type { ProductResponse } from '@/lib/types';
 
 export function ProductCard(product: ProductResponse) {
@@ -11,13 +13,19 @@ export function ProductCard(product: ProductResponse) {
     >
       {/* IMAGE */}
       <div className="border-border relative aspect-square min-h-48 w-full overflow-hidden rounded-md border">
-        <Image
-          src={product.image_url ?? '/placeholder.png'}
-          alt={product.name}
-          fill
-          className="object-cover transition-transform duration-300 group-hover:scale-105"
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-        />
+        {product.image_url ? (
+          <Image
+            src={product.image_url}
+            alt={product.name}
+            fill
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+          />
+        ) : (
+          <div className="bg-muted text-muted-foreground flex h-full w-full items-center justify-center">
+            <ImageOff className="size-10" />
+          </div>
+        )}
       </div>
 
       {/* CONTENT */}
@@ -29,9 +37,23 @@ export function ProductCard(product: ProductResponse) {
             {product.description}
           </p>
         )}
-        <p className="text-primary mt-auto font-semibold">
-          ₱{product.price.toLocaleString()}
-        </p>
+        {product.sale_price !== null && product.sale_price !== undefined ? (
+          <div className="mt-auto flex items-center gap-2">
+            <span className="text-primary font-semibold">
+              ₱{product.sale_price.toLocaleString()}
+            </span>
+            <span className="text-muted-foreground text-sm line-through">
+              ₱{product.price.toLocaleString()}
+            </span>
+            <Badge className="bg-primary/10 text-primary border-none text-xs">
+              -{calculatePercentage(product.price, product.sale_price)}%
+            </Badge>
+          </div>
+        ) : (
+          <p className="text-primary mt-auto font-semibold">
+            ₱{product.price.toLocaleString()}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

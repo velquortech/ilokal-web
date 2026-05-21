@@ -223,12 +223,12 @@ export async function createProduct(
   input: CreateProductRequest,
 ): Promise<ApiResponse<Product>> {
   try {
-    if (!input.price || input.price < 0) {
+    if (input.price < 0) {
       return {
         success: false,
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'Price must be a positive number',
+          message: 'Price cannot be negative',
         },
       };
     }
@@ -349,6 +349,13 @@ export async function updateProduct(
         ...(input.category_id && { category_id: input.category_id }),
         ...(input.image_url !== undefined && { image_url: input.image_url }),
         ...(input.status && { status: input.status }),
+        ...(input.is_available !== undefined && {
+          is_available: input.is_available,
+        }),
+        ...(input.price_type && { price_type: input.price_type }),
+        ...(input.price_unit !== undefined && {
+          price_unit: input.price_unit,
+        }),
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

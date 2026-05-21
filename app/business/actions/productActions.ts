@@ -31,11 +31,12 @@ export async function createProductAction(
     const validation = createProductSchema.safeParse(input);
     if (!validation.success) {
       const fieldErrors = validation.error.flatten().fieldErrors;
+      const firstError = Object.values(fieldErrors).flat()[0];
       return {
         success: false,
         error: {
           code: 'VALIDATION_ERROR',
-          message: fieldErrors.name?.[0] || 'Invalid product data',
+          message: firstError || 'Invalid product data',
         },
       };
     }
@@ -72,11 +73,12 @@ export async function updateProductAction(
     const validation = updateProductSchema.safeParse(input);
     if (!validation.success) {
       const fieldErrors = validation.error.flatten().fieldErrors;
+      const firstError = Object.values(fieldErrors).flat()[0];
       return {
         success: false,
         error: {
           code: 'VALIDATION_ERROR',
-          message: fieldErrors.name?.[0] || 'Invalid product data',
+          message: firstError || 'Invalid product data',
         },
       };
     }

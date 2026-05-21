@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { TabsContent } from '@/components/ui/tabs';
 import type { Profile } from '@/lib/types/user';
-import { PaginatedResponse } from '@/services';
+import { PaginatedResponse } from '@/lib/services';
 import UsersTable from '@/app/admin/components/shared/UsersTable';
 import { createAccountStatusColumns } from './columns';
 

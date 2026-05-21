@@ -19,6 +19,22 @@ const uploadService = {
       formData,
     );
   },
+
+  async uploadCouponImage(
+    formData: FormData,
+  ): Promise<ApiResponse<{ url: string; path: string; fileName: string }>> {
+    return await http.post<
+      ApiResponse<{ url: string; path: string; fileName: string }>
+    >('/upload/coupon-image', formData);
+  },
+
+  async uploadProductImage(
+    formData: FormData,
+  ): Promise<ApiResponse<{ url: string; path: string; fileName: string }>> {
+    return await http.post<
+      ApiResponse<{ url: string; path: string; fileName: string }>
+    >('/upload/product-image', formData);
+  },
 };
 
 export default uploadService;

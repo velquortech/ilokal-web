@@ -72,7 +72,7 @@ export const columns: ColumnDef<ProductResponse>[] = [
   },
   {
     accessorKey: 'category',
-    header: 'Category',
+    header: 'Catalogue',
     cell: ({ row }) => (
       <Badge variant="outline">{row.original.category?.name ?? '—'}</Badge>
     ),

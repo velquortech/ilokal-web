@@ -94,12 +94,12 @@ export async function createCoupon(
 export async function updateCoupon(
   id: string,
   input: UpdateCouponRequest,
+  skipExistenceCheck = false,
 ): Promise<ApiResponse<Coupon>> {
   try {
     const supabase = await createServerSupabaseClient();
 
-    // Check if coupon exists
-    const exists = await couponQuery.couponExists(id);
+    const exists = skipExistenceCheck || (await couponQuery.couponExists(id));
     if (!exists) {
       return {
         success: false,
@@ -169,12 +169,14 @@ export async function updateCoupon(
 /**
  * Soft delete a coupon
  */
-export async function deleteCoupon(id: string): Promise<ApiResponse<null>> {
+export async function deleteCoupon(
+  id: string,
+  skipExistenceCheck = false,
+): Promise<ApiResponse<null>> {
   try {
     const supabase = await createServerSupabaseClient();
 
-    // Check if coupon exists
-    const exists = await couponQuery.couponExists(id);
+    const exists = skipExistenceCheck || (await couponQuery.couponExists(id));
     if (!exists) {
       return {
         success: false,

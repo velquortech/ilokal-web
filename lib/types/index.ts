@@ -56,6 +56,7 @@ export type {
   ApplySaleRequest,
   ProductResponse,
   PaginatedProductsResponse,
+  ProductStats,
   CreateCategoryRequest,
   UpdateCategoryRequest,
   ProductFilters,

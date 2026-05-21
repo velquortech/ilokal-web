@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import type {
   ApiResponse,
@@ -42,7 +43,9 @@ export async function createBranchAction(
 
     const api = await import('@/lib/api/branches/branchService');
     const res = await api.createBranch(verify.business!.id, validation.data);
-    return res as ApiResponse<Branch>;
+    const result = res as ApiResponse<Branch>;
+    if (result.success) revalidatePath('/business/branches');
+    return result;
   } catch (error) {
     console.error('[createBranchAction]', error);
     return {
@@ -100,8 +103,10 @@ export async function updateBranchAction(
       };
     }
 
-    const updated = await branchService.update(id, validation.data);
-    return { success: true, data: updated } as ApiResponse<Branch>;
+    const result = await branchService.update(id, validation.data);
+    const res = { success: true, data: result } as ApiResponse<Branch>;
+    if (res.success) revalidatePath('/business/branches');
+    return res;
   } catch (error) {
     console.error('[updateBranchAction]', error);
     return {
@@ -146,7 +151,9 @@ export async function deleteBranchAction(
     }
 
     await branchService.delete(id);
-    return { success: true, data: null } as ApiResponse<null>;
+    const result = { success: true, data: null } as ApiResponse<null>;
+    revalidatePath('/business/branches');
+    return result;
   } catch (error) {
     console.error('[deleteBranchAction]', error);
     return {

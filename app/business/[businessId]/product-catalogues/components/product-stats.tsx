@@ -1,16 +1,17 @@
 import { StatCard } from '@/components/custom/StatCard';
-import { CircleCheck, FlagOff, Hash, PackageX } from 'lucide-react';
+import { CircleCheck, FlagOff, Hash, PhilippinePeso } from 'lucide-react';
+import type { ProductStats } from '@/lib/types';
 
-interface ProductStatsProps {
-  stats: { total: number; active: number; inactive: number; archived: number };
+interface Props {
+  stats: ProductStats;
 }
 
-export function ProductStats({ stats }: ProductStatsProps) {
+export function ProductStats({ stats }: Props) {
   const items = [
     { title: 'Total Products', icon: Hash, value: stats.total },
+    { title: 'On Sale', icon: PhilippinePeso, value: stats.on_sale },
     { title: 'Active', icon: CircleCheck, value: stats.active },
-    { title: 'Inactive', icon: FlagOff, value: stats.inactive },
-    { title: 'Archived', icon: PackageX, value: stats.archived },
+    { title: 'Unlisted', icon: FlagOff, value: stats.unlisted },
   ];
 
   return (

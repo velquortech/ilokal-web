@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Dialog,
   DialogClose,
@@ -14,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import type { ProductResponse } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
+import { deleteProductAction } from '../../actions/productActions';
 
 interface DeleteProductDialogProps {
   product: ProductResponse;
@@ -24,23 +26,36 @@ export function DeleteProductDialog({
   product,
   children,
 }: DeleteProductDialogProps) {
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [serverError, setServerError] = React.useState<string | null>(null);
 
   const handleDelete = async () => {
     setIsDeleting(true);
+    setServerError(null);
     try {
-      // call deletion here
+      const result = await deleteProductAction(product.id);
+      if (!result.success) {
+        setServerError(result.error?.message ?? 'Failed to delete product');
+        return;
+      }
       setOpen(false);
-    } catch (error) {
-      console.error('Failed to delete product:', error);
+      router.refresh();
+    } catch {
+      setServerError('An unexpected error occurred');
     } finally {
       setIsDeleting(false);
     }
   };
 
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) setServerError(null);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
 
       <DialogContent className="sm:max-w-106.25">
@@ -56,9 +71,15 @@ export function DeleteProductDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {serverError && (
+          <p className="text-destructive text-sm">{serverError}</p>
+        )}
+
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
+            <Button variant="outline" disabled={isDeleting}>
+              Cancel
+            </Button>
           </DialogClose>
           <Button
             variant="destructive"

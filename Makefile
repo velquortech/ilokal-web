@@ -78,7 +78,7 @@ migrate-new:
 	@yarn supabase migration new $(name)
 
 migrate-up:
-	@yarn supabase migration up
+	@yarn supabase migration up --local --include-all
 
 migrate-diff:
 	@yarn supabase db diff --local > supabase/migrations/$(shell date +%Y%m%d%H%M%S)_schema_changes.sql

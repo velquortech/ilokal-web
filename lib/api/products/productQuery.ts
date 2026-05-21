@@ -147,7 +147,7 @@ export async function getProductsPaginated(
     let query = supabase.from('products').select(
       `*,
         category:category_id (id, name, slug, description),
-        business:business_id (id, name)`,
+        business:business_id (id, shop_name)`,
       { count: 'exact' },
     );
 
@@ -225,7 +225,7 @@ export async function getProductById(id: string) {
       .select(
         `*,
         category:category_id (id, name, slug),
-        business:business_id (id, name)`,
+        business:business_id (id, shop_name)`,
       )
       .eq('id', id)
       .single();

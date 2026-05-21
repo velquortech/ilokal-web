@@ -7,7 +7,7 @@ import { z } from 'zod';
 
 // ===== Product Schemas =====
 
-export const productStatusSchema = z.enum(['active', 'inactive', 'archived']);
+export const productStatusSchema = z.enum(['active', 'unlisted', 'disabled']);
 
 export const priceTypeSchema = z.enum([
   'fixed',
@@ -22,11 +22,11 @@ export const createProductSchema = z.object({
   name: z.string().min(1, 'Product name is required').max(255),
   description: z.string().optional(),
   price: z.number().min(0, 'Price must be positive'),
-  price_type: priceTypeSchema.default('fixed'),
-  price_unit: z.string().optional(),
-  category_id: z.string().uuid('Invalid category ID'),
-  image_url: z.string().url().optional(),
-  is_available: z.boolean().default(true),
+  sale_price: z.number().min(0).nullable().optional(),
+  price_type: priceTypeSchema.optional(),
+  price_unit: z.string().nullable().optional(),
+  category_id: z.string().uuid('Invalid category ID').nullable().optional(),
+  image_url: z.string().url().nullable().optional(),
 });
 
 export const updateProductSchema = createProductSchema.partial().extend({

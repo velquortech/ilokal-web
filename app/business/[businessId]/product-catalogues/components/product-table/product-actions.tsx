@@ -1,6 +1,7 @@
-import type { ProductResponse } from '@/lib/types';
+import type { ProductResponse, ProductStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2, Ellipsis, Eye, Tag, BadgePercent } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 import {
   DropdownMenu,
@@ -18,8 +19,22 @@ import { DropdownMenuSub } from '@radix-ui/react-dropdown-menu';
 import { DeleteProductDialog } from '../delete-product';
 import { ViewProduct } from '../view-product';
 import { ApplySale } from '../apply-sale';
+import { updateProductStatusAction } from '@/app/business/[businessId]/actions/productActions';
 
 export function ProductActions(product: ProductResponse) {
+  const router = useRouter();
+
+  const handleStatusChange = async (status: string) => {
+    const result = await updateProductStatusAction(
+      product.id,
+      status as ProductStatus,
+    );
+    if (result.success) {
+      router.refresh();
+    }
+  };
+
+
   return (
     <div className="flex justify-center">
       <DropdownMenu>
@@ -54,7 +69,10 @@ export function ProductActions(product: ProductResponse) {
               Set Status
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
-              <DropdownMenuRadioGroup value={product.status}>
+              <DropdownMenuRadioGroup
+                value={product.status}
+                onValueChange={handleStatusChange}
+              >
                 <DropdownMenuRadioItem value="active" className="capitalize">
                   Active
                 </DropdownMenuRadioItem>

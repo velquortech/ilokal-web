@@ -1,156 +1,175 @@
-import {
-  Catalogue,
-  Product,
-  ProductCatalogue,
-} from '../libs/types/product.type';
+/**
+ * Seed / demo data for the product catalogues page.
+ * Structure mirrors the DB schema exactly — same field names as Supabase returns —
+ * so the FE renders identically whether it's consuming live data or this fallback.
+ */
+import type { Product, Category } from '@/lib/types';
+
+const DEMO_BUSINESS_ID = 'aaaaaaaa-0000-0000-0000-000000000001';
+const NOW = new Date().toISOString();
+
+export const demoCategories: Category[] = [
+  {
+    id: 'cat-coffees',
+    name: 'Coffees',
+    slug: 'coffees',
+    description: 'Hot and cold coffee drinks',
+    created_at: NOW,
+    updated_at: NOW,
+  },
+  {
+    id: 'cat-pastries',
+    name: 'Pastries',
+    slug: 'pastries',
+    description: 'Freshly baked goods',
+    created_at: NOW,
+    updated_at: NOW,
+  },
+];
 
 export const products: Product[] = [
   {
-    id: '1',
+    id: 'prod-1',
+    business_id: DEMO_BUSINESS_ID,
+    category_id: 'cat-coffees',
     name: 'Caramel Latte',
     description: 'Smooth espresso with steamed milk and caramel drizzle.',
     price: 180,
-    image:
-      'https://images.unsplash.com/photo-1512568400610-62da28bc8a13?q=80&w=987&auto=format&fit=crop...',
+    sale_price: null,
+    price_type: 'fixed',
+    price_unit: null,
+    image_url:
+      'https://images.unsplash.com/photo-1512568400610-62da28bc8a13?q=80&w=987&auto=format&fit=crop',
     status: 'active',
-    catalogue: {
-      name: 'Coffees',
-      id: 2,
-      shop_id: 101,
-    },
+    is_available: true,
+    archived_at: null,
+    created_at: NOW,
+    updated_at: NOW,
   },
   {
-    id: '5',
+    id: 'prod-2',
+    business_id: DEMO_BUSINESS_ID,
+    category_id: 'cat-coffees',
     name: 'Cappuccino',
     description: 'Classic espresso with steamed milk foam.',
     price: 170,
-    badge: 'Popular',
-    image:
-      'https://images.unsplash.com/photo-1559496417-e7f25cb247f3?q=80&w=1364&auto=format&fit=crop...',
+    sale_price: null,
+    price_type: 'fixed',
+    price_unit: null,
+    image_url:
+      'https://images.unsplash.com/photo-1559496417-e7f25cb247f3?q=80&w=1364&auto=format&fit=crop',
     status: 'active',
-    catalogue: {
-      name: 'Coffees',
-      id: 2,
-      shop_id: 101,
-    },
+    is_available: true,
+    archived_at: null,
+    created_at: NOW,
+    updated_at: NOW,
   },
   {
-    id: '3',
+    id: 'prod-3',
+    business_id: DEMO_BUSINESS_ID,
+    category_id: 'cat-coffees',
     name: 'Iced Americano',
     description: 'Refreshing espresso diluted with cold water over ice.',
     price: 150,
-    salePrice: 105,
-    badge: 'New',
-    image:
-      'https://images.unsplash.com/photo-1595520519770-15d19939e648?q=80&w=2340&auto=format&fit=crop...',
+    sale_price: 105,
+    price_type: 'fixed',
+    price_unit: null,
+    image_url:
+      'https://images.unsplash.com/photo-1595520519770-15d19939e648?q=80&w=2340&auto=format&fit=crop',
     status: 'active',
-    catalogue: {
-      name: 'Coffees',
-      id: 2,
-      shop_id: 101,
-    },
+    is_available: true,
+    archived_at: null,
+    created_at: NOW,
+    updated_at: NOW,
   },
   {
-    id: '7',
+    id: 'prod-4',
+    business_id: DEMO_BUSINESS_ID,
+    category_id: 'cat-coffees',
     name: 'Espresso Shot',
     description: 'Strong and bold single shot of espresso.',
     price: 100,
-    salePrice: 80,
-    image:
-      'https://images.unsplash.com/photo-1759259639364-d4cf34e61568?q=80&w=987&auto=format&fit=crop...',
+    sale_price: 80,
+    price_type: 'fixed',
+    price_unit: null,
+    image_url:
+      'https://images.unsplash.com/photo-1759259639364-d4cf34e61568?q=80&w=987&auto=format&fit=crop',
     status: 'active',
-    catalogue: {
-      name: 'Coffees',
-      id: 2,
-      shop_id: 101,
-    },
+    is_available: true,
+    archived_at: null,
+    created_at: NOW,
+    updated_at: NOW,
   },
   {
-    id: '2',
+    id: 'prod-5',
+    business_id: DEMO_BUSINESS_ID,
+    category_id: 'cat-pastries',
     name: 'Butter Croissant',
     description: 'Flaky and buttery French-style pastry.',
     price: 120,
-    image:
-      'https://images.unsplash.com/photo-1587912001191-0cd4f14fd89e?q=80&w=2340&auto=format&fit=crop...',
+    sale_price: null,
+    price_type: 'fixed',
+    price_unit: null,
+    image_url:
+      'https://images.unsplash.com/photo-1587912001191-0cd4f14fd89e?q=80&w=2340&auto=format&fit=crop',
     status: 'active',
-    catalogue: {
-      name: 'Pastries',
-      id: 3,
-      shop_id: 101,
-    },
+    is_available: true,
+    archived_at: null,
+    created_at: NOW,
+    updated_at: NOW,
   },
   {
-    id: '6',
+    id: 'prod-6',
+    business_id: DEMO_BUSINESS_ID,
+    category_id: 'cat-pastries',
     name: 'Blueberry Muffin',
     description: 'Moist muffin packed with fresh blueberries.',
     price: 110,
-    salePrice: 85,
-    badge: 'New',
-    image:
-      'https://images.unsplash.com/photo-1607958996333-41aef7caefaa?q=80&w=2340&auto=format&fit=crop...',
+    sale_price: 85,
+    price_type: 'fixed',
+    price_unit: null,
+    image_url:
+      'https://images.unsplash.com/photo-1607958996333-41aef7caefaa?q=80&w=2340&auto=format&fit=crop',
     status: 'active',
-    catalogue: {
-      name: 'Pastries',
-      id: 3,
-      shop_id: 101,
-    },
+    is_available: true,
+    archived_at: null,
+    created_at: NOW,
+    updated_at: NOW,
   },
   {
-    id: '4',
+    id: 'prod-7',
+    business_id: DEMO_BUSINESS_ID,
+    category_id: 'cat-pastries',
     name: 'Chocolate Donut',
     description: 'Soft donut topped with rich chocolate glaze.',
     price: 90,
-    salePrice: 75,
-    image:
-      'https://images.unsplash.com/photo-1657318415919-3beff167f849?q=80&w=1958&auto=format&fit=crop...',
-    status: 'unlisted', // Testing an unlisted pastry
-    catalogue: {
-      name: 'Pastries',
-      id: 3,
-      shop_id: 101,
-    },
+    sale_price: 75,
+    price_type: 'fixed',
+    price_unit: null,
+    image_url:
+      'https://images.unsplash.com/photo-1657318415919-3beff167f849?q=80&w=1958&auto=format&fit=crop',
+    status: 'unlisted',
+    is_available: false,
+    archived_at: null,
+    created_at: NOW,
+    updated_at: NOW,
   },
   {
-    id: '8',
+    id: 'prod-8',
+    business_id: DEMO_BUSINESS_ID,
+    category_id: 'cat-pastries',
     name: 'Strawberry Danish',
     description: 'Sweet pastry filled with cream cheese and strawberries.',
     price: 140,
-    badge: 'Popular',
-    image:
-      'https://images.unsplash.com/photo-1681218424681-b4f8228ecea9?q=80&w=1974&auto=format&fit=crop...',
+    sale_price: null,
+    price_type: 'fixed',
+    price_unit: null,
+    image_url:
+      'https://images.unsplash.com/photo-1681218424681-b4f8228ecea9?q=80&w=1974&auto=format&fit=crop',
     status: 'active',
-    catalogue: {
-      name: 'Pastries',
-      id: 3,
-      shop_id: 101,
-    },
+    is_available: true,
+    archived_at: null,
+    created_at: NOW,
+    updated_at: NOW,
   },
-];
-
-export const productCatalogues: ProductCatalogue = [
-  {
-    name: 'Promos & Offers',
-    id: 1,
-    shop_id: 101,
-    items: products.filter((p) => p.salePrice !== undefined),
-  },
-  {
-    name: 'Coffees',
-    id: 2,
-    shop_id: 101,
-    items: products.slice(0, 4),
-  },
-  {
-    name: 'Pastries',
-    id: 3,
-    shop_id: 101,
-    items: products.slice(4, 8),
-  },
-];
-
-export const catalogues: Catalogue[] = [
-  { id: 1, shop_id: 101, name: 'All' },
-  { id: 2, shop_id: 101, name: 'Promos & Offers' },
-  { id: 3, shop_id: 101, name: 'Coffees' },
-  { id: 4, shop_id: 101, name: 'Pastries' },
 ];

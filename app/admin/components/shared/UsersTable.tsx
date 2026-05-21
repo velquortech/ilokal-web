@@ -11,7 +11,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { AdminUser } from '@/lib/types/admin';
-import { PaginatedResponse } from '@/services';
+import { PaginatedResponse } from '@/lib/services';
 import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
 import { UsersTableColumnVisibility } from './UsersTableColumnVisibility';
 import { UsersTablePagination } from './UsersTablePagination';

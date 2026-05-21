@@ -6,6 +6,7 @@ import type {
   ApiResponse,
   ApiError,
   Product,
+  ProductStatus,
   CreateProductRequest,
   UpdateProductRequest,
   ApplySaleRequest,
@@ -125,6 +126,32 @@ export async function deleteProductAction(
       error: {
         code: 'INTERNAL_ERROR',
         message: 'Failed to delete product',
+      },
+    };
+  }
+}
+
+/**
+ * Update only the status of a product
+ */
+export async function updateProductStatusAction(
+  id: string,
+  status: ProductStatus,
+): Promise<ApiResponse<Product>> {
+  try {
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+
+    const api = await import('@/lib/api/products/productService');
+    return await api.updateProduct(id, verify.business!.id, { status });
+  } catch (error) {
+    console.error('[updateProductStatusAction]', error);
+    return {
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to update product status',
       },
     };
   }

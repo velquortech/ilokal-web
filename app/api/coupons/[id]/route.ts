@@ -1,10 +1,11 @@
 /**
- * GET /api/coupons/:id
- * Get coupon details and redemption stats
+ * GET /api/web/coupons/:id
+ * Returns coupon details only — no redemption stats (those are business-sensitive).
+ * Redemption stats are available at GET /api/web/coupons/:id/redemptions (requires auth).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import type { ApiResponse, CouponDetailResponse } from '@/lib/types';
+import type { ApiResponse, Coupon } from '@/lib/types';
 import * as couponQuery from '@/lib/api/coupons/couponQuery';
 
 export async function GET(
@@ -18,10 +19,7 @@ export async function GET(
       return NextResponse.json(
         {
           success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Coupon ID is required',
-          },
+          error: { code: 'VALIDATION_ERROR', message: 'Coupon ID is required' },
         } as ApiResponse<null>,
         { status: 400 },
       );
@@ -33,41 +31,24 @@ export async function GET(
       return NextResponse.json(
         {
           success: false,
-          error: {
-            code: 'NOT_FOUND',
-            message: result.error,
-          },
+          error: { code: 'NOT_FOUND', message: result.error },
         } as ApiResponse<null>,
         { status: 404 },
       );
     }
 
-    // Get redemption stats
-    const stats = await couponQuery.getRedemptionStats(id);
-
     return NextResponse.json(
+      { success: true, data: result.coupon } as ApiResponse<Coupon>,
       {
-        success: true,
-        data: {
-          coupon: result.coupon,
-          stats,
-        },
-      } as ApiResponse<CouponDetailResponse>,
-      {
-        headers: {
-          'Cache-Control': 'private, max-age=300, must-revalidate',
-        },
+        headers: { 'Cache-Control': 'private, max-age=300, must-revalidate' },
       },
     );
   } catch (error) {
-    console.error('[GET /api/coupons/:id]', error);
+    console.error('[GET /api/web/coupons/:id]', error);
     return NextResponse.json(
       {
         success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Failed to fetch coupon',
-        },
+        error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch coupon' },
       } as ApiResponse<null>,
       { status: 500 },
     );

@@ -82,7 +82,10 @@ describe('updateProductAction()', () => {
   });
 
   it('delegates to productService.updateProduct and returns success', async () => {
-    const updatedProduct: Partial<Product> = { ...mockProduct, name: 'New Name' };
+    const updatedProduct: Partial<Product> = {
+      ...mockProduct,
+      name: 'New Name',
+    };
     const productService = await import('@/lib/api/products/productService');
     vi.mocked(productService.updateProduct).mockResolvedValueOnce({
       success: true,
@@ -160,7 +163,10 @@ describe('applySaleAction()', () => {
   });
 
   it('returns VALIDATION_ERROR when sale_price is missing', async () => {
-    const res = await applySaleAction(mockProduct.id, {} as Parameters<typeof applySaleAction>[1]);
+    const res = await applySaleAction(
+      mockProduct.id,
+      {} as Parameters<typeof applySaleAction>[1],
+    );
 
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('VALIDATION_ERROR');
@@ -253,7 +259,10 @@ describe('getBusinessProductsPaginatedAction()', () => {
   it('returns error when not authorized', async () => {
     mockUnauthorized();
 
-    const res = await getBusinessProductsPaginatedAction({ page: 1, per_page: 10 });
+    const res = await getBusinessProductsPaginatedAction({
+      page: 1,
+      per_page: 10,
+    });
 
     expect(res.success).toBe(false);
   });
@@ -264,7 +273,10 @@ describe('getBusinessProductsPaginatedAction()', () => {
       paginatedProductsResponse,
     );
 
-    const res = await getBusinessProductsPaginatedAction({ page: 1, per_page: 10 });
+    const res = await getBusinessProductsPaginatedAction({
+      page: 1,
+      per_page: 10,
+    });
 
     expect(res.success).toBe(true);
     expect(res.data?.products).toHaveLength(2);
@@ -289,7 +301,10 @@ describe('getBusinessProductsPaginatedAction()', () => {
       error: 'DB failed',
     });
 
-    const res = await getBusinessProductsPaginatedAction({ page: 1, per_page: 10 });
+    const res = await getBusinessProductsPaginatedAction({
+      page: 1,
+      per_page: 10,
+    });
 
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('INTERNAL_ERROR');
@@ -334,9 +349,9 @@ describe('getBusinessProductStatsAction()', () => {
 
     await getBusinessProductStatsAction();
 
-    expect(vi.mocked(productQuery.getProductStatsByBusiness)).toHaveBeenCalledWith(
-      BUSINESS_ID,
-    );
+    expect(
+      vi.mocked(productQuery.getProductStatsByBusiness),
+    ).toHaveBeenCalledWith(BUSINESS_ID);
   });
 });
 

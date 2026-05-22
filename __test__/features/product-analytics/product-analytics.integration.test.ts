@@ -35,18 +35,25 @@ function mockAuthorized() {
   vi.mocked(assertAuthorizedModule.assertAuthorized).mockResolvedValue({
     authorized: true,
     user: { id: USER_ID },
-  } as unknown as Awaited<ReturnType<typeof assertAuthorizedModule.assertAuthorized>>);
+  } as unknown as Awaited<
+    ReturnType<typeof assertAuthorizedModule.assertAuthorized>
+  >);
 }
 
 function mockUnauthorized() {
   const errorResponse = new Response(
-    JSON.stringify({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authorized' } }),
+    JSON.stringify({
+      success: false,
+      error: { code: 'UNAUTHORIZED', message: 'Not authorized' },
+    }),
     { status: 401, headers: { 'Content-Type': 'application/json' } },
   );
   vi.mocked(assertAuthorizedModule.assertAuthorized).mockResolvedValue({
     authorized: false,
     error: errorResponse,
-  } as unknown as Awaited<ReturnType<typeof assertAuthorizedModule.assertAuthorized>>);
+  } as unknown as Awaited<
+    ReturnType<typeof assertAuthorizedModule.assertAuthorized>
+  >);
 }
 
 describe('GET /api/analytics/products', () => {
@@ -55,9 +62,13 @@ describe('GET /api/analytics/products', () => {
     mockAuthorized();
     vi.mocked(subscriptionQuery.getUserBusiness).mockResolvedValue({
       data: { id: BUSINESS_ID },
-    } as unknown as Awaited<ReturnType<typeof subscriptionQuery.getUserBusiness>>);
+    } as unknown as Awaited<
+      ReturnType<typeof subscriptionQuery.getUserBusiness>
+    >);
     vi.mocked(service.getProductPerformance).mockResolvedValue(
-      mockProductPerformance as unknown as Awaited<ReturnType<typeof service.getProductPerformance>>,
+      mockProductPerformance as unknown as Awaited<
+        ReturnType<typeof service.getProductPerformance>
+      >,
     );
   });
 
@@ -88,7 +99,9 @@ describe('GET /api/analytics/products', () => {
   it('returns 403 when user does not own the business', async () => {
     vi.mocked(subscriptionQuery.getUserBusiness).mockResolvedValue({
       data: { id: 'other-business-id' },
-    } as unknown as Awaited<ReturnType<typeof subscriptionQuery.getUserBusiness>>);
+    } as unknown as Awaited<
+      ReturnType<typeof subscriptionQuery.getUserBusiness>
+    >);
 
     const res = await GET(makeRequest({ business_id: BUSINESS_ID }));
 
@@ -100,7 +113,9 @@ describe('GET /api/analytics/products', () => {
   it('returns 403 when getUserBusiness returns an error', async () => {
     vi.mocked(subscriptionQuery.getUserBusiness).mockResolvedValue({
       error: 'Business not found',
-    } as unknown as Awaited<ReturnType<typeof subscriptionQuery.getUserBusiness>>);
+    } as unknown as Awaited<
+      ReturnType<typeof subscriptionQuery.getUserBusiness>
+    >);
 
     const res = await GET(makeRequest({ business_id: BUSINESS_ID }));
 

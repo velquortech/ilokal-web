@@ -20,9 +20,9 @@ beforeEach(() => vi.clearAllMocks());
 
 describe('applySale()', () => {
   it('returns NOT_FOUND when product does not exist', async () => {
-    vi.mocked(q.getProductById).mockResolvedValueOnce(
-      { error: 'Product not found' } as unknown as Awaited<ReturnType<typeof q.getProductById>>,
-    );
+    vi.mocked(q.getProductById).mockResolvedValueOnce({
+      error: 'Product not found',
+    } as unknown as Awaited<ReturnType<typeof q.getProductById>>);
 
     const res = await svc.applySale(mockProduct.id, BUSINESS_ID, {
       sale_price: 140,
@@ -33,11 +33,9 @@ describe('applySale()', () => {
   });
 
   it('returns AUTHORIZATION_ERROR when product belongs to a different business', async () => {
-    vi.mocked(q.getProductById).mockResolvedValueOnce(
-      { product: { ...mockProduct, business_id: OTHER_BUSINESS_ID } } as unknown as Awaited<
-        ReturnType<typeof q.getProductById>
-      >,
-    );
+    vi.mocked(q.getProductById).mockResolvedValueOnce({
+      product: { ...mockProduct, business_id: OTHER_BUSINESS_ID },
+    } as unknown as Awaited<ReturnType<typeof q.getProductById>>);
 
     const res = await svc.applySale(mockProduct.id, BUSINESS_ID, {
       sale_price: 140,
@@ -48,11 +46,9 @@ describe('applySale()', () => {
   });
 
   it('returns VALIDATION_ERROR when sale_price >= original price', async () => {
-    vi.mocked(q.getProductById).mockResolvedValueOnce(
-      { product: { ...mockProduct, price: 185, business_id: BUSINESS_ID } } as unknown as Awaited<
-        ReturnType<typeof q.getProductById>
-      >,
-    );
+    vi.mocked(q.getProductById).mockResolvedValueOnce({
+      product: { ...mockProduct, price: 185, business_id: BUSINESS_ID },
+    } as unknown as Awaited<ReturnType<typeof q.getProductById>>);
 
     const res = await svc.applySale(mockProduct.id, BUSINESS_ID, {
       sale_price: 185,
@@ -64,29 +60,25 @@ describe('applySale()', () => {
   });
 
   it('returns VALIDATION_ERROR when sale_price equals original price exactly', async () => {
-    vi.mocked(q.getProductById).mockResolvedValueOnce(
-      { product: { ...mockProduct, price: 185, business_id: BUSINESS_ID } } as unknown as Awaited<
-        ReturnType<typeof q.getProductById>
-      >,
-    );
+    vi.mocked(q.getProductById).mockResolvedValueOnce({
+      product: { ...mockProduct, price: 185, business_id: BUSINESS_ID },
+    } as unknown as Awaited<ReturnType<typeof q.getProductById>>);
 
-    const res = await svc.applySale(mockProduct.id, BUSINESS_ID, { sale_price: 185 });
+    const res = await svc.applySale(mockProduct.id, BUSINESS_ID, {
+      sale_price: 185,
+    });
 
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('VALIDATION_ERROR');
   });
 
   it('returns success when sale_price is valid and DB update succeeds', async () => {
-    vi.mocked(q.getProductById).mockResolvedValueOnce(
-      { product: { ...mockProduct, price: 185, business_id: BUSINESS_ID } } as unknown as Awaited<
-        ReturnType<typeof q.getProductById>
-      >,
-    );
-    vi.mocked(q.applySaleToProduct).mockResolvedValueOnce(
-      { product: { ...mockProduct, sale_price: 140 } } as unknown as Awaited<
-        ReturnType<typeof q.applySaleToProduct>
-      >,
-    );
+    vi.mocked(q.getProductById).mockResolvedValueOnce({
+      product: { ...mockProduct, price: 185, business_id: BUSINESS_ID },
+    } as unknown as Awaited<ReturnType<typeof q.getProductById>>);
+    vi.mocked(q.applySaleToProduct).mockResolvedValueOnce({
+      product: { ...mockProduct, sale_price: 140 },
+    } as unknown as Awaited<ReturnType<typeof q.applySaleToProduct>>);
 
     const res = await svc.applySale(mockProduct.id, BUSINESS_ID, {
       sale_price: 140,
@@ -99,14 +91,12 @@ describe('applySale()', () => {
   });
 
   it('returns INTERNAL_ERROR when applySaleToProduct fails', async () => {
-    vi.mocked(q.getProductById).mockResolvedValueOnce(
-      { product: { ...mockProduct, price: 185, business_id: BUSINESS_ID } } as unknown as Awaited<
-        ReturnType<typeof q.getProductById>
-      >,
-    );
-    vi.mocked(q.applySaleToProduct).mockResolvedValueOnce(
-      { error: 'DB write failed' } as unknown as Awaited<ReturnType<typeof q.applySaleToProduct>>,
-    );
+    vi.mocked(q.getProductById).mockResolvedValueOnce({
+      product: { ...mockProduct, price: 185, business_id: BUSINESS_ID },
+    } as unknown as Awaited<ReturnType<typeof q.getProductById>>);
+    vi.mocked(q.applySaleToProduct).mockResolvedValueOnce({
+      error: 'DB write failed',
+    } as unknown as Awaited<ReturnType<typeof q.applySaleToProduct>>);
 
     const res = await svc.applySale(mockProduct.id, BUSINESS_ID, {
       sale_price: 100,
@@ -121,9 +111,9 @@ describe('applySale()', () => {
 
 describe('removeSale()', () => {
   it('returns NOT_FOUND when product does not exist', async () => {
-    vi.mocked(q.getProductById).mockResolvedValueOnce(
-      { error: 'Product not found' } as unknown as Awaited<ReturnType<typeof q.getProductById>>,
-    );
+    vi.mocked(q.getProductById).mockResolvedValueOnce({
+      error: 'Product not found',
+    } as unknown as Awaited<ReturnType<typeof q.getProductById>>);
 
     const res = await svc.removeSale(mockProductOnSale.id, BUSINESS_ID);
 
@@ -132,11 +122,9 @@ describe('removeSale()', () => {
   });
 
   it('returns AUTHORIZATION_ERROR when product belongs to a different business', async () => {
-    vi.mocked(q.getProductById).mockResolvedValueOnce(
-      { product: { ...mockProductOnSale, business_id: OTHER_BUSINESS_ID } } as unknown as Awaited<
-        ReturnType<typeof q.getProductById>
-      >,
-    );
+    vi.mocked(q.getProductById).mockResolvedValueOnce({
+      product: { ...mockProductOnSale, business_id: OTHER_BUSINESS_ID },
+    } as unknown as Awaited<ReturnType<typeof q.getProductById>>);
 
     const res = await svc.removeSale(mockProductOnSale.id, BUSINESS_ID);
 
@@ -152,16 +140,12 @@ describe('removeSale()', () => {
       sale_ends_at: null,
       business_id: BUSINESS_ID,
     };
-    vi.mocked(q.getProductById).mockResolvedValueOnce(
-      { product: { ...mockProductOnSale, business_id: BUSINESS_ID } } as unknown as Awaited<
-        ReturnType<typeof q.getProductById>
-      >,
-    );
-    vi.mocked(q.removeSaleFromProduct).mockResolvedValueOnce(
-      { product: clearedProduct } as unknown as Awaited<
-        ReturnType<typeof q.removeSaleFromProduct>
-      >,
-    );
+    vi.mocked(q.getProductById).mockResolvedValueOnce({
+      product: { ...mockProductOnSale, business_id: BUSINESS_ID },
+    } as unknown as Awaited<ReturnType<typeof q.getProductById>>);
+    vi.mocked(q.removeSaleFromProduct).mockResolvedValueOnce({
+      product: clearedProduct,
+    } as unknown as Awaited<ReturnType<typeof q.removeSaleFromProduct>>);
 
     const res = await svc.removeSale(mockProductOnSale.id, BUSINESS_ID);
 
@@ -170,16 +154,12 @@ describe('removeSale()', () => {
   });
 
   it('returns INTERNAL_ERROR when removeSaleFromProduct fails', async () => {
-    vi.mocked(q.getProductById).mockResolvedValueOnce(
-      { product: { ...mockProductOnSale, business_id: BUSINESS_ID } } as unknown as Awaited<
-        ReturnType<typeof q.getProductById>
-      >,
-    );
-    vi.mocked(q.removeSaleFromProduct).mockResolvedValueOnce(
-      { error: 'write timeout' } as unknown as Awaited<
-        ReturnType<typeof q.removeSaleFromProduct>
-      >,
-    );
+    vi.mocked(q.getProductById).mockResolvedValueOnce({
+      product: { ...mockProductOnSale, business_id: BUSINESS_ID },
+    } as unknown as Awaited<ReturnType<typeof q.getProductById>>);
+    vi.mocked(q.removeSaleFromProduct).mockResolvedValueOnce({
+      error: 'write timeout',
+    } as unknown as Awaited<ReturnType<typeof q.removeSaleFromProduct>>);
 
     const res = await svc.removeSale(mockProductOnSale.id, BUSINESS_ID);
 
@@ -220,11 +200,9 @@ describe('createCategory() — description handling', () => {
 
 describe('updateProduct() — field updates', () => {
   it('returns INTERNAL_ERROR when DB update fails', async () => {
-    vi.mocked(q.getProductById).mockResolvedValueOnce(
-      { product: { ...mockProduct, business_id: BUSINESS_ID } } as unknown as Awaited<
-        ReturnType<typeof q.getProductById>
-      >,
-    );
+    vi.mocked(q.getProductById).mockResolvedValueOnce({
+      product: { ...mockProduct, business_id: BUSINESS_ID },
+    } as unknown as Awaited<ReturnType<typeof q.getProductById>>);
 
     const { createServerSupabaseClient } = await import('@/supabase/server');
     vi.mocked(createServerSupabaseClient).mockResolvedValueOnce({
@@ -251,11 +229,9 @@ describe('updateProduct() — field updates', () => {
   });
 
   it('allows updating category to a valid category', async () => {
-    vi.mocked(q.getProductById).mockResolvedValueOnce(
-      { product: { ...mockProduct, business_id: BUSINESS_ID } } as unknown as Awaited<
-        ReturnType<typeof q.getProductById>
-      >,
-    );
+    vi.mocked(q.getProductById).mockResolvedValueOnce({
+      product: { ...mockProduct, business_id: BUSINESS_ID },
+    } as unknown as Awaited<ReturnType<typeof q.getProductById>>);
     vi.mocked(q.getCategoryById).mockResolvedValueOnce(
       mockCategory as unknown as Awaited<ReturnType<typeof q.getCategoryById>>,
     );

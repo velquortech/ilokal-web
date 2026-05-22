@@ -113,7 +113,9 @@ describe('applySaleToProduct()', () => {
     const updateSpy = vi.fn(() => ({
       eq: vi.fn(() => ({
         select: vi.fn(() => ({
-          single: vi.fn().mockResolvedValue({ data: updatedProduct, error: null }),
+          single: vi
+            .fn()
+            .mockResolvedValue({ data: updatedProduct, error: null }),
         })),
       })),
     }));
@@ -142,7 +144,9 @@ describe('removeSaleFromProduct()', () => {
     const updateSpy = vi.fn(() => ({
       eq: vi.fn(() => ({
         select: vi.fn(() => ({
-          single: vi.fn().mockResolvedValue({ data: clearedProduct, error: null }),
+          single: vi
+            .fn()
+            .mockResolvedValue({ data: clearedProduct, error: null }),
         })),
       })),
     }));
@@ -150,7 +154,9 @@ describe('removeSaleFromProduct()', () => {
       from: vi.fn(() => ({ update: updateSpy })),
     } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>);
 
-    const result = await productQuery.removeSaleFromProduct(mockProductOnSale.id);
+    const result = await productQuery.removeSaleFromProduct(
+      mockProductOnSale.id,
+    );
 
     expect('product' in result).toBe(true);
     expect(updateSpy).toHaveBeenCalledWith(
@@ -177,7 +183,9 @@ describe('removeSaleFromProduct()', () => {
       from: vi.fn(() => ({ update: updateSpy })),
     } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>);
 
-    const result = await productQuery.removeSaleFromProduct(mockProductOnSale.id);
+    const result = await productQuery.removeSaleFromProduct(
+      mockProductOnSale.id,
+    );
 
     expect('error' in result).toBe(true);
     if ('error' in result) {
@@ -352,7 +360,9 @@ describe('getProductsPaginated() — sort_by variants', () => {
 
   beforeEach(() => {
     chain = buildChain();
-    chain.range = vi.fn().mockResolvedValue({ data: [], count: 0, error: null });
+    chain.range = vi
+      .fn()
+      .mockResolvedValue({ data: [], count: 0, error: null });
     mockSupabase(chain);
   });
 
@@ -366,7 +376,11 @@ describe('getProductsPaginated() — sort_by variants', () => {
   ] as const)(
     'sort_by="%s" calls order(%s, { ascending: %s })',
     async (sort_by, field, ascending) => {
-      await productQuery.getProductsPaginated({ page: 1, per_page: 10, sort_by });
+      await productQuery.getProductsPaginated({
+        page: 1,
+        per_page: 10,
+        sort_by,
+      });
       expect(chain.order).toHaveBeenCalledWith(field, { ascending });
     },
   );
@@ -377,7 +391,9 @@ describe('getProductsPaginated() — sort_by variants', () => {
 describe('getProductsPaginated() — pagination', () => {
   it('computes correct offset for page 3 with per_page 5', async () => {
     const chain = buildChain();
-    chain.range = vi.fn().mockResolvedValue({ data: [], count: 0, error: null });
+    chain.range = vi
+      .fn()
+      .mockResolvedValue({ data: [], count: 0, error: null });
     mockSupabase(chain);
 
     await productQuery.getProductsPaginated({ page: 3, per_page: 5 });
@@ -387,10 +403,15 @@ describe('getProductsPaginated() — pagination', () => {
 
   it('returns total_pages computed from count', async () => {
     const chain = buildChain();
-    chain.range = vi.fn().mockResolvedValue({ data: [], count: 25, error: null });
+    chain.range = vi
+      .fn()
+      .mockResolvedValue({ data: [], count: 25, error: null });
     mockSupabase(chain);
 
-    const result = await productQuery.getProductsPaginated({ page: 1, per_page: 10 });
+    const result = await productQuery.getProductsPaginated({
+      page: 1,
+      per_page: 10,
+    });
 
     if ('total_pages' in result) {
       expect(result.total_pages).toBe(3);
@@ -404,7 +425,11 @@ describe('getProductById()', () => {
   it('selects category and business join fields', async () => {
     const chain = buildChain();
     chain.single = vi.fn().mockResolvedValue({
-      data: { ...mockProduct, category: mockCategory, business: { id: BUSINESS_ID, shop_name: 'Test' } },
+      data: {
+        ...mockProduct,
+        category: mockCategory,
+        business: { id: BUSINESS_ID, shop_name: 'Test' },
+      },
       error: null,
     });
     mockSupabase(chain);

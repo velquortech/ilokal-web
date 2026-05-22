@@ -74,7 +74,6 @@ export function ProductCataloguesContent({
       }
     }, 400);
     return () => clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchInput]);
 
   const handleCategoryChange = React.useCallback(

@@ -1,4 +1,8 @@
-import type { Product, ProductResponse, PaginatedProductsResponse } from '@/lib/types';
+import type {
+  Product,
+  ProductResponse,
+  PaginatedProductsResponse,
+} from '@/lib/types';
 import { mockCategory, mockCategoryClothing } from './categories.mock';
 
 export const BUSINESS_ID = 'biz-00000000-0000-0000-0000-000000000001';

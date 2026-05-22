@@ -20,7 +20,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { calculatePercentage } from '@/lib/product-helper';
-import { applySaleAction, removeSaleAction } from '../../actions/productActions';
+import {
+  applySaleAction,
+  removeSaleAction,
+} from '../../actions/productActions';
 import type { ProductResponse } from '@/lib/types';
 
 interface ApplySaleProps {

@@ -78,13 +78,17 @@ describe('GET /api/products', () => {
     );
   });
 
-  it.each([['newest'], ['oldest'], ['name_asc'], ['name_desc'], ['price_low'], ['price_high']] as const)(
-    'accepts sort_by="%s"',
-    async (sort_by) => {
-      const res = await GET(makeRequest({ sort_by }));
-      expect(res.status).toBe(200);
-    },
-  );
+  it.each([
+    ['newest'],
+    ['oldest'],
+    ['name_asc'],
+    ['name_desc'],
+    ['price_low'],
+    ['price_high'],
+  ] as const)('accepts sort_by="%s"', async (sort_by) => {
+    const res = await GET(makeRequest({ sort_by }));
+    expect(res.status).toBe(200);
+  });
 
   it('returns 400 for an invalid sort_by value', async () => {
     const res = await GET(makeRequest({ sort_by: 'invalid_sort' }));

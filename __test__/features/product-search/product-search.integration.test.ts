@@ -44,7 +44,9 @@ describe('GET /api/search/products', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(searchService.searchProductsService).mockResolvedValue(
-      mockSearchResult as unknown as Awaited<ReturnType<typeof searchService.searchProductsService>>,
+      mockSearchResult as unknown as Awaited<
+        ReturnType<typeof searchService.searchProductsService>
+      >,
     );
   });
 

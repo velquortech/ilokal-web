@@ -37,29 +37,26 @@ export const columns: ColumnDef<ProductResponse>[] = [
   {
     accessorKey: 'image_url',
     header: 'Image',
-    cell: ({ row }) => {
-      console.log(row.original.image_url);
-      return (
-        <ViewProduct {...row.original}>
-          <div className="group relative size-12 shrink-0 cursor-pointer overflow-hidden rounded-md border">
-            {row.original.image_url ? (
-              <Image
-                src={row.original.image_url}
-                alt={row.original.name}
-                fill
-                sizes="48px"
-                unoptimized
-                className="object-cover transition group-hover:scale-105"
-              />
-            ) : (
-              <div className="bg-muted text-muted-foreground flex h-full w-full items-center justify-center">
-                <ImageOff className="size-5" />
-              </div>
-            )}
-          </div>
-        </ViewProduct>
-      );
-    },
+    cell: ({ row }) => (
+      <ViewProduct {...row.original}>
+        <div className="group relative size-12 shrink-0 cursor-pointer overflow-hidden rounded-md border">
+          {row.original.image_url ? (
+            <Image
+              src={row.original.image_url}
+              alt={row.original.name}
+              fill
+              sizes="48px"
+              unoptimized
+              className="object-cover transition group-hover:scale-105"
+            />
+          ) : (
+            <div className="bg-muted text-muted-foreground flex h-full w-full items-center justify-center">
+              <ImageOff className="size-5" />
+            </div>
+          )}
+        </div>
+      </ViewProduct>
+    ),
   },
   {
     accessorKey: 'name',

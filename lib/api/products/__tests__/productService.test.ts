@@ -198,14 +198,17 @@ describe('productService', () => {
       expect(res.error?.code).toBe('VALIDATION_ERROR');
     });
 
-    it('returns VALIDATION_ERROR for price of zero', async () => {
+    it('allows price of zero and proceeds to category check', async () => {
+      vi.mocked(q.getCategoryById).mockResolvedValueOnce(
+        null as unknown as Awaited<ReturnType<typeof q.getCategoryById>>,
+      );
       const res = await svc.createProduct('b1', {
         category_id: 'c1',
         name: 'Test',
         price: 0,
       } as unknown as Parameters<typeof svc.createProduct>[1]);
       expect(res.success).toBe(false);
-      expect(res.error?.code).toBe('VALIDATION_ERROR');
+      expect(res.error?.code).toBe('NOT_FOUND');
     });
 
     it('returns NOT_FOUND when category missing', async () => {

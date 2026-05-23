@@ -2,14 +2,17 @@ import { PackageOpen, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BusinessShop } from '@/providers/BusinessProvider';
 import Link from 'next/link';
+import { ProductCard } from '@/components/custom/ProductCard';
+import type { ProductResponse } from '@/lib/types';
 
 interface ShopItemsProps {
   business?: BusinessShop | null;
+  products: ProductResponse[];
 }
 
-export function ShopItems({ business }: ShopItemsProps) {
-  // Check if business data exists and registration is complete
+export function ShopItems({ business, products }: ShopItemsProps) {
   const hasBusinessData = business && business.shop_name;
+  const hasProducts = products.length > 0;
 
   return (
     <div className="space-y-5">
@@ -36,29 +39,36 @@ export function ShopItems({ business }: ShopItemsProps) {
       </div>
 
       {hasBusinessData ? (
-        <div className="flex flex-col gap-4">
-          {/* Placeholder for Product List or Grid */}
-          <div className="bg-secondary/20 border-border flex flex-col items-center justify-center space-y-3 rounded-xl border border-dashed p-8 text-center">
-            <div className="bg-background z-10 scale-110 rounded-2xl border p-4 shadow-lg">
-              <PackageOpen className="text-primary h-8 w-8 animate-pulse" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-foreground text-2xl font-bold">
-                No products yet
-              </p>
-              <p className="text-muted-foreground max-w-120 text-base">
-                Start adding products to your catalogue to showcase them to
-                customers.
-              </p>
-            </div>
-            <Link href="/business/product-catalogues">
-              <Button size="sm" className="h-8 text-sm">
-                <PlusCircle className="mr-2 h-3.5 w-3.5" />
-                Add First Product
-              </Button>
-            </Link>
+        hasProducts ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {products.map((product) => (
+              <ProductCard key={product.id} {...product} />
+            ))}
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="bg-secondary/20 border-border flex flex-col items-center justify-center space-y-3 rounded-xl border border-dashed p-8 text-center">
+              <div className="bg-background z-10 scale-110 rounded-2xl border p-4 shadow-lg">
+                <PackageOpen className="text-primary h-8 w-8 animate-pulse" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-foreground text-2xl font-bold">
+                  No products yet
+                </p>
+                <p className="text-muted-foreground max-w-120 text-base">
+                  Start adding products to your catalogue to showcase them to
+                  customers.
+                </p>
+              </div>
+              <Link href="/business/product-catalogues">
+                <Button size="sm" className="h-8 text-sm">
+                  <PlusCircle className="mr-2 h-3.5 w-3.5" />
+                  Add First Product
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )
       ) : (
         <div className="group border-muted-foreground/25 bg-muted/30 hover:bg-muted/50 relative overflow-hidden rounded-2xl border border-dashed p-8 py-12 transition-colors">
           <div className="flex flex-col items-center justify-center space-y-4 text-center">

@@ -193,6 +193,36 @@ export async function getMyBusinesses() {
   } as BusinessShop;
 }
 
+// Get a single business by its ID (no ownership check — callers must verify)
+export async function getBusinessById(id: string): Promise<BusinessShop | null> {
+  const supabase = await createServerSupabaseClient();
+
+  const { data, error } = await supabase
+    .from('businesses')
+    .select('*')
+    .eq('id', id)
+    .is('archived_at', null)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const resolveUrl = (bucket: string, pathOrUrl: string | null): string | null => {
+    if (!pathOrUrl) return null;
+    if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://'))
+      return pathOrUrl;
+    return supabase.storage.from(bucket).getPublicUrl(pathOrUrl).data.publicUrl;
+  };
+
+  return {
+    ...data,
+    logo_url: resolveUrl('shop-logos', data.logo_url),
+    banner_url: resolveUrl('shop-banners', data.banner_url),
+    interior_images: data?.interior_images?.map(
+      (url: string) => resolveUrl('interior-images', url) ?? url,
+    ),
+  } as BusinessShop;
+}
+
 // 4. UPDATE: Modify existing business details
 export async function updateBusiness(
   id: string,

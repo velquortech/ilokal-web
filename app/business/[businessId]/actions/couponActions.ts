@@ -62,9 +62,8 @@ export async function getBusinessCouponsPaginatedAction(
 export async function getBusinessCouponStatsAction(): Promise<
   ApiResponse<{
     total: number;
-    active: number;
-    expired: number;
-    upcoming: number;
+    published: number;
+    draft: number;
   }>
 > {
   try {

@@ -14,6 +14,9 @@ export type DiscountValue = {
 // ===== Promotion Type =====
 export type PromotionType = 'coupon' | 'deal';
 
+// ===== Coupon Visibility Status =====
+export type CouponStatus = 'published' | 'draft';
+
 // ===== Usage Scope =====
 export type UsageScope = 'any' | 'specific_categories' | 'specific_products';
 
@@ -22,6 +25,7 @@ export type Coupon = {
   id: string;
   business_id: string;
   promotion_type: PromotionType;
+  status: CouponStatus;
   code: string;
   description: string | null;
   discount: DiscountValue;
@@ -39,6 +43,7 @@ export type Coupon = {
 
 export type CreateCouponRequest = {
   promotion_type?: PromotionType;
+  status?: CouponStatus;
   code: string;
   description?: string;
   discount: DiscountValue;
@@ -56,7 +61,7 @@ export type CouponFilters = {
   page?: number;
   per_page?: number;
   search?: string;
-  status?: 'active' | 'expired' | 'all';
+  status?: CouponStatus;
   sort_by?: 'newest' | 'oldest' | 'expiry_asc' | 'expiry_desc';
 };
 

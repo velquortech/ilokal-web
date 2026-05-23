@@ -81,6 +81,7 @@ export type {
   DiscountValue,
   DiscountType,
   PromotionType,
+  CouponStatus,
   UsageScope,
   CreateCouponRequest,
   UpdateCouponRequest,

@@ -29,6 +29,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type {
   Coupon,
+  CouponStatus,
   DiscountType,
   ProductResponse,
   PromotionType,
@@ -44,6 +45,7 @@ interface UpdateCouponDialogProps {
 
 type CouponFormValues = {
   promotion_type: PromotionType;
+  status: CouponStatus;
   code: string;
   description: string;
   discount_type: DiscountType;
@@ -83,6 +85,7 @@ export function UpdateCouponDialog({
 
   const defaultValues: CouponFormValues = {
     promotion_type: coupon.promotion_type ?? 'coupon',
+    status: coupon.status ?? 'draft',
     code: coupon.code,
     description: coupon.description ?? '',
     discount_type: coupon.discount?.type ?? 'percentage',
@@ -113,6 +116,7 @@ export function UpdateCouponDialog({
     try {
       const result = await updateCouponAction(coupon.id, {
         promotion_type: data.promotion_type,
+        status: data.status,
         code: data.code,
         description: data.description || undefined,
         discount: { type: data.discount_type, value: data.discount_value },
@@ -158,7 +162,7 @@ export function UpdateCouponDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="h-200 overflow-auto sm:max-w-lg">
+      <DialogContent className="h-200 overflow-auto sm:max-w-xl">
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
             <DialogTitle>Edit Coupon or Deal</DialogTitle>
@@ -206,6 +210,64 @@ export function UpdateCouponDialog({
                             )}
                           >
                             {opt.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              />
+            </Field>
+
+            {/* Visibility Status */}
+            <Field>
+              <FieldLabel>Visibility</FieldLabel>
+              <Controller
+                control={control}
+                name="status"
+                render={({ field }) => (
+                  <div className="grid grid-cols-2 gap-2">
+                    {(
+                      [
+                        {
+                          value: 'draft',
+                          label: 'Draft',
+                          desc: 'Only you can see this',
+                        },
+                        {
+                          value: 'published',
+                          label: 'Published',
+                          desc: 'Visible to customers',
+                        },
+                      ] as {
+                        value: CouponStatus;
+                        label: string;
+                        desc: string;
+                      }[]
+                    ).map((opt) => {
+                      const selected = field.value === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => field.onChange(opt.value)}
+                          className={cn(
+                            'flex flex-col gap-0.5 rounded-lg border p-3 text-left transition-colors',
+                            selected
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:border-muted-foreground/50',
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'text-sm font-medium',
+                              selected && 'text-primary',
+                            )}
+                          >
+                            {opt.label}
+                          </span>
+                          <span className="text-muted-foreground text-xs">
+                            {opt.desc}
                           </span>
                         </button>
                       );

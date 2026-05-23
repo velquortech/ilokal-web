@@ -26,6 +26,7 @@ import { Loader2, Tag, Ticket } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type {
+  CouponStatus,
   DiscountType,
   PromotionType,
   UsageScope,
@@ -42,6 +43,7 @@ interface AddCouponDialogProps {
 
 type CouponFormValues = {
   promotion_type: PromotionType;
+  status: CouponStatus;
   code: string;
   description: string;
   discount_type: DiscountType;
@@ -93,6 +95,7 @@ export function AddCouponDialog({
   } = useForm<CouponFormValues>({
     defaultValues: {
       promotion_type: 'coupon',
+      status: 'draft' as CouponStatus,
       code: '',
       description: '',
       discount_type: 'percentage',
@@ -115,6 +118,7 @@ export function AddCouponDialog({
     try {
       const result = await createCouponAction({
         promotion_type: data.promotion_type,
+        status: data.status,
         code: data.code,
         description: data.description || undefined,
         discount: { type: data.discount_type, value: data.discount_value },
@@ -217,6 +221,64 @@ export function AddCouponDialog({
                           <p className="text-muted-foreground text-xs">
                             {opt.description}
                           </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              />
+            </Field>
+
+            {/* Visibility Status */}
+            <Field>
+              <FieldLabel>Visibility</FieldLabel>
+              <Controller
+                control={control}
+                name="status"
+                render={({ field }) => (
+                  <div className="grid grid-cols-2 gap-2">
+                    {(
+                      [
+                        {
+                          value: 'draft',
+                          label: 'Draft',
+                          desc: 'Only you can see this',
+                        },
+                        {
+                          value: 'published',
+                          label: 'Published',
+                          desc: 'Visible to customers',
+                        },
+                      ] as {
+                        value: CouponStatus;
+                        label: string;
+                        desc: string;
+                      }[]
+                    ).map((opt) => {
+                      const selected = field.value === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => field.onChange(opt.value)}
+                          className={cn(
+                            'flex flex-col gap-0.5 rounded-lg border p-3 text-left transition-colors',
+                            selected
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:border-muted-foreground/50',
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'text-sm font-medium',
+                              selected && 'text-primary',
+                            )}
+                          >
+                            {opt.label}
+                          </span>
+                          <span className="text-muted-foreground text-xs">
+                            {opt.desc}
+                          </span>
                         </button>
                       );
                     })}

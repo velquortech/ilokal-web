@@ -6,17 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { SearchBar } from '@/components/custom/Searchbar';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { CouponStats } from './coupon-stats';
 import { CouponsTable } from './coupon-table/coupons-table';
 import { AddCouponDialog } from './add-coupon';
-import type { Coupon, ProductResponse } from '@/lib/types';
+import { FilterCoupons } from './filter-coupons';
+import type { Coupon, CouponStatus, ProductResponse } from '@/lib/types';
 
 interface CouponsContentProps {
   coupons: Coupon[];
@@ -26,7 +20,7 @@ interface CouponsContentProps {
     per_page: number;
     total_pages: number;
   };
-  stats: { total: number; active: number; expired: number; upcoming: number };
+  stats: { total: number; published: number; draft: number };
   products: ProductResponse[];
 }
 
@@ -74,7 +68,7 @@ export function CouponsContent({
 
   const handleStatusChange = React.useCallback(
     (status: string) => {
-      updateParams({ status: status === 'all' ? null : status, page: '1' });
+      updateParams({ status: status || null, page: '1' });
     },
     [updateParams],
   );
@@ -89,7 +83,7 @@ export function CouponsContent({
     [updateParams],
   );
 
-  const selectedStatus = searchParams.get('status') ?? 'all';
+  const selectedStatus = (searchParams.get('status') as CouponStatus) ?? '';
 
   return (
     <div className="font-giest flex h-max flex-1 flex-col space-y-6 pb-8">
@@ -113,22 +107,17 @@ export function CouponsContent({
       <Card>
         <CardContent className="space-y-2">
           <div className="inline-flex h-10 w-full justify-between">
-            <div className="flex items-center gap-2">
-              <Select value={selectedStatus} onValueChange={handleStatusChange}>
-                <SelectTrigger className="w-36">
-                  <SelectValue placeholder="All" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="expired">Expired</SelectItem>
-                </SelectContent>
-              </Select>
+            <div />
+            <div className="inline-flex items-center gap-2">
+              <FilterCoupons
+                selectedStatus={selectedStatus}
+                onStatusChange={handleStatusChange}
+              />
+              <SearchBar
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
             </div>
-            <SearchBar
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
           </div>
           <CouponsTable
             coupons={coupons}

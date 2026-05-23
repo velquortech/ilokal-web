@@ -42,7 +42,7 @@ export default async function CouponsPage({
 
   const stats = statsResult.success
     ? statsResult.data!
-    : { total: 0, active: 0, expired: 0, upcoming: 0 };
+    : { total: 0, published: 0, draft: 0 };
 
   const products: ProductResponse[] = productsResult.success
     ? (productsResult.data ?? [])

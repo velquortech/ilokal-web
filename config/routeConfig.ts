@@ -92,3 +92,7 @@ export function businessShopPath(businessId: string): string {
 export function businessProductCataloguesPath(businessId: string): string {
   return businessPath(businessId, 'product-catalogues');
 }
+
+export function businessCouponsPath(businessId: string): string {
+  return businessPath(businessId, 'coupons');
+}

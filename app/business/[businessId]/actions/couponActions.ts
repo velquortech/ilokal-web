@@ -6,6 +6,8 @@ import type {
   ApiResponse,
   ApiError,
   Coupon,
+  CouponFilters,
+  PaginatedCouponsResponse,
   CreateCouponRequest,
   UpdateCouponRequest,
   CouponDetailResponse,
@@ -20,6 +22,69 @@ import {
   updateFeaturedDealSchema,
 } from '@/lib/validation/coupons';
 import couponService from '@/lib/services/couponService';
+import {
+  getCouponsPaginated,
+  getCouponStatsByBusiness,
+} from '@/lib/api/coupons/couponQuery';
+
+// ===== Coupon Read Actions =====
+
+export async function getBusinessCouponsPaginatedAction(
+  filters: Omit<CouponFilters, 'business_id'>,
+): Promise<ApiResponse<PaginatedCouponsResponse>> {
+  try {
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+
+    const result = await getCouponsPaginated(verify.business!.id, filters);
+
+    if ('error' in result) {
+      return {
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: result.error ?? 'Failed to fetch coupons',
+        },
+      };
+    }
+
+    return { success: true, data: result as PaginatedCouponsResponse };
+  } catch (error) {
+    console.error('[getBusinessCouponsPaginatedAction]', error);
+    return {
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch coupons' },
+    };
+  }
+}
+
+export async function getBusinessCouponStatsAction(): Promise<
+  ApiResponse<{
+    total: number;
+    active: number;
+    expired: number;
+    upcoming: number;
+  }>
+> {
+  try {
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+
+    const stats = await getCouponStatsByBusiness(verify.business!.id);
+    return { success: true, data: stats };
+  } catch (error) {
+    console.error('[getBusinessCouponStatsAction]', error);
+    return {
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to fetch coupon stats',
+      },
+    };
+  }
+}
 
 // ===== Coupon Management Actions =====
 

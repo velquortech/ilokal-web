@@ -249,6 +249,7 @@ export async function getProductById(id: string) {
 export async function getProductsByBusinessId(
   business_id: string,
   status?: string,
+  limit?: number,
 ) {
   try {
     const supabase = await createServerSupabaseClient();
@@ -260,6 +261,10 @@ export async function getProductsByBusinessId(
 
     if (status) {
       query = query.eq('status', status);
+    }
+
+    if (limit !== undefined) {
+      query = query.limit(limit);
     }
 
     const { data, error } = await query.order('created_at', {

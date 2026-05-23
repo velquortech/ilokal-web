@@ -16,19 +16,27 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Branch } from '../libs/configs/config';
+import { businessPath } from '@/config/routeConfig';
 
 interface BranchSelectorProps {
   branches: Branch[];
   selectedBranch: string;
   onSelect: (branchId: string) => void;
   currentBranch: Branch;
+  businessId?: string;
 }
 export function BranchSelector({
   branches,
   selectedBranch,
   onSelect,
   currentBranch,
+  businessId,
 }: BranchSelectorProps) {
+  const bPath = (...segs: string[]) =>
+    businessId
+      ? businessPath(businessId, ...segs)
+      : `/business/${segs.join('/')}`;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -68,13 +76,13 @@ export function BranchSelector({
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link href="/business/branches">
+            <Link href={bPath('branches')}>
               <BarChart3 className="mr-2 h-4 w-4" />
               View All Branches
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/business/branches/create">
+            <Link href={bPath('branches', 'create')}>
               <Plus className="mr-2 h-4 w-4" />
               Add New Branch
             </Link>

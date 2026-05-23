@@ -18,6 +18,7 @@ describe('productQuery', () => {
     ilike: ReturnType<typeof vi.fn>;
     lte: ReturnType<typeof vi.fn>;
     gte: ReturnType<typeof vi.fn>;
+    limit: ReturnType<typeof vi.fn>;
     order: ReturnType<typeof vi.fn>;
     range: ReturnType<typeof vi.fn>;
     single: ReturnType<typeof vi.fn>;
@@ -33,6 +34,7 @@ describe('productQuery', () => {
       ilike: vi.fn().mockReturnThis(),
       lte: vi.fn().mockReturnThis(),
       gte: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
       range: vi.fn(),
       single: vi.fn(),
@@ -444,6 +446,14 @@ describe('productQuery', () => {
       expect(chainedMock.order).toHaveBeenCalledWith('created_at', {
         ascending: false,
       });
+    });
+
+    it('should apply limit when provided', async () => {
+      chainedMock.order.mockResolvedValueOnce({ data: [], error: null });
+
+      await productQuery.getProductsByBusinessId('biz-1', 'active', 10);
+
+      expect(chainedMock.limit).toHaveBeenCalledWith(10);
     });
   });
 

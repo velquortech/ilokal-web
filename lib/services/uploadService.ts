@@ -6,7 +6,7 @@ const uploadService = {
     formData: FormData,
   ): Promise<ApiResponse<{ url: string }>> {
     return await http.post<ApiResponse<{ url: string }>>(
-      '/upload/avatar',
+      '/web/upload/avatar',
       formData,
     );
   },
@@ -15,7 +15,7 @@ const uploadService = {
     formData: FormData,
   ): Promise<ApiResponse<{ url: string }>> {
     return await http.post<ApiResponse<{ url: string }>>(
-      '/upload/verification-docs',
+      '/web/upload/verification-docs',
       formData,
     );
   },
@@ -25,7 +25,7 @@ const uploadService = {
   ): Promise<ApiResponse<{ url: string; path: string; fileName: string }>> {
     return await http.post<
       ApiResponse<{ url: string; path: string; fileName: string }>
-    >('/upload/coupon-image', formData);
+    >('/web/upload/coupon-image', formData);
   },
 
   async uploadProductImage(
@@ -33,7 +33,7 @@ const uploadService = {
   ): Promise<ApiResponse<{ url: string; path: string; fileName: string }>> {
     return await http.post<
       ApiResponse<{ url: string; path: string; fileName: string }>
-    >('/upload/product-image', formData);
+    >('/web/upload/product-image', formData);
   },
 };
 

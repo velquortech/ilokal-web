@@ -1,11 +1,15 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useDashboardTour } from '@/app/business/hooks/useDashboardTour';
+import { useDashboardTour } from '../hooks/useDashboardTour';
 import { OnboardingSection, EmptyState } from './components';
 import { TOUR_FEATURES } from './lib';
 import { TourDialog } from './components/TourDialog';
-import { ROUTES } from '@/config/routeConfig';
+import {
+  ROUTES,
+  businessShopPath,
+  businessProductCataloguesPath,
+} from '@/config/routeConfig';
 import { useBusinessShop } from '@/providers/BusinessProvider';
 
 import WhyRegisterCard from './components/WhyRegisterSection';
@@ -48,8 +52,20 @@ export default function BusinessHome() {
         <>
           {/* Empty State - shown when business exists but has no data */}
           <EmptyState
-            onAddProduct={() => router.push('/business/product-catalogues')}
-            onViewOrders={() => router.push('/business/shop')}
+            onAddProduct={() =>
+              router.push(
+                business?.id
+                  ? businessProductCataloguesPath(business.id)
+                  : ROUTES.BUSINESS.home,
+              )
+            }
+            onViewOrders={() =>
+              router.push(
+                business?.id
+                  ? businessShopPath(business.id)
+                  : ROUTES.BUSINESS.home,
+              )
+            }
           />
         </>
       )}

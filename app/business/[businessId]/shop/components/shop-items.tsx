@@ -4,6 +4,7 @@ import { BusinessShop } from '@/providers/BusinessProvider';
 import Link from 'next/link';
 import { ProductCard } from '@/components/custom/ProductCard';
 import type { ProductResponse } from '@/lib/types';
+import { businessProductCataloguesPath } from '@/config/routeConfig';
 
 interface ShopItemsProps {
   business?: BusinessShop | null;
@@ -26,7 +27,13 @@ export function ShopItems({ business, products }: ShopItemsProps) {
           </p>
         </div>
         {hasBusinessData && (
-          <Link href="/business/product-catalogues">
+          <Link
+            href={
+              business?.id
+                ? businessProductCataloguesPath(business.id)
+                : '/business'
+            }
+          >
             <Button
               size="sm"
               variant="ghost"
@@ -60,7 +67,13 @@ export function ShopItems({ business, products }: ShopItemsProps) {
                   customers.
                 </p>
               </div>
-              <Link href="/business/product-catalogues">
+              <Link
+                href={
+                  business?.id
+                    ? businessProductCataloguesPath(business.id)
+                    : '/business'
+                }
+              >
                 <Button size="sm" className="h-8 text-sm">
                   <PlusCircle className="mr-2 h-3.5 w-3.5" />
                   Add First Product

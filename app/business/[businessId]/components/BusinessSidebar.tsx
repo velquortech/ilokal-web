@@ -14,16 +14,34 @@ import {
   SidebarLogo,
   NavSection,
   NavSectionHeader,
-} from '../../../components/custom/Nav';
+} from '@/components/custom/Nav';
 import { Fragment } from 'react/jsx-runtime';
 import { SIDEBAR_SECTIONS } from '../libs/configs/config';
 import { UserMenu } from './UserMenu';
 import { ProCard } from './ProCard';
 import { GlobalSearch } from '@/components/custom/GlobalSearch';
 import { useBusinessShop } from '@/providers/BusinessProvider';
+import { businessPath } from '@/config/routeConfig';
 
 export function BusinessSidebar() {
   const { business } = useBusinessShop();
+
+  const injectId = (href: string) => {
+    if (!business?.id) return href;
+    if (href === '/business') return businessPath(business.id);
+    if (href.startsWith('/business/'))
+      return href.replace('/business/', `/business/${business.id}/`);
+    return href;
+  };
+
+  const sections = SIDEBAR_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.map((item) => ({
+      ...item,
+      href: item.href ? injectId(item.href) : item.href,
+    })),
+  }));
+
   return (
     <Sidebar collapsible="icon" variant="sidebar" className="border-r">
       <SidebarHeader className="space-y-1 border-b px-4 py-3 group-data-[collapsible=icon]:px-2.5">
@@ -34,7 +52,7 @@ export function BusinessSidebar() {
         <SidebarGroup>
           <GlobalSearch />
         </SidebarGroup>
-        {SIDEBAR_SECTIONS.map(({ items, header }, idx) => (
+        {sections.map(({ items, header }, idx) => (
           <Fragment key={idx}>
             {header && <NavSectionHeader title={header} />}
             <NavSection items={items} disabled={!business} />

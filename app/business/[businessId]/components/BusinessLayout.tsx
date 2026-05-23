@@ -1,11 +1,7 @@
 'use client';
 
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
-import {
-  BusinessHeader,
-  BusinessSidebar,
-  AIChatSheet,
-} from '@/app/business/components';
+import { BusinessHeader, BusinessSidebar, AIChatSheet } from '.';
 import { AIChatProvider } from './AIChatSheet';
 import { User } from '@/lib/types';
 import { UserProvider } from '@/providers/UserContext';

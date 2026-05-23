@@ -23,11 +23,18 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { SidebarMenuButton } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useUser } from '@/providers/UserContext';
+import { useBusinessShop } from '@/providers/BusinessProvider';
+import { businessPath } from '@/config/routeConfig';
 
 export function UserMenu() {
   const { logout } = useAuth();
   const user = useUser();
   const isMobile = useIsMobile();
+  const { business } = useBusinessShop();
+  const bid = business?.id;
+  const bPath = (...segs: string[]) =>
+    bid ? businessPath(bid, ...segs) : `/business/${segs.join('/')}`;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -71,20 +78,20 @@ export function UserMenu() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link href="/business/profile">
+            <Link href={bPath('profile')}>
               <UserIcon className="mr-2 h-4 w-4" />
               Profile
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/business/settings">
+            <Link href={bPath('settings')}>
               <Settings className="mr-2 h-4 w-4" />
               Settings
             </Link>
           </DropdownMenuItem>
 
           <DropdownMenuItem asChild>
-            <Link href="/business/subscription">
+            <Link href={bPath('subscription')}>
               <FileText className="mr-2 h-4 w-4" />
               Subscription
             </Link>
@@ -92,7 +99,7 @@ export function UserMenu() {
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/business/help">
+          <Link href={bPath('help')}>
             <HelpCircle className="mr-2 h-4 w-4" />
             Help & Support
           </Link>

@@ -194,7 +194,9 @@ export async function getMyBusinesses() {
 }
 
 // Get a single business by its ID (no ownership check — callers must verify)
-export async function getBusinessById(id: string): Promise<BusinessShop | null> {
+export async function getBusinessById(
+  id: string,
+): Promise<BusinessShop | null> {
   const supabase = await createServerSupabaseClient();
 
   const { data, error } = await supabase
@@ -206,7 +208,10 @@ export async function getBusinessById(id: string): Promise<BusinessShop | null> 
 
   if (error || !data) return null;
 
-  const resolveUrl = (bucket: string, pathOrUrl: string | null): string | null => {
+  const resolveUrl = (
+    bucket: string,
+    pathOrUrl: string | null,
+  ): string | null => {
     if (!pathOrUrl) return null;
     if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://'))
       return pathOrUrl;

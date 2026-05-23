@@ -46,6 +46,7 @@ export async function createCoupon(
       .insert({
         business_id: businessId,
         promotion_type: input.promotion_type ?? 'coupon',
+        status: input.status ?? 'draft',
         code: input.code.toUpperCase(),
         description: input.description || null,
         discount: input.discount,
@@ -114,6 +115,7 @@ export async function updateCoupon(
     };
 
     if (input.promotion_type) updateData.promotion_type = input.promotion_type;
+    if (input.status) updateData.status = input.status;
     if (input.code) updateData.code = input.code.toUpperCase();
     if (input.description !== undefined)
       updateData.description = input.description;

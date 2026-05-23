@@ -112,8 +112,26 @@ export function createColumns(
       ),
     },
     {
-      id: 'status',
-      header: 'Status',
+      id: 'visibility',
+      header: 'Visibility',
+      cell: ({ row }) => {
+        const status = row.original.status ?? 'draft';
+        return (
+          <div
+            className={cn(
+              'inline-flex h-max items-center rounded-sm px-2 py-0.5 text-xs capitalize',
+              status === 'published' && 'bg-green-600/10 text-green-700',
+              status === 'draft' && 'bg-yellow-500/10 text-yellow-700',
+            )}
+          >
+            {status}
+          </div>
+        );
+      },
+    },
+    {
+      id: 'availability',
+      header: 'Availability',
       cell: ({ row }) => {
         const status = getCouponStatus(row.original);
         return (

@@ -50,7 +50,9 @@ export async function verifyBusinessOwner(
           .from('businesses')
           .select('id')
           .eq('owner_id', user.id)
-          .single();
+          .is('archived_at', null)
+          .limit(1)
+          .maybeSingle();
 
         if (!business) {
           return {
@@ -71,7 +73,9 @@ export async function verifyBusinessOwner(
         .from('businesses')
         .select('id')
         .eq('owner_id', auth.user.id)
-        .single();
+        .is('archived_at', null)
+        .limit(1)
+        .maybeSingle();
 
       if (!business) {
         return {

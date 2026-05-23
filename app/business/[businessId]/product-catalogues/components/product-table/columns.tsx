@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import Image from 'next/image';
 import { ImageOff } from 'lucide-react';
@@ -10,6 +11,31 @@ import type { ProductResponse } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ViewProduct } from '../view-product';
 import { ProductActions } from './product-actions';
+
+function ProductImageCell({ product }: { product: ProductResponse }) {
+  const [imgError, setImgError] = React.useState(false);
+
+  return (
+    <ViewProduct {...product}>
+      <div className="group relative size-12 shrink-0 cursor-pointer overflow-hidden rounded-md border">
+        {product.image_url && !imgError ? (
+          <Image
+            src={product.image_url}
+            alt={product.name}
+            fill
+            sizes="48px"
+            className="object-cover transition group-hover:scale-105"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="bg-muted flex h-full w-full items-center justify-center">
+            <ImageOff className="text-muted-foreground size-5" />
+          </div>
+        )}
+      </div>
+    </ViewProduct>
+  );
+}
 
 export const columns: ColumnDef<ProductResponse>[] = [
   {
@@ -37,26 +63,7 @@ export const columns: ColumnDef<ProductResponse>[] = [
   {
     accessorKey: 'image_url',
     header: 'Image',
-    cell: ({ row }) => (
-      <ViewProduct {...row.original}>
-        <div className="group relative size-12 shrink-0 cursor-pointer overflow-hidden rounded-md border">
-          {row.original.image_url ? (
-            <Image
-              src={row.original.image_url}
-              alt={row.original.name}
-              fill
-              sizes="48px"
-              unoptimized
-              className="object-cover transition group-hover:scale-105"
-            />
-          ) : (
-            <div className="bg-muted text-muted-foreground flex h-full w-full items-center justify-center">
-              <ImageOff className="size-5" />
-            </div>
-          )}
-        </div>
-      </ViewProduct>
-    ),
+    cell: ({ row }) => <ProductImageCell product={row.original} />,
   },
   {
     accessorKey: 'name',
@@ -103,8 +110,8 @@ export const columns: ColumnDef<ProductResponse>[] = [
         className={cn(
           'inline-flex h-max items-center rounded-sm px-2 py-0.5 text-xs capitalize',
           row.original.status === 'active' && 'bg-green-600/10 text-green-700',
-          row.original.status === 'inactive' && 'bg-red-600/10 text-red-700',
-          row.original.status === 'archived' &&
+          row.original.status === 'unlisted' && 'bg-red-600/10 text-red-700',
+          row.original.status === 'disabled' &&
             'bg-muted text-muted-foreground',
         )}
       >

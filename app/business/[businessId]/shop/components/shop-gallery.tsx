@@ -8,12 +8,12 @@ interface ShopGalleryProps {
 }
 
 export function ShopGallery({ business }: ShopGalleryProps) {
-  const hasImages =
-    business?.interior_images && business.interior_images.length > 0;
+  const imageCount = business?.interior_images?.length ?? 0;
+  const hasImages = imageCount >= 4;
   const images = hasImages
-    ? business.interior_images.map((src, index) => ({
+    ? business!.interior_images.map((src, index) => ({
         src,
-        alt: `${business.shop_name} interior ${index + 1}`,
+        alt: `${business!.shop_name} interior ${index + 1}`,
       }))
     : [];
 
@@ -31,7 +31,11 @@ export function ShopGallery({ business }: ShopGalleryProps) {
         <div className="border-muted-foreground/25 bg-muted/50 flex h-64 items-center justify-center rounded-xl border border-dashed">
           <div className="text-muted-foreground flex flex-col items-center gap-2">
             <ImageIcon className="size-12 opacity-50" />
-            <span className="text-sm">No gallery images available</span>
+            <span className="text-sm">
+              {imageCount > 0
+                ? `Add ${4 - imageCount} more image${4 - imageCount === 1 ? '' : 's'} to display your gallery`
+                : 'No gallery images available'}
+            </span>
           </div>
         </div>
       )}

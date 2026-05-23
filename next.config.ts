@@ -27,8 +27,17 @@ const imageRemotePatterns: Array<{
     port: '54321',
   },
   {
+    protocol: 'http',
+    hostname: 'localhost',
+    port: '54321',
+  },
+  {
     protocol: 'https',
     hostname: 'images.unsplash.com',
+  },
+  {
+    protocol: 'https',
+    hostname: 'picsum.photos',
   },
 ];
 

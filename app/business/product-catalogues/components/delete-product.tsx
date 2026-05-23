@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Dialog,
   DialogClose,
@@ -12,11 +13,13 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Product } from '../../libs/types/product.type';
+import type { ProductResponse } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { deleteProductAction } from '../../actions/productActions';
 
 interface DeleteProductDialogProps {
-  product: Product;
+  product: ProductResponse;
   children: React.ReactNode;
 }
 
@@ -24,23 +27,41 @@ export function DeleteProductDialog({
   product,
   children,
 }: DeleteProductDialogProps) {
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [serverError, setServerError] = React.useState<string | null>(null);
 
   const handleDelete = async () => {
     setIsDeleting(true);
+    setServerError(null);
     try {
-      // call deletion here
+      const result = await deleteProductAction(product.id);
+      if (!result.success) {
+        const msg = result.error?.message ?? 'Failed to delete product';
+        setServerError(msg);
+        toast.error(msg);
+        return;
+      }
+      toast.success(`"${product.name}" deleted`);
       setOpen(false);
-    } catch (error) {
-      console.error('Failed to delete product:', error);
+      router.refresh();
+    } catch {
+      const msg = 'An unexpected error occurred';
+      setServerError(msg);
+      toast.error(msg);
     } finally {
       setIsDeleting(false);
     }
   };
 
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) setServerError(null);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
 
       <DialogContent className="sm:max-w-106.25">
@@ -56,9 +77,15 @@ export function DeleteProductDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {serverError && (
+          <p className="text-destructive text-sm">{serverError}</p>
+        )}
+
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
+            <Button variant="outline" disabled={isDeleting}>
+              Cancel
+            </Button>
           </DialogClose>
           <Button
             variant="destructive"

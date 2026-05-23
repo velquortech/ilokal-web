@@ -2,15 +2,16 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 import Image from 'next/image';
+import { ImageOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Product } from '@/app/business/libs/types/product.type';
+import { calculatePercentage } from '@/lib/product-helper';
+import type { ProductResponse } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ViewProduct } from '../view-product';
 import { ProductActions } from './product-actions';
-import { calculateSalePercentage } from '@/app/business/libs/helper';
 
-export const columns: ColumnDef<Product>[] = [
+export const columns: ColumnDef<ProductResponse>[] = [
   {
     id: 'select',
     header: ({ table }) => (
@@ -34,18 +35,25 @@ export const columns: ColumnDef<Product>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: 'image',
+    accessorKey: 'image_url',
     header: 'Image',
     cell: ({ row }) => (
       <ViewProduct {...row.original}>
         <div className="group relative size-12 shrink-0 cursor-pointer overflow-hidden rounded-md border">
-          <Image
-            src={row.original.image}
-            alt={row.original.name}
-            fill
-            sizes="48px"
-            className="object-cover transition group-hover:scale-105"
-          />
+          {row.original.image_url ? (
+            <Image
+              src={row.original.image_url}
+              alt={row.original.name}
+              fill
+              sizes="48px"
+              unoptimized
+              className="object-cover transition group-hover:scale-105"
+            />
+          ) : (
+            <div className="bg-muted text-muted-foreground flex h-full w-full items-center justify-center">
+              <ImageOff className="size-5" />
+            </div>
+          )}
         </div>
       </ViewProduct>
     ),
@@ -63,43 +71,28 @@ export const columns: ColumnDef<Product>[] = [
     ),
   },
   {
-    accessorKey: 'catalogue',
-    header: 'Catalogue',
+    accessorKey: 'category',
+    header: 'Category',
     cell: ({ row }) => (
-      <Badge variant="outline">{row.original.catalogue.name}</Badge>
+      <Badge variant="outline">{row.original.category?.name ?? '—'}</Badge>
     ),
   },
   {
     accessorKey: 'price',
     header: 'Price',
     cell: ({ row }) => {
-      const { price, salePrice } = row.original;
-      return salePrice ? (
-        <div className="flex flex-col">
-          <span className="text-primary text-sm font-bold">₱{salePrice}</span>
-          <span className="text-muted-foreground text-xs line-through">
-            ₱{price}
-          </span>
-        </div>
-      ) : (
-        <span>₱{price}</span>
-      );
-    },
-  },
-  {
-    id: 'tags',
-    header: 'Tags/Sale',
-    cell: ({ row }) => {
-      const discount = calculateSalePercentage(
-        row.original.price,
-        row.original.salePrice,
-      );
-      return (
-        <div className="flex gap-2">
-          {row.original.badge && <Badge>{row.original.badge}</Badge>}
-          {discount && <Badge variant="destructive">-{discount}%</Badge>}
-        </div>
-      );
+      const { price, sale_price } = row.original;
+      if (sale_price !== null && sale_price !== undefined) {
+        return (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-primary font-semibold">₱{sale_price}</span>
+            <span className="text-muted-foreground text-xs line-through">
+              ₱{price} (-{calculatePercentage(price, sale_price)}%)
+            </span>
+          </div>
+        );
+      }
+      return <span>₱{price}</span>;
     },
   },
   {
@@ -110,8 +103,8 @@ export const columns: ColumnDef<Product>[] = [
         className={cn(
           'inline-flex h-max items-center rounded-sm px-2 py-0.5 text-xs capitalize',
           row.original.status === 'active' && 'bg-green-600/10 text-green-700',
-          row.original.status === 'unlisted' && 'bg-red-600/10 text-red-700',
-          row.original.status === 'disabled' &&
+          row.original.status === 'inactive' && 'bg-red-600/10 text-red-700',
+          row.original.status === 'archived' &&
             'bg-muted text-muted-foreground',
         )}
       >

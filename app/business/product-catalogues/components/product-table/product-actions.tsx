@@ -1,4 +1,4 @@
-import { Product } from '@/app/business/libs/types/product.type';
+import type { ProductResponse } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2, Ellipsis, Eye, Tag, BadgePercent } from 'lucide-react';
 
@@ -19,7 +19,7 @@ import { DeleteProductDialog } from '../delete-product';
 import { ViewProduct } from '../view-product';
 import { ApplySale } from '../apply-sale';
 
-export function ProductActions(product: Product) {
+export function ProductActions(product: ProductResponse) {
   return (
     <div className="flex justify-center">
       <DropdownMenu>
@@ -58,11 +58,11 @@ export function ProductActions(product: Product) {
                 <DropdownMenuRadioItem value="active" className="capitalize">
                   Active
                 </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="unlisted" className="capitalize">
-                  Unlisted
+                <DropdownMenuRadioItem value="inactive" className="capitalize">
+                  Inactive
                 </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="disabled" className="capitalize">
-                  Disabled
+                <DropdownMenuRadioItem value="archived" className="capitalize">
+                  Archived
                 </DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
             </DropdownMenuSubContent>

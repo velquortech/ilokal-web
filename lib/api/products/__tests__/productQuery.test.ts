@@ -88,10 +88,10 @@ describe('productQuery', () => {
         search: 'electronics',
       });
 
-      expect(chainedMock.ilike).toHaveBeenCalled();
+      expect(chainedMock.or).toHaveBeenCalled();
     });
 
-    it('should sort categories by name', async () => {
+    it('should sort categories ascending for name_asc', async () => {
       chainedMock.range.mockResolvedValue({
         data: [],
         count: 0,
@@ -105,6 +105,34 @@ describe('productQuery', () => {
       });
 
       expect(chainedMock.order).toHaveBeenCalledWith('name', {
+        ascending: true,
+      });
+    });
+
+    it('should sort categories descending for name_desc', async () => {
+      chainedMock.range.mockResolvedValue({ data: [], count: 0, error: null });
+
+      await productQuery.getCategoriesPaginated({
+        page: 1,
+        per_page: 10,
+        sort_by: 'name_desc',
+      });
+
+      expect(chainedMock.order).toHaveBeenCalledWith('name', {
+        ascending: false,
+      });
+    });
+
+    it('should sort categories by created_at desc for newest', async () => {
+      chainedMock.range.mockResolvedValue({ data: [], count: 0, error: null });
+
+      await productQuery.getCategoriesPaginated({
+        page: 1,
+        per_page: 10,
+        sort_by: 'newest',
+      });
+
+      expect(chainedMock.order).toHaveBeenCalledWith('created_at', {
         ascending: false,
       });
     });
@@ -138,7 +166,7 @@ describe('productQuery', () => {
       });
 
       expect(result.categories).toHaveLength(0);
-      expect(result.error).toBe('DB error');
+      expect(result.error).toContain('DB error');
     });
   });
 
@@ -291,7 +319,7 @@ describe('productQuery', () => {
         search: 'laptop',
       });
 
-      expect(chainedMock.ilike).toHaveBeenCalled();
+      expect(chainedMock.or).toHaveBeenCalled();
     });
 
     it('should handle price range filtering', async () => {
@@ -361,11 +389,95 @@ describe('productQuery', () => {
         per_page: 10,
       });
 
-      // Check if result has error
       if ('error' in result && typeof result.error === 'string') {
-        expect(result.error).toBe('DB connection error');
+        expect(result.error).toContain('DB connection error');
       } else if ('products' in result) {
         expect(result.products).toHaveLength(0);
+      }
+    });
+  });
+
+  describe('getProductsByBusinessId()', () => {
+    it('should fetch all products for a business', async () => {
+      const mockProducts = [
+        { id: 'p1', name: 'Flat White', business_id: 'biz-1' },
+        { id: 'p2', name: 'Latte', business_id: 'biz-1' },
+      ];
+
+      chainedMock.order.mockResolvedValueOnce({
+        data: mockProducts,
+        error: null,
+      });
+
+      const result = await productQuery.getProductsByBusinessId('biz-1');
+
+      expect(chainedMock.eq).toHaveBeenCalledWith('business_id', 'biz-1');
+      if ('products' in result) {
+        expect(result.products).toHaveLength(2);
+      }
+    });
+
+    it('should filter by status when provided', async () => {
+      chainedMock.order.mockResolvedValueOnce({ data: [], error: null });
+
+      await productQuery.getProductsByBusinessId('biz-1', 'active');
+
+      expect(chainedMock.eq).toHaveBeenCalledWith('status', 'active');
+    });
+
+    it('should return error string on DB failure', async () => {
+      chainedMock.order.mockResolvedValueOnce({
+        data: null,
+        error: { message: 'query failed' },
+      });
+
+      const result = await productQuery.getProductsByBusinessId('biz-1');
+
+      expect('error' in result).toBe(true);
+    });
+
+    it('should order by created_at descending', async () => {
+      chainedMock.order.mockResolvedValueOnce({ data: [], error: null });
+
+      await productQuery.getProductsByBusinessId('biz-1');
+
+      expect(chainedMock.order).toHaveBeenCalledWith('created_at', {
+        ascending: false,
+      });
+    });
+  });
+
+  describe('getProductById()', () => {
+    it('should return the product when found', async () => {
+      const mockProduct = {
+        id: 'p1',
+        name: 'Flat White',
+        business_id: 'biz-1',
+      };
+      chainedMock.single.mockResolvedValueOnce({
+        data: mockProduct,
+        error: null,
+      });
+
+      const result = await productQuery.getProductById('p1');
+
+      expect('product' in result).toBe(true);
+      if ('product' in result) {
+        expect(result.product.id).toBe('p1');
+      }
+    });
+
+    it('should return error when product not found', async () => {
+      chainedMock.single.mockResolvedValueOnce({
+        data: null,
+        error: { message: 'Not found' },
+      });
+
+      const result = await productQuery.getProductById('missing');
+
+      expect('error' in result).toBe(true);
+      if ('error' in result) {
+        expect(result.error).toBe('Product not found');
       }
     });
   });

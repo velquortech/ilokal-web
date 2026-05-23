@@ -5,12 +5,12 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { PropsWithChildren } from 'react';
-import { Product } from '../../libs/types/product.type';
+import type { ProductResponse } from '@/lib/types';
 import { ProductCard } from '@/components/custom/ProductCard';
 import { DialogTitle } from '@radix-ui/react-dialog';
 import { VisuallyHidden } from 'radix-ui';
 
-export function ViewProduct(props: PropsWithChildren & Product) {
+export function ViewProduct(props: PropsWithChildren & ProductResponse) {
   const { children, ...product } = props;
   return (
     <Dialog>

@@ -16,6 +16,10 @@ export const discountValueSchema = z.object({
 
 // ===== Coupon Schemas =====
 
+export const promotionTypeSchema = z.enum(['coupon', 'deal']);
+
+export const couponStatusSchema = z.enum(['published', 'draft']);
+
 export const usageScopeSchema = z.enum([
   'any',
   'specific_categories',
@@ -24,6 +28,8 @@ export const usageScopeSchema = z.enum([
 
 export const createCouponSchema = z
   .object({
+    promotion_type: promotionTypeSchema.default('coupon'),
+    status: couponStatusSchema.default('draft'),
     code: z.string().min(1).max(50).toUpperCase(),
     description: z.string().optional(),
     discount: discountValueSchema,
@@ -43,6 +49,8 @@ export const createCouponSchema = z
 
 export const updateCouponSchema = z
   .object({
+    promotion_type: promotionTypeSchema.optional(),
+    status: couponStatusSchema.optional(),
     code: z.string().min(1).max(50).toUpperCase().optional(),
     description: z.string().optional(),
     discount: discountValueSchema.optional(),
@@ -65,7 +73,7 @@ export const couponFiltersSchema = z.object({
   page: z.number().min(1).default(1),
   per_page: z.number().min(1).max(100).default(20),
   search: z.string().optional(),
-  status: z.enum(['active', 'expired', 'all']).default('active'),
+  status: couponStatusSchema.optional(),
   sort_by: z
     .enum(['newest', 'oldest', 'expiry_asc', 'expiry_desc'])
     .default('newest'),

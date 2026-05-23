@@ -80,6 +80,8 @@ export type {
   FeaturedDeal,
   DiscountValue,
   DiscountType,
+  PromotionType,
+  CouponStatus,
   UsageScope,
   CreateCouponRequest,
   UpdateCouponRequest,

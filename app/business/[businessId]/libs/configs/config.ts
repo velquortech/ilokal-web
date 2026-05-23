@@ -3,7 +3,7 @@ import {
   // TrendingUp,
   // BarChart3,
   // Megaphone,
-  // Ticket,
+  Ticket,
   // Gift,
   MessageSquare,
   // Star,
@@ -42,16 +42,11 @@ export const storeNavigation: NavItem[] = [
     href: '/business/product-catalogues',
     icon: ShoppingBasket,
   },
-  // {
-  //   title: 'Vouchers & Coupons',
-  //   icon: Ticket,
-  //   items: [
-  //     { title: 'All Vouchers', href: '/business/vouchers' },
-  //     { title: 'Create Voucher', href: '/business/vouchers/create' },
-  //     { title: 'Auto-Apply Rules', href: '/business/vouchers/rules' },
-  //     { title: 'Redemption History', href: '/business/vouchers/history' },
-  //   ],
-  // },
+  {
+    title: 'Coupons & Deals',
+    href: '/business/coupons',
+    icon: Ticket,
+  },
   // {
   //   title: 'Shop Settings',
   //   icon: Settings,

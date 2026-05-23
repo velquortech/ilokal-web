@@ -27,6 +27,11 @@ export function ProductCard(product: ProductResponse) {
             <ImageOff className="size-10" />
           </div>
         )}
+        {product.sale_price != null && (
+          <span className="bg-primary text-primary-foreground absolute top-2 left-2 rounded-md px-1.5 py-0.5 text-xs font-semibold">
+            Sale
+          </span>
+        )}
       </div>
 
       {/* CONTENT */}

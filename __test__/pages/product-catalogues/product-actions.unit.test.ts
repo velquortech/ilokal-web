@@ -26,7 +26,7 @@ import {
   getBusinessProductsPaginatedAction,
   getBusinessProductStatsAction,
   getCategoriesAction,
-} from '@/app/business/actions/productActions';
+} from '@/app/business/[businessId]/actions/productActions';
 
 const authorized = {
   authorized: true as const,

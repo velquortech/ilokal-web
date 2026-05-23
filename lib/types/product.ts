@@ -4,6 +4,13 @@
  */
 
 export type ProductStatus = 'active' | 'inactive' | 'archived';
+export type PriceType =
+  | 'fixed'
+  | 'from'
+  | 'per_hour'
+  | 'per_day'
+  | 'per_person'
+  | 'per_event';
 export type ProductSortOrder =
   | 'newest'
   | 'oldest'
@@ -30,8 +37,15 @@ export type Product = {
   name: string;
   description: string | null;
   price: number;
+  price_type: PriceType;
+  price_unit: string | null;
   image_url: string | null;
+  is_available: boolean;
   status: ProductStatus;
+  sale_price: number | null;
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -42,12 +56,21 @@ export type CreateProductRequest = {
   name: string;
   description?: string;
   price: number;
+  price_type?: PriceType;
+  price_unit?: string;
   category_id: string;
   image_url?: string;
+  is_available?: boolean;
 };
 
 export type UpdateProductRequest = Partial<CreateProductRequest> & {
   status?: ProductStatus;
+};
+
+export type ApplySaleRequest = {
+  sale_price: number;
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
 };
 
 export type ProductResponse = Product & {

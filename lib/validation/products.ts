@@ -9,12 +9,24 @@ import { z } from 'zod';
 
 export const productStatusSchema = z.enum(['active', 'inactive', 'archived']);
 
+export const priceTypeSchema = z.enum([
+  'fixed',
+  'from',
+  'per_hour',
+  'per_day',
+  'per_person',
+  'per_event',
+]);
+
 export const createProductSchema = z.object({
   name: z.string().min(1, 'Product name is required').max(255),
   description: z.string().optional(),
   price: z.number().min(0, 'Price must be positive'),
+  price_type: priceTypeSchema.default('fixed'),
+  price_unit: z.string().optional(),
   category_id: z.string().uuid('Invalid category ID'),
   image_url: z.string().url().optional(),
+  is_available: z.boolean().default(true),
 });
 
 export const updateProductSchema = createProductSchema.partial().extend({
@@ -42,6 +54,20 @@ export const productFiltersSchema = z.object({
   max_price: z.number().optional(),
 });
 
+export const applySaleSchema = z
+  .object({
+    sale_price: z.number().positive('Sale price must be positive'),
+    sale_starts_at: z.string().datetime({ offset: true }).nullable().optional(),
+    sale_ends_at: z.string().datetime({ offset: true }).nullable().optional(),
+  })
+  .refine(
+    (data) => {
+      if (!data.sale_starts_at || !data.sale_ends_at) return true;
+      return data.sale_ends_at > data.sale_starts_at;
+    },
+    { message: 'End date must be after start date', path: ['sale_ends_at'] },
+  );
+
 // ===== Category Schemas =====
 
 export const createCategorySchema = z.object({
@@ -54,7 +80,7 @@ export const updateCategorySchema = createCategorySchema.partial();
 
 export const categoryFiltersSchema = z.object({
   page: z.number().min(1).default(1),
-  per_page: z.number().min(1).max(100).default(10),
+  per_page: z.number().min(1).max(500).default(10),
   search: z.string().optional(),
   sort_by: z
     .enum(['name_asc', 'name_desc', 'newest', 'oldest'])
@@ -63,6 +89,7 @@ export const categoryFiltersSchema = z.object({
 
 // ===== Type Exports =====
 
+export type ApplySaleInput = z.infer<typeof applySaleSchema>;
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 export type ProductFiltersInput = z.infer<typeof productFiltersSchema>;

@@ -1,33 +1,21 @@
 import { StatCard } from '@/components/custom/StatCard';
-import { CircleCheck, FlagOff, Hash, PhilippinePeso } from 'lucide-react';
+import { CircleCheck, FlagOff, Hash, PackageX } from 'lucide-react';
 
-const stats = [
-  {
-    title: 'Total Products',
-    icon: Hash,
-    value: 99,
-  },
-  {
-    title: 'On Sale',
-    icon: PhilippinePeso,
-    value: 99,
-  },
-  {
-    title: 'Active',
-    icon: CircleCheck,
-    value: 99,
-  },
-  {
-    title: 'Unlisted',
-    icon: FlagOff,
-    value: 99,
-  },
-];
+interface ProductStatsProps {
+  stats: { total: number; active: number; inactive: number; archived: number };
+}
 
-export function ProductStats() {
+export function ProductStats({ stats }: ProductStatsProps) {
+  const items = [
+    { title: 'Total Products', icon: Hash, value: stats.total },
+    { title: 'Active', icon: CircleCheck, value: stats.active },
+    { title: 'Inactive', icon: FlagOff, value: stats.inactive },
+    { title: 'Archived', icon: PackageX, value: stats.archived },
+  ];
+
   return (
     <div className="grid grid-cols-4 gap-4">
-      {stats.map((item, idx) => (
+      {items.map((item, idx) => (
         <StatCard {...item} key={idx} />
       ))}
     </div>

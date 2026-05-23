@@ -31,6 +31,7 @@ export { default as featuredDealService } from './featuredDealService';
 export { default as branchService } from './branchService';
 export { default as uploadService } from './uploadService';
 export { default as trendingService } from './trendingService';
+export { default as productCategoryService } from './productCategoryService';
 
 // NOTE: The following services are intentionally NOT exported here because
 // they import server-only helpers (directly or via dynamic import). Even dynamic

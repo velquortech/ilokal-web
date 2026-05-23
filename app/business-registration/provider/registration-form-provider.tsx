@@ -5,6 +5,7 @@ import React, {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useState,
 } from 'react';
 import { FieldPath, useForm, UseFormReturn } from 'react-hook-form';
@@ -14,6 +15,11 @@ import {
   fullSchema,
 } from '../validator/business-registration-form-schema';
 import { useFormCache } from '../hooks/useFormCache';
+import {
+  type BusinessType,
+  type RawBusinessType,
+  transformBusinessTypes,
+} from '../api/fetchCategories';
 
 type Step = 1 | 2 | 3 | 4 | 5; // 5 = Review/Submit
 
@@ -27,6 +33,7 @@ type ContextType = {
   cacheFile: (fieldName: string, file: File) => Promise<void>;
   cacheFiles: (fieldName: string, files: File[]) => Promise<void>;
   clearFileCache: (fieldName: string) => void;
+  businessTypes: BusinessType[];
 };
 
 const multiStepFormContext = createContext<ContextType | null>(null);
@@ -58,9 +65,16 @@ const stepFields: Record<Step, FieldPath<BusinessProps>[]> = {
 
 export function MultiStepFormProvider({
   children,
+  rawBusinessTypes = [],
 }: {
   children: React.ReactNode;
+  rawBusinessTypes?: RawBusinessType[];
 }) {
+  const businessTypes = useMemo(
+    () => transformBusinessTypes(rawBusinessTypes),
+    [rawBusinessTypes],
+  );
+
   const [step, setStep] = useState<Step>(1);
   const [canProceed, setCanProceed] = useState(false);
 
@@ -165,6 +179,7 @@ export function MultiStepFormProvider({
         cacheFile,
         cacheFiles,
         clearFileCache,
+        businessTypes,
       }}
     >
       {children}

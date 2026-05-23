@@ -12,10 +12,15 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "test:run": "vitest run",
+    "test:unit": "vitest run --reporter=verbose --exclude=\"**/*.integration.test.ts\"",
+    "test:integration": "vitest run --reporter=verbose \"integration.test\"",
+    "test:products": "vitest run --reporter=verbose \"__test__/\"",
+    "test:products:unit": "vitest run --reporter=verbose \"__test__/features/product-query\" \"__test__/features/product-service\" \"__test__/pages/product-catalogues\"",
+    "test:products:integration": "vitest run --reporter=verbose \"__test__/features/product-api\" \"__test__/features/product-search\" \"__test__/features/product-analytics\" \"__test__/pages/mobile\"",
     "check:protected": "node WORKFLOW/tools/checkProtectedRoutes.js",
     "check:imports": "node WORKFLOW/tools/validateServiceImports.js",
     "analyze:usage": "node WORKFLOW/tools/analyzeServiceUsage.js",
-    "ci:checks": "npm run lint -- --fix && npm run check:protected && npm run check:imports && npm run analyze:usage && npm run test:run"
+    "ci:checks": "yarn lint --fix && yarn check:protected && yarn check:imports && yarn analyze:usage && yarn test:run"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

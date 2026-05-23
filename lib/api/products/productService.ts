@@ -10,6 +10,7 @@ import type {
   ApiResponse,
   CreateProductRequest,
   UpdateProductRequest,
+  ApplySaleRequest,
   CreateCategoryRequest,
   UpdateCategoryRequest,
 } from '@/lib/types';
@@ -223,12 +224,12 @@ export async function createProduct(
   input: CreateProductRequest,
 ): Promise<ApiResponse<Product>> {
   try {
-    if (!input.price || input.price < 0) {
+    if (input.price < 0) {
       return {
         success: false,
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'Price must be a positive number',
+          message: 'Price cannot be negative',
         },
       };
     }
@@ -255,7 +256,10 @@ export async function createProduct(
         name: input.name,
         description: input.description || null,
         price: input.price,
+        price_type: input.price_type ?? 'fixed',
+        price_unit: input.price_unit || null,
         image_url: input.image_url || null,
+        is_available: input.is_available ?? true,
         status: 'active',
       })
       .select()
@@ -346,6 +350,13 @@ export async function updateProduct(
         ...(input.category_id && { category_id: input.category_id }),
         ...(input.image_url !== undefined && { image_url: input.image_url }),
         ...(input.status && { status: input.status }),
+        ...(input.is_available !== undefined && {
+          is_available: input.is_available,
+        }),
+        ...(input.price_type && { price_type: input.price_type }),
+        ...(input.price_unit !== undefined && {
+          price_unit: input.price_unit,
+        }),
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -375,6 +386,111 @@ export async function updateProduct(
         code: 'INTERNAL_ERROR',
         message: 'Failed to update product',
       },
+    };
+  }
+}
+
+/**
+ * Apply a sale price to a product (business owner only)
+ */
+export async function applySale(
+  id: string,
+  business_id: string,
+  input: ApplySaleRequest,
+): Promise<ApiResponse<Product>> {
+  try {
+    const result = await productQuery.getProductById(id);
+    if ('error' in result) {
+      return {
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Product not found' },
+      };
+    }
+
+    if (result.product.business_id !== business_id) {
+      return {
+        success: false,
+        error: {
+          code: 'AUTHORIZATION_ERROR',
+          message: 'Unauthorized to update this product',
+        },
+      };
+    }
+
+    if (input.sale_price >= result.product.price) {
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Sale price must be less than the original price',
+        },
+      };
+    }
+
+    const updated = await productQuery.applySaleToProduct(id, input);
+    if ('error' in updated) {
+      return {
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: updated.error ?? 'Failed to apply sale',
+        },
+      };
+    }
+
+    return { success: true, data: updated.product as Product };
+  } catch (err) {
+    console.error('[applySale]', err);
+    return {
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'Failed to apply sale' },
+    };
+  }
+}
+
+/**
+ * Remove an active sale from a product (business owner only)
+ */
+export async function removeSale(
+  id: string,
+  business_id: string,
+): Promise<ApiResponse<Product>> {
+  try {
+    const result = await productQuery.getProductById(id);
+    if ('error' in result) {
+      return {
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Product not found' },
+      };
+    }
+
+    if (result.product.business_id !== business_id) {
+      return {
+        success: false,
+        error: {
+          code: 'AUTHORIZATION_ERROR',
+          message: 'Unauthorized to update this product',
+        },
+      };
+    }
+
+    const updated = await productQuery.removeSaleFromProduct(id);
+    if ('error' in updated) {
+      return {
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: updated.error ?? 'Failed to remove sale',
+        },
+      };
+    }
+
+    return { success: true, data: updated.product as Product };
+  } catch (err) {
+    console.error('[removeSale]', err);
+    return {
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'Failed to remove sale' },
     };
   }
 }
@@ -412,11 +528,13 @@ export async function deleteProduct(
     }
 
     // Archive instead of delete
+    const now = new Date().toISOString();
     const { error } = await supabase
       .from('products')
       .update({
         status: 'archived',
-        updated_at: new Date().toISOString(),
+        archived_at: now,
+        updated_at: now,
       })
       .eq('id', id);
 

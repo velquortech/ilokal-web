@@ -78,7 +78,7 @@ migrate-new:
 	@yarn supabase migration new $(name)
 
 migrate-up:
-	@yarn supabase migration up
+	@yarn supabase migration up --local --include-all
 
 migrate-diff:
 	@yarn supabase db diff --local > supabase/migrations/$(shell date +%Y%m%d%H%M%S)_schema_changes.sql
@@ -101,4 +101,22 @@ seed: seed-storage seed-db
 generate-types:
 	yarn supabase gen types typescript --local
 
-.PHONY: all init-log setup-supabase clean migrate-new migrate-up migrate-diff migrate-reset stop-db run-dev test test-run test-ui test-coverage seed-storage seed-db seed
+test:
+	yarn test
+
+test-run:
+	yarn test:run
+
+test-ui:
+	yarn test:ui
+
+test-coverage:
+	yarn test:coverage
+
+review:
+	yarn lint --fix
+	yarn build
+	yarn test:run
+	@echo "Review complete: lint, build, and tests passed"
+
+.PHONY: all init-log setup-supabase clean migrate-new migrate-up migrate-diff migrate-reset stop-db run-dev test test-run test-ui test-coverage review seed-storage seed-db seed

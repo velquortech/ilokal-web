@@ -15,12 +15,16 @@ import {
 } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { catalogues as initialCatalogues } from '../../data/products';
+import type { Category } from '@/lib/types';
 
-export function ManageCatalogues() {
+interface ManageCataloguesProps {
+  categories: Category[];
+}
+
+export function ManageCatalogues({ categories }: ManageCataloguesProps) {
   const [isAdding, setIsAdding] = React.useState(false);
   const [newName, setNewName] = React.useState('');
-  const [editingId, setEditingId] = React.useState<number | null>(null);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
   const [editValue, setEditValue] = React.useState('');
   const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -41,7 +45,7 @@ export function ManageCatalogues() {
     setIsAdding(false);
   };
 
-  const handleStartEdit = (id: number, name: string) => {
+  const handleStartEdit = (id: string, name: string) => {
     setEditingId(id);
     setEditValue(name);
   };
@@ -137,7 +141,7 @@ export function ManageCatalogues() {
               )}
 
               {/* LIST ITEMS */}
-              {initialCatalogues.map((cat) => (
+              {categories.map((cat) => (
                 <div
                   key={cat.id}
                   className={`border-border group flex w-full items-center rounded-md border py-2 pr-1 transition-colors ${

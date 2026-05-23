@@ -25,6 +25,8 @@ import couponService from '@/lib/services/couponService';
 import {
   getCouponsPaginated,
   getCouponStatsByBusiness,
+  getCouponById,
+  getFeaturedDealById,
 } from '@/lib/api/coupons/couponQuery';
 
 // ===== Coupon Read Actions =====
@@ -152,9 +154,7 @@ export async function updateCouponAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    const { coupon, error }: { coupon?: Coupon; error?: string } = await (
-      await import('@/lib/api/coupons/couponQuery')
-    ).getCouponById(id);
+    const { coupon, error } = await getCouponById(id);
     if (error || !coupon) {
       return {
         success: false,
@@ -202,9 +202,7 @@ export async function deleteCouponAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    const { coupon, error }: { coupon?: Coupon; error?: string } = await (
-      await import('@/lib/api/coupons/couponQuery')
-    ).getCouponById(id);
+    const { coupon, error } = await getCouponById(id);
     if (error || !coupon) {
       return {
         success: false,
@@ -341,9 +339,7 @@ export async function updateFeaturedDealAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    const { coupon: deal, error }: { coupon?: Coupon; error?: string } = await (
-      await import('@/lib/api/coupons/couponQuery')
-    ).getCouponById(id);
+    const { deal, error } = await getFeaturedDealById(id);
     if (error || !deal) {
       return {
         success: false,
@@ -391,9 +387,7 @@ export async function deleteFeaturedDealAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    const { coupon: deal, error }: { coupon?: Coupon; error?: string } = await (
-      await import('@/lib/api/coupons/couponQuery')
-    ).getCouponById(id);
+    const { deal, error } = await getFeaturedDealById(id);
     if (error || !deal) {
       return {
         success: false,

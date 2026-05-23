@@ -14,8 +14,8 @@ export function CouponStats({ stats }: CouponStatsProps) {
 
   return (
     <div className="grid grid-cols-3 gap-4">
-      {items.map((item, idx) => (
-        <StatCard {...item} key={idx} />
+      {items.map((item) => (
+        <StatCard {...item} key={item.title} />
       ))}
     </div>
   );

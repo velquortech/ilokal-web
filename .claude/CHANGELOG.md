@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-05-23 — Coupons & Deals feature (feat/ilokal-11)
+
+- Added `/business/[businessId]/coupons` page with full CRUD, table, stats, filter, and expandable rows.
+- DB migration: `status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('published', 'draft'))` on `coupons` table.
+- Published/draft visibility system: filter Popover + RadioGroup (matching product-catalogue pattern), Visibility column, status toggle in Add/Edit dialogs.
+- Expandable table rows show linked products using TanStack Table `getExpandedRowModel` + `React.Fragment`.
+- Product picker in dialogs: searchable list with pure-CSS checkbox (no Radix inside form), `role="listbox"` container.
+- Mobile API route updated: filters by `status = 'published'`, `start_date <= now`, and `expiry_date >= now`.
+- Fixed: `updateFeaturedDealAction`/`deleteFeaturedDealAction` were calling `getCouponById` instead of `getFeaturedDealById`.
+- Fixed: dynamic imports of query functions inside server actions replaced with static imports.
+- Known pre-existing issue: 11 files in `app/admin/` and `app/business-registration/` import from deleted `services/` directory — causes build failure unrelated to this feature.
+- Tests: 69 coupon-specific tests across `couponQuery`, `couponService`, `couponActions`, and mobile route integration.
+
 ## 2026-03-30 — API wrapper docs added
 
 - Added `API_WRAPPER_FOR_FRONTEND.md` with guidance for front-end developers on using `lib/services` isomorphic wrappers, optimistic updates, and troubleshooting 401/undefined responses.

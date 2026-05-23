@@ -125,7 +125,6 @@ export function CouponsContent({
             page={metadata.page}
             pageSize={metadata.per_page}
             totalPages={metadata.total_pages}
-            total={metadata.total}
             onPaginationChange={handlePaginationChange}
           />
         </CardContent>

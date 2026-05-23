@@ -21,6 +21,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       .eq('business_id', businessId)
       .eq('status', 'published')
       .is('archived_at', null)
+      .lte('start_date', now)
       .gte('expiry_date', now)
       .order('expiry_date', { ascending: true });
 

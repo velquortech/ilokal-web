@@ -30,7 +30,6 @@ interface CouponsTableProps {
   page: number;
   pageSize: number;
   totalPages: number;
-  total: number;
   onPaginationChange: (page: number, pageSize: number) => void;
 }
 

@@ -45,6 +45,8 @@ export async function createCoupon(
       .from('coupons')
       .insert({
         business_id: businessId,
+        promotion_type: input.promotion_type ?? 'coupon',
+        status: input.status ?? 'draft',
         code: input.code.toUpperCase(),
         description: input.description || null,
         discount: input.discount,
@@ -112,12 +114,17 @@ export async function updateCoupon(
       updated_at: new Date().toISOString(),
     };
 
+    if (input.promotion_type) updateData.promotion_type = input.promotion_type;
+    if (input.status) updateData.status = input.status;
     if (input.code) updateData.code = input.code.toUpperCase();
     if (input.description !== undefined)
       updateData.description = input.description;
     if (input.discount) updateData.discount = input.discount;
     if (input.usage_scope) updateData.usage_scope = input.usage_scope;
-    if (input.scope_values) updateData.scope_values = input.scope_values;
+    if (input.scope_values !== undefined)
+      updateData.scope_values = input.scope_values.length
+        ? input.scope_values
+        : null;
     if (input.start_date) updateData.start_date = input.start_date;
     if (input.expiry_date) updateData.expiry_date = input.expiry_date;
     if (input.max_redemptions_global !== undefined)

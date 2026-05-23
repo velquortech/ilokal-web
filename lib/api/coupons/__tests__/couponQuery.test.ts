@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as couponQuery from '@/lib/api/coupons/couponQuery';
 import * as supabaseServer from '@/supabase/server';
 
-// Mock supabase server
 vi.mock('@/supabase/server', () => ({
   createServerSupabaseClient: vi.fn(),
 }));
@@ -23,6 +22,8 @@ describe('couponQuery', () => {
     range: ReturnType<typeof vi.fn>;
     single: ReturnType<typeof vi.fn>;
     limit: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+    insert: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -40,6 +41,8 @@ describe('couponQuery', () => {
       range: vi.fn(),
       single: vi.fn(),
       limit: vi.fn().mockReturnThis(),
+      update: vi.fn().mockReturnThis(),
+      insert: vi.fn().mockReturnThis(),
     };
 
     mockSupabase = {
@@ -57,16 +60,16 @@ describe('couponQuery', () => {
     vi.clearAllMocks();
   });
 
-  // ===== Coupon Tests =====
+  // ===== getCouponsPaginated =====
 
   describe('getCouponsPaginated()', () => {
-    it('should fetch paginated coupons for a business', async () => {
+    it('fetches paginated coupons for a business', async () => {
       const mockCoupons = [
         {
           id: 'coupon-1',
           code: 'SAVE10',
-          discount_percentage: 10,
           business_id: 'biz-1',
+          status: 'published',
         },
       ];
 
@@ -86,45 +89,42 @@ describe('couponQuery', () => {
       expect(result.total_pages).toBe(1);
     });
 
-    it('should filter active coupons by status', async () => {
-      chainedMock.range.mockResolvedValue({
-        data: [],
-        count: 0,
-        error: null,
-      });
+    it('filters by published status using eq on status column', async () => {
+      chainedMock.range.mockResolvedValue({ data: [], count: 0, error: null });
 
       await couponQuery.getCouponsPaginated('biz-1', {
         page: 1,
         per_page: 20,
-        status: 'active',
+        status: 'published',
       });
 
-      expect(chainedMock.lte).toHaveBeenCalled();
-      expect(chainedMock.gte).toHaveBeenCalled();
+      expect(chainedMock.eq).toHaveBeenCalledWith('status', 'published');
     });
 
-    it('should filter expired coupons', async () => {
-      chainedMock.range.mockResolvedValue({
-        data: [],
-        count: 0,
-        error: null,
-      });
+    it('filters by draft status using eq on status column', async () => {
+      chainedMock.range.mockResolvedValue({ data: [], count: 0, error: null });
 
       await couponQuery.getCouponsPaginated('biz-1', {
         page: 1,
         per_page: 20,
-        status: 'expired',
+        status: 'draft',
       });
 
-      expect(chainedMock.lt).toHaveBeenCalled();
+      expect(chainedMock.eq).toHaveBeenCalledWith('status', 'draft');
     });
 
-    it('should search coupons by code or description', async () => {
-      chainedMock.range.mockResolvedValue({
-        data: [],
-        count: 0,
-        error: null,
-      });
+    it('returns all coupons when no status filter is provided', async () => {
+      chainedMock.range.mockResolvedValue({ data: [], count: 0, error: null });
+
+      await couponQuery.getCouponsPaginated('biz-1', { page: 1, per_page: 20 });
+
+      const eqCalls = vi.mocked(chainedMock.eq).mock.calls;
+      const statusCalls = eqCalls.filter(([col]) => col === 'status');
+      expect(statusCalls).toHaveLength(0);
+    });
+
+    it('searches coupons by code or description', async () => {
+      chainedMock.range.mockResolvedValue({ data: [], count: 0, error: null });
 
       await couponQuery.getCouponsPaginated('biz-1', {
         page: 1,
@@ -135,12 +135,8 @@ describe('couponQuery', () => {
       expect(chainedMock.or).toHaveBeenCalled();
     });
 
-    it('should sort by creation date newest first', async () => {
-      chainedMock.range.mockResolvedValue({
-        data: [],
-        count: 0,
-        error: null,
-      });
+    it('sorts by creation date newest first by default', async () => {
+      chainedMock.range.mockResolvedValue({ data: [], count: 0, error: null });
 
       await couponQuery.getCouponsPaginated('biz-1', {
         page: 1,
@@ -153,12 +149,8 @@ describe('couponQuery', () => {
       });
     });
 
-    it('should sort by expiry date ascending', async () => {
-      chainedMock.range.mockResolvedValue({
-        data: [],
-        count: 0,
-        error: null,
-      });
+    it('sorts by expiry date ascending', async () => {
+      chainedMock.range.mockResolvedValue({ data: [], count: 0, error: null });
 
       await couponQuery.getCouponsPaginated('biz-1', {
         page: 1,
@@ -171,7 +163,7 @@ describe('couponQuery', () => {
       });
     });
 
-    it('should handle pagination correctly', async () => {
+    it('calculates correct pagination offsets', async () => {
       chainedMock.range.mockResolvedValue({
         data: [],
         count: 100,
@@ -187,7 +179,7 @@ describe('couponQuery', () => {
       expect(result.total_pages).toBe(5);
     });
 
-    it('should handle database error', async () => {
+    it('returns error shape when database fails', async () => {
       chainedMock.range.mockResolvedValue({
         data: null,
         count: null,
@@ -204,194 +196,155 @@ describe('couponQuery', () => {
     });
   });
 
-  describe('getCouponById()', () => {
-    it('should fetch coupon by ID', async () => {
-      const couponId = 'coupon-1';
-      const mockCoupon = {
-        id: couponId,
-        code: 'SAVE10',
-        discount_percentage: 10,
-      };
+  // ===== getCouponStatsByBusiness =====
 
-      const mockSelect = vi.fn().mockReturnThis();
-      const mockEq = vi.fn().mockReturnThis();
-      const mockIs = vi.fn().mockReturnThis();
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: mockCoupon,
+  describe('getCouponStatsByBusiness()', () => {
+    it('returns total, published, and draft counts', async () => {
+      chainedMock.eq.mockResolvedValue({
+        data: [
+          { status: 'published', archived_at: null },
+          { status: 'published', archived_at: null },
+          { status: 'draft', archived_at: null },
+        ],
         error: null,
       });
 
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-      mockEq.mockReturnValue({
-        is: mockIs,
-      });
-      mockIs.mockReturnValue({
-        single: mockSingle,
+      const result = await couponQuery.getCouponStatsByBusiness('biz-1');
+
+      expect(result.total).toBe(3);
+      expect(result.published).toBe(2);
+      expect(result.draft).toBe(1);
+    });
+
+    it('excludes archived coupons from counts', async () => {
+      chainedMock.eq.mockResolvedValue({
+        data: [
+          { status: 'published', archived_at: null },
+          { status: 'published', archived_at: '2026-01-01T00:00:00Z' },
+          { status: 'draft', archived_at: null },
+        ],
+        error: null,
       });
 
-      const result = await couponQuery.getCouponById(couponId);
+      const result = await couponQuery.getCouponStatsByBusiness('biz-1');
+
+      expect(result.total).toBe(2);
+      expect(result.published).toBe(1);
+      expect(result.draft).toBe(1);
+    });
+
+    it('returns zeros when no coupons exist', async () => {
+      chainedMock.eq.mockResolvedValue({ data: [], error: null });
+
+      const result = await couponQuery.getCouponStatsByBusiness('biz-1');
+
+      expect(result.total).toBe(0);
+      expect(result.published).toBe(0);
+      expect(result.draft).toBe(0);
+    });
+
+    it('returns zeros when database fails', async () => {
+      chainedMock.eq.mockResolvedValue({
+        data: null,
+        error: { message: 'DB error' },
+      });
+
+      const result = await couponQuery.getCouponStatsByBusiness('biz-1');
+
+      expect(result.total).toBe(0);
+      expect(result.published).toBe(0);
+      expect(result.draft).toBe(0);
+    });
+  });
+
+  // ===== getCouponById =====
+
+  describe('getCouponById()', () => {
+    it('fetches coupon by ID', async () => {
+      const mockCoupon = {
+        id: 'coupon-1',
+        code: 'SAVE10',
+        status: 'published',
+      };
+      chainedMock.single.mockResolvedValue({ data: mockCoupon, error: null });
+
+      const result = await couponQuery.getCouponById('coupon-1');
 
       expect(result.coupon).toEqual(mockCoupon);
       expect(result.error).toBeUndefined();
     });
 
-    it('should return error when coupon not found', async () => {
-      const couponId = 'nonexistent';
+    it('returns error when coupon not found', async () => {
+      chainedMock.single.mockResolvedValue({ data: null, error: null });
 
-      const mockSelect = vi.fn().mockReturnThis();
-      const mockEq = vi.fn().mockReturnThis();
-      const mockIs = vi.fn().mockReturnThis();
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: null,
-        error: null,
-      });
-
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-      mockEq.mockReturnValue({
-        is: mockIs,
-      });
-      mockIs.mockReturnValue({
-        single: mockSingle,
-      });
-
-      const result = await couponQuery.getCouponById(couponId);
+      const result = await couponQuery.getCouponById('nonexistent');
 
       expect(result.coupon).toBeUndefined();
       expect(result.error).toBe('Coupon not found');
     });
   });
 
+  // ===== getCouponByCode =====
+
   describe('getCouponByCode()', () => {
-    it('should fetch coupon by code and uppercase it', async () => {
-      const code = 'save10';
+    it('fetches coupon by code uppercased and filters by published status', async () => {
       const mockCoupon = {
         id: 'coupon-1',
         code: 'SAVE10',
-        discount_percentage: 10,
+        status: 'published',
       };
+      chainedMock.single.mockResolvedValue({ data: mockCoupon, error: null });
 
-      const mockSelect = vi.fn().mockReturnThis();
-      const mockEq = vi.fn().mockReturnThis();
-      const mockIs = vi.fn().mockReturnThis();
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: mockCoupon,
-        error: null,
-      });
-
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-      mockEq.mockReturnValue({
-        is: mockIs,
-      });
-      mockIs.mockReturnValue({
-        single: mockSingle,
-      });
-
-      const result = await couponQuery.getCouponByCode(code);
+      const result = await couponQuery.getCouponByCode('save10');
 
       expect(result.coupon).toEqual(mockCoupon);
-      expect(mockEq).toHaveBeenCalledWith('code', 'SAVE10');
+      expect(chainedMock.eq).toHaveBeenCalledWith('code', 'SAVE10');
+      expect(chainedMock.eq).toHaveBeenCalledWith('status', 'published');
     });
 
-    it('should return error for invalid coupon code', async () => {
-      const code = 'INVALID';
+    it('returns error for draft coupon code (not published)', async () => {
+      chainedMock.single.mockResolvedValue({ data: null, error: null });
 
-      const mockSelect = vi.fn().mockReturnThis();
-      const mockEq = vi.fn().mockReturnThis();
-      const mockIs = vi.fn().mockReturnThis();
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: null,
-        error: null,
-      });
+      const result = await couponQuery.getCouponByCode('DRAFT10');
 
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-      mockEq.mockReturnValue({
-        is: mockIs,
-      });
-      mockIs.mockReturnValue({
-        single: mockSingle,
-      });
+      expect(result.coupon).toBeUndefined();
+      expect(result.error).toBe('Invalid coupon code');
+    });
 
-      const result = await couponQuery.getCouponByCode(code);
+    it('returns error when coupon does not exist', async () => {
+      chainedMock.single.mockResolvedValue({ data: null, error: null });
+
+      const result = await couponQuery.getCouponByCode('INVALID');
 
       expect(result.coupon).toBeUndefined();
       expect(result.error).toBe('Invalid coupon code');
     });
   });
 
+  // ===== couponExists =====
+
   describe('couponExists()', () => {
-    it('should return true when coupon exists', async () => {
-      const couponId = 'coupon-1';
+    it('returns true when coupon exists', async () => {
+      chainedMock.is.mockResolvedValue({ count: 1, error: null });
 
-      const mockSelect = vi.fn().mockReturnThis();
-      const mockEq = vi.fn().mockReturnThis();
-      const mockIs = vi.fn().mockResolvedValue({
-        count: 1,
-        error: null,
-      });
-
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-      mockEq.mockReturnValue({
-        is: mockIs,
-      });
-
-      const result = await couponQuery.couponExists(couponId);
+      const result = await couponQuery.couponExists('coupon-1');
 
       expect(result).toBe(true);
     });
 
-    it('should return false when coupon does not exist', async () => {
-      const couponId = 'nonexistent';
+    it('returns false when coupon does not exist', async () => {
+      chainedMock.is.mockResolvedValue({ count: 0, error: null });
 
-      const mockSelect = vi.fn().mockReturnThis();
-      const mockEq = vi.fn().mockReturnThis();
-      const mockIs = vi.fn().mockResolvedValue({
-        count: 0,
-        error: null,
-      });
-
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-      mockEq.mockReturnValue({
-        is: mockIs,
-      });
-
-      const result = await couponQuery.couponExists(couponId);
+      const result = await couponQuery.couponExists('nonexistent');
 
       expect(result).toBe(false);
     });
   });
 
+  // ===== getRedemptionStats =====
+
   describe('getRedemptionStats()', () => {
-    it('should fetch redemption stats for a coupon', async () => {
+    it('returns redemption stats for a coupon', async () => {
       const couponId = 'coupon-1';
       const mockCoupon = {
         id: couponId,
@@ -401,16 +354,12 @@ describe('couponQuery', () => {
 
       const mockSelect1 = vi.fn().mockReturnThis();
       const mockEq1 = vi.fn().mockReturnThis();
-      const mockSingle1 = vi.fn().mockResolvedValue({
-        data: mockCoupon,
-        error: null,
-      });
+      const mockSingle1 = vi
+        .fn()
+        .mockResolvedValue({ data: mockCoupon, error: null });
 
       const mockSelect2 = vi.fn().mockReturnThis();
-      const mockEq2 = vi.fn().mockResolvedValue({
-        count: 25,
-        error: null,
-      });
+      const mockEq2 = vi.fn().mockResolvedValue({ count: 25, error: null });
 
       const mockSelect3 = vi.fn().mockReturnThis();
       const mockEq3 = vi.fn().mockResolvedValue({
@@ -431,73 +380,51 @@ describe('couponQuery', () => {
         error: null,
       });
 
-      // Setup for 4 queries
       const callCount = { count: 0 };
-      mockSupabase.from.mockImplementation((_table: string) => {
+      mockSupabase.from.mockImplementation(() => {
         callCount.count++;
-        if (callCount.count === 1) {
-          return { select: mockSelect1 };
-        } else if (callCount.count === 2) {
-          return { select: mockSelect2 };
-        } else if (callCount.count === 3) {
-          return { select: mockSelect3 };
-        } else {
-          return { select: mockSelect4 };
-        }
+        if (callCount.count === 1) return { select: mockSelect1 };
+        if (callCount.count === 2) return { select: mockSelect2 };
+        if (callCount.count === 3) return { select: mockSelect3 };
+        return { select: mockSelect4 };
       });
 
       mockSelect1.mockReturnValue({ eq: mockEq1 });
       mockEq1.mockReturnValue({ single: mockSingle1 });
-
       mockSelect2.mockReturnValue({ eq: mockEq2 });
-
       mockSelect3.mockReturnValue({ eq: mockEq3 });
-
-      mockSelect4.mockReturnValue({
-        eq: mockEq4,
-      });
-      mockEq4.mockReturnValue({
-        order: mockOrder4,
-      });
-      mockOrder4.mockReturnValue({
-        limit: mockLimit4,
-      });
-      mockLimit4.mockReturnValue({
-        single: mockSingle4,
-      });
+      mockSelect4.mockReturnValue({ eq: mockEq4 });
+      mockEq4.mockReturnValue({ order: mockOrder4 });
+      mockOrder4.mockReturnValue({ limit: mockLimit4 });
+      mockLimit4.mockReturnValue({ single: mockSingle4 });
 
       const result = await couponQuery.getRedemptionStats(couponId);
 
       expect(result).not.toBeNull();
       expect(result?.total_redemptions).toBe(25);
       expect(result?.unique_users).toBe(2);
-      expect(result?.remaining_global).toBe(75); // 100 - 25
+      expect(result?.remaining_global).toBe(75);
     });
 
-    it('should return null when coupon not found', async () => {
-      const couponId = 'nonexistent';
+    it('returns null when coupon not found', async () => {
+      const mockSelect = vi.fn().mockReturnThis();
+      const mockEq = vi.fn().mockReturnThis();
+      const mockSingle = vi.fn().mockResolvedValue({ data: null, error: null });
 
-      const mockSelect1 = vi.fn().mockReturnThis();
-      const mockEq1 = vi.fn().mockReturnThis();
-      const mockSingle1 = vi.fn().mockResolvedValue({
-        data: null,
-        error: null,
-      });
+      mockSupabase.from.mockReturnValue({ select: mockSelect });
+      mockSelect.mockReturnValue({ eq: mockEq });
+      mockEq.mockReturnValue({ single: mockSingle });
 
-      mockSupabase.from.mockReturnValue({ select: mockSelect1 });
-      mockSelect1.mockReturnValue({ eq: mockEq1 });
-      mockEq1.mockReturnValue({ single: mockSingle1 });
-
-      const result = await couponQuery.getRedemptionStats(couponId);
+      const result = await couponQuery.getRedemptionStats('nonexistent');
 
       expect(result).toBeNull();
     });
   });
 
-  // ===== Featured Deal Tests =====
+  // ===== getFeaturedDealsPaginated =====
 
   describe('getFeaturedDealsPaginated()', () => {
-    it('should fetch paginated featured deals', async () => {
+    it('fetches paginated featured deals', async () => {
       const mockDeals = [
         {
           id: 'deal-1',
@@ -514,30 +441,16 @@ describe('couponQuery', () => {
       const mockGte = vi.fn().mockReturnThis();
       const mockIs = vi.fn().mockReturnThis();
       const mockOrder = vi.fn().mockReturnThis();
-      const mockRange = vi.fn().mockResolvedValue({
-        data: mockDeals,
-        count: 1,
-        error: null,
-      });
+      const mockRange = vi
+        .fn()
+        .mockResolvedValue({ data: mockDeals, count: 1, error: null });
 
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
-      mockSelect.mockReturnValue({
-        lte: mockLte,
-      });
-      mockLte.mockReturnValue({
-        gte: mockGte,
-      });
-      mockGte.mockReturnValue({
-        is: mockIs,
-      });
-      mockIs.mockReturnValue({
-        order: mockOrder,
-      });
-      mockOrder.mockReturnValue({
-        range: mockRange,
-      });
+      mockSupabase.from.mockReturnValue({ select: mockSelect });
+      mockSelect.mockReturnValue({ lte: mockLte });
+      mockLte.mockReturnValue({ gte: mockGte });
+      mockGte.mockReturnValue({ is: mockIs });
+      mockIs.mockReturnValue({ order: mockOrder });
+      mockOrder.mockReturnValue({ range: mockRange });
 
       const result = await couponQuery.getFeaturedDealsPaginated({
         page: 1,
@@ -548,40 +461,24 @@ describe('couponQuery', () => {
       expect(result.total).toBe(1);
     });
 
-    it('should filter featured deals by placement', async () => {
+    it('filters featured deals by placement', async () => {
       const mockSelect = vi.fn().mockReturnThis();
       const mockLte = vi.fn().mockReturnThis();
       const mockGte = vi.fn().mockReturnThis();
       const mockIs = vi.fn().mockReturnThis();
       const mockEq = vi.fn().mockReturnThis();
       const mockOrder = vi.fn().mockReturnThis();
-      const mockRange = vi.fn().mockResolvedValue({
-        data: [],
-        count: 0,
-        error: null,
-      });
+      const mockRange = vi
+        .fn()
+        .mockResolvedValue({ data: [], count: 0, error: null });
 
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
-      mockSelect.mockReturnValue({
-        lte: mockLte,
-      });
-      mockLte.mockReturnValue({
-        gte: mockGte,
-      });
-      mockGte.mockReturnValue({
-        is: mockIs,
-      });
-      mockIs.mockReturnValue({
-        eq: mockEq,
-      });
-      mockEq.mockReturnValue({
-        order: mockOrder,
-      });
-      mockOrder.mockReturnValue({
-        range: mockRange,
-      });
+      mockSupabase.from.mockReturnValue({ select: mockSelect });
+      mockSelect.mockReturnValue({ lte: mockLte });
+      mockLte.mockReturnValue({ gte: mockGte });
+      mockGte.mockReturnValue({ is: mockIs });
+      mockIs.mockReturnValue({ eq: mockEq });
+      mockEq.mockReturnValue({ order: mockOrder });
+      mockOrder.mockReturnValue({ range: mockRange });
 
       await couponQuery.getFeaturedDealsPaginated({
         page: 1,
@@ -593,42 +490,28 @@ describe('couponQuery', () => {
     });
   });
 
+  // ===== getFeaturedDealsByBusinessId =====
+
   describe('getFeaturedDealsByBusinessId()', () => {
-    it('should fetch featured deals for a business', async () => {
+    it('fetches featured deals for a business', async () => {
       const businessId = 'biz-1';
       const mockDeals = [
-        {
-          id: 'deal-1',
-          title: 'Summer Sale',
-          business_id: businessId,
-        },
+        { id: 'deal-1', title: 'Summer Sale', business_id: businessId },
       ];
 
       const mockSelect = vi.fn().mockReturnThis();
-      const mockEq1 = vi.fn().mockReturnThis();
+      const mockEq = vi.fn().mockReturnThis();
       const mockIs = vi.fn().mockReturnThis();
       const mockOrder = vi.fn().mockReturnThis();
-      const mockRange = vi.fn().mockResolvedValue({
-        data: mockDeals,
-        count: 1,
-        error: null,
-      });
+      const mockRange = vi
+        .fn()
+        .mockResolvedValue({ data: mockDeals, count: 1, error: null });
 
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
-      mockSelect.mockReturnValue({
-        eq: mockEq1,
-      });
-      mockEq1.mockReturnValue({
-        is: mockIs,
-      });
-      mockIs.mockReturnValue({
-        order: mockOrder,
-      });
-      mockOrder.mockReturnValue({
-        range: mockRange,
-      });
+      mockSupabase.from.mockReturnValue({ select: mockSelect });
+      mockSelect.mockReturnValue({ eq: mockEq });
+      mockEq.mockReturnValue({ is: mockIs });
+      mockIs.mockReturnValue({ order: mockOrder });
+      mockOrder.mockReturnValue({ range: mockRange });
 
       const result = await couponQuery.getFeaturedDealsByBusinessId(
         businessId,
@@ -643,89 +526,35 @@ describe('couponQuery', () => {
     });
   });
 
+  // ===== getFeaturedDealById =====
+
   describe('getFeaturedDealById()', () => {
-    it('should fetch featured deal by ID', async () => {
-      const dealId = 'deal-1';
-      const mockDeal = {
-        id: dealId,
-        title: 'Summer Sale',
-      };
+    it('fetches featured deal by ID', async () => {
+      const mockDeal = { id: 'deal-1', title: 'Summer Sale' };
+      chainedMock.single.mockResolvedValue({ data: mockDeal, error: null });
 
-      const mockSelect = vi.fn().mockReturnThis();
-      const mockEq = vi.fn().mockReturnThis();
-      const mockIs = vi.fn().mockReturnThis();
-      const mockSingle = vi.fn().mockResolvedValue({
-        data: mockDeal,
-        error: null,
-      });
-
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-      mockEq.mockReturnValue({
-        is: mockIs,
-      });
-      mockIs.mockReturnValue({
-        single: mockSingle,
-      });
-
-      const result = await couponQuery.getFeaturedDealById(dealId);
+      const result = await couponQuery.getFeaturedDealById('deal-1');
 
       expect(result.deal).toEqual(mockDeal);
       expect(result.error).toBeUndefined();
     });
   });
 
+  // ===== featuredDealExists =====
+
   describe('featuredDealExists()', () => {
-    it('should return true when featured deal exists', async () => {
-      const dealId = 'deal-1';
+    it('returns true when featured deal exists', async () => {
+      chainedMock.is.mockResolvedValue({ count: 1, error: null });
 
-      const mockSelect = vi.fn().mockReturnThis();
-      const mockEq = vi.fn().mockReturnThis();
-      const mockIs = vi.fn().mockResolvedValue({
-        count: 1,
-        error: null,
-      });
-
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-      mockEq.mockReturnValue({
-        is: mockIs,
-      });
-
-      const result = await couponQuery.featuredDealExists(dealId);
+      const result = await couponQuery.featuredDealExists('deal-1');
 
       expect(result).toBe(true);
     });
 
-    it('should return false when featured deal does not exist', async () => {
-      const dealId = 'nonexistent';
+    it('returns false when featured deal does not exist', async () => {
+      chainedMock.is.mockResolvedValue({ count: 0, error: null });
 
-      const mockSelect = vi.fn().mockReturnThis();
-      const mockEq = vi.fn().mockReturnThis();
-      const mockIs = vi.fn().mockResolvedValue({
-        count: 0,
-        error: null,
-      });
-
-      mockSupabase.from.mockReturnValue({
-        select: mockSelect,
-      });
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-      mockEq.mockReturnValue({
-        is: mockIs,
-      });
-
-      const result = await couponQuery.featuredDealExists(dealId);
+      const result = await couponQuery.featuredDealExists('nonexistent');
 
       expect(result).toBe(false);
     });

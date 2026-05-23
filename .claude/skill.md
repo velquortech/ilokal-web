@@ -177,6 +177,43 @@ export function MyFeatureContent({ initialItems }: MyFeatureContentProps) {
 
 Never add `'use client'` to a component unless it actually uses a client-only API. Push the client boundary as deep as possible.
 
+### 3d. Reusable UI patterns
+
+**Filter Popover (Popover + RadioGroup)**
+
+For table column filters, copy the pattern from `filter-products.tsx` / `filter-coupons.tsx`:
+- Use `Popover` + `PopoverContent` from `@/components/ui/popover`
+- Use `RadioGroup` + `RadioGroupItem` from `@/components/ui/radio-group`
+- Show an active-filter badge count when a filter is active
+- Always include a "Reset" ghost button to clear the filter
+- File naming: `filter-[domain].tsx`, props: `{ selected[Field]: string; on[Field]Change: (v: string) => void }`
+
+**Expandable Table Rows (TanStack Table)**
+
+When you need expandable rows in a table (e.g., to show linked products under a coupon):
+- Do NOT use the shared `DataTable` component — build the table directly with `useReactTable`
+- Add `getExpandedRowModel: getExpandedRowModel()` to `useReactTable` config
+- Add `getRowCanExpand: (row) => boolean` to control which rows expand
+- Track state explicitly: `const [expanded, setExpanded] = React.useState<ExpandedState>({})`
+- Include `state: { ..., expanded }` and `onExpandedChange: setExpanded`
+- Render expanded rows using `React.Fragment` so the expanded row sits immediately below its parent
+- The chevron column must call `row.getToggleExpandedHandler()` and `row.getCanExpand()` — never `row.toggleExpanded()` or a custom flag
+
+**Product Picker inside a Dialog Form**
+
+When rendering a multi-select product list inside a `react-hook-form` form inside a Dialog:
+- Do NOT use Radix `<Checkbox>` — it renders a hidden `<button>` which breaks form submission
+- Use a pure CSS visual checkbox: a `<div>` with border + bg + `<Check>` icon, toggled via `onClick`
+- Wrap the product list in `role="listbox"` + `aria-multiselectable="true"` (required for `role="option"` children to be valid)
+- Each row: `role="option"` + `aria-selected={checked}` + `tabIndex={0}` + `onKeyDown` for Space/Enter
+- File: `components/product-picker.tsx`, controller-wrapped via `react-hook-form` `Controller`
+
+**Stats Cards**
+
+Use `<StatCard>` from `@/components/custom/StatCard` in a `grid grid-cols-N gap-4` layout.
+- Use stable string keys (e.g., `key={item.title}`) — never `key={index}`
+- Stats component stays a Server Component (no hooks needed)
+
 ---
 
 ## Phase 4 — Testing
@@ -188,9 +225,12 @@ Never add `'use client'` to a component unless it actually uses a client-only AP
 | `lib/api/[domain]/[domain]Query.ts` | Unit test: `lib/api/[domain]/__tests__/[domain]Query.test.ts` |
 | `lib/api/[domain]/[domain]Service.ts` | Unit test: `lib/api/[domain]/__tests__/[domain]Service.test.ts` |
 | `app/api/[domain]/route.ts` | Integration test: `app/api/[domain]/__tests__/[domain].integration.test.ts` |
+| `app/api/mobile/**/route.ts` | Integration test: same folder `__tests__/[name].integration.test.ts` |
 | `app/[area]/actions/[domain]Actions.ts` | Unit test: `app/[area]/actions/__tests__/[domain]Actions.test.ts` |
 | UI-only change (no logic change) | Update existing tests if behaviour changed; otherwise leave as-is |
 | New feature end-to-end | Integration test: `lib/__tests__/integration/[domain].integration.test.ts` |
+
+**Important:** Changing a mobile API route always requires a corresponding integration test — even for "small" changes like adding a filter. Mobile routes are the contract with the mobile app and any silent breakage is high-impact.
 
 If tests already exist for the file being changed:
 - UI-only change with no logic change → no test changes needed
@@ -273,8 +313,14 @@ Then verify manually:
 - [ ] Client components use `router.refresh()` for post-mutation refresh (not manual re-fetch)
 - [ ] No `any` type in test files
 - [ ] New test files added to the correct `__tests__` folder co-located with the source
+- [ ] Integration test added for every changed mobile API route
 - [ ] CI workflow updated with test step for new feature (if applicable)
 - [ ] Migration files created for any schema changes (never modify existing migrations)
+- [ ] No dynamic `import()` calls inside server actions — use static top-of-file imports
+- [ ] No array index used as React `key` — use a stable unique identifier (e.g., `item.id` or `item.title`)
+- [ ] No unused props in component interfaces — remove them from both the interface and call sites
+- [ ] Mobile API routes that return time-sensitive data filter on BOTH `start_date <= now` AND `expiry_date >= now`
+- [ ] Featured deal ownership checks use `getFeaturedDealById`, not `getCouponById`
 - [ ] PR title follows Conventional Commits format: `feat(products): add category dropdown`
 
 ---

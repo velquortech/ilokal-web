@@ -16,6 +16,8 @@ export const discountValueSchema = z.object({
 
 // ===== Coupon Schemas =====
 
+export const promotionTypeSchema = z.enum(['coupon', 'deal']);
+
 export const usageScopeSchema = z.enum([
   'any',
   'specific_categories',
@@ -24,6 +26,7 @@ export const usageScopeSchema = z.enum([
 
 export const createCouponSchema = z
   .object({
+    promotion_type: promotionTypeSchema.default('coupon'),
     code: z.string().min(1).max(50).toUpperCase(),
     description: z.string().optional(),
     discount: discountValueSchema,
@@ -43,6 +46,7 @@ export const createCouponSchema = z
 
 export const updateCouponSchema = z
   .object({
+    promotion_type: promotionTypeSchema.optional(),
     code: z.string().min(1).max(50).toUpperCase().optional(),
     description: z.string().optional(),
     discount: discountValueSchema.optional(),

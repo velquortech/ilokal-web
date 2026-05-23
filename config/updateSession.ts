@@ -56,7 +56,7 @@ export async function updateSession(request: NextRequest) {
   const baseAdminURL = `/admin/${userData?.id}`;
   const baseUserURL = `/business/${userData?.id}`;
 
-  const protectedRoutes = ['business', 'shop', 'product-catalogues'];
+  const protectedRoutes = ['business', 'shop', 'product-catalogues', 'coupons'];
 
   const businessRestrictedRoutes = ['/admin'];
   const adminRestrictedRoutes = ['/employee', '/staff'];

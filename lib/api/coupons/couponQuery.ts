@@ -377,6 +377,37 @@ export async function getFeaturedDealById(id: string) {
 }
 
 /**
+ * Get coupon status counts for a business (used by stats panel)
+ */
+export async function getCouponStatsByBusiness(businessId: string) {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const now = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('coupons')
+      .select('start_date, expiry_date, archived_at')
+      .eq('business_id', businessId);
+
+    if (error) return { total: 0, active: 0, expired: 0, upcoming: 0 };
+
+    const all = data || [];
+    const nonArchived = all.filter((c) => c.archived_at === null);
+
+    return {
+      total: nonArchived.length,
+      active: nonArchived.filter(
+        (c) => c.start_date <= now && c.expiry_date >= now,
+      ).length,
+      expired: nonArchived.filter((c) => c.expiry_date < now).length,
+      upcoming: nonArchived.filter((c) => c.start_date > now).length,
+    };
+  } catch {
+    return { total: 0, active: 0, expired: 0, upcoming: 0 };
+  }
+}
+
+/**
  * Check if featured deal exists
  */
 export async function featuredDealExists(id: string): Promise<boolean> {

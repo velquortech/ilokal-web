@@ -130,7 +130,7 @@ export function AddProductDialog({
       setOpen(false);
       reset();
       onSuccess?.();
-    } catch (error) {
+    } catch {
       const msg =
         'Something went wrong, or check image size the limit is 1MB per image only';
       setServerError(msg);

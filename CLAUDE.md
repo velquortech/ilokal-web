@@ -67,3 +67,4 @@ Load on request (read when topic is relevant):
 - `.claude/docs/api-wrapper.md` — isomorphic service layer, client vs server imports
 - `.claude/docs/api-strategy.md` — full endpoint implementation plan and status
 - `.claude/docs/testing.md` — untested routes matrix, test templates
+- `.claude/docs/analytics-dashboard.md` — analytics panel ideas, RFM segments, retention queries, automation nudges

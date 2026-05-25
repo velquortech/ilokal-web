@@ -226,6 +226,14 @@ export type {
   CouponStats,
   TrafficMetrics,
   BusinessRevenue,
+  RetentionMonth,
+  MonthlyTrendPoint,
+  FollowerFunnelData,
+  CouponPerformanceItem,
+  CustomerSegmentCounts,
+  BusinessHealthData,
+  AutomationSuggestion,
+  BusinessAnalyticsDashboard,
 } from './analyticsBusiness';
 
 // Form Types

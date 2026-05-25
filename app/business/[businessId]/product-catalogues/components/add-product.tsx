@@ -130,8 +130,9 @@ export function AddProductDialog({
       setOpen(false);
       reset();
       onSuccess?.();
-    } catch {
-      const msg = 'An unexpected error occurred';
+    } catch (error) {
+      const msg =
+        'Something went wrong, or check image size the limit is 1MB per image only';
       setServerError(msg);
       toast.error(msg);
     } finally {
@@ -293,6 +294,9 @@ export function AddProductDialog({
                       onChange={(file) =>
                         field.onChange(file instanceof File ? file : null)
                       }
+                      onError={(msg) => setServerError(msg)}
+                      maxSizeBytes={5 * 1024 * 1024}
+                      maxSizeLabel="5 MB"
                     />
                   )}
                 />

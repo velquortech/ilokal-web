@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
+import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 
 export async function DELETE(
   request: NextRequest,
@@ -13,12 +14,17 @@ export async function DELETE(
 
     const { bucket, id } = await params;
 
-    // Validate bucket name
+    // Canonical bucket names — keep in sync with storage migration
     const validBuckets = [
       'avatars',
       'business-logos',
+      'shop-logos',
       'business-interior',
+      'interior-images',
+      'shop-banners',
+      'product-images',
       'verification-docs',
+      'business-docs',
     ];
     if (!validBuckets.includes(bucket)) {
       return NextResponse.json(
@@ -30,16 +36,30 @@ export async function DELETE(
     // Decode the ID (it's URL encoded)
     const filePath = decodeURIComponent(id);
 
-    // For verification-docs, only allow admins or the owner
-    if (bucket === 'verification-docs') {
-      const isAdmin = auth.profile.role === 'admin';
-      const isOwner = filePath.startsWith(auth.user.id);
+    // For business-scoped buckets, verify the caller owns the business whose
+    // UUID is the first path segment. Admins bypass ownership check.
+    const businessScopedBuckets = [
+      'business-logos',
+      'shop-logos',
+      'business-interior',
+      'interior-images',
+      'shop-banners',
+      'product-images',
+      'verification-docs',
+      'business-docs',
+    ];
 
-      if (!isAdmin && !isOwner) {
-        return NextResponse.json(
-          { success: false, error: 'Forbidden' },
-          { status: 403 },
-        );
+    if (businessScopedBuckets.includes(bucket)) {
+      const isAdmin = auth.profile.role === 'admin';
+      if (!isAdmin) {
+        const businessId = filePath.split('/')[0];
+        const ownership = await verifyBusinessOwner(businessId);
+        if (!ownership.authorized) {
+          return NextResponse.json(
+            { success: false, error: 'Forbidden' },
+            { status: 403 },
+          );
+        }
       }
     }
 

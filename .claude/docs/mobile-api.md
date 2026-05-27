@@ -48,9 +48,9 @@ Migrations live in `supabase/migrations/`. Apply them in timestamp order.
 
 ## Auth & middleware
 
-The middleware stack (`proxy/stackMiddlewares.ts`) chains:
-1. `protectedRoutesMiddlware` — refreshes the Supabase session cookie for web routes
-2. `authMiddlware` — gates `/api/protected/**`; accepts either a session **cookie** (web) or an `Authorization: Bearer <jwt>` header (mobile)
+A single `middleware.ts` at the repo root handles both concerns:
+1. Page routes — refreshes the Supabase session cookie and enforces role-based redirects.
+2. `/api/protected/**` — shallow credential check (cookie or Bearer token present); full JWT verification happens inside each handler via `getMobileUser()`.
 
 Mobile clients obtain a JWT directly from the Supabase SDK (`supabase.auth.signInWithPassword` / OAuth) and include it in every protected request:
 ```
@@ -229,7 +229,7 @@ Combines active redemptions + followed businesses for the in-app trip planner.
 |---|---|
 | Mobile auth helper | `app/api/helpers/mobile-auth.ts` |
 | Response helpers | `app/api/helpers/response.ts` |
-| Auth middleware | `proxy/auth-middleware/auth-middleware.ts` |
+| Middleware | `middleware.ts` |
 | Bearer Supabase client | `supabase/bearer.ts` |
 | Server Supabase client | `config/index.ts` |
 | Browser Supabase client | `config/client.ts` |

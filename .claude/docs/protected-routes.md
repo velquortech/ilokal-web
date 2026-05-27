@@ -6,16 +6,16 @@ This document explains the responsibilities and quick usage examples for the rou
 
 ## Responsibilities
 
-- `proxy.ts` (middleware): perform fast, static-match checks and redirects for page routes. Use only static prefixes (build-time matcher).
+- `middleware.ts` (repo root): perform fast, static-match checks and redirects for page routes. Use only static prefixes (build-time matcher).
 - `config/routeConfig.ts`: canonical route strings. Import this file everywhere — do not use literal strings.
-- `lib/utils/protectedRoutes.ts`: policy helpers used by middleware and other code (`isProtectedPath`, `roleAllowedForPath`, `PROTECTED_ROUTE_PREFIXES`, `API_PROTECTED_PREFIXES`). Keep logic small and deterministic.
+- `lib/utils/protectedRoutes.ts`: policy helpers used by middleware and other code (`isProtectedPath`, `roleAllowedForPath`, `PROTECTED_ROUTE_PREFIXES`). Keep logic small and deterministic. Note: `API_PROTECTED_PREFIXES` was removed — API routes are guarded at handler level via `assertAuthorized`.
 - `lib/utils/assertAuthorized.ts`: runtime authorization for API handlers and server actions. Performs user lookup, profile checks, and optional role enforcement.
 
 ## Usage examples
 
 - Middleware (pages): use `isProtectedPath()` only for redirects and early rejects; rely on static matcher for performance.
 
-  Example: in `proxy.ts`:
+  Example: in `middleware.ts`:
   - check `isProtectedPath(request.nextUrl.pathname)` and redirect unauthenticated users to `/login`.
 
 - API handlers / Server Actions: call `assertAuthorized(request, { roles: ['admin'] })` at the top of the handler to enforce authentication and roles.
@@ -29,7 +29,7 @@ This document explains the responsibilities and quick usage examples for the rou
 
 ## Where to look
 
-- Middleware: `/proxy.ts`
+- Middleware: `/middleware.ts`
 - API guard: `/lib/utils/assertAuthorized.ts`
 - Policy helpers: `/lib/utils/protectedRoutes.ts`
 - Route canonicalization: `/config/routeConfig.ts`

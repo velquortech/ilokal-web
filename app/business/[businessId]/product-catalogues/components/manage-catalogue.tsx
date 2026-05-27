@@ -28,7 +28,6 @@ export function ManageCatalogues({ categories }: ManageCataloguesProps) {
   const [editValue, setEditValue] = React.useState('');
   const inputRef = React.useRef<HTMLInputElement>(null);
 
-  // Auto-focus the input when "Add" is clicked
   React.useEffect(() => {
     if (isAdding) {
       inputRef.current?.focus();
@@ -90,7 +89,6 @@ export function ManageCatalogues({ categories }: ManageCataloguesProps) {
           </SheetDescription>
         </SheetHeader>
 
-        {/* TOOLBAR */}
         <div className="flex items-center gap-2 pt-4">
           <div className="relative flex-1">
             <Search className="text-muted-foreground absolute top-2.5 left-2.5 h-4 w-4" />
@@ -107,11 +105,9 @@ export function ManageCatalogues({ categories }: ManageCataloguesProps) {
           </Button>
         </div>
 
-        {/* SCROLLABLE AREA */}
         <div className="mt-4 flex-1 overflow-hidden">
           <ScrollArea className="h-full pr-3">
             <div className="space-y-2">
-              {/* INLINE QUICK ADD INPUT */}
               {isAdding && (
                 <div className="border-primary ring-ring/20 bg-muted/30 flex w-full items-center gap-1 rounded-md border py-2 pl-2 ring-2">
                   <Input

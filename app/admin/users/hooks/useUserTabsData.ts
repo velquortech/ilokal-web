@@ -2,10 +2,10 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { userService } from '@/services';
+import { userService } from '@/lib/services';
 import { AdminUser, AdminTabFilterState } from '@/lib/types/admin';
 import { UserRole } from '@/lib/types/user';
-import { PaginatedResponse } from '@/services';
+import { PaginatedResponse } from '@/lib/services';
 import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
 
 interface UseUserTabsDataReturn {

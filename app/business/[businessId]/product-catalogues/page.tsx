@@ -1,72 +1,56 @@
+import { redirect } from 'next/navigation';
+import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import {
-  getCategoriesAction,
-  getBusinessProductsPaginatedAction,
-  getBusinessProductStatsAction,
-} from '../actions/productActions';
-import { ProductCataloguesContent } from './components/product-catalogues-content';
-import type { ProductFilters, ProductStatus } from '@/lib/types';
+  getProductsByBusinessId,
+  getProductStatsByBusinessId,
+  getCategoriesPaginated,
+} from '@/lib/api/products/productQuery';
+import { ProductCataloguesClient } from './components/ProductCataloguesClient';
+import type { ProductResponse } from '@/lib/types';
 
-type SearchParams = Promise<{
-  page?: string;
-  perPage?: string;
-  search?: string;
-  category?: string;
-  status?: string;
-}>;
+export default async function ProductCataloguesPage() {
+  const verify = await verifyBusinessOwner();
 
-export default async function ProductCataloguesPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
-  const params = await searchParams;
+  if (!verify.authorized) {
+    const isUnauthenticated =
+      verify.error &&
+      typeof verify.error === 'object' &&
+      'code' in verify.error &&
+      (verify.error as { code: string }).code === 'AUTHENTICATION_ERROR';
 
-  const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1);
-  const perPage = Math.min(
-    50,
-    Math.max(5, parseInt(params.perPage ?? '10', 10) || 10),
-  );
-  const search = params.search?.trim() || undefined;
-  const category = params.category || undefined;
-  const status = (params.status as ProductStatus) || undefined;
+    if (isUnauthenticated) redirect('/login');
+  }
 
-  const filters: Omit<ProductFilters, 'business_id'> = {
-    page,
-    per_page: perPage,
-    search,
-    category_id: category,
-    status,
-  };
+  const businessId = verify.business?.id;
 
-  const [productsResult, categoriesResult, statsResult] = await Promise.all([
-    getBusinessProductsPaginatedAction(filters),
-    getCategoriesAction(),
-    getBusinessProductStatsAction(),
+  const [productsResult, stats, categoriesResult] = await Promise.all([
+    businessId
+      ? getProductsByBusinessId(businessId)
+      : Promise.resolve({ products: [] }),
+    businessId
+      ? getProductStatsByBusinessId(businessId)
+      : Promise.resolve({
+          total: 0,
+          active: 0,
+          unlisted: 0,
+          disabled: 0,
+          on_sale: 0,
+        }),
+    getCategoriesPaginated({ page: 1, per_page: 100 }),
   ]);
 
-  const paginatedData = productsResult.success
-    ? productsResult.data!
-    : { products: [], total: 0, page: 1, per_page: perPage, total_pages: 0 };
+  const products =
+    'error' in productsResult || !('products' in productsResult)
+      ? ([] as ProductResponse[])
+      : (productsResult.products as unknown as ProductResponse[]);
 
-  const categories = categoriesResult.success
-    ? (categoriesResult.data ?? [])
-    : [];
-
-  const stats = statsResult.success
-    ? statsResult.data!
-    : { total: 0, active: 0, inactive: 0, archived: 0 };
+  const categories = categoriesResult.categories;
 
   return (
-    <ProductCataloguesContent
-      products={paginatedData.products}
-      metadata={{
-        total: paginatedData.total,
-        page: paginatedData.page,
-        per_page: paginatedData.per_page,
-        total_pages: paginatedData.total_pages,
-      }}
-      categories={categories}
+    <ProductCataloguesClient
+      initialProducts={products}
       stats={stats}
+      categories={categories}
     />
   );
 }

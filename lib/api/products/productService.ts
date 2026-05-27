@@ -236,30 +236,32 @@ export async function createProduct(
 
     const supabase = await createServerSupabaseClient();
 
-    // Verify category exists
-    const category = await productQuery.getCategoryById(input.category_id);
-    if (!category) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Category not found',
-        },
-      };
+    // Verify category exists if provided
+    if (input.category_id) {
+      const category = await productQuery.getCategoryById(input.category_id);
+      if (!category) {
+        return {
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Category not found',
+          },
+        };
+      }
     }
 
     const { data, error } = await supabase
       .from('products')
       .insert({
         business_id,
-        category_id: input.category_id,
+        category_id: input.category_id ?? null,
         name: input.name,
-        description: input.description || null,
+        description: input.description ?? null,
         price: input.price,
+        sale_price: input.sale_price ?? null,
         price_type: input.price_type ?? 'fixed',
-        price_unit: input.price_unit || null,
-        image_url: input.image_url || null,
-        is_available: input.is_available ?? true,
+        price_unit: input.price_unit ?? null,
+        image_url: input.image_url ?? null,
         status: 'active',
       })
       .select()
@@ -342,21 +344,19 @@ export async function updateProduct(
     const { data, error } = await supabase
       .from('products')
       .update({
-        ...(input.name && { name: input.name }),
+        ...(input.name !== undefined && { name: input.name }),
         ...(input.description !== undefined && {
           description: input.description,
         }),
         ...(input.price !== undefined && { price: input.price }),
-        ...(input.category_id && { category_id: input.category_id }),
+        ...(input.sale_price !== undefined && { sale_price: input.sale_price }),
+        ...(input.price_type !== undefined && { price_type: input.price_type }),
+        ...(input.price_unit !== undefined && { price_unit: input.price_unit }),
+        ...(input.category_id !== undefined && {
+          category_id: input.category_id,
+        }),
         ...(input.image_url !== undefined && { image_url: input.image_url }),
-        ...(input.status && { status: input.status }),
-        ...(input.is_available !== undefined && {
-          is_available: input.is_available,
-        }),
-        ...(input.price_type && { price_type: input.price_type }),
-        ...(input.price_unit !== undefined && {
-          price_unit: input.price_unit,
-        }),
+        ...(input.status !== undefined && { status: input.status }),
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -527,14 +527,13 @@ export async function deleteProduct(
       };
     }
 
-    // Archive instead of delete
-    const now = new Date().toISOString();
+    // Soft-delete via archived_at; also mark unlisted so mobile won't serve it
     const { error } = await supabase
       .from('products')
       .update({
-        status: 'archived',
-        archived_at: now,
-        updated_at: now,
+        status: 'disabled',
+        archived_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .eq('id', id);
 

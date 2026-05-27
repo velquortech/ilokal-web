@@ -17,7 +17,6 @@ export type ProductPerformance = {
 export type CouponStats = {
   coupon_id: string;
   times_redeemed: number;
-  total_discount_amount?: number;
 };
 
 export type TrafficMetrics = {

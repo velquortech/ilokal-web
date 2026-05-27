@@ -59,7 +59,7 @@ export const mockProductInactive: Product = {
   price_unit: null,
   image_url: null,
   is_available: false,
-  status: 'inactive',
+  status: 'unlisted',
   sale_price: null,
   sale_starts_at: null,
   sale_ends_at: null,
@@ -79,7 +79,7 @@ export const mockProductArchived: Product = {
   price_unit: null,
   image_url: null,
   is_available: false,
-  status: 'archived',
+  status: 'disabled',
   sale_price: null,
   sale_starts_at: null,
   sale_ends_at: null,
@@ -137,8 +137,8 @@ export const paginatedProductsResponse: PaginatedProductsResponse = {
 export const mockProductStats = {
   total: 4,
   active: 2,
-  inactive: 1,
-  archived: 1,
+  unlisted: 1,
+  disabled: 1,
 };
 
 export const mockMobileProduct = {

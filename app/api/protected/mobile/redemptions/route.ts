@@ -1,4 +1,4 @@
-import { getMobileUser } from '@/app/api/helpers/mobile-auth';
+import { getMobileUser } from '@/app/api/helpers/mobile-request';
 import {
   badRequestResponse,
   generalErrorResponse,
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
       .select(
         `
         id, redeemed_at, expires_at, is_claimed,
-        coupons(id, title, description, type, redeem_time_limit_minutes,
+        coupons(id, code, description, discount, expiry_date,
           businesses(id, shop_name, logo_url)
         ),
         branches(id, name, address)
@@ -31,11 +31,16 @@ export async function GET(req: NextRequest) {
 
     const now = new Date().toISOString();
     if (filter === 'active') {
-      query = query.eq('is_claimed', false).gt('expires_at', now);
+      query = query
+        .eq('is_claimed', false)
+        .or(`expires_at.is.null,expires_at.gt.${now}`);
     } else if (filter === 'claimed') {
       query = query.eq('is_claimed', true);
     } else if (filter === 'expired') {
-      query = query.eq('is_claimed', false).lt('expires_at', now);
+      query = query
+        .eq('is_claimed', false)
+        .not('expires_at', 'is', null)
+        .lt('expires_at', now);
     }
 
     const { data, error } = await query;
@@ -62,22 +67,58 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    const now = new Date().toISOString();
+
     const { data: coupon, error: couponError } = await auth.supabase
       .from('coupons')
-      .select('id, redeem_time_limit_minutes, end_date')
+      .select(
+        'id, start_date, expiry_date, status, max_redemptions_per_user, max_redemptions_global, current_redemptions',
+      )
       .eq('id', coupon_id)
+      .eq('status', 'published')
       .is('archived_at', null)
+      .lte('start_date', now)
       .single();
 
     if (couponError || !coupon) {
-      return badRequestResponse({ message: 'Coupon not found or expired' });
+      return badRequestResponse({
+        message: 'Coupon not found or not yet active',
+      });
     }
 
-    const expires_at = coupon.redeem_time_limit_minutes
-      ? new Date(
-          Date.now() + coupon.redeem_time_limit_minutes * 60 * 1000,
-        ).toISOString()
-      : null;
+    if (coupon.expiry_date < now) {
+      return badRequestResponse({ message: 'Coupon has expired' });
+    }
+
+    if (
+      coupon.max_redemptions_global !== null &&
+      (coupon.current_redemptions ?? 0) >= coupon.max_redemptions_global
+    ) {
+      return badRequestResponse({
+        message: 'Coupon has reached its redemption limit',
+      });
+    }
+
+    if (coupon.max_redemptions_per_user !== null) {
+      const { count, error: countError } = await auth.supabase
+        .from('user_redemptions')
+        .select('id', { count: 'exact', head: true })
+        .eq('coupon_id', coupon_id)
+        .eq('user_id', auth.user.id);
+
+      if (countError) {
+        return generalErrorResponse({ message: countError.message });
+      }
+
+      if ((count ?? 0) >= coupon.max_redemptions_per_user) {
+        return badRequestResponse({
+          message:
+            'You have already redeemed this coupon the maximum number of times',
+        });
+      }
+    }
+
+    const expires_at = coupon.expiry_date;
 
     const { data, error } = await auth.supabase
       .from('user_redemptions')
@@ -91,6 +132,27 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) return generalErrorResponse({ message: error.message });
+
+    // Atomic increment — DB function updates current_redemptions + 1 only if still
+    // under max_redemptions_global, catching the race between the cap check above
+    // and concurrent inserts. Returns false if the cap was exceeded by a concurrent
+    // request; we still return success (the insert already landed) but log the race.
+    const { data: incremented, error: incrError } = await auth.supabase.rpc(
+      'increment_coupon_redemptions',
+      { p_coupon_id: coupon_id },
+    );
+    if (incrError) {
+      console.error(
+        '[redemptions] counter increment failed:',
+        incrError.message,
+      );
+    } else if (!incremented) {
+      // Cap was exceeded by a concurrent insert — roll back this row.
+      await auth.supabase.from('user_redemptions').delete().eq('id', data.id);
+      return badRequestResponse({
+        message: 'Coupon has reached its redemption limit',
+      });
+    }
 
     return successResponse({ redemption: data });
   } catch {

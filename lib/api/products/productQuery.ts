@@ -3,6 +3,7 @@
  * Handles all direct Supabase database operations for products and categories
  */
 
+import { cache } from 'react';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { normalizeProductSale } from '@/lib/product-helper';
 import type {
@@ -12,6 +13,7 @@ import type {
   PaginatedProductsResponse,
   ProductFilters,
   CategoryFilters,
+  ProductStats,
 } from '@/lib/types';
 
 // ===== Category Queries =====
@@ -244,45 +246,72 @@ export async function getProductById(id: string) {
 }
 
 /**
- * Get all products for a business
+ * Get per-status product counts for a business (for the stats bar).
+ * Wrapped with React cache() so parallel server component reads share one DB call.
  */
-export async function getProductsByBusinessId(
-  business_id: string,
-  status?: string,
-  limit?: number,
-) {
-  try {
-    const supabase = await createServerSupabaseClient();
+export const getProductStatsByBusinessId = cache(
+  async (business_id: string): Promise<ProductStats> => {
+    try {
+      const supabase = await createServerSupabaseClient();
 
-    let query = supabase
-      .from('products')
-      .select('*,category:category_id (id, name, slug)')
-      .eq('business_id', business_id);
+      const { data, error } = await supabase
+        .from('products')
+        .select('status, sale_price')
+        .eq('business_id', business_id)
+        .is('archived_at', null);
 
-    if (status) {
-      query = query.eq('status', status);
+      if (error || !data) {
+        return { total: 0, active: 0, unlisted: 0, disabled: 0, on_sale: 0 };
+      }
+
+      return {
+        total: data.length,
+        active: data.filter((p) => p.status === 'active').length,
+        unlisted: data.filter((p) => p.status === 'unlisted').length,
+        disabled: data.filter((p) => p.status === 'disabled').length,
+        on_sale: data.filter((p) => p.sale_price != null).length,
+      };
+    } catch (err) {
+      console.error('[getProductStatsByBusinessId]', err);
+      return { total: 0, active: 0, unlisted: 0, disabled: 0, on_sale: 0 };
     }
+  },
+);
 
-    if (limit !== undefined) {
-      query = query.limit(limit);
-    }
+/**
+ * Get all products for a business.
+ * Wrapped with React cache() so parallel server component reads share one DB call.
+ */
+export const getProductsByBusinessId = cache(
+  async (business_id: string, status?: string) => {
+    try {
+      const supabase = await createServerSupabaseClient();
 
-    const { data, error } = await query.order('created_at', {
-      ascending: false,
-    });
+      let query = supabase
+        .from('products')
+        .select('*,category:category_id (id, name, slug, description)')
+        .eq('business_id', business_id)
+        .is('archived_at', null);
 
-    if (error) {
+      if (status) {
+        query = query.eq('status', status);
+      }
+
+      const { data, error } = await query.order('created_at', {
+        ascending: false,
+      });
+
+      if (error) {
+        return { error: 'Failed to fetch business products' as const };
+      }
+
+      return { products: (data || []) as typeof data };
+    } catch (err) {
+      console.error('[getProductsByBusinessId]', err);
       return { error: 'Failed to fetch business products' as const };
     }
-
-    return {
-      products: ((data || []) as ProductResponse[]).map(normalizeProductSale),
-    };
-  } catch (err) {
-    console.error('[getProductsByBusinessId]', err);
-    return { error: 'Failed to fetch business products' as const };
-  }
-}
+  },
+);
 
 /**
  * Get products by category

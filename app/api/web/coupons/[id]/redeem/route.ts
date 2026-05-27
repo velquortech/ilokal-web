@@ -38,12 +38,16 @@ export async function POST(
     }
 
     const supabase = await createServerSupabaseClient();
+    const now = new Date().toISOString();
 
-    // Verify coupon exists and is valid
+    // Verify coupon exists and satisfies the full access invariant at query time
     const { data: coupon, error: couponError } = await supabase
       .from('coupons')
-      .select('*')
+      .select('id, expiry_date, max_redemptions_global')
       .eq('id', couponId)
+      .eq('status', 'published')
+      .is('archived_at', null)
+      .lte('start_date', now)
       .single();
 
     if (couponError || !coupon) {
@@ -56,8 +60,7 @@ export async function POST(
       );
     }
 
-    // Check if coupon is still valid (not expired)
-    if (coupon.end_date && new Date(coupon.end_date) < new Date()) {
+    if (new Date(coupon.expiry_date) < new Date()) {
       return NextResponse.json(
         {
           success: false,
@@ -98,12 +101,7 @@ export async function POST(
           branch_id,
           redeemed_at: new Date().toISOString(),
           is_claimed: false,
-          // Calculate expiry if redemption has a time limit
-          expires_at: coupon.redeem_time_limit_minutes
-            ? new Date(
-                Date.now() + coupon.redeem_time_limit_minutes * 60000,
-              ).toISOString()
-            : null,
+          expires_at: coupon.expiry_date,
         },
       ])
       .select()
@@ -121,6 +119,36 @@ export async function POST(
         },
         { status: 500 },
       );
+    }
+
+    // Atomic global-cap enforcement — RPC returns false when a concurrent insert
+    // already filled the last slot. Roll back the over-cap row in that case.
+    if (coupon.max_redemptions_global !== null) {
+      const { data: incremented, error: incrError } = await supabase.rpc(
+        'increment_coupon_redemptions',
+        { p_coupon_id: couponId },
+      );
+      if (incrError) {
+        console.error(
+          '[POST /api/coupons/[id]/redeem] counter increment failed:',
+          incrError.message,
+        );
+      } else if (!incremented) {
+        await supabase
+          .from('user_redemptions')
+          .delete()
+          .eq('id', redemption.id);
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'COUPON_LIMIT_REACHED',
+              message: 'Coupon redemption limit reached',
+            },
+          },
+          { status: 409 },
+        );
+      }
     }
 
     return NextResponse.json({

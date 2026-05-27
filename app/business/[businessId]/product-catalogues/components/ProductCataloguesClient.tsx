@@ -29,10 +29,13 @@ export function ProductCataloguesClient({
   categories,
 }: Props) {
   const [selectedCategory, setSelectedCategory] = React.useState('');
+  const [selectedStatus, setSelectedStatus] = React.useState('');
 
-  const filteredProducts = selectedCategory
-    ? initialProducts.filter((p) => p.category?.id === selectedCategory)
-    : initialProducts;
+  const filteredProducts = initialProducts.filter((p) => {
+    const matchesCategory = !selectedCategory || p.category?.id === selectedCategory;
+    const matchesStatus = !selectedStatus || p.status === selectedStatus;
+    return matchesCategory && matchesStatus;
+  });
 
   return (
     <div className="font-giest flex h-max flex-1 flex-col space-y-6 pb-8">
@@ -65,7 +68,7 @@ export function ProductCataloguesClient({
             />
             <div className="inline-flex w-max gap-2">
               <ManageCatalogues categories={categories} />
-              <FilterProducts />
+              <FilterProducts selectedStatus={selectedStatus} onStatusChange={setSelectedStatus} />
               <SearchBar />
             </div>
           </div>

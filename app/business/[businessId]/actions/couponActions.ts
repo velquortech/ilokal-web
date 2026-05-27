@@ -181,7 +181,6 @@ export async function updateCouponAction(
     const result = (await couponService.update(
       id,
       validation.data,
-      true,
     )) as ApiResponse<Coupon>;
     if (result.success) revalidatePath('/business/coupons');
     return result;
@@ -420,7 +419,9 @@ export async function deleteFeaturedDealAction(
       };
     }
 
-    const result = (await couponService.deleteFeaturedDeal(id)) as ApiResponse<null>;
+    const result = (await couponService.deleteFeaturedDeal(
+      id,
+    )) as ApiResponse<null>;
     if (result.success) revalidatePath('/business/coupons');
     return result;
   } catch (error) {

@@ -12,14 +12,7 @@ import { ProductTable } from './product-table/products-table';
 import { AddProductDialog } from './add-product';
 import { ProductStats } from './product-stats';
 import { Card, CardContent } from '@/components/ui/card';
-import type { ProductResponse, Category } from '@/lib/types';
-
-type Stats = {
-  total: number;
-  active: number;
-  inactive: number;
-  archived: number;
-};
+import type { ProductResponse, Category, ProductStats as ProductStatsType } from '@/lib/types';
 
 interface ProductCataloguesContentProps {
   products: ProductResponse[];
@@ -30,7 +23,7 @@ interface ProductCataloguesContentProps {
     total_pages: number;
   };
   categories: Category[];
-  stats: Stats;
+  stats: ProductStatsType;
 }
 
 export function ProductCataloguesContent({

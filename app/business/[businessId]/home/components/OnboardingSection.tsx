@@ -4,7 +4,7 @@ import { Clock, DollarSign, CheckCircle2, ArrowRight, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { STEPS } from '@/app/business-registration/data/steps';
+import { STEPS } from '@/app/business/registration/data/steps';
 import Image from 'next/image';
 
 interface OnboardingSectionProps {

@@ -4,7 +4,6 @@ import {
   isProtectedPath,
   roleAllowedForPath,
   PROTECTED_ROUTE_PREFIXES,
-  API_PROTECTED_PREFIXES,
 } from '@/lib/utils/protectedRoutes';
 
 describe('protectedRoutes helpers', () => {
@@ -23,9 +22,10 @@ describe('protectedRoutes helpers', () => {
     expect(isProtectedPath(`${businessPrefix}/123`)).toBe(true);
   });
 
-  it('detects API protected prefixes', () => {
-    const apiPrefix = API_PROTECTED_PREFIXES[0];
-    expect(isProtectedPath(`${apiPrefix}/some-endpoint`)).toBe(true);
+  it('returns false for /api routes (guarded at handler level via assertAuthorized)', () => {
+    expect(isProtectedPath('/api/admin/businesses')).toBe(false);
+    expect(isProtectedPath('/api/web/billing/invoices')).toBe(false);
+    expect(isProtectedPath('/api/protected/mobile/subscriptions')).toBe(false);
   });
 
   it('allows roles for public paths', () => {
@@ -44,11 +44,5 @@ describe('protectedRoutes helpers', () => {
     expect(roleAllowedForPath('business_owner', businessPrefix)).toBe(true);
     expect(roleAllowedForPath('admin', businessPrefix)).toBe(true);
     expect(roleAllowedForPath('user', businessPrefix)).toBe(false);
-  });
-
-  it('requires authentication for API protected prefixes', () => {
-    const apiPrefix = API_PROTECTED_PREFIXES[0];
-    expect(roleAllowedForPath(null, `${apiPrefix}/x`)).toBe(false);
-    expect(roleAllowedForPath('user', `${apiPrefix}/x`)).toBe(true);
   });
 });

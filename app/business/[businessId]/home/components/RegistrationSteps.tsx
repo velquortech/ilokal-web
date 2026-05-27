@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { STEPS } from '@/app/business-registration/data/steps';
+import { STEPS } from '@/app/business/registration/data/steps';
 
 export function RegistrationSteps({ currentStep = 1 }) {
   return (

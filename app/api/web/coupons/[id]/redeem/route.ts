@@ -44,6 +44,7 @@ export async function POST(
       .from('coupons')
       .select('*')
       .eq('id', couponId)
+      .eq('status', 'published')
       .single();
 
     if (couponError || !coupon) {
@@ -56,8 +57,17 @@ export async function POST(
       );
     }
 
-    // Check if coupon is still valid (not expired)
-    if (coupon.end_date && new Date(coupon.end_date) < new Date()) {
+    // Check if coupon is still valid (not expired or archived)
+    if (coupon.archived_at) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Coupon not found' },
+        },
+        { status: 404 },
+      );
+    }
+    if (new Date(coupon.expiry_date) < new Date()) {
       return NextResponse.json(
         {
           success: false,
@@ -98,12 +108,7 @@ export async function POST(
           branch_id,
           redeemed_at: new Date().toISOString(),
           is_claimed: false,
-          // Calculate expiry if redemption has a time limit
-          expires_at: coupon.redeem_time_limit_minutes
-            ? new Date(
-                Date.now() + coupon.redeem_time_limit_minutes * 60000,
-              ).toISOString()
-            : null,
+          expires_at: coupon.expiry_date,
         },
       ])
       .select()

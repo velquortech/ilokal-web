@@ -33,6 +33,7 @@ Next.js 16 (App Router) · React 19 · TypeScript strict · Supabase SSR + PostG
 
 - **Routing:** App Router only. Server Actions for internal mutations, API routes for external/mobile integrations.
 - **API namespaces:** `app/api/web/` — web-facing routes; `app/api/mobile/` — public mobile; `app/api/protected/mobile/` — JWT-gated mobile; `app/api/admin/` — admin only; `app/api/auth/` — auth flows.
+- **Middleware:** Single `middleware.ts` at repo root — refreshes session cookies for page routes and performs a shallow credential check for `/api/protected/**`. Full auth enforcement lives in each handler via `assertAuthorized` (`lib/utils/auth/`).
 - **Auth:** Supabase SSR with HTTP-only cookies (web) or `Authorization: Bearer <jwt>` (mobile).
 - **Types:** `lib/types/` — re-export from `lib/types/index.ts`.
 - **Validation:** Zod schemas in `lib/validation/`.
@@ -66,6 +67,7 @@ Load on request (read when topic is relevant):
 - `.claude/docs/session-management.md` — role-based timeouts, activity detection
 - `.claude/docs/rbac-model.md` — permission tiers, audit logging
 - `.claude/docs/api-wrapper.md` — isomorphic service layer, client vs server imports
+- `.claude/docs/roadmap.md` — active refactors, protected-route audit phases, and enforcement map
 - `.claude/docs/api-strategy.md` — full endpoint implementation plan and status
 - `.claude/docs/testing.md` — untested routes matrix, test templates
 - `.claude/docs/analytics-dashboard.md` — analytics panel ideas, RFM segments, retention queries, automation nudges

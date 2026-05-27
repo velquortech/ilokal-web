@@ -42,7 +42,7 @@ type ProductFormValues = {
   name: string;
   description: string;
   price: number;
-  status: 'active' | 'inactive' | 'archived';
+  status: 'active' | 'unlisted' | 'disabled';
   image_url: File | string | null;
 };
 
@@ -231,8 +231,8 @@ export function UpdateProductDialog({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="archived">Archived</SelectItem>
+                      <SelectItem value="unlisted">Unlisted</SelectItem>
+                      <SelectItem value="disabled">Disabled</SelectItem>
                     </SelectContent>
                   </Select>
                 )}

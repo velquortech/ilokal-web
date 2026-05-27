@@ -180,13 +180,13 @@ export async function getRedemptionStats(
 
     // Get redemption count
     const { count: totalRedemptions } = await supabase
-      .from('coupon_redemptions')
+      .from('user_redemptions')
       .select('id', { count: 'exact', head: true })
       .eq('coupon_id', couponId);
 
     // Get unique users
     const { data: redemptions } = await supabase
-      .from('coupon_redemptions')
+      .from('user_redemptions')
       .select('user_id')
       .eq('coupon_id', couponId);
 
@@ -194,7 +194,7 @@ export async function getRedemptionStats(
 
     // Get last redeemed date
     const { data: lastRedemption } = await supabase
-      .from('coupon_redemptions')
+      .from('user_redemptions')
       .select('redeemed_at')
       .eq('coupon_id', couponId)
       .order('redeemed_at', { ascending: false })

@@ -1,4 +1,4 @@
-import { getMobileUser } from '@/app/api/helpers/mobile-auth';
+import { getMobileUser } from '@/app/api/helpers/mobile-request';
 import {
   generalErrorResponse,
   notFoundResponse,

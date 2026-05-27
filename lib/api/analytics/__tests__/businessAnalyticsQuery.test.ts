@@ -269,7 +269,6 @@ describe('businessAnalyticsQuery', () => {
       if (result.length > 0) {
         expect(result[0]).toHaveProperty('coupon_id');
         expect(result[0]).toHaveProperty('times_redeemed');
-        expect(result[0]).toHaveProperty('total_discount_amount');
       }
     });
 

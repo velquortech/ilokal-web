@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import type {
@@ -113,10 +114,12 @@ export async function createCouponAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    return (await couponService.create(
+    const result = (await couponService.create(
       verify.business!.id,
       validation.data,
     )) as ApiResponse<Coupon>;
+    if (result.success) revalidatePath('/business/coupons');
+    return result;
   } catch (error) {
     console.error('[createCouponAction]', error);
     return {
@@ -175,10 +178,12 @@ export async function updateCouponAction(
       };
     }
 
-    return (await couponService.update(
+    const result = (await couponService.update(
       id,
       validation.data,
     )) as ApiResponse<Coupon>;
+    if (result.success) revalidatePath('/business/coupons');
+    return result;
   } catch (error) {
     console.error('[updateCouponAction]', error);
     return {
@@ -223,7 +228,9 @@ export async function deleteCouponAction(
       };
     }
 
-    return (await couponService.delete(id)) as ApiResponse<null>;
+    const result = (await couponService.delete(id)) as ApiResponse<null>;
+    if (result.success) revalidatePath('/business/coupons');
+    return result;
   } catch (error) {
     console.error('[deleteCouponAction]', error);
     return {
@@ -298,10 +305,12 @@ export async function createFeaturedDealAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    return (await couponService.createFeaturedDeal(
+    const result = (await couponService.createFeaturedDeal(
       verify.business!.id,
       validation.data,
     )) as ApiResponse<FeaturedDeal>;
+    if (result.success) revalidatePath('/business/coupons');
+    return result;
   } catch (error) {
     console.error('[createFeaturedDealAction]', error);
     return {
@@ -360,10 +369,12 @@ export async function updateFeaturedDealAction(
       };
     }
 
-    return (await couponService.updateFeaturedDeal(
+    const result = (await couponService.updateFeaturedDeal(
       id,
       validation.data,
     )) as ApiResponse<FeaturedDeal>;
+    if (result.success) revalidatePath('/business/coupons');
+    return result;
   } catch (error) {
     console.error('[updateFeaturedDealAction]', error);
     return {
@@ -408,7 +419,11 @@ export async function deleteFeaturedDealAction(
       };
     }
 
-    return (await couponService.deleteFeaturedDeal(id)) as ApiResponse<null>;
+    const result = (await couponService.deleteFeaturedDeal(
+      id,
+    )) as ApiResponse<null>;
+    if (result.success) revalidatePath('/business/coupons');
+    return result;
   } catch (error) {
     console.error('[deleteFeaturedDealAction]', error);
     return {

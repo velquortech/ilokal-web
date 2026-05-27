@@ -1,5 +1,7 @@
 # API Wrapper — Front-end Developer Guide
 
+**⚠️ Scope: Admin panel only.** This doc covers the `lib/services/` isomorphic layer used by the admin UI (axios-based HTTP calls). For **business-owner features**, use Server Actions + `lib/api/` directly — see `.claude/docs/frontend-patterns.md` instead.
+
 **⚠️ Updated March 31, 2026** — Document corrected to match current `lib/services/index.ts` barrel status. See [WORKFLOW/INVENTORY_AUDIT_REPORT.md](WORKFLOW/INVENTORY_AUDIT_REPORT.md) for audit details.
 
 ## Purpose

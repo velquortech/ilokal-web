@@ -4,6 +4,7 @@ import {
   notFoundResponse,
   successResponse,
 } from '@/app/api/helpers/response';
+import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { NextRequest } from 'next/server';
 
 type Params = { params: Promise<{ businessId: string }> };
@@ -32,7 +33,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       share_url: shareUrl,
       title: data.shop_name,
       description: data.description ?? '',
-      image_url: data.logo_url ?? '',
+      image_url: resolveStorageUrl(supabase, 'shop-logos', data.logo_url) ?? '',
       platforms: {
         facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
         twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(data.shop_name)}`,

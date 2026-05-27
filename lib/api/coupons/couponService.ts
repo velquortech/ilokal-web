@@ -305,7 +305,7 @@ export async function redeemCoupon(
     }
 
     // Record redemption
-    const { error: redeemError } = await supabase
+    const { data: redemptionRow, error: redeemError } = await supabase
       .from('user_redemptions')
       .insert({
         coupon_id: coupon.id,
@@ -313,7 +313,9 @@ export async function redeemCoupon(
         redeemed_at: new Date().toISOString(),
         expires_at: coupon.expiry_date,
         is_claimed: false,
-      });
+      })
+      .select('id')
+      .single();
 
     if (redeemError) {
       console.error('[redeemCoupon] Insert error:', redeemError);
@@ -324,6 +326,34 @@ export async function redeemCoupon(
           message: 'Failed to redeem coupon',
         },
       };
+    }
+
+    // Atomic global-cap enforcement — closes the race between the count check above
+    // and concurrent inserts. RPC returns false when the cap was already filled by a
+    // concurrent request; roll back the over-cap row in that case.
+    if (coupon.max_redemptions_global) {
+      const { data: incremented, error: incrError } = await supabase.rpc(
+        'increment_coupon_redemptions',
+        { p_coupon_id: coupon.id },
+      );
+      if (incrError) {
+        console.error(
+          '[redeemCoupon] counter increment failed:',
+          incrError.message,
+        );
+      } else if (!incremented) {
+        await supabase
+          .from('user_redemptions')
+          .delete()
+          .eq('id', redemptionRow.id);
+        return {
+          success: false,
+          error: {
+            code: 'COUPON_LIMIT_REACHED',
+            message: 'Coupon redemption limit reached',
+          },
+        };
+      }
     }
 
     // Get updated stats

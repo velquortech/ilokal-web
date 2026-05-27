@@ -147,10 +147,11 @@ export async function POST(req: NextRequest) {
         incrError.message,
       );
     } else if (!incremented) {
-      console.warn(
-        '[redemptions] global cap reached mid-flight for coupon',
-        coupon_id,
-      );
+      // Cap was exceeded by a concurrent insert — roll back this row.
+      await auth.supabase.from('user_redemptions').delete().eq('id', data.id);
+      return badRequestResponse({
+        message: 'Coupon has reached its redemption limit',
+      });
     }
 
     return successResponse({ redemption: data });

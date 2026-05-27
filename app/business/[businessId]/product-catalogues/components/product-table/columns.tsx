@@ -23,6 +23,7 @@ function ProductImageCell({ product }: { product: ProductResponse }) {
             src={product.image_url}
             alt={product.name}
             fill
+            unoptimized
             sizes="48px"
             className="object-cover transition group-hover:scale-105"
             onError={() => setImgError(true)}

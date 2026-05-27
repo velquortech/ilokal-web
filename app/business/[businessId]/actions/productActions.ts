@@ -20,8 +20,8 @@ import {
   updateProductSchema,
   applySaleSchema,
 } from '@/lib/validation/products';
-// productService is not used here; we import the API client dynamically on server
 import * as productQuery from '@/lib/api/products/productQuery';
+import * as productService from '@/lib/api/products/productService';
 
 // ===== Business Owner Product Actions =====
 
@@ -52,8 +52,10 @@ export async function createProductAction(
       return { success: false, error: verify.error as ApiError };
     }
 
-    const api = await import('@/lib/api/products/productService');
-    return await api.createProduct(verify.business!.id, validation.data);
+    return await productService.createProduct(
+      verify.business!.id,
+      validation.data,
+    );
   } catch (error) {
     console.error('[createProductAction]', error);
     return {
@@ -92,8 +94,11 @@ export async function updateProductAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    const api = await import('@/lib/api/products/productService');
-    return await api.updateProduct(id, verify.business!.id, validation.data);
+    return await productService.updateProduct(
+      id,
+      verify.business!.id,
+      validation.data,
+    );
   } catch (error) {
     console.error('[updateProductAction]', error);
     return {
@@ -117,8 +122,7 @@ export async function deleteProductAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    const api = await import('@/lib/api/products/productService');
-    return await api.deleteProduct(id, verify.business!.id);
+    return await productService.deleteProduct(id, verify.business!.id);
   } catch (error) {
     console.error('[deleteProductAction]', error);
     return {
@@ -143,8 +147,9 @@ export async function updateProductStatusAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    const api = await import('@/lib/api/products/productService');
-    return await api.updateProduct(id, verify.business!.id, { status });
+    return await productService.updateProduct(id, verify.business!.id, {
+      status,
+    });
   } catch (error) {
     console.error('[updateProductStatusAction]', error);
     return {
@@ -223,8 +228,11 @@ export async function applySaleAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    const api = await import('@/lib/api/products/productService');
-    return await api.applySale(id, verify.business!.id, validation.data);
+    return await productService.applySale(
+      id,
+      verify.business!.id,
+      validation.data,
+    );
   } catch (error) {
     console.error('[applySaleAction]', error);
     return {
@@ -245,8 +253,7 @@ export async function removeSaleAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    const api = await import('@/lib/api/products/productService');
-    return await api.removeSale(id, verify.business!.id);
+    return await productService.removeSale(id, verify.business!.id);
   } catch (error) {
     console.error('[removeSaleAction]', error);
     return {

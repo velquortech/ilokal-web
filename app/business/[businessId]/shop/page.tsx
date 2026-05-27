@@ -15,7 +15,7 @@ export default async function ShopPage({ params }: { params: Params }) {
 
   const [business, productsResult] = await Promise.all([
     getBusinessById(businessId),
-    getProductsByBusinessId(businessId, 'active', 10),
+    getProductsByBusinessId(businessId, 'active'),
   ]);
 
   if (!business) notFound();

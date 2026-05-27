@@ -34,7 +34,6 @@ export function ProductActions(product: ProductResponse) {
     }
   };
 
-
   return (
     <div className="flex justify-center">
       <DropdownMenu>

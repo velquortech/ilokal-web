@@ -15,8 +15,8 @@ import type { ProductStatus } from '@/lib/types';
 const STATUS_OPTIONS: Array<{ value: ProductStatus | ''; label: string }> = [
   { value: '', label: 'All' },
   { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' },
-  { value: 'archived', label: 'Archived' },
+  { value: 'unlisted', label: 'Unlisted' },
+  { value: 'disabled', label: 'Disabled' },
 ];
 
 interface FilterProductsProps {

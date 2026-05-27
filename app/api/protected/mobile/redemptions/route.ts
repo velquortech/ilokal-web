@@ -1,4 +1,4 @@
-import { getMobileUser } from '@/app/api/helpers/mobile-auth';
+import { getMobileUser } from '@/app/api/helpers/mobile-request';
 import {
   badRequestResponse,
   generalErrorResponse,
@@ -67,21 +67,26 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    const now = new Date().toISOString();
+
     const { data: coupon, error: couponError } = await auth.supabase
       .from('coupons')
       .select(
-        'id, expiry_date, status, max_redemptions_per_user, max_redemptions_global, current_redemptions',
+        'id, start_date, expiry_date, status, max_redemptions_per_user, max_redemptions_global, current_redemptions',
       )
       .eq('id', coupon_id)
       .eq('status', 'published')
       .is('archived_at', null)
+      .lte('start_date', now)
       .single();
 
     if (couponError || !coupon) {
-      return badRequestResponse({ message: 'Coupon not found or expired' });
+      return badRequestResponse({
+        message: 'Coupon not found or not yet active',
+      });
     }
 
-    if (new Date(coupon.expiry_date) < new Date()) {
+    if (coupon.expiry_date < now) {
       return badRequestResponse({ message: 'Coupon has expired' });
     }
 
@@ -128,11 +133,25 @@ export async function POST(req: NextRequest) {
 
     if (error) return generalErrorResponse({ message: error.message });
 
-    // Increment the global redemption counter (best-effort; minor TOCTOU acceptable at low concurrency)
-    await auth.supabase
-      .from('coupons')
-      .update({ current_redemptions: (coupon.current_redemptions ?? 0) + 1 })
-      .eq('id', coupon_id);
+    // Atomic increment — DB function updates current_redemptions + 1 only if still
+    // under max_redemptions_global, catching the race between the cap check above
+    // and concurrent inserts. Returns false if the cap was exceeded by a concurrent
+    // request; we still return success (the insert already landed) but log the race.
+    const { data: incremented, error: incrError } = await auth.supabase.rpc(
+      'increment_coupon_redemptions',
+      { p_coupon_id: coupon_id },
+    );
+    if (incrError) {
+      console.error(
+        '[redemptions] counter increment failed:',
+        incrError.message,
+      );
+    } else if (!incremented) {
+      console.warn(
+        '[redemptions] global cap reached mid-flight for coupon',
+        coupon_id,
+      );
+    }
 
     return successResponse({ redemption: data });
   } catch {

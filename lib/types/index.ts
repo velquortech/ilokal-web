@@ -240,8 +240,8 @@ export type {
 // Form Types
 export type { SelectFieldConfig, UserFormModalProps } from './forms';
 
-// Middleware Types
-// Note: middleware.ts types may be imported as needed
+// Proxy Types
+// Note: proxy.ts types may be imported as needed
 
 // Phone Input Types
 export type { CountryCode } from './phoneInput';

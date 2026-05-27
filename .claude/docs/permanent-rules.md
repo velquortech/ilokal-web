@@ -37,6 +37,12 @@ Security
 - Never commit server secrets. Use environment variables and ensure `NEXT_PUBLIC_` prefix only for browser-safe values.
 - For DB migrations or schema changes, create a migration plan with rollback steps and require human approval.
 
+Framework conventions
+
+- **Before touching Next.js file-conventions** (`proxy.ts`, `layout.tsx`, `page.tsx`, `route.ts`, `error.tsx`, etc.), fetch `https://nextjs.org/docs/app/api-reference/file-conventions` to confirm the current convention for the installed major version. Next.js 16 renamed `middleware` → `proxy`; similar renames may follow.
+- **Before touching Supabase auth/SSR helpers**, check the `@supabase/ssr` changelog for breaking changes in client API or cookie handling.
+- When a deprecation warning appears at build/dev time, treat it as a blocker: look up the linked docs URL, verify the migration path, and apply it before continuing other work.
+
 Formatting and linting
 
 - Use Prettier + eslint-config-next. Run formatters before commits and CI runs lint/typecheck.

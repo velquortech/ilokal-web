@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-05-27 — Next.js 16 proxy convention (refactor/api-layer-overhaul)
+
+- Ran `npx @next/codemod@canary middleware-to-proxy` — renamed `middleware.ts` → `proxy.ts`, exported function renamed `middleware` → `proxy`.
+- Renamed `lib/types/middleware.ts` → `lib/types/proxy.ts`; `MiddlewareFactory` → `ProxyFactory`.
+- Updated all doc references: `CLAUDE.md`, `mobile-api.md`, `protected-routes.md`, `roadmap.md`, `folder-structure.md`.
+
+## 2026-05-27 — Protected-route audit phases 2 & 3 (refactor/api-layer-overhaul)
+
+- **Phase 3 (middleware):** `/api/protected/*` branch now calls `supabase.auth.getUser()` instead of just checking token presence. Expired/forged tokens are rejected at middleware before any handler code runs.
+- **Phase 2 (migration — awaiting approval):** Created `20260527000000_sync_role_to_jwt.sql` — trigger syncs `profiles.role`/`status` into `auth.users.raw_app_meta_data` on insert/update; one-time backfill for existing rows. Middleware updated to read from `user.app_metadata` with fallback to profiles SELECT.
+- Fixed stale coupon/redemption response shapes in `mobile-api.md` (was showing pre-normalization `title`/`type`/`end_date`/`redeem_time_limit_minutes`; now reflects `code`/`discount` JSONB/`expiry_date`).
+- Removed stale "broken imports" note from 2026-05-23 CHANGELOG entry — build passes cleanly, `lib/services/` was never deleted.
+
 ## 2026-05-27 — Mobile API audit + schema normalization fixes (refactor/api-layer-overhaul)
 
 - Fixed duplicate migration timestamps (20260521000000 × 2, 20260521000001 × 2) that caused `make migrate-reset` to fail with PK violation.
@@ -28,7 +41,6 @@
 - Mobile API route updated: filters by `status = 'published'`, `start_date <= now`, and `expiry_date >= now`.
 - Fixed: `updateFeaturedDealAction`/`deleteFeaturedDealAction` were calling `getCouponById` instead of `getFeaturedDealById`.
 - Fixed: dynamic imports of query functions inside server actions replaced with static imports.
-- Known pre-existing issue: 11 files in `app/admin/` and `app/business/registration/` import from deleted `services/` directory — causes build failure unrelated to this feature.
 - Tests: 69 coupon-specific tests across `couponQuery`, `couponService`, `couponActions`, and mobile route integration.
 
 ## 2026-03-30 — API wrapper docs added

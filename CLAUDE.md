@@ -10,7 +10,6 @@ yarn lint            # ESLint
 yarn lint --fix      # ESLint with autofix
 yarn test:run        # Vitest (single run)
 yarn test            # Vitest (watch)
-yarn db:types        # Regenerate Supabase types
 
 # Supabase / Make
 make setup-supabase  # First-time setup
@@ -46,7 +45,8 @@ Key facts about the current normalized schema (as of 2026-05-27):
 
 - **`coupons`** — fully normalized in `20260523000000`. Columns: `code` (NOT `title`), `discount` JSONB `{type:'percentage'|'fixed_amount', value:number}` (NOT `type` enum), `expiry_date` (NOT `end_date`), `status` (`draft|published`). `redeem_time_limit_minutes` is gone.
 - **`products.status`** — `'active' | 'unlisted' | 'disabled'` (NOT `inactive|archived`). `is_available` is kept in sync by trigger; `status` is canonical.
-- **Redemptions** — `user_redemptions` is the live table (has `expires_at`, `is_claimed`, `branch_id`). `coupon_redemptions` exists but is not used by any route.
+- **Redemptions** — `user_redemptions` is the live table (has `expires_at`, `is_claimed`, `branch_id`). `coupon_redemptions` is a dead table — never insert into or query it; use `user_redemptions` for all redemption reads/writes (routes, analytics, service layer).
+- **Coupon access invariant** — every route that fetches a coupon for display or redemption must filter `.eq('status', 'published').is('archived_at', null)`. Omitting either allows draft or archived coupons to be acted on.
 - **Mobile response envelope** — `successResponse(data)` returns data flat (e.g. `{ businesses: [...] }`), NOT wrapped in `ApiResponse<T>`. The `success/error` wrapper applies to web routes only.
 - **Migration timestamps must be unique** — `supabase_migrations.schema_migrations` uses version as PK. Two files sharing a timestamp will fail on the second insert.
 

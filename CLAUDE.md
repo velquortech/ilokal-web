@@ -4,13 +4,13 @@
 
 ```bash
 # Next.js
-npm run dev          # Start dev server
-npm run build        # Production build
-npm run lint         # ESLint
-npm run lint -- --fix  # ESLint with autofix
-npm run test:run     # Vitest (single run)
-npm run test         # Vitest (watch)
-npm run db:types     # Regenerate Supabase types
+yarn dev             # Start dev server
+yarn build           # Production build
+yarn lint            # ESLint
+yarn lint --fix      # ESLint with autofix
+yarn test:run        # Vitest (single run)
+yarn test            # Vitest (watch)
+yarn db:types        # Regenerate Supabase types
 
 # Supabase / Make
 make setup-supabase  # First-time setup
@@ -32,6 +32,7 @@ Next.js 16 (App Router) · React 19 · TypeScript strict · Supabase SSR + PostG
 ## Architecture
 
 - **Routing:** App Router only. Server Actions for internal mutations, API routes for external/mobile integrations.
+- **API namespaces:** `app/api/web/` — web-facing routes; `app/api/mobile/` — public mobile; `app/api/protected/mobile/` — JWT-gated mobile; `app/api/admin/` — admin only; `app/api/auth/` — auth flows.
 - **Auth:** Supabase SSR with HTTP-only cookies (web) or `Authorization: Bearer <jwt>` (mobile).
 - **Types:** `lib/types/` — re-export from `lib/types/index.ts`.
 - **Validation:** Zod schemas in `lib/validation/`.
@@ -68,3 +69,9 @@ Load on request (read when topic is relevant):
 - `.claude/docs/api-strategy.md` — full endpoint implementation plan and status
 - `.claude/docs/testing.md` — untested routes matrix, test templates
 - `.claude/docs/analytics-dashboard.md` — analytics panel ideas, RFM segments, retention queries, automation nudges
+- `.claude/docs/DESIGN.md` — color system, OKLCH tokens, visual language from globals.css
+- `.claude/docs/caching-strategy.md` — Next.js App Router caching layers, Supabase data-fetching rules
+- `.claude/docs/code-principles.md` — TypeScript rules, naming conventions, anti-patterns
+- `.claude/docs/component-standards.md` — file structure, naming, shadcn/ui usage rules
+- `.claude/docs/git-workflow.md` — conventional commits format, branch naming, PR process
+- `.claude/docs/ui-standards.md` — approved UI toolset, responsive strategy, visual consistency rules

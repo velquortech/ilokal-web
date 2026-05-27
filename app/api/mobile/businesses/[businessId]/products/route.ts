@@ -19,6 +19,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       )
       .eq('business_id', businessId)
       .eq('is_available', true)
+      .eq('status', 'active')
       .is('archived_at', null)
       .order('name');
 

@@ -99,7 +99,7 @@ seed-db:
 seed: seed-storage seed-db
 
 generate-types:
-	yarn supabase gen types typescript --local
+	yarn supabase gen types typescript --local > lib/types/database.ts
 
 test:
 	yarn test

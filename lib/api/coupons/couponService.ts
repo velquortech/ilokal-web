@@ -270,7 +270,7 @@ export async function redeemCoupon(
     // Check global redemption limit
     if (coupon.max_redemptions_global) {
       const { count: totalRedemptions } = await supabase
-        .from('coupon_redemptions')
+        .from('user_redemptions')
         .select('id', { count: 'exact', head: true })
         .eq('coupon_id', coupon.id);
 
@@ -288,7 +288,7 @@ export async function redeemCoupon(
     // Check per-user redemption limit
     if (coupon.max_redemptions_per_user) {
       const { count: userRedemptions } = await supabase
-        .from('coupon_redemptions')
+        .from('user_redemptions')
         .select('id', { count: 'exact', head: true })
         .eq('coupon_id', coupon.id)
         .eq('user_id', userId);
@@ -306,11 +306,13 @@ export async function redeemCoupon(
 
     // Record redemption
     const { error: redeemError } = await supabase
-      .from('coupon_redemptions')
+      .from('user_redemptions')
       .insert({
         coupon_id: coupon.id,
         user_id: userId,
         redeemed_at: new Date().toISOString(),
+        expires_at: coupon.expiry_date,
+        is_claimed: false,
       });
 
     if (redeemError) {

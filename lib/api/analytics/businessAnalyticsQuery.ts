@@ -111,28 +111,31 @@ export async function getCouponStats(
 ): Promise<CouponStats[]> {
   const supabase = await createServerSupabaseClient();
   const { data } = await supabase
-    .from('coupon_redemptions')
-    .select('coupon_id, discount_amount')
-    .eq('business_id', businessId);
+    .from('user_redemptions')
+    .select('coupon_id')
+    .in(
+      'coupon_id',
+      (
+        await supabase
+          .from('coupons')
+          .select('id')
+          .eq('business_id', businessId)
+      ).data?.map((c: { id: string }) => c.id) ?? [],
+    );
 
   if (!Array.isArray(data)) return [];
 
-  const map = new Map<string, { times: number; sum: number }>();
+  const map = new Map<string, number>();
   data.forEach((row: unknown) => {
     const r = row as Record<string, unknown>;
     const cid = String(r.coupon_id ?? '');
     if (!cid) return;
-    const amt = Number(r.discount_amount ?? 0);
-    const cur = map.get(cid) ?? { times: 0, sum: 0 };
-    cur.times += 1;
-    cur.sum += amt;
-    map.set(cid, cur);
+    map.set(cid, (map.get(cid) ?? 0) + 1);
   });
 
-  return Array.from(map.entries()).map(([coupon_id, v]) => ({
+  return Array.from(map.entries()).map(([coupon_id, times]) => ({
     coupon_id,
-    times_redeemed: v.times,
-    total_discount_amount: v.sum,
+    times_redeemed: times,
   }));
 }
 
@@ -285,7 +288,7 @@ export async function getRetentionData(
   }
 
   const { data: rawRedemptions } = await supabase
-    .from('coupon_redemptions')
+    .from('user_redemptions')
     .select('user_id, redeemed_at')
     .in('coupon_id', couponIds);
 
@@ -365,7 +368,7 @@ export async function getMonthlyTrend(
   let redemptions: Array<{ redeemed_at: string }> = [];
   if (couponIds.length > 0) {
     const { data: redData } = await supabase
-      .from('coupon_redemptions')
+      .from('user_redemptions')
       .select('redeemed_at')
       .in('coupon_id', couponIds);
     redemptions = Array.isArray(redData)
@@ -415,7 +418,7 @@ export async function getFollowerFunnel(
   }
 
   const { data: redData } = await supabase
-    .from('coupon_redemptions')
+    .from('user_redemptions')
     .select('user_id, redeemed_at')
     .in('coupon_id', couponIds);
 
@@ -481,7 +484,7 @@ export async function getCouponPerformance(
   const couponIds = couponsData.map((c: { id: string }) => c.id);
 
   const { data: redData } = await supabase
-    .from('coupon_redemptions')
+    .from('user_redemptions')
     .select('coupon_id, redeemed_at')
     .in('coupon_id', couponIds);
 
@@ -562,7 +565,7 @@ export async function getCustomerSegments(
   if (couponIds.length === 0) return counts;
 
   const { data: redData } = await supabase
-    .from('coupon_redemptions')
+    .from('user_redemptions')
     .select('user_id, redeemed_at')
     .in('coupon_id', couponIds);
 

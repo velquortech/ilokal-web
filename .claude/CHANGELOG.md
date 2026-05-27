@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-05-27 — Mobile API audit + schema normalization fixes (refactor/api-layer-overhaul)
+
+- Fixed duplicate migration timestamps (20260521000000 × 2, 20260521000001 × 2) that caused `make migrate-reset` to fail with PK violation.
+- Created `20260526000012`: drops broad `product-images` upload/update/delete policies never revoked due to name mismatch with later ownership migration.
+- Created `20260526000013`: fixes `products.status` constraint from `('active','inactive','archived')` → `('active','unlisted','disabled')` to match `lib/types/product.ts`.
+- Rewrote `supabase/seeds/coupons.sql` for normalized coupons schema (`code`, `discount` JSONB, `expiry_date`).
+- Ran `yarn db:types` to regenerate `lib/types/database.ts` against live DB.
+- Mobile route fixes: expiry guard + per-user/global cap on POST redemptions; `status = 'active'` filter on products; `resolveStorageUrl` on share endpoint; nested coupon filtering in itinerary.
+- Analytics in `couponQuery.ts` switched from `coupon_redemptions` → `user_redemptions`.
+- Web redeem route updated: `end_date` → `expiry_date`, removed `redeem_time_limit_minutes`.
+
 ## 2026-05-27 — Middleware consolidation + route co-location (refactor/api-layer-overhaul)
 
 - Replaced `proxy/stackMiddlewares.ts` stacked pattern (4 files: `stackMiddlewares`, `authMiddlware`, `protectedRoutesMiddlware`, `updateSession`) with a single Next.js-standard `middleware.ts` at the repo root.

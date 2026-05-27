@@ -42,13 +42,13 @@ Migrations live in `supabase/migrations/`. Apply them in timestamp order.
 | `config/index.ts` | `createServerClient` (service role, cookie-based) | Server Components and web API routes |
 | `config/client.ts` | `createBrowserClient` (anon key) | Client Components |
 | `supabase/bearer.ts` | `createServerClient` (anon key, no cookies) | Public mobile routes (no session needed) |
-| `app/api/helpers/mobile-auth.ts` | `createClient` with `Authorization` header | Protected mobile routes — passes user JWT so RLS applies correctly |
+| `app/api/helpers/mobile-request.ts` | `createClient` with `Authorization` header | Protected mobile routes — passes user JWT so RLS applies correctly |
 
 **Never** use the service-role client in mobile routes. Use `getMobileUser()` instead so Supabase RLS enforces row-level access automatically.
 
 ## Auth & middleware
 
-A single `middleware.ts` at the repo root handles both concerns:
+A single `proxy.ts` at the repo root handles both concerns:
 1. Page routes — refreshes the Supabase session cookie and enforces role-based redirects.
 2. `/api/protected/**` — shallow credential check (cookie or Bearer token present); full JWT verification happens inside each handler via `getMobileUser()`.
 
@@ -134,10 +134,10 @@ Active deals and coupons (excludes expired).
 ```json
 {
   "coupons": [
-    { "id": "uuid", "title": "string", "description": "string",
-      "type": "discount|deal|voucher",
-      "start_date": "iso", "end_date": "iso",
-      "redeem_time_limit_minutes": 30 }
+    { "id": "uuid", "code": "string", "description": "string",
+      "discount": { "type": "percentage|fixed_amount", "value": 20 },
+      "usage_scope": "string",
+      "start_date": "iso", "expiry_date": "iso" }
   ]
 }
 ```
@@ -194,8 +194,9 @@ List coupon redemptions. **Query:** `filter=active|claimed|expired` (omit for al
 {
   "redemptions": [
     { "id": "uuid", "redeemed_at": "iso", "expires_at": "iso", "is_claimed": false,
-      "coupons": { "id": "uuid", "title": "string", "type": "discount",
-        "redeem_time_limit_minutes": 30,
+      "coupons": { "id": "uuid", "code": "string", "description": "string",
+        "discount": { "type": "percentage|fixed_amount", "value": 20 },
+        "expiry_date": "iso",
         "businesses": { "id": "uuid", "shop_name": "string", "logo_url": "string" } },
       "branches": { "id": "uuid", "name": "string", "address": "string" } }
   ]
@@ -204,7 +205,7 @@ List coupon redemptions. **Query:** `filter=active|claimed|expired` (omit for al
 
 ### `POST /api/protected/mobile/redemptions`
 
-Redeem a coupon. Sets `expires_at` from `redeem_time_limit_minutes`. **Body:** `{ "coupon_id": "uuid", "branch_id": "uuid" }`
+Redeem a coupon. Sets `expires_at` from `coupons.expiry_date`. **Body:** `{ "coupon_id": "uuid", "branch_id": "uuid" }`
 
 ### `GET /api/protected/mobile/itinerary`
 
@@ -227,9 +228,9 @@ Combines active redemptions + followed businesses for the in-app trip planner.
 
 | Purpose | Path |
 |---|---|
-| Mobile auth helper | `app/api/helpers/mobile-auth.ts` |
+| Mobile auth helper | `app/api/helpers/mobile-request.ts` |
 | Response helpers | `app/api/helpers/response.ts` |
-| Middleware | `middleware.ts` |
+| Proxy | `proxy.ts` |
 | Bearer Supabase client | `supabase/bearer.ts` |
 | Server Supabase client | `config/index.ts` |
 | Browser Supabase client | `config/client.ts` |

@@ -1,4 +1,4 @@
-import { getMobileUser } from '@/app/api/helpers/mobile-auth';
+import { getMobileUser } from '@/app/api/helpers/mobile-request';
 import {
   generalErrorResponse,
   successResponse,
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
                   c.archived_at === null &&
                   c.status === 'published' &&
                   new Date(c.start_date) <= new Date(now) &&
-                  new Date(c.expiry_date) > new Date(now),
+                  new Date(c.expiry_date) >= new Date(now),
               )
               .map(
                 ({ status: _s, archived_at: _a, start_date: _sd, ...rest }) =>

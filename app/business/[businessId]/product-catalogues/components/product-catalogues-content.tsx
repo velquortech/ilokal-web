@@ -12,7 +12,11 @@ import { ProductTable } from './product-table/products-table';
 import { AddProductDialog } from './add-product';
 import { ProductStats } from './product-stats';
 import { Card, CardContent } from '@/components/ui/card';
-import type { ProductResponse, Category, ProductStats as ProductStatsType } from '@/lib/types';
+import type {
+  ProductResponse,
+  Category,
+  ProductStats as ProductStatsType,
+} from '@/lib/types';
 
 interface ProductCataloguesContentProps {
   products: ProductResponse[];

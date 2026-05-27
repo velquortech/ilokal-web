@@ -32,16 +32,11 @@ export const ROUTES = {
       LOGOUT: '/api/auth/logout',
     },
     UPLOAD: '/api/upload',
-    // Canonical API base prefixes (use these to build matchers and guards)
     ADMIN_BASE: '/api/admin',
-    BILLING_BASE: '/api/billing',
-    PAYMENTS_BASE: '/api/payments',
-    SUBSCRIPTIONS_BASE: '/api/subscriptions',
-    USERS_BASE: '/api/users',
   },
   BUSINESS: {
     home: '/business',
-    registration: '/business-registration',
+    registration: '/business/registration',
   },
 } as const;
 

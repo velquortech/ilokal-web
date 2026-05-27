@@ -28,7 +28,7 @@ import subscriptionService from '@/lib/services/subscriptionService';
 
 /**
  * Subscribe business to subscription plan
- * POST /api/subscriptions/subscribe
+ * POST /api/web/subscriptions/subscribe
  */
 export async function subscribeToplanAction(
   input: CreateSubscriptionRequest,
@@ -83,7 +83,7 @@ export async function subscribeToplanAction(
 
 /**
  * Update current subscription (billing cycle, payment method, auto-renew)
- * PUT /api/subscriptions/me
+ * PUT /api/web/subscriptions/me
  */
 export async function updateSubscriptionAction(
   input: UpdateSubscriptionRequest,
@@ -137,7 +137,7 @@ export async function updateSubscriptionAction(
 
 /**
  * Upgrade subscription to higher tier
- * POST /api/subscriptions/upgrade
+ * POST /api/web/subscriptions/upgrade
  */
 export async function upgradeSubscriptionAction(
   input: UpgradeSubscriptionRequest,
@@ -191,7 +191,7 @@ export async function upgradeSubscriptionAction(
 
 /**
  * Downgrade subscription to lower tier
- * POST /api/subscriptions/downgrade
+ * POST /api/web/subscriptions/downgrade
  */
 export async function downgradeSubscriptionAction(
   input: DowngradeSubscriptionRequest,
@@ -245,7 +245,7 @@ export async function downgradeSubscriptionAction(
 
 /**
  * Cancel subscription
- * DELETE /api/subscriptions/me
+ * DELETE /api/web/subscriptions/me
  */
 export async function cancelSubscriptionAction(
   input: CancelSubscriptionRequest,

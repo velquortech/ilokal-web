@@ -13,7 +13,8 @@ import {
   createBranchSchema,
   updateBranchSchema,
 } from '@/lib/validation/branches';
-import branchService from '@/lib/services/branchService';
+import * as branchService from '@/lib/api/branches/branchService';
+import * as branchQuery from '@/lib/api/branches/branchQuery';
 
 // ===== Branch Management Actions =====
 
@@ -41,9 +42,10 @@ export async function createBranchAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    const api = await import('@/lib/api/branches/branchService');
-    const res = await api.createBranch(verify.business!.id, validation.data);
-    const result = res as ApiResponse<Branch>;
+    const result = await branchService.createBranch(
+      verify.business!.id,
+      validation.data,
+    );
     if (result.success) revalidatePath('/business/branches');
     return result;
   } catch (error) {
@@ -83,9 +85,7 @@ export async function updateBranchAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    const { branch, error }: { branch?: Branch; error?: string } = await (
-      await import('@/lib/api/branches/branchQuery')
-    ).getBranchById(id);
+    const { branch, error } = await branchQuery.getBranchById(id);
     if (error || !branch) {
       return {
         success: false,
@@ -103,8 +103,7 @@ export async function updateBranchAction(
       };
     }
 
-    const result = await branchService.update(id, validation.data);
-    const res = { success: true, data: result } as ApiResponse<Branch>;
+    const res = await branchService.updateBranch(id, validation.data);
     if (res.success) revalidatePath('/business/branches');
     return res;
   } catch (error) {
@@ -130,9 +129,7 @@ export async function deleteBranchAction(
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    const { branch, error }: { branch?: Branch; error?: string } = await (
-      await import('@/lib/api/branches/branchQuery')
-    ).getBranchById(id);
+    const { branch, error } = await branchQuery.getBranchById(id);
     if (error || !branch) {
       return {
         success: false,
@@ -150,9 +147,8 @@ export async function deleteBranchAction(
       };
     }
 
-    await branchService.delete(id);
-    const result = { success: true, data: null } as ApiResponse<null>;
-    revalidatePath('/business/branches');
+    const result = await branchService.deleteBranch(id);
+    if (result.success) revalidatePath('/business/branches');
     return result;
   } catch (error) {
     console.error('[deleteBranchAction]', error);

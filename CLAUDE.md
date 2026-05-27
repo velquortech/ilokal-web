@@ -31,6 +31,7 @@ Next.js 16 (App Router) · React 19 · TypeScript strict · Supabase SSR + PostG
 ## Architecture
 
 - **Routing:** App Router only. Server Actions for internal mutations, API routes for external/mobile integrations.
+- **Server Actions:** Use static imports from `lib/api/*/Service` and `lib/api/*/Query` directly. Never call `lib/services/` HTTP wrappers from a Server Action — they make an unnecessary network round-trip. `lib/services/` is for the admin/axios pattern only.
 - **API namespaces:** `app/api/web/` — web-facing routes; `app/api/mobile/` — public mobile; `app/api/protected/mobile/` — JWT-gated mobile; `app/api/admin/` — admin only; `app/api/auth/` — auth flows.
 - **Proxy:** Single `proxy.ts` at repo root (Next.js 16 replaces `middleware.ts`) — refreshes session cookies for page routes and verifies JWTs for `/api/protected/**` via `supabase.auth.getUser()`. Sets `x-verified-user-id` header after verification (spoofing-safe); handlers reuse it to skip a redundant `getUser()` round-trip.
   - Protected mobile handlers: call `getMobileUser(req)` from `app/api/helpers/mobile-request.ts` — returns `{ user, token, supabase }` with RLS-scoped client.
@@ -79,6 +80,7 @@ Load on request (read when topic is relevant):
 - `.claude/docs/authentication.md` — auth flows, signup/login/session detail
 - `.claude/docs/protected-routes-strategy.md` — proxy and route guard strategy
 - `.claude/docs/security.md` — headers, cookies, CSP, threat model
+- `.claude/docs/frontend-patterns.md` — **start here** for data fetching and mutation patterns (Server Components, Server Actions, lib/api vs lib/services)
 - `.claude/docs/server-actions.md` — when to use Server Actions vs API routes
 - `.claude/docs/session-management.md` — role-based timeouts, activity detection
 - `.claude/docs/rbac-model.md` — permission tiers, audit logging

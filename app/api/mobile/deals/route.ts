@@ -148,9 +148,8 @@ export async function GET(req: NextRequest) {
 
     // Explore = non-flash deals excluding the featured one.
     // Subscribed businesses sorted first so they earn hero/duo bento slots.
-    const exploreAll = (featured
-      ? nonFlash.filter((d) => d.id !== featured.id)
-      : nonFlash
+    const exploreAll = (
+      featured ? nonFlash.filter((d) => d.id !== featured.id) : nonFlash
     ).sort((a, b) => Number(b.is_subscribed) - Number(a.is_subscribed));
 
     const explore_total = exploreAll.length;

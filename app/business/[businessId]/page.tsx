@@ -5,6 +5,7 @@ import { getBusinessById } from '@/lib/api/business/business';
 import type { BusinessAnalyticsDashboard } from '@/lib/types';
 
 type Params = Promise<{ businessId: string }>;
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const emptyDashboard: BusinessAnalyticsDashboard = {
   health: {
@@ -24,15 +25,25 @@ const emptyDashboard: BusinessAnalyticsDashboard = {
   suggestions: [],
 };
 
-export default async function Page({ params }: { params: Params }) {
-  const { businessId } = await params;
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
+  const [{ businessId }, sp] = await Promise.all([params, searchParams]);
+  const branchId = typeof sp.branch === 'string' ? sp.branch : undefined;
   const business = await getBusinessById(businessId);
 
   if (!business || business.status !== 'verified') {
     return <BusinessHome />;
   }
 
-  const result = await getBusinessAnalyticsDashboardAction(businessId);
+  const result = await getBusinessAnalyticsDashboardAction(
+    businessId,
+    branchId,
+  );
   const data = result.success ? result.data! : emptyDashboard;
 
   return <AnalyticsDashboard data={data} />;

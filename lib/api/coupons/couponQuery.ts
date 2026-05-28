@@ -28,6 +28,7 @@ export async function getCouponsPaginated(
       search,
       status,
       sort_by = 'newest',
+      branch_id,
     } = filters;
     const offset = (page - 1) * per_page;
 
@@ -45,6 +46,10 @@ export async function getCouponsPaginated(
 
     if (status) {
       query = query.eq('status', status);
+    }
+
+    if (branch_id) {
+      query = query.eq('branch_id', branch_id);
     }
 
     // Apply sorting

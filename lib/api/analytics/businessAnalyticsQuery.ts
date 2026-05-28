@@ -274,6 +274,7 @@ function buildSixMonthLabels(): Array<{
 // ----------------------------------------------------------------
 export async function getRetentionData(
   businessId: string,
+  branchId?: string,
 ): Promise<RetentionMonth[]> {
   const supabase = await createServerSupabaseClient();
   const couponIds = await getBusinessCouponIds(supabase, businessId);
@@ -287,10 +288,14 @@ export async function getRetentionData(
     }));
   }
 
-  const { data: rawRedemptions } = await supabase
+  let redemptionsQuery = supabase
     .from('user_redemptions')
     .select('user_id, redeemed_at')
     .in('coupon_id', couponIds);
+
+  if (branchId) redemptionsQuery = redemptionsQuery.eq('branch_id', branchId);
+
+  const { data: rawRedemptions } = await redemptionsQuery;
 
   const redemptions: Array<{ user_id: string; redeemed_at: string }> =
     Array.isArray(rawRedemptions)
@@ -348,6 +353,7 @@ export async function getRetentionData(
 // ----------------------------------------------------------------
 export async function getMonthlyTrend(
   businessId: string,
+  branchId?: string,
 ): Promise<MonthlyTrendPoint[]> {
   const supabase = await createServerSupabaseClient();
 
@@ -367,10 +373,12 @@ export async function getMonthlyTrend(
 
   let redemptions: Array<{ redeemed_at: string }> = [];
   if (couponIds.length > 0) {
-    const { data: redData } = await supabase
+    let redQuery = supabase
       .from('user_redemptions')
       .select('redeemed_at')
       .in('coupon_id', couponIds);
+    if (branchId) redQuery = redQuery.eq('branch_id', branchId);
+    const { data: redData } = await redQuery;
     redemptions = Array.isArray(redData)
       ? (redData as Array<{ redeemed_at: string }>)
       : [];
@@ -398,6 +406,7 @@ export async function getMonthlyTrend(
 // ----------------------------------------------------------------
 export async function getFollowerFunnel(
   businessId: string,
+  branchId?: string,
 ): Promise<FollowerFunnelData> {
   const supabase = await createServerSupabaseClient();
 
@@ -417,10 +426,12 @@ export async function getFollowerFunnel(
     return { total_followers, ever_redeemed: 0, active_30d: 0, loyal: 0 };
   }
 
-  const { data: redData } = await supabase
+  let redQuery = supabase
     .from('user_redemptions')
     .select('user_id, redeemed_at')
     .in('coupon_id', couponIds);
+  if (branchId) redQuery = redQuery.eq('branch_id', branchId);
+  const { data: redData } = await redQuery;
 
   const redemptions: Array<{ user_id: string; redeemed_at: string }> =
     Array.isArray(redData)
@@ -467,6 +478,7 @@ export async function getFollowerFunnel(
 // ----------------------------------------------------------------
 export async function getCouponPerformance(
   businessId: string,
+  branchId?: string,
 ): Promise<CouponPerformanceItem[]> {
   const supabase = await createServerSupabaseClient();
 
@@ -483,10 +495,12 @@ export async function getCouponPerformance(
 
   const couponIds = couponsData.map((c: { id: string }) => c.id);
 
-  const { data: redData } = await supabase
+  let redQuery = supabase
     .from('user_redemptions')
     .select('coupon_id, redeemed_at')
     .in('coupon_id', couponIds);
+  if (branchId) redQuery = redQuery.eq('branch_id', branchId);
+  const { data: redData } = await redQuery;
 
   const redemptions: Array<{ coupon_id: string; redeemed_at: string }> =
     Array.isArray(redData)
@@ -550,6 +564,7 @@ export async function getCouponPerformance(
 // ----------------------------------------------------------------
 export async function getCustomerSegments(
   businessId: string,
+  branchId?: string,
 ): Promise<CustomerSegmentCounts> {
   const supabase = await createServerSupabaseClient();
   const couponIds = await getBusinessCouponIds(supabase, businessId);
@@ -564,10 +579,12 @@ export async function getCustomerSegments(
 
   if (couponIds.length === 0) return counts;
 
-  const { data: redData } = await supabase
+  let redQuery = supabase
     .from('user_redemptions')
     .select('user_id, redeemed_at')
     .in('coupon_id', couponIds);
+  if (branchId) redQuery = redQuery.eq('branch_id', branchId);
+  const { data: redData } = await redQuery;
 
   if (!Array.isArray(redData) || redData.length === 0) return counts;
 
@@ -609,12 +626,13 @@ export async function getCustomerSegments(
 // ----------------------------------------------------------------
 export async function getBusinessHealthIndicators(
   businessId: string,
+  branchId?: string,
 ): Promise<BusinessHealthData> {
   const supabase = await createServerSupabaseClient();
 
   const [retention, subResult, activeDealsResult, ratingsResult] =
     await Promise.all([
-      getRetentionData(businessId),
+      getRetentionData(businessId, branchId),
       supabase
         .from('subscriptions')
         .select('created_at')

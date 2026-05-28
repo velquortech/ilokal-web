@@ -27,6 +27,7 @@ import { ImageUploadField } from '@/components/custom/upload/image-upload';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Category, PriceType } from '@/lib/types';
+import { useBusinessShop } from '@/providers/BusinessProvider';
 import {
   createProductAction,
   uploadProductImageAction,
@@ -63,6 +64,7 @@ export function AddProductDialog({
   categories,
   onSuccess,
 }: AddProductDialogProps) {
+  const { selectedBranchId } = useBusinessShop();
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
@@ -117,6 +119,7 @@ export function AddProductDialog({
         category_id: data.category_id!,
         image_url,
         is_available: data.is_available,
+        branch_id: selectedBranchId ?? null,
       });
 
       if (!result.success) {
@@ -143,7 +146,15 @@ export function AddProductDialog({
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
-      reset();
+      reset({
+        name: '',
+        description: '',
+        price_type: 'fixed',
+        price_unit: '',
+        category_id: undefined,
+        image: null,
+        is_available: true,
+      });
       setServerError(null);
     }
   };

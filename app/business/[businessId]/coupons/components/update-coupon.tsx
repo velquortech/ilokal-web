@@ -108,6 +108,9 @@ export function UpdateCouponDialog({
   } = useForm<CouponFormValues>({ defaultValues });
 
   const watchedScope = watch('usage_scope');
+  const filteredProducts = coupon.branch_id
+    ? products.filter((p) => p.branch_id === coupon.branch_id)
+    : products;
 
   const onSubmit = async (data: CouponFormValues) => {
     setIsSubmitting(true);
@@ -388,7 +391,7 @@ export function UpdateCouponDialog({
                   name="scope_values"
                   render={({ field }) => (
                     <ProductPicker
-                      products={products}
+                      products={filteredProducts}
                       value={field.value}
                       onChange={field.onChange}
                     />

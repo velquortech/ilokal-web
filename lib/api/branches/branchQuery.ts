@@ -142,7 +142,13 @@ export async function getBranchesByBusinessId(
   filters: BranchFilters = {},
 ) {
   try {
-    const { page = 1, per_page = 20, search, sort_by = 'name_asc' } = filters;
+    const {
+      page = 1,
+      per_page = 20,
+      search,
+      sort_by = 'name_asc',
+      status,
+    } = filters;
     const offset = (page - 1) * per_page;
 
     const supabase = await createServerSupabaseClient();
@@ -152,6 +158,13 @@ export async function getBranchesByBusinessId(
       .select('*', { count: 'exact' })
       .eq('business_id', businessId)
       .is('archived_at', null);
+
+    // Default: only show active branches. Pass status='all' to see all statuses.
+    if (!status || status === 'active') {
+      query = query.eq('status', 'active');
+    } else if (status !== 'all') {
+      query = query.eq('status', status);
+    }
 
     if (search) {
       query = query.or(`name.ilike.%${search}%,address.ilike.%${search}%`);

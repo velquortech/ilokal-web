@@ -15,7 +15,7 @@ import {
   Bell,
   // Building2,
   // Building,
-  // MapPin,
+  MapPin,
   // Layers,
   Home,
   ShoppingBasket,
@@ -46,6 +46,11 @@ export const storeNavigation: NavItem[] = [
     title: 'Coupons & Deals',
     href: '/business/coupons',
     icon: Ticket,
+  },
+  {
+    title: 'Branches',
+    href: '/business/branches',
+    icon: MapPin,
   },
   // {
   //   title: 'Shop Settings',

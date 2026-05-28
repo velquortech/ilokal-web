@@ -24,6 +24,7 @@ export type UsageScope = 'any' | 'specific_categories' | 'specific_products';
 export type Coupon = {
   id: string;
   business_id: string;
+  branch_id: string | null;
   promotion_type: PromotionType;
   status: CouponStatus;
   code: string;
@@ -53,6 +54,7 @@ export type CreateCouponRequest = {
   expiry_date: string;
   max_redemptions_global?: number;
   max_redemptions_per_user?: number;
+  branch_id?: string | null;
 };
 
 export type UpdateCouponRequest = Partial<CreateCouponRequest>;
@@ -63,6 +65,7 @@ export type CouponFilters = {
   search?: string;
   status?: CouponStatus;
   sort_by?: 'newest' | 'oldest' | 'expiry_asc' | 'expiry_desc';
+  branch_id?: string;
 };
 
 export type PaginatedCouponsResponse = {

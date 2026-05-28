@@ -45,6 +45,7 @@ export async function createCoupon(
       .from('coupons')
       .insert({
         business_id: businessId,
+        branch_id: input.branch_id ?? null,
         promotion_type: input.promotion_type ?? 'coupon',
         status: input.status ?? 'draft',
         code: input.code.toUpperCase(),
@@ -131,6 +132,7 @@ export async function updateCoupon(
       updateData.max_redemptions_global = input.max_redemptions_global;
     if (input.max_redemptions_per_user !== undefined)
       updateData.max_redemptions_per_user = input.max_redemptions_per_user;
+    if ('branch_id' in input) updateData.branch_id = input.branch_id ?? null;
 
     const { data, error } = await supabase
       .from('coupons')

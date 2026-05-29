@@ -105,14 +105,22 @@ describe('branchQuery', () => {
     it('sorts by name ascending by default', async () => {
       const chain = makeChain([], 0);
       mockClient(chain);
-      await getBranchesPaginated({ page: 1, per_page: 20, sort_by: 'name_asc' });
+      await getBranchesPaginated({
+        page: 1,
+        per_page: 20,
+        sort_by: 'name_asc',
+      });
       expect(chain.order).toHaveBeenCalledWith('name', { ascending: true });
     });
 
     it('sorts by name descending when sort_by is name_desc', async () => {
       const chain = makeChain([], 0);
       mockClient(chain);
-      await getBranchesPaginated({ page: 1, per_page: 20, sort_by: 'name_desc' });
+      await getBranchesPaginated({
+        page: 1,
+        per_page: 20,
+        sort_by: 'name_desc',
+      });
       expect(chain.order).toHaveBeenCalledWith('name', { ascending: false });
     });
 
@@ -237,7 +245,10 @@ describe('branchQuery', () => {
     it('sorts by name ascending by default', async () => {
       const chain = makeChain([], 0);
       mockClient(chain);
-      await getBranchesByBusinessId('biz-1', { status: 'all', sort_by: 'name_asc' });
+      await getBranchesByBusinessId('biz-1', {
+        status: 'all',
+        sort_by: 'name_asc',
+      });
       expect(chain.order).toHaveBeenCalledWith('name', { ascending: true });
     });
 

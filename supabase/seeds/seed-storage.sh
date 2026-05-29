@@ -27,14 +27,22 @@ create_bucket() {
 }
 
 upload() {
-  local bucket="$1" path="$2" url="$3"
+  local bucket="$1" path="$2" url="$3" mime="${4:-image/jpeg}"
+  local status
+  status=$(curl -so /dev/null -w "%{http_code}" \
+    -H "Authorization: Bearer $SERVICE_KEY" \
+    "$BASE/object/$bucket/$path")
+  if [ "$status" = "200" ]; then
+    echo "  skipped $bucket/$path (already exists)"
+    return
+  fi
   local tmp_file="$TMP/$(echo "$path" | tr '/' '_')"
   curl -sfL "$url" -o "$tmp_file"
   curl -sf -X POST "$BASE/object/$bucket/$path" \
     -H "Authorization: Bearer $SERVICE_KEY" \
-    -H "Content-Type: image/jpeg" \
+    -H "Content-Type: $mime" \
     --data-binary "@$tmp_file" \
-    -o /dev/null && echo "  uploaded $bucket/$path" || echo "  skipped $bucket/$path (already exists)"
+    -o /dev/null && echo "  uploaded $bucket/$path" || echo "  failed $bucket/$path"
 }
 
 # ---------------------------------------------------------------------------
@@ -45,6 +53,22 @@ create_bucket "shop-logos"
 create_bucket "interior-images"
 create_bucket "shop-banners"
 create_bucket "product-images"
+create_bucket "avatars"
+
+# ---------------------------------------------------------------------------
+# Seed account avatars  (200x200 PNG from DiceBear Avataaars)
+# User IDs match supabase/seeds/users.sql named accounts
+# ---------------------------------------------------------------------------
+echo "Uploading seed account avatars..."
+upload "avatars" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/avatar.png" \
+  "https://api.dicebear.com/9.x/avataaars/png?seed=admin-ilokal&backgroundColor=b6e3f4&size=200" \
+  "image/png"
+upload "avatars" "00000000-0000-0000-0000-000000000001/avatar.png" \
+  "https://api.dicebear.com/9.x/avataaars/png?seed=owner-ilokal&backgroundColor=c0aede&size=200" \
+  "image/png"
+upload "avatars" "ffffffff-ffff-ffff-ffff-ffffffffffff/avatar.png" \
+  "https://api.dicebear.com/9.x/avataaars/png?seed=testuser-ilokal&backgroundColor=d1d4f9&size=200" \
+  "image/png"
 
 # ---------------------------------------------------------------------------
 # Logos  (400x400)
@@ -64,19 +88,27 @@ echo "Uploading interior images..."
 upload "interior-images" "11111111-1111-1111-1111-111111111101/hero.jpg"     "https://picsum.photos/seed/artisancafe-hero/800/500"
 upload "interior-images" "11111111-1111-1111-1111-111111111101/gallery1.jpg" "https://picsum.photos/seed/artisan-g1/800/520"
 upload "interior-images" "11111111-1111-1111-1111-111111111101/gallery2.jpg" "https://picsum.photos/seed/artisan-g2/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111101/gallery3.jpg" "https://picsum.photos/seed/artisan-g3/800/520"
 # Flora & Flour Bakery
 upload "interior-images" "11111111-1111-1111-1111-111111111102/hero.jpg"     "https://picsum.photos/seed/florabakery-hero/800/500"
 upload "interior-images" "11111111-1111-1111-1111-111111111102/gallery1.jpg" "https://picsum.photos/seed/flora-g1/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111102/gallery2.jpg" "https://picsum.photos/seed/flora-g2/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111102/gallery3.jpg" "https://picsum.photos/seed/flora-g3/800/520"
 # The Handy Corner
 upload "interior-images" "11111111-1111-1111-1111-111111111103/hero.jpg"     "https://picsum.photos/seed/handystore-hero/800/500"
+upload "interior-images" "11111111-1111-1111-1111-111111111103/gallery1.jpg" "https://picsum.photos/seed/handy-g1/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111103/gallery2.jpg" "https://picsum.photos/seed/handy-g2/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111103/gallery3.jpg" "https://picsum.photos/seed/handy-g3/800/520"
 # Aura Hair Studio
 upload "interior-images" "11111111-1111-1111-1111-111111111104/hero.jpg"     "https://picsum.photos/seed/aurasalon-hero/800/500"
 upload "interior-images" "11111111-1111-1111-1111-111111111104/gallery1.jpg" "https://picsum.photos/seed/aura-g1/800/520"
 upload "interior-images" "11111111-1111-1111-1111-111111111104/gallery2.jpg" "https://picsum.photos/seed/aura-g2/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111104/gallery3.jpg" "https://picsum.photos/seed/aura-g3/800/520"
 # Luna & Leaf Bistro
 upload "interior-images" "11111111-1111-1111-1111-111111111105/hero.jpg"     "https://picsum.photos/seed/lunaleaf-hero/800/500"
 upload "interior-images" "11111111-1111-1111-1111-111111111105/gallery1.jpg" "https://picsum.photos/seed/luna-g1/800/520"
 upload "interior-images" "11111111-1111-1111-1111-111111111105/gallery2.jpg" "https://picsum.photos/seed/luna-g2/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111105/gallery3.jpg" "https://picsum.photos/seed/luna-g3/800/520"
 
 # ---------------------------------------------------------------------------
 # Product images  (400x400)
@@ -140,38 +172,58 @@ echo "Uploading new business interior images..."
 # El Tapas & Brew
 upload "interior-images" "11111111-1111-1111-1111-111111111106/hero.jpg"     "https://picsum.photos/seed/eltapas-hero/800/500"
 upload "interior-images" "11111111-1111-1111-1111-111111111106/gallery1.jpg" "https://picsum.photos/seed/eltapas-g1/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111106/gallery2.jpg" "https://picsum.photos/seed/eltapas-g2/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111106/gallery3.jpg" "https://picsum.photos/seed/eltapas-g3/800/520"
 # Iloilo Street Eats
 upload "interior-images" "11111111-1111-1111-1111-111111111107/hero.jpg"     "https://picsum.photos/seed/streetfood-hero/800/500"
+upload "interior-images" "11111111-1111-1111-1111-111111111107/gallery1.jpg" "https://picsum.photos/seed/streetfood-g1/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111107/gallery2.jpg" "https://picsum.photos/seed/streetfood-g2/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111107/gallery3.jpg" "https://picsum.photos/seed/streetfood-g3/800/520"
 # Sari-Sari ni Nena
 upload "interior-images" "11111111-1111-1111-1111-111111111108/hero.jpg"     "https://picsum.photos/seed/sarisari-hero/800/500"
 upload "interior-images" "11111111-1111-1111-1111-111111111108/gallery1.jpg" "https://picsum.photos/seed/sarisari-g1/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111108/gallery2.jpg" "https://picsum.photos/seed/sarisari-g2/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111108/gallery3.jpg" "https://picsum.photos/seed/sarisari-g3/800/520"
 # Hablon & Hue Boutique
 upload "interior-images" "11111111-1111-1111-1111-111111111109/hero.jpg"     "https://picsum.photos/seed/hablon-hero/800/500"
 upload "interior-images" "11111111-1111-1111-1111-111111111109/gallery1.jpg" "https://picsum.photos/seed/hablon-g1/800/520"
 upload "interior-images" "11111111-1111-1111-1111-111111111109/gallery2.jpg" "https://picsum.photos/seed/hablon-g2/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111109/gallery3.jpg" "https://picsum.photos/seed/hablon-g3/800/520"
 # PageTurner Books
 upload "interior-images" "11111111-1111-1111-1111-111111111110/hero.jpg"     "https://picsum.photos/seed/pageturner-hero/800/500"
 upload "interior-images" "11111111-1111-1111-1111-111111111110/gallery1.jpg" "https://picsum.photos/seed/pageturner-g1/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111110/gallery2.jpg" "https://picsum.photos/seed/pageturner-g2/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111110/gallery3.jpg" "https://picsum.photos/seed/pageturner-g3/800/520"
 # Serenity Spa Iloilo
 upload "interior-images" "11111111-1111-1111-1111-111111111111/hero.jpg"     "https://picsum.photos/seed/serenity-hero/800/500"
 upload "interior-images" "11111111-1111-1111-1111-111111111111/gallery1.jpg" "https://picsum.photos/seed/serenity-g1/800/520"
 upload "interior-images" "11111111-1111-1111-1111-111111111111/gallery2.jpg" "https://picsum.photos/seed/serenity-g2/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111111/gallery3.jpg" "https://picsum.photos/seed/serenity-g3/800/520"
 # IronForge Fitness
 upload "interior-images" "11111111-1111-1111-1111-111111111112/hero.jpg"     "https://picsum.photos/seed/ironforge-hero/800/500"
 upload "interior-images" "11111111-1111-1111-1111-111111111112/gallery1.jpg" "https://picsum.photos/seed/ironforge-g1/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111112/gallery2.jpg" "https://picsum.photos/seed/ironforge-g2/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111112/gallery3.jpg" "https://picsum.photos/seed/ironforge-g3/800/520"
 # FixRight Repair Hub
 upload "interior-images" "11111111-1111-1111-1111-111111111113/hero.jpg"     "https://picsum.photos/seed/fixright-hero/800/500"
+upload "interior-images" "11111111-1111-1111-1111-111111111113/gallery1.jpg" "https://picsum.photos/seed/fixright-g1/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111113/gallery2.jpg" "https://picsum.photos/seed/fixright-g2/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111113/gallery3.jpg" "https://picsum.photos/seed/fixright-g3/800/520"
 # Casa Ilongga B&B
 upload "interior-images" "11111111-1111-1111-1111-111111111114/hero.jpg"     "https://picsum.photos/seed/casailongga-hero/800/500"
 upload "interior-images" "11111111-1111-1111-1111-111111111114/gallery1.jpg" "https://picsum.photos/seed/casailongga-g1/800/520"
 upload "interior-images" "11111111-1111-1111-1111-111111111114/gallery2.jpg" "https://picsum.photos/seed/casailongga-g2/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111114/gallery3.jpg" "https://picsum.photos/seed/casailongga-g3/800/520"
 # Ilonggo Craft Workshop
 upload "interior-images" "11111111-1111-1111-1111-111111111115/hero.jpg"     "https://picsum.photos/seed/craftshop-hero/800/500"
 upload "interior-images" "11111111-1111-1111-1111-111111111115/gallery1.jpg" "https://picsum.photos/seed/craftshop-g1/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111115/gallery2.jpg" "https://picsum.photos/seed/craftshop-g2/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111115/gallery3.jpg" "https://picsum.photos/seed/craftshop-g3/800/520"
 # The Lampara Live Music Bar
 upload "interior-images" "11111111-1111-1111-1111-111111111116/hero.jpg"     "https://picsum.photos/seed/lampara-hero/800/500"
 upload "interior-images" "11111111-1111-1111-1111-111111111116/gallery1.jpg" "https://picsum.photos/seed/lampara-g1/800/520"
 upload "interior-images" "11111111-1111-1111-1111-111111111116/gallery2.jpg" "https://picsum.photos/seed/lampara-g2/800/520"
+upload "interior-images" "11111111-1111-1111-1111-111111111116/gallery3.jpg" "https://picsum.photos/seed/lampara-g3/800/520"
 
 # ---------------------------------------------------------------------------
 # New products — Product images (400x400)  IDs 326–369

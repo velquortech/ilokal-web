@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/supabase/server';
+import { createAnalyticsSupabaseClient } from '@/supabase/server';
 import type {
   BusinessDashboard,
   ProductPerformance,
@@ -17,7 +17,7 @@ import type {
 export async function getBusinessDashboard(
   businessId: string,
 ): Promise<BusinessDashboard> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createAnalyticsSupabaseClient();
 
   const { count: productCount } = await supabase
     .from('products')
@@ -73,7 +73,7 @@ export async function getProductPerformance(
   businessId: string,
   limit = 10,
 ): Promise<ProductPerformance[]> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createAnalyticsSupabaseClient();
   // Fetch payments for the business and aggregate in JS to avoid DB-specific group syntax
   const { data } = await supabase
     .from('payments')
@@ -109,7 +109,7 @@ export async function getProductPerformance(
 export async function getCouponStats(
   businessId: string,
 ): Promise<CouponStats[]> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createAnalyticsSupabaseClient();
   const { data } = await supabase
     .from('user_redemptions')
     .select('coupon_id')
@@ -142,7 +142,7 @@ export async function getCouponStats(
 export async function getTrafficMetrics(
   businessId: string,
 ): Promise<TrafficMetrics> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createAnalyticsSupabaseClient();
   const thirtyDaysAgo = new Date(
     Date.now() - 1000 * 60 * 60 * 24 * 30,
   ).toISOString();
@@ -176,7 +176,7 @@ export async function getTrafficMetrics(
 export async function getBusinessRevenue(
   businessId: string,
 ): Promise<BusinessRevenue> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createAnalyticsSupabaseClient();
 
   const { data: totalData } = await supabase
     .from('payments')
@@ -235,7 +235,7 @@ export async function getBusinessRevenue(
 // Helper: get coupon IDs for a business (non-archived)
 // ----------------------------------------------------------------
 async function getBusinessCouponIds(
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  supabase: Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>,
   businessId: string,
 ): Promise<string[]> {
   const { data } = await supabase
@@ -276,7 +276,7 @@ export async function getRetentionData(
   businessId: string,
   branchId?: string,
 ): Promise<RetentionMonth[]> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createAnalyticsSupabaseClient();
   const couponIds = await getBusinessCouponIds(supabase, businessId);
 
   if (couponIds.length === 0) {
@@ -355,7 +355,7 @@ export async function getMonthlyTrend(
   businessId: string,
   branchId?: string,
 ): Promise<MonthlyTrendPoint[]> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createAnalyticsSupabaseClient();
 
   const [subResult, couponIds] = await Promise.all([
     supabase
@@ -408,7 +408,7 @@ export async function getFollowerFunnel(
   businessId: string,
   branchId?: string,
 ): Promise<FollowerFunnelData> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createAnalyticsSupabaseClient();
 
   const [subResult, couponIds] = await Promise.all([
     supabase
@@ -480,7 +480,7 @@ export async function getCouponPerformance(
   businessId: string,
   branchId?: string,
 ): Promise<CouponPerformanceItem[]> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createAnalyticsSupabaseClient();
 
   let couponsQuery = supabase
     .from('coupons')
@@ -570,7 +570,7 @@ export async function getCustomerSegments(
   businessId: string,
   branchId?: string,
 ): Promise<CustomerSegmentCounts> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createAnalyticsSupabaseClient();
   const couponIds = await getBusinessCouponIds(supabase, businessId);
 
   const counts: CustomerSegmentCounts = {
@@ -632,7 +632,7 @@ export async function getBusinessHealthIndicators(
   businessId: string,
   branchId?: string,
 ): Promise<BusinessHealthData> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await createAnalyticsSupabaseClient();
 
   const [retention, subResult, activeDealsResult, ratingsResult] =
     await Promise.all([

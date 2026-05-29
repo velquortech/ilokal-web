@@ -13,6 +13,8 @@ export async function GET() {
       .select(
         'id, name, description, icon, business_categories(id, name, description, image_url)',
       )
+      .is('deleted_at', null)
+      .is('business_categories.deleted_at', null)
       .order('name');
 
     if (error) return generalErrorResponse({ message: error.message });

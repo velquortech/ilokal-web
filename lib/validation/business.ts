@@ -134,8 +134,8 @@ export const businessLogoUploadSchema = z.object({
   file: z
     .instanceof(File)
     .refine(
-      (file) => file.size <= 5 * 1024 * 1024,
-      'File size must be less than 5MB',
+      (file) => file.size <= 2 * 1024 * 1024,
+      'File size must be less than 2MB',
     ),
   businessId: z.string().uuid('Invalid business ID format'),
 });
@@ -149,8 +149,8 @@ export const interiorPhotosUploadSchema = z.object({
   file: z
     .instanceof(File)
     .refine(
-      (file) => file.size <= 5 * 1024 * 1024,
-      'File size must be less than 5MB',
+      (file) => file.size <= 2 * 1024 * 1024,
+      'File size must be less than 2MB',
     ),
   businessId: z.string().uuid('Invalid business ID format'),
 });
@@ -166,8 +166,8 @@ export const verificationDocsUploadSchema = z.object({
   file: z
     .instanceof(File)
     .refine(
-      (file) => file.size <= 10 * 1024 * 1024,
-      'File size must be less than 10MB',
+      (file) => file.size <= 2 * 1024 * 1024,
+      'File size must be less than 2MB',
     ),
   businessId: z.string().uuid('Invalid business ID format'),
 });

@@ -29,7 +29,7 @@ export function StepBranchImages() {
         <ul className="text-foreground list-inside list-disc space-y-1 text-sm">
           <li>Show different angles of your branch location</li>
           <li>Good lighting and clean spaces look best</li>
-          <li>Up to 10 images, max 5 MB each</li>
+          <li>Up to 10 images, max 2 MB each</li>
         </ul>
       </div>
     </div>
@@ -104,7 +104,7 @@ function CoverImageUpload() {
                   <div>
                     <p className="mb-1 font-medium">Upload cover photo</p>
                     <p className="text-muted-foreground text-sm">
-                      PNG, JPG or WebP (max 5 MB)
+                      PNG, JPG or WebP (max 2 MB)
                     </p>
                   </div>
                   <Button type="button" variant="secondary">

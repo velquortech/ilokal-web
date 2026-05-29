@@ -208,8 +208,8 @@ export function UpdateProductDialog({
                           : undefined
                       }
                       onChange={(file) => field.onChange(file)}
-                      maxSizeBytes={5 * 1024 * 1024}
-                      maxSizeLabel="5 MB"
+                      maxSizeBytes={2 * 1024 * 1024}
+                      maxSizeLabel="2 MB"
                     />
                   )}
                 />

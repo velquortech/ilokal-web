@@ -72,20 +72,20 @@ describe('POST /api/upload/business-logo - Upload Business Logo', () => {
   });
 
   describe('File Size Validation', () => {
-    const maxSizeBytes = 5 * 1024 * 1024; // 5MB
+    const maxSizeBytes = 2 * 1024 * 1024; // 2MB
 
-    it('should accept files under 5MB', () => {
-      const fileSizeBytes = 4 * 1024 * 1024; // 4MB
+    it('should accept files under 2MB', () => {
+      const fileSizeBytes = 1 * 1024 * 1024; // 1MB
       expect(fileSizeBytes).toBeLessThanOrEqual(maxSizeBytes);
     });
 
-    it('should accept files exactly 5MB', () => {
-      const fileSizeBytes = 5 * 1024 * 1024; // 5MB
+    it('should accept files exactly 2MB', () => {
+      const fileSizeBytes = 2 * 1024 * 1024; // 2MB
       expect(fileSizeBytes).toBeLessThanOrEqual(maxSizeBytes);
     });
 
-    it('should reject files over 5MB', () => {
-      const fileSizeBytes = 6 * 1024 * 1024; // 6MB
+    it('should reject files over 2MB', () => {
+      const fileSizeBytes = 3 * 1024 * 1024; // 3MB
       expect(fileSizeBytes).toBeGreaterThan(maxSizeBytes);
     });
 
@@ -140,7 +140,7 @@ describe('POST /api/upload/business-logo - Upload Business Logo', () => {
         success: false,
         error: {
           code: 'FILE_TOO_LARGE',
-          message: 'File size exceeds 5MB limit',
+          message: 'File size exceeds 2MB limit',
         },
       };
       expect(errorResponse.success).toBe(false);
@@ -197,9 +197,9 @@ describe('POST /api/upload/business-interior - Upload Interior Photos', () => {
       expect(uploadedPhotos).toBeGreaterThan(maxPhotos);
     });
 
-    it('should enforce 5MB per photo', () => {
-      const maxSizePerPhoto = 5 * 1024 * 1024;
-      const photoSize = 4 * 1024 * 1024;
+    it('should enforce 2MB per photo', () => {
+      const maxSizePerPhoto = 2 * 1024 * 1024;
+      const photoSize = 1 * 1024 * 1024;
       expect(photoSize).toBeLessThanOrEqual(maxSizePerPhoto);
     });
   });
@@ -320,20 +320,20 @@ describe('POST /api/upload/verification-docs - Upload Verification Documents', (
   });
 
   describe('File Size Validation', () => {
-    const maxSizeBytes = 10 * 1024 * 1024; // 10MB
+    const maxSizeBytes = 2 * 1024 * 1024; // 2MB
 
-    it('should accept files under 10MB', () => {
-      const fileSizeBytes = 8 * 1024 * 1024;
+    it('should accept files under 2MB', () => {
+      const fileSizeBytes = 1 * 1024 * 1024;
       expect(fileSizeBytes).toBeLessThanOrEqual(maxSizeBytes);
     });
 
-    it('should accept files exactly 10MB', () => {
-      const fileSizeBytes = 10 * 1024 * 1024;
+    it('should accept files exactly 2MB', () => {
+      const fileSizeBytes = 2 * 1024 * 1024;
       expect(fileSizeBytes).toBeLessThanOrEqual(maxSizeBytes);
     });
 
-    it('should reject files over 10MB', () => {
-      const fileSizeBytes = 11 * 1024 * 1024;
+    it('should reject files over 2MB', () => {
+      const fileSizeBytes = 3 * 1024 * 1024;
       expect(fileSizeBytes).toBeGreaterThan(maxSizeBytes);
     });
   });
@@ -683,13 +683,13 @@ describe('Phase 2 Upload Endpoints - Integration', () => {
 
   it('should enforce file size limits across all endpoints', () => {
     const limits = {
-      logo: 5 * 1024 * 1024,
-      interior: 5 * 1024 * 1024,
-      docs: 10 * 1024 * 1024,
+      logo: 2 * 1024 * 1024,
+      interior: 2 * 1024 * 1024,
+      docs: 2 * 1024 * 1024,
     };
 
-    expect(limits.logo).toBe(5242880);
-    expect(limits.interior).toBe(5242880);
-    expect(limits.docs).toBe(10485760);
+    expect(limits.logo).toBe(2097152);
+    expect(limits.interior).toBe(2097152);
+    expect(limits.docs).toBe(2097152);
   });
 });

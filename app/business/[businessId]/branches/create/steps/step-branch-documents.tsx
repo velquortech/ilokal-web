@@ -49,7 +49,7 @@ export function StepBranchDocuments() {
         <ul className="text-foreground list-inside list-disc space-y-1 text-sm">
           <li>Documents must be clear and readable</li>
           <li>All information must be current and valid</li>
-          <li>Accepted formats: PDF, Word, or image files (max 10 MB)</li>
+          <li>Accepted formats: PDF, Word, or image files (max 2 MB)</li>
           <li>Branch will be reviewed and activated within 24–48 hours</li>
         </ul>
       </div>

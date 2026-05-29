@@ -482,7 +482,7 @@ export async function getCouponPerformance(
 ): Promise<CouponPerformanceItem[]> {
   const supabase = await createServerSupabaseClient();
 
-  const { data: couponsData } = await supabase
+  let couponsQuery = supabase
     .from('coupons')
     .select(
       'id, code, description, promotion_type, max_redemptions_global, start_date',
@@ -490,6 +490,10 @@ export async function getCouponPerformance(
     .eq('business_id', businessId)
     .eq('status', 'published')
     .is('archived_at', null);
+
+  if (branchId) couponsQuery = couponsQuery.eq('branch_id', branchId);
+
+  const { data: couponsData } = await couponsQuery;
 
   if (!Array.isArray(couponsData) || couponsData.length === 0) return [];
 

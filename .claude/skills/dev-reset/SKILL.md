@@ -32,17 +32,19 @@ Run `make migrate-reset` (stops Supabase, wipes DB, re-applies all migrations).
 
 ## Step 2 — `make seed`
 
-Run `make seed` to load all seed files into the freshly migrated DB.
+Run `make seed` to populate storage buckets (logos, avatars, product images) and re-seed all database rows.
+
+> **Note:** `make seed` = `seed-storage` + `seed-db`. `migrate-reset` already ran the SQL seeds via `supabase db reset`, so `seed-db` re-runs them idempotently (ON CONFLICT clauses make it safe). The critical part here is `seed-storage`, which uploads images into local Supabase Storage — that is NOT run by `migrate-reset`.
 
 **Capture the full output.** After it exits, analyze for:
 
-- **Hard error signals:** `ERROR`, `FATAL`, `syntax error`, `violates.*constraint`, `duplicate key`, `relation.*does not exist`, `permission denied`, non-zero exit code
-- **Soft warnings (acceptable):** `NOTICE`, `INSERT 0` (empty seed), skipped rows
+- **Hard error signals:** `ERROR`, `FATAL`, `syntax error`, `violates.*constraint`, `duplicate key`, `relation.*does not exist`, `permission denied`, `curl: (7)`, non-zero exit code
+- **Soft warnings (acceptable):** `NOTICE`, `INSERT 0` (empty seed), `already exists (skipped)` (storage idempotency)
 
 **Decision tree:**
 
 - If the command exits with a **non-zero exit code OR output contains a hard error signal** →
-  1. Display a formatted error block: which seed file failed, the exact error line(s), and exit code.
+  1. Display a formatted error block: which seed file or upload failed, the exact error line(s), and exit code.
   2. **Stop and ask the user:**
      > ⚠️ **Seeding failed.** Options:
      > - `fix` — I'll wait while you fix the seed file and we retry from this step
@@ -51,7 +53,7 @@ Run `make seed` to load all seed files into the freshly migrated DB.
   3. Wait for the user's choice before continuing.
 
 - If the command exits **cleanly with no hard errors** →
-  - Print a one-line success summary: `✓ Seeds loaded`.
+  - Print a one-line success summary: `✓ Seeds loaded (storage + DB)`.
   - Proceed to Step 3.
 
 ---

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make migrate-reset)",
+      "Bash(make seed)",
+      "Bash(make run-dev)"
+    ]
+  }
+}

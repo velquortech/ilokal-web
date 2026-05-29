@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { EditBranchDialog } from './edit-branch';
 import { DeleteBranchDialog } from './delete-branch';
-import { businessBranchPath } from '@/config/routeConfig';
+import { businessBranchesPath } from '@/config/routeConfig';
 import type { Branch, BranchStatus } from '@/lib/types';
 
 function BranchStatusBadge({ status }: { status: BranchStatus }) {
@@ -128,7 +128,9 @@ export function BranchCard({ branch, businessId, onSuccess }: BranchCardProps) {
 
       <CardFooter className="flex items-center gap-2 p-4 pt-0">
         <Button asChild size="sm" className="flex-1">
-          <Link href={businessBranchPath(businessId, branch.id)}>
+          <Link
+            href={`${businessBranchesPath(businessId)}?branch=${branch.id}`}
+          >
             Manage Branch
           </Link>
         </Button>

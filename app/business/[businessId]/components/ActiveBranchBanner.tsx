@@ -28,13 +28,13 @@ export function ActiveBranchBanner({ branches }: ActiveBranchBannerProps) {
   };
 
   return (
-    <div className="flex items-center justify-between border-b bg-blue-50 px-4 py-2 text-sm dark:bg-blue-950/40">
-      <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
+    <div className="flex items-center justify-between border-b bg-primary/10 px-4 py-2 text-sm">
+      <div className="flex items-center gap-2 text-primary">
         <MapPin className="size-3.5 shrink-0" />
         <span>
           Viewing branch: <span className="font-semibold">{branch.name}</span>
           {branch.address && (
-            <span className="text-blue-600 dark:text-blue-400">
+            <span className="text-primary/70">
               {' '}
               — {branch.address}
             </span>
@@ -43,7 +43,7 @@ export function ActiveBranchBanner({ branches }: ActiveBranchBannerProps) {
       </div>
       <button
         onClick={handleClear}
-        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200"
+        className="text-primary/70 hover:text-primary"
         aria-label="Clear branch filter"
       >
         <X className="size-3.5" />

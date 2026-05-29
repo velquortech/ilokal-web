@@ -5,7 +5,7 @@ import {
   Lock,
   LucideIcon,
   LogOut,
-  // MapPin,
+  MapPin,
   // ShoppingCart,
   // Ticket,
   // CreditCard,
@@ -96,6 +96,12 @@ export const adminNavItems: NavItem[] = [
   //   icon: BarChart3,
   //   description: 'View platform metrics & insights',
   // },
+  {
+    label: 'Branch Applications',
+    href: `${ROUTES.DASHBOARD.ADMIN}/branches`,
+    icon: MapPin,
+    description: 'Review and approve new branch location requests',
+  },
   {
     label: 'Administration',
     icon: Users,

@@ -68,6 +68,9 @@ export type {
 export type {
   Branch,
   BranchResponse,
+  BranchStats,
+  BranchStatus,
+  BranchDocument,
   CreateBranchRequest,
   UpdateBranchRequest,
   BranchFilters,

@@ -6,7 +6,7 @@ vi.mock('@/lib/api/verifyBusinessOwner', () => ({
   verifyBusinessOwner: vi.fn(),
 }));
 
-import { POST as uploadVerification } from '@/app/api/upload/verification-docs/route';
+import { POST as uploadVerification } from '@/app/api/web/upload/verification-docs/route';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 
 describe('POST /api/upload/verification-docs businessId verification', () => {

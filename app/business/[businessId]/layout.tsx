@@ -3,6 +3,8 @@ import { getBusinessUserOrRedirect } from '@/lib/api/getCurrentUser';
 import BusinessLayout from './components/BusinessLayout';
 import { getBusinessById } from '@/lib/api/business/business';
 import verifyBusinessOwner from '@/lib/api/verifyBusinessOwner';
+import { getBranchesByBusinessId } from '@/lib/api/branches/branchQuery';
+import type { Branch } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,10 +26,15 @@ export default async function BusinessIdLayout({
 
   if (!verify.authorized) redirect('/business');
 
-  const business_shop = await getBusinessById(businessId);
+  const [business_shop, branchesResult] = await Promise.all([
+    getBusinessById(businessId),
+    getBranchesByBusinessId(businessId, { per_page: 100, status: 'active' }),
+  ]);
+
+  const branches = (branchesResult.branches ?? []) as Branch[];
 
   return (
-    <BusinessLayout user={user} shop={business_shop}>
+    <BusinessLayout user={user} shop={business_shop} branches={branches}>
       {children}
     </BusinessLayout>
   );

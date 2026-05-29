@@ -337,8 +337,8 @@ describe('getBusinessProductStatsAction()', () => {
     expect(res.success).toBe(true);
     expect(res.data?.total).toBe(4);
     expect(res.data?.active).toBe(2);
-    expect(res.data?.inactive).toBe(1);
-    expect(res.data?.archived).toBe(1);
+    expect(res.data?.unlisted).toBe(1);
+    expect(res.data?.disabled).toBe(1);
   });
 
   it('calls getProductStatsByBusiness with business_id from auth', async () => {

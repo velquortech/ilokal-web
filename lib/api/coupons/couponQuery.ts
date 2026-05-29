@@ -28,6 +28,7 @@ export async function getCouponsPaginated(
       search,
       status,
       sort_by = 'newest',
+      branch_id,
     } = filters;
     const offset = (page - 1) * per_page;
 
@@ -45,6 +46,10 @@ export async function getCouponsPaginated(
 
     if (status) {
       query = query.eq('status', status);
+    }
+
+    if (branch_id) {
+      query = query.eq('branch_id', branch_id);
     }
 
     // Apply sorting
@@ -376,14 +381,23 @@ export async function getFeaturedDealById(id: string) {
 /**
  * Get coupon status counts for a business (used by stats panel)
  */
-export async function getCouponStatsByBusiness(businessId: string) {
+export async function getCouponStatsByBusiness(
+  businessId: string,
+  branchId?: string,
+) {
   try {
     const supabase = await createServerSupabaseClient();
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('coupons')
       .select('status, archived_at')
       .eq('business_id', businessId);
+
+    if (branchId) {
+      query = query.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await query;
 
     if (error) return { total: 0, published: 0, draft: 0 };
 

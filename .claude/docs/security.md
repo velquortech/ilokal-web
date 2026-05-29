@@ -463,11 +463,11 @@ NEXT_IMAGE_PUBLIC_URL=https://your-storage-url.com
 
 ### Implementation options
 
-| Layer | Tool |
-|---|---|
+| Layer            | Tool                                         |
+| ---------------- | -------------------------------------------- |
 | Edge (preferred) | Cloudflare Rate Limiting / Vercel edge rules |
-| App | Redis sliding-window middleware → return 429 |
-| Long-term | WAF / dedicated bot-detection service |
+| App              | Redis sliding-window middleware → return 429 |
+| Long-term        | WAF / dedicated bot-detection service        |
 
 ### Acceptance criteria
 

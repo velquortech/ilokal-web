@@ -62,9 +62,7 @@ export async function getBusinessCouponsPaginatedAction(
   }
 }
 
-export async function getBusinessCouponStatsAction(
-  branchId?: string,
-): Promise<
+export async function getBusinessCouponStatsAction(branchId?: string): Promise<
   ApiResponse<{
     total: number;
     published: number;

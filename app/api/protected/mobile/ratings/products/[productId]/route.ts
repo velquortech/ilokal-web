@@ -19,7 +19,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     const body = await req.json();
     const { rating, review_text } = body;
 
-    if (!rating || typeof rating !== 'number' || rating < 1 || rating > 5) {
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
       return badRequestResponse({
         message: 'rating must be an integer between 1 and 5',
       });
@@ -38,39 +38,20 @@ export async function POST(req: NextRequest, { params }: Params) {
       return notFoundResponse({ message: 'Product not found' });
     }
 
-    // Check for an existing rating by this user for this product
-    const { data: existing } = await auth.supabase
+    const { data, error } = await auth.supabase
       .from('ratings')
-      .select('id')
-      .eq('user_id', auth.user.id)
-      .eq('product_id', productId)
-      .maybeSingle();
-
-    let data, error;
-
-    if (existing) {
-      ({ data, error } = await auth.supabase
-        .from('ratings')
-        .update({
-          rating: Math.round(rating),
-          review_text: review_text ?? null,
-        })
-        .eq('id', existing.id)
-        .select('id, rating, review_text, created_at, updated_at')
-        .single());
-    } else {
-      ({ data, error } = await auth.supabase
-        .from('ratings')
-        .insert({
+      .upsert(
+        {
           user_id: auth.user.id,
           product_id: productId,
           business_id: product.business_id,
           rating: Math.round(rating),
           review_text: review_text ?? null,
-        })
-        .select('id, rating, review_text, created_at, updated_at')
-        .single());
-    }
+        },
+        { onConflict: 'user_id,product_id' },
+      )
+      .select('id, rating, review_text, created_at, updated_at')
+      .single();
 
     if (error) return generalErrorResponse({ message: error.message });
 

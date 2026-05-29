@@ -3,6 +3,7 @@ import {
   generalErrorResponse,
   successResponse,
 } from '@/app/api/helpers/response';
+import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { NextRequest } from 'next/server';
 
 type Params = { params: Promise<{ businessId: string }> };
@@ -33,7 +34,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       const average =
         total > 0
           ? ratingValues.reduce((sum, r) => sum + r.rating, 0) / total
-          : 0;
+          : null;
       return {
         id: product.id,
         name: product.name,
@@ -42,10 +43,14 @@ export async function GET(_req: NextRequest, { params }: Params) {
         sale_price: product.sale_price ?? null,
         price_type: product.price_type as string,
         price_unit: product.price_unit as string | null,
-        image_url: product.image_url,
+        image_url: resolveStorageUrl(
+          supabase,
+          'product-images',
+          product.image_url,
+        ),
         is_available: product.is_available,
         category: product.categories ?? null,
-        average_rating: Math.round(average * 10) / 10,
+        average_rating: average !== null ? Math.round(average * 10) / 10 : null,
         rating_count: total,
       };
     });

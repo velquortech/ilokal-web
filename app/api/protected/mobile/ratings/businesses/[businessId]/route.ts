@@ -19,7 +19,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     const body = await req.json();
     const { rating, comment } = body;
 
-    if (!rating || typeof rating !== 'number' || rating < 1 || rating > 5) {
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
       return badRequestResponse({
         message: 'rating must be an integer between 1 and 5',
       });

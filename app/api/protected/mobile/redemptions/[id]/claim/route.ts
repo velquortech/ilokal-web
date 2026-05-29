@@ -41,10 +41,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       .update({ is_claimed: true })
       .eq('id', id)
       .eq('user_id', auth.user.id)
+      .eq('is_claimed', false)
       .select('id, is_claimed, redeemed_at, expires_at')
-      .single();
+      .maybeSingle();
 
     if (error) return generalErrorResponse({ message: error.message });
+    if (!data)
+      return badRequestResponse({ message: 'Redemption already claimed' });
 
     return successResponse({ redemption: data });
   } catch {

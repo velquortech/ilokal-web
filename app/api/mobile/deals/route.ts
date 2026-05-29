@@ -47,10 +47,12 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = req.nextUrl;
     const category = searchParams.get('category') ?? 'All';
-    const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10));
+    const rawPage = parseInt(searchParams.get('page') ?? '1', 10);
+    const rawPerPage = parseInt(searchParams.get('per_page') ?? '20', 10);
+    const page = Math.max(1, Number.isFinite(rawPage) ? rawPage : 1);
     const per_page = Math.min(
       50,
-      Math.max(1, parseInt(searchParams.get('per_page') ?? '20', 10)),
+      Math.max(1, Number.isFinite(rawPerPage) ? rawPerPage : 20),
     );
 
     const supabase = createBearerClient();
@@ -128,23 +130,30 @@ export async function GET(req: NextRequest) {
 
     let deals = ((data ?? []) as unknown as CouponRow[]).map(toMobileDeal);
 
-    // Apply category filter (server fetches all; filter in app to avoid
-    // complex nested PostgREST predicates)
-    const filterType =
-      category !== 'All' ? (CATEGORY_TO_BUSINESS_TYPE[category] ?? null) : null;
-    if (filterType) {
-      deals = deals.filter((d) => d.business_category === filterType);
+    // Apply category filter in app (PostgREST nested-relation predicates are
+    // complex; filtering here keeps the query readable).
+    if (category !== 'All') {
+      const filterType = CATEGORY_TO_BUSINESS_TYPE[category] ?? null;
+      // Unknown category key → empty result, not all results
+      deals = filterType
+        ? deals.filter((d) => d.business_category === filterType)
+        : [];
     }
 
     // Classify: flash = expiring within 7 days; explore = everything else
     const flashCutoff = new Date(Date.now() + FLASH_WINDOW_MS).toISOString();
-    const flash = deals.filter((d) => d.expiry_date <= flashCutoff);
+    const allFlash = deals.filter((d) => d.expiry_date <= flashCutoff);
     const nonFlash = deals.filter((d) => d.expiry_date > flashCutoff);
 
     // Featured = first non-flash deal (most popular by redemptions); fall back
     // to first flash deal if there are no non-flash deals at all
-    const featuredSource = nonFlash.length > 0 ? nonFlash : flash;
+    const featuredSource = nonFlash.length > 0 ? nonFlash : allFlash;
     const featured = featuredSource[0] ?? null;
+
+    // Exclude featured from flash to prevent double-exposure in the response
+    const flash = featured
+      ? allFlash.filter((d) => d.id !== featured.id)
+      : allFlash;
 
     // Explore = non-flash deals excluding the featured one.
     // Subscribed businesses sorted first so they earn hero/duo bento slots.

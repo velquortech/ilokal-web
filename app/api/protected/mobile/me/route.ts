@@ -38,7 +38,7 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const { full_name, phone_number, avatar_url } = body;
 
-    const updates: Record<string, string> = {};
+    const updates: Record<string, string | null> = {};
     if (full_name !== undefined) updates.full_name = full_name;
     if (phone_number !== undefined) updates.phone_number = phone_number;
     if (avatar_url !== undefined) updates.avatar_url = avatar_url;

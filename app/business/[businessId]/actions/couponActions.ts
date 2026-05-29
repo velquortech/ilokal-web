@@ -62,7 +62,9 @@ export async function getBusinessCouponsPaginatedAction(
   }
 }
 
-export async function getBusinessCouponStatsAction(): Promise<
+export async function getBusinessCouponStatsAction(
+  branchId?: string,
+): Promise<
   ApiResponse<{
     total: number;
     published: number;
@@ -74,7 +76,7 @@ export async function getBusinessCouponStatsAction(): Promise<
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    const stats = await getCouponStatsByBusiness(verify.business!.id);
+    const stats = await getCouponStatsByBusiness(verify.business!.id, branchId);
     return { success: true, data: stats };
   } catch (error) {
     console.error('[getBusinessCouponStatsAction]', error);

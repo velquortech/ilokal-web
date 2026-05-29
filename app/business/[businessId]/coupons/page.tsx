@@ -41,7 +41,7 @@ export default async function CouponsPage({
 
   const [couponsResult, statsResult, productsResult] = await Promise.all([
     getBusinessCouponsPaginatedAction(filters),
-    getBusinessCouponStatsAction(),
+    getBusinessCouponStatsAction(branchId),
     getBusinessProductsAction(),
   ]);
 

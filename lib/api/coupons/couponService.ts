@@ -64,6 +64,16 @@ export async function createCoupon(
 
     if (error) {
       console.error('[createCoupon] Insert error:', error);
+      if (error.code === '23505') {
+        return {
+          success: false,
+          error: {
+            code: 'CONFLICT',
+            message:
+              'A coupon with this code already exists for your business. Use a different code.',
+          },
+        };
+      }
       return {
         success: false,
         error: {

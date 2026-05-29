@@ -11,6 +11,7 @@ type SearchParams = Promise<{
   perPage?: string;
   search?: string;
   status?: string;
+  branch?: string;
 }>;
 
 export default async function CouponsPage({
@@ -27,12 +28,20 @@ export default async function CouponsPage({
   );
   const search = params.search?.trim() || undefined;
   const status = (params.status as CouponFilters['status']) || undefined;
+  const branchId =
+    typeof params.branch === 'string' ? params.branch : undefined;
 
-  const filters: CouponFilters = { page, per_page: perPage, search, status };
+  const filters: CouponFilters = {
+    page,
+    per_page: perPage,
+    search,
+    status,
+    branch_id: branchId,
+  };
 
   const [couponsResult, statsResult, productsResult] = await Promise.all([
     getBusinessCouponsPaginatedAction(filters),
-    getBusinessCouponStatsAction(),
+    getBusinessCouponStatsAction(branchId),
     getBusinessProductsAction(),
   ]);
 

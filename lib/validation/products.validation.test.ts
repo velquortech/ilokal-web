@@ -40,12 +40,12 @@ describe('createProductSchema', () => {
     expect(result.price).toBe(185);
   });
 
-  it('defaults price_type to "fixed"', () => {
-    expect(createProductSchema.parse(base).price_type).toBe('fixed');
+  it('omits price_type when not provided (default applied at service layer)', () => {
+    expect(createProductSchema.parse(base).price_type).toBeUndefined();
   });
 
-  it('defaults is_available to true', () => {
-    expect(createProductSchema.parse(base).is_available).toBe(true);
+  it('omits is_available when not provided (default applied at service layer)', () => {
+    expect(createProductSchema.parse(base).is_available).toBeUndefined();
   });
 
   it('accepts all valid price types', () => {
@@ -80,9 +80,9 @@ describe('createProductSchema', () => {
     expect(result.description).toBe('Smooth espresso');
   });
 
-  it('accepts is_available set to false', () => {
+  it('strips unknown fields like is_available (not in createProductSchema)', () => {
     const result = createProductSchema.parse({ ...base, is_available: false });
-    expect(result.is_available).toBe(false);
+    expect(result.is_available).toBeUndefined();
   });
 
   it('rejects missing name', () => {
@@ -110,8 +110,8 @@ describe('updateProductSchema', () => {
   });
 
   it('accepts a status field', () => {
-    const result = updateProductSchema.parse({ status: 'inactive' });
-    expect(result.status).toBe('inactive');
+    const result = updateProductSchema.parse({ status: 'unlisted' });
+    expect(result.status).toBe('unlisted');
   });
 
   it('rejects an invalid status', () => {

@@ -4,14 +4,14 @@ import * as React from 'react';
 import { Image as ImageIcon, X } from 'lucide-react';
 import Image from 'next/image';
 
-const DEFAULT_MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+const DEFAULT_MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
 const DEFAULT_ALLOWED_TYPES = [
   'image/jpeg',
   'image/png',
   'image/gif',
   'image/webp',
 ];
-const DEFAULT_MAX_SIZE_LABEL = '5 MB';
+const DEFAULT_MAX_SIZE_LABEL = '2 MB';
 
 interface ImageUploadFieldProps {
   onChange?: (image: File | string | null) => void;

@@ -6,7 +6,7 @@ import type { NextRequest } from 'next/server';
 vi.mock('@/lib/utils/assertAuthorized', () => ({ assertAuthorized: vi.fn() }));
 vi.mock('@/lib/api/payments/paymentQuery', () => ({ getInvoiceById: vi.fn() }));
 
-import { POST as sendInvoice } from '@/app/api/invoices/[id]/send/route';
+import { POST as sendInvoice } from '@/app/api/web/invoices/[id]/send/route';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import * as paymentQuery from '@/lib/api/payments/paymentQuery';
 

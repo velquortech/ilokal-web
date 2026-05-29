@@ -102,7 +102,6 @@ export function BranchesContent({
         <div className="flex justify-end">
           <SearchBar
             value={searchInput}
-            className="w-100"
             onChange={(e) => setSearchInput(e.target.value)}
           />
         </div>

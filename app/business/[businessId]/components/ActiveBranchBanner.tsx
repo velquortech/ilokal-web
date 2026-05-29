@@ -28,16 +28,13 @@ export function ActiveBranchBanner({ branches }: ActiveBranchBannerProps) {
   };
 
   return (
-    <div className="flex items-center justify-between border-b bg-primary/10 px-4 py-2 text-sm">
-      <div className="flex items-center gap-2 text-primary">
+    <div className="bg-primary/10 flex items-center justify-between border-b px-4 py-2 text-sm">
+      <div className="text-primary flex items-center gap-2">
         <MapPin className="size-3.5 shrink-0" />
         <span>
           Viewing branch: <span className="font-semibold">{branch.name}</span>
           {branch.address && (
-            <span className="text-primary/70">
-              {' '}
-              — {branch.address}
-            </span>
+            <span className="text-primary/70"> — {branch.address}</span>
           )}
         </span>
       </div>

@@ -263,7 +263,10 @@ describe('createBranchAction', () => {
 
   it('returns error when not authorized', async () => {
     mockUnauthorized();
-    const res = await createBranchAction({ name: 'Branch', address: '123 St.' });
+    const res = await createBranchAction({
+      name: 'Branch',
+      address: '123 St.',
+    });
     expect(res.success).toBe(false);
   });
 

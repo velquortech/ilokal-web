@@ -8,12 +8,12 @@ Covers Next.js App Router caching layers, Supabase data fetching patterns, and r
 
 Next.js 16 stacks four caches. Understand all four before adding or removing caching from any route.
 
-| Layer | Where | Duration | Invalidated by |
-|---|---|---|---|
-| **Request Memoization** | In-memory, per request | One render tree | Automatic — new request |
-| **Data Cache** | Persistent, server-side | Indefinite (opt-out with `no-store`) | `revalidatePath`, `revalidateTag`, `time-based revalidate` |
-| **Full Route Cache** | Persistent, server-side | Until rebuild or revalidation | Same as Data Cache |
-| **Router Cache** | Client-side, in-memory | 30 s (dynamic) / 5 min (static) | `router.refresh()`, `revalidatePath` from Server Action |
+| Layer                   | Where                   | Duration                             | Invalidated by                                             |
+| ----------------------- | ----------------------- | ------------------------------------ | ---------------------------------------------------------- |
+| **Request Memoization** | In-memory, per request  | One render tree                      | Automatic — new request                                    |
+| **Data Cache**          | Persistent, server-side | Indefinite (opt-out with `no-store`) | `revalidatePath`, `revalidateTag`, `time-based revalidate` |
+| **Full Route Cache**    | Persistent, server-side | Until rebuild or revalidation        | Same as Data Cache                                         |
+| **Router Cache**        | Client-side, in-memory  | 30 s (dynamic) / 5 min (static)      | `router.refresh()`, `revalidatePath` from Server Action    |
 
 ---
 
@@ -43,6 +43,7 @@ This is the correct pattern — call it at the end of every Server Action that m
 ### Static pages (build output `○`)
 
 At build time these pages are fully static and served from CDN:
+
 - `/home` — landing page (no user data)
 - `/login`, `/signup` — public auth pages
 
@@ -54,13 +55,13 @@ At build time these pages are fully static and served from CDN:
 
 These are called by the mobile app and unauthenticated browsers.
 
-| Route | Strategy | Why |
-|---|---|---|
-| `/api/mobile/businesses/nearby` | `force-dynamic` | Location-based, lat/lng params vary |
-| `/api/mobile/businesses/:id` | `revalidate = 60` (1 min ISR) | Business data changes infrequently; tolerate 1-min stale |
-| `/api/mobile/businesses/:id/products` | `revalidate = 60` | Same |
-| `/api/mobile/businesses/:id/coupons` | `revalidate = 30` | Coupon expiry is time-sensitive |
-| `/api/mobile/businesses/:id/share` | `revalidate = 300` | Share URL is stable |
+| Route                                 | Strategy                      | Why                                                      |
+| ------------------------------------- | ----------------------------- | -------------------------------------------------------- |
+| `/api/mobile/businesses/nearby`       | `force-dynamic`               | Location-based, lat/lng params vary                      |
+| `/api/mobile/businesses/:id`          | `revalidate = 60` (1 min ISR) | Business data changes infrequently; tolerate 1-min stale |
+| `/api/mobile/businesses/:id/products` | `revalidate = 60`             | Same                                                     |
+| `/api/mobile/businesses/:id/coupons`  | `revalidate = 30`             | Coupon expiry is time-sensitive                          |
+| `/api/mobile/businesses/:id/share`    | `revalidate = 300`            | Share URL is stable                                      |
 
 > **Note:** ISR values above are targets — not all are currently implemented. Add `export const revalidate = N;` to the route file to activate.
 
@@ -84,7 +85,7 @@ import { revalidatePath } from 'next/cache';
 // After updating a business
 revalidatePath('/admin/businesses');
 revalidatePath(`/admin/businesses/${businessId}`);
-revalidatePath('/business');  // also invalidate business dashboard
+revalidatePath('/business'); // also invalidate business dashboard
 ```
 
 Use `revalidateTag` when you need fine-grained control:
@@ -164,12 +165,12 @@ Zustand stores act as an in-memory client-side cache for UI state (filters, sele
 
 ## What NOT to Cache
 
-| Scenario | Why |
-|---|---|
-| Protected routes / RLS queries | Risk of cross-user data leakage |
-| Auth session checks (`getUser`, `getSession`) | Must be fresh on every request |
-| Admin analytics | Needs real-time accuracy |
-| Coupon redemption / expiry checks | Time-critical, must reflect DB truth |
+| Scenario                                        | Why                                                 |
+| ----------------------------------------------- | --------------------------------------------------- |
+| Protected routes / RLS queries                  | Risk of cross-user data leakage                     |
+| Auth session checks (`getUser`, `getSession`)   | Must be fresh on every request                      |
+| Admin analytics                                 | Needs real-time accuracy                            |
+| Coupon redemption / expiry checks               | Time-critical, must reflect DB truth                |
 | Any query that reads `cookies()` or `headers()` | Opts the route into dynamic rendering automatically |
 
 ---

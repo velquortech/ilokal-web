@@ -13,15 +13,15 @@ make clean            # Full teardown (stops Supabase, deletes .env)
 
 ## Environment variables
 
-| Variable | Purpose |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Anon/publishable key (client-safe) |
-| `NEXT_PUBLIC_SUPABASE_SERVICE_SECRET_KEY` | Service role key (server only — bypasses RLS) |
-| `NEXT_PUBLIC_APP_URL` | Base URL used to generate share links |
-| `NEXT_PUBLIC_SUPABASE_TOKEN` | Used to name the auth cookie (`sb-<token>-auth-token`) |
-| `NEXT_IMAGE_PUBLIC_URL` | Supabase Storage base URL for `next/image` |
-| `NEXT_PUBLIC_SUPABASE_DB_URL` | Direct Postgres connection string |
+| Variable                                  | Purpose                                                |
+| ----------------------------------------- | ------------------------------------------------------ |
+| `NEXT_PUBLIC_SUPABASE_URL`                | Supabase project URL                                   |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`    | Anon/publishable key (client-safe)                     |
+| `NEXT_PUBLIC_SUPABASE_SERVICE_SECRET_KEY` | Service role key (server only — bypasses RLS)          |
+| `NEXT_PUBLIC_APP_URL`                     | Base URL used to generate share links                  |
+| `NEXT_PUBLIC_SUPABASE_TOKEN`              | Used to name the auth cookie (`sb-<token>-auth-token`) |
+| `NEXT_IMAGE_PUBLIC_URL`                   | Supabase Storage base URL for `next/image`             |
+| `NEXT_PUBLIC_SUPABASE_DB_URL`             | Direct Postgres connection string                      |
 
 ## Database migrations
 
@@ -37,22 +37,24 @@ Migrations live in `supabase/migrations/`. Apply them in timestamp order.
 
 ## Supabase clients
 
-| File | Client | When to use |
-|---|---|---|
-| `config/index.ts` | `createServerClient` (service role, cookie-based) | Server Components and web API routes |
-| `config/client.ts` | `createBrowserClient` (anon key) | Client Components |
-| `supabase/bearer.ts` | `createServerClient` (anon key, no cookies) | Public mobile routes (no session needed) |
-| `app/api/helpers/mobile-request.ts` | `createClient` with `Authorization` header | Protected mobile routes — passes user JWT so RLS applies correctly |
+| File                                | Client                                            | When to use                                                        |
+| ----------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------ |
+| `config/index.ts`                   | `createServerClient` (service role, cookie-based) | Server Components and web API routes                               |
+| `config/client.ts`                  | `createBrowserClient` (anon key)                  | Client Components                                                  |
+| `supabase/bearer.ts`                | `createServerClient` (anon key, no cookies)       | Public mobile routes (no session needed)                           |
+| `app/api/helpers/mobile-request.ts` | `createClient` with `Authorization` header        | Protected mobile routes — passes user JWT so RLS applies correctly |
 
 **Never** use the service-role client in mobile routes. Use `getMobileUser()` instead so Supabase RLS enforces row-level access automatically.
 
 ## Auth & middleware
 
 A single `proxy.ts` at the repo root handles both concerns:
+
 1. Page routes — refreshes the Supabase session cookie and enforces role-based redirects.
 2. `/api/protected/**` — shallow credential check (cookie or Bearer token present); full JWT verification happens inside each handler via `getMobileUser()`.
 
 Mobile clients obtain a JWT directly from the Supabase SDK (`supabase.auth.signInWithPassword` / OAuth) and include it in every protected request:
+
 ```
 Authorization: Bearer <supabase_access_token>
 ```
@@ -75,21 +77,26 @@ Shops Near Me — returns verified branches ordered by distance. Backed by the `
 
 **Query params**
 
-| Param | Type | Required | Default |
-|---|---|---|---|
-| `lat` | float | yes | — |
-| `lng` | float | yes | — |
-| `radius` | int (metres) | no | 5000 |
+| Param    | Type         | Required | Default |
+| -------- | ------------ | -------- | ------- |
+| `lat`    | float        | yes      | —       |
+| `lng`    | float        | yes      | —       |
+| `radius` | int (metres) | no       | 5000    |
 
 **Response 200**
+
 ```json
 {
   "businesses": [
     {
-      "branch_id": "uuid", "branch_name": "string", "address": "string",
+      "branch_id": "uuid",
+      "branch_name": "string",
+      "address": "string",
       "distance_meters": 123.4,
-      "business_id": "uuid", "business_name": "string",
-      "business_description": "string", "logo_url": "string",
+      "business_id": "uuid",
+      "business_name": "string",
+      "business_description": "string",
+      "logo_url": "string",
       "interior_images": ["url"]
     }
   ]
@@ -101,11 +108,15 @@ Shops Near Me — returns verified branches ordered by distance. Backed by the `
 Business detail — includes `interior_images` and branch list.
 
 **Response 200**
+
 ```json
 {
   "business": {
-    "id": "uuid", "shop_name": "string", "description": "string",
-    "logo_url": "string", "interior_images": ["url"],
+    "id": "uuid",
+    "shop_name": "string",
+    "description": "string",
+    "logo_url": "string",
+    "interior_images": ["url"],
     "status": "verified",
     "branches": [{ "id": "uuid", "name": "string", "address": "string" }]
   }
@@ -117,11 +128,18 @@ Business detail — includes `interior_images` and branch list.
 Products and menu items (only `is_available = true`).
 
 **Response 200**
+
 ```json
 {
   "products": [
-    { "id": "uuid", "name": "string", "description": "string",
-      "price": 0.00, "image_url": "string", "is_available": true }
+    {
+      "id": "uuid",
+      "name": "string",
+      "description": "string",
+      "price": 0.0,
+      "image_url": "string",
+      "is_available": true
+    }
   ]
 }
 ```
@@ -131,13 +149,19 @@ Products and menu items (only `is_available = true`).
 Active deals and coupons (excludes expired).
 
 **Response 200**
+
 ```json
 {
   "coupons": [
-    { "id": "uuid", "code": "string", "description": "string",
+    {
+      "id": "uuid",
+      "code": "string",
+      "description": "string",
       "discount": { "type": "percentage|fixed_amount", "value": 20 },
       "usage_scope": "string",
-      "start_date": "iso", "expiry_date": "iso" }
+      "start_date": "iso",
+      "expiry_date": "iso"
+    }
   ]
 }
 ```
@@ -147,9 +171,13 @@ Active deals and coupons (excludes expired).
 Shareable content for social platforms.
 
 **Response 200**
+
 ```json
 {
-  "share_url": "https://...", "title": "string", "description": "string", "image_url": "string",
+  "share_url": "https://...",
+  "title": "string",
+  "description": "string",
+  "image_url": "string",
   "platforms": {
     "facebook": "https://facebook.com/sharer/...",
     "twitter": "https://twitter.com/intent/...",
@@ -168,11 +196,19 @@ Shareable content for social platforms.
 List all businesses the user follows.
 
 **Response 200**
+
 ```json
 {
   "subscriptions": [
-    { "id": "uuid", "created_at": "iso",
-      "businesses": { "id": "uuid", "shop_name": "string", "logo_url": "string" } }
+    {
+      "id": "uuid",
+      "created_at": "iso",
+      "businesses": {
+        "id": "uuid",
+        "shop_name": "string",
+        "logo_url": "string"
+      }
+    }
   ]
 }
 ```
@@ -190,15 +226,29 @@ Unsubscribe. **Response 200:** `{ "message": "Unsubscribed successfully" }`
 List coupon redemptions. **Query:** `filter=active|claimed|expired` (omit for all). `active` = not yet claimed and not expired.
 
 **Response 200**
+
 ```json
 {
   "redemptions": [
-    { "id": "uuid", "redeemed_at": "iso", "expires_at": "iso", "is_claimed": false,
-      "coupons": { "id": "uuid", "code": "string", "description": "string",
+    {
+      "id": "uuid",
+      "redeemed_at": "iso",
+      "expires_at": "iso",
+      "is_claimed": false,
+      "coupons": {
+        "id": "uuid",
+        "code": "string",
+        "description": "string",
         "discount": { "type": "percentage|fixed_amount", "value": 20 },
         "expiry_date": "iso",
-        "businesses": { "id": "uuid", "shop_name": "string", "logo_url": "string" } },
-      "branches": { "id": "uuid", "name": "string", "address": "string" } }
+        "businesses": {
+          "id": "uuid",
+          "shop_name": "string",
+          "logo_url": "string"
+        }
+      },
+      "branches": { "id": "uuid", "name": "string", "address": "string" }
+    }
   ]
 }
 ```
@@ -226,29 +276,29 @@ Combines active redemptions + followed businesses for the in-app trip planner.
 
 ## Key file locations
 
-| Purpose | Path |
-|---|---|
-| Mobile auth helper | `app/api/helpers/mobile-request.ts` |
-| Response helpers | `app/api/helpers/response.ts` |
-| Proxy | `proxy.ts` |
-| Bearer Supabase client | `supabase/bearer.ts` |
-| Server Supabase client | `config/index.ts` |
-| Browser Supabase client | `config/client.ts` |
-| DB types | `lib/types/database.ts` (auto-generated — run `make generate-types`) |
-| Migrations | `supabase/migrations/` |
-| Nearby businesses RPC | `supabase/migrations/20260508000000_nearby_businesses_fn.sql` |
+| Purpose                 | Path                                                                 |
+| ----------------------- | -------------------------------------------------------------------- |
+| Mobile auth helper      | `app/api/helpers/mobile-request.ts`                                  |
+| Response helpers        | `app/api/helpers/response.ts`                                        |
+| Proxy                   | `proxy.ts`                                                           |
+| Bearer Supabase client  | `supabase/bearer.ts`                                                 |
+| Server Supabase client  | `config/index.ts`                                                    |
+| Browser Supabase client | `config/client.ts`                                                   |
+| DB types                | `lib/types/database.ts` (auto-generated — run `make generate-types`) |
+| Migrations              | `supabase/migrations/`                                               |
+| Nearby businesses RPC   | `supabase/migrations/20260508000000_nearby_businesses_fn.sql`        |
 
 ---
 
 ## Schema gotchas
 
-| Topic | Actual state | Affected routes |
-|---|---|---|
-| `profiles.role` | must be `'business_owner'` or `'admin'` — NOT `'user'` | signup, profile insert |
-| `coupons` columns | normalized in `20260523000000`: `code` (not `title`), `discount` JSONB (not `type` enum), `expiry_date` (not `end_date`), `status` (`draft\|published`). `redeem_time_limit_minutes` removed. | all coupon routes |
-| `products.status` | `'active' \| 'unlisted' \| 'disabled'` — NOT `inactive\|archived`. `is_available` synced by trigger; `status` is canonical. | products routes |
-| Redemption tables | `user_redemptions` is live (has `expires_at`, `is_claimed`, `branch_id`). `coupon_redemptions` exists but is unused by routes. Analytics reads from `user_redemptions`. | redemptions, analytics |
-| Mobile response shape | `successResponse(data)` returns flat data — NOT wrapped in `ApiResponse<T>`. The `success/error` envelope applies to web routes only. | all mobile routes |
+| Topic                 | Actual state                                                                                                                                                                                  | Affected routes        |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| `profiles.role`       | must be `'business_owner'` or `'admin'` — NOT `'user'`                                                                                                                                        | signup, profile insert |
+| `coupons` columns     | normalized in `20260523000000`: `code` (not `title`), `discount` JSONB (not `type` enum), `expiry_date` (not `end_date`), `status` (`draft\|published`). `redeem_time_limit_minutes` removed. | all coupon routes      |
+| `products.status`     | `'active' \| 'unlisted' \| 'disabled'` — NOT `inactive\|archived`. `is_available` synced by trigger; `status` is canonical.                                                                   | products routes        |
+| Redemption tables     | `user_redemptions` is live (has `expires_at`, `is_claimed`, `branch_id`). `coupon_redemptions` exists but is unused by routes. Analytics reads from `user_redemptions`.                       | redemptions, analytics |
+| Mobile response shape | `successResponse(data)` returns flat data — NOT wrapped in `ApiResponse<T>`. The `success/error` envelope applies to web routes only.                                                         | all mobile routes      |
 
 ## Local test seed data
 

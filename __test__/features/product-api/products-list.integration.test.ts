@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET } from '@/app/api/products/route';
+import { GET } from '@/app/api/web/products/route';
 import * as productQuery from '@/lib/api/products/productQuery';
 import type { PaginatedProductsResponse } from '@/lib/types';
 import { paginatedProductsResponse } from '../../mockData/products.mock';
@@ -159,10 +159,10 @@ describe('GET /api/products', () => {
   });
 
   it('passes explicit status filter when provided', async () => {
-    await GET(makeRequest({ status: 'inactive' }));
+    await GET(makeRequest({ status: 'unlisted' }));
 
     expect(vi.mocked(productQuery.getProductsPaginated)).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'inactive' }),
+      expect.objectContaining({ status: 'unlisted' }),
     );
   });
 

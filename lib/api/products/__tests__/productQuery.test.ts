@@ -30,6 +30,7 @@ describe('productQuery', () => {
     chainedMock = {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
       or: vi.fn().mockReturnThis(),
       ilike: vi.fn().mockReturnThis(),
       lte: vi.fn().mockReturnThis(),
@@ -448,12 +449,13 @@ describe('productQuery', () => {
       });
     });
 
-    it('should apply limit when provided', async () => {
+    it('should filter by branch_id when provided', async () => {
       chainedMock.order.mockResolvedValueOnce({ data: [], error: null });
 
-      await productQuery.getProductsByBusinessId('biz-1', 'active', 10);
+      const branchId = 'branch-00000000-0000-0000-0000-000000000001';
+      await productQuery.getProductsByBusinessId('biz-1', 'active', branchId);
 
-      expect(chainedMock.limit).toHaveBeenCalledWith(10);
+      expect(chainedMock.eq).toHaveBeenCalledWith('branch_id', branchId);
     });
   });
 

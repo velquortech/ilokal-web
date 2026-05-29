@@ -9,6 +9,7 @@ import * as couponQuery from '@/lib/api/coupons/couponQuery';
 
 vi.mock('@/lib/api/verifyBusinessOwner');
 vi.mock('@/lib/api/coupons/couponQuery');
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('@/lib/services/couponService', () => ({
   default: {
     create: vi.fn(),

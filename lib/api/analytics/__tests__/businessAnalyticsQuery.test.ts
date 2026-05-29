@@ -246,17 +246,31 @@ describe('businessAnalyticsQuery', () => {
 
   describe('getCouponStats', () => {
     it('should return coupon redemption statistics', async () => {
-      const eq = vi.fn().mockReturnValue({
+      // Evaluation order inside getCouponStats:
+      // 1. supabase.from('user_redemptions').select('coupon_id') — outer chain starts
+      // 2. supabase.from('coupons').select('id').eq(...) — inner await for IDs
+      // 3. .in(ids) — outer chain completes
+      const couponEq = vi.fn().mockResolvedValue({
+        data: [{ id: 'c-1' }, { id: 'c-2' }],
+        error: null,
+      });
+      const couponSelect = vi.fn().mockReturnValue({ eq: couponEq });
+
+      const redemptionIn = vi.fn().mockResolvedValue({
         data: [
-          { coupon_id: 'c-1', discount_amount: 450 },
-          { coupon_id: 'c-2', discount_amount: 280 },
+          { coupon_id: 'c-1' },
+          { coupon_id: 'c-1' },
+          { coupon_id: 'c-2' },
         ],
         error: null,
       });
-      const select = vi.fn().mockReturnValue({ data: [], error: null, eq });
+      const redemptionSelect = vi.fn().mockReturnValue({ in: redemptionIn });
 
       const supabaseClient = {
-        from: vi.fn().mockReturnValue({ select }),
+        from: vi
+          .fn()
+          .mockImplementationOnce(() => ({ select: redemptionSelect })) // user_redemptions (first)
+          .mockImplementationOnce(() => ({ select: couponSelect })), // coupons (second)
       } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
 
       (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
@@ -266,18 +280,23 @@ describe('businessAnalyticsQuery', () => {
       const result = await getCouponStats('biz-1');
 
       expect(Array.isArray(result)).toBe(true);
-      if (result.length > 0) {
-        expect(result[0]).toHaveProperty('coupon_id');
-        expect(result[0]).toHaveProperty('times_redeemed');
-      }
+      expect(result).toHaveLength(2);
+      expect(result[0]).toHaveProperty('coupon_id');
+      expect(result[0]).toHaveProperty('times_redeemed');
     });
 
     it('should return empty array when no coupons found', async () => {
-      const eq = vi.fn().mockReturnValue({ data: [], error: null });
-      const select = vi.fn().mockReturnValue({ data: [], error: null, eq });
+      const couponEq = vi.fn().mockResolvedValue({ data: [], error: null });
+      const couponSelect = vi.fn().mockReturnValue({ eq: couponEq });
+
+      const redemptionIn = vi.fn().mockResolvedValue({ data: [], error: null });
+      const redemptionSelect = vi.fn().mockReturnValue({ in: redemptionIn });
 
       const supabaseClient = {
-        from: vi.fn().mockReturnValue({ select }),
+        from: vi
+          .fn()
+          .mockImplementationOnce(() => ({ select: redemptionSelect })) // user_redemptions (first)
+          .mockImplementationOnce(() => ({ select: couponSelect })), // coupons (second)
       } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
 
       (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
@@ -494,7 +513,7 @@ describe('getRetentionData', () => {
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'coupons')
           return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'coupon_redemptions')
+        if (table === 'user_redemptions')
           return makeChain({
             data: [
               { user_id: 'user-1', redeemed_at: daysAgo(5) },
@@ -525,7 +544,7 @@ describe('getRetentionData', () => {
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'coupons')
           return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'coupon_redemptions')
+        if (table === 'user_redemptions')
           return makeChain({
             // User redeemed last month only — should appear as churned in current month
             data: [{ user_id: 'user-churn', redeemed_at: daysAgo(35) }],
@@ -586,7 +605,7 @@ describe('getMonthlyTrend', () => {
           });
         if (table === 'coupons')
           return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'coupon_redemptions')
+        if (table === 'user_redemptions')
           return makeChain({
             data: [{ redeemed_at: daysAgo(5) }],
             error: null,
@@ -620,7 +639,7 @@ describe('getMonthlyTrend', () => {
           });
         if (table === 'coupons')
           return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'coupon_redemptions')
+        if (table === 'user_redemptions')
           return makeChain({
             data: Array.from({ length: 20 }, (_, i) => ({
               redeemed_at: daysAgo(i * 3),
@@ -700,7 +719,7 @@ describe('getFollowerFunnel', () => {
           });
         if (table === 'coupons')
           return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'coupon_redemptions')
+        if (table === 'user_redemptions')
           return makeChain({
             data: [{ user_id: 'u1', redeemed_at: daysAgo(10) }],
             error: null,
@@ -732,7 +751,7 @@ describe('getFollowerFunnel', () => {
           });
         if (table === 'coupons')
           return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'coupon_redemptions')
+        if (table === 'user_redemptions')
           return makeChain({
             data: [
               { user_id: 'u1', redeemed_at: thisMonthDate },
@@ -798,7 +817,7 @@ describe('getCouponPerformance', () => {
             ],
             error: null,
           });
-        if (table === 'coupon_redemptions')
+        if (table === 'user_redemptions')
           return makeChain({ data: redemptions, error: null });
         return makeChain({ data: [], error: null });
       }),
@@ -840,7 +859,7 @@ describe('getCouponPerformance', () => {
             ],
             error: null,
           });
-        if (table === 'coupon_redemptions')
+        if (table === 'user_redemptions')
           return makeChain({
             data: [
               // cA → 5 redemptions, cB → 10 redemptions
@@ -904,7 +923,7 @@ describe('getCustomerSegments', () => {
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'coupons')
           return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'coupon_redemptions')
+        if (table === 'user_redemptions')
           return makeChain({
             data: Array.from({ length: 4 }, () => ({
               user_id: 'user-champion',
@@ -930,7 +949,7 @@ describe('getCustomerSegments', () => {
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'coupons')
           return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'coupon_redemptions')
+        if (table === 'user_redemptions')
           return makeChain({
             data: [
               { user_id: 'user-loyal', redeemed_at: daysAgo(40) },
@@ -956,7 +975,7 @@ describe('getCustomerSegments', () => {
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'coupons')
           return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'coupon_redemptions')
+        if (table === 'user_redemptions')
           return makeChain({
             data: [{ user_id: 'user-new', redeemed_at: daysAgo(7) }],
             error: null,
@@ -979,7 +998,7 @@ describe('getCustomerSegments', () => {
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'coupons')
           return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'coupon_redemptions')
+        if (table === 'user_redemptions')
           return makeChain({
             data: [{ user_id: 'user-lost', redeemed_at: daysAgo(100) }],
             error: null,

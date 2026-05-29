@@ -247,6 +247,39 @@ export async function getBusinessBranchStatsAction(): Promise<
   }
 }
 
+export async function getBusinessBranchByIdAction(
+  branchId: string,
+): Promise<ApiResponse<Branch>> {
+  try {
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+
+    const { branch, error } = await branchQuery.getBranchById(branchId);
+    if (error || !branch) {
+      return {
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Branch not found' },
+      };
+    }
+
+    if (branch.business_id !== verify.business!.id) {
+      return {
+        success: false,
+        error: { code: 'AUTHORIZATION_ERROR', message: 'Access denied' },
+      };
+    }
+
+    return { success: true, data: branch };
+  } catch (error) {
+    console.error('[getBusinessBranchByIdAction]', error);
+    return {
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch branch' },
+    };
+  }
+}
+
 // ===== Branch Management Actions =====
 
 /**

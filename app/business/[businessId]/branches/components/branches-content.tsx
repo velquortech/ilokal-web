@@ -4,11 +4,10 @@ import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { SearchBar } from '@/components/custom/Searchbar';
 import { Plus } from 'lucide-react';
 import { BranchStatsCards } from './branch-stats';
-import { BranchesTable } from './branches-table';
+import { BranchesGrid } from './branches-grid';
 import { useBusinessShop } from '@/providers/BusinessProvider';
 import { businessBranchesCreatePath } from '@/config/routeConfig';
 import type { Branch, BranchStats } from '@/lib/types';
@@ -99,24 +98,24 @@ export function BranchesContent({
 
       <BranchStatsCards stats={stats} />
 
-      <Card>
-        <CardContent className="space-y-2">
-          <div className="inline-flex h-10 w-full justify-end">
-            <SearchBar
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
-          </div>
-          <BranchesTable
-            branches={branches}
-            page={metadata.page}
-            pageSize={metadata.per_page}
-            totalPages={metadata.total_pages}
-            onPaginationChange={handlePaginationChange}
-            onSuccess={() => router.refresh()}
+      <div className="space-y-3">
+        <div className="flex justify-end">
+          <SearchBar
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
           />
-        </CardContent>
-      </Card>
+        </div>
+        <BranchesGrid
+          branches={branches}
+          businessId={business?.id ?? ''}
+          page={metadata.page}
+          pageSize={metadata.per_page}
+          totalPages={metadata.total_pages}
+          totalItems={metadata.total}
+          onPaginationChange={handlePaginationChange}
+          onSuccess={() => router.refresh()}
+        />
+      </div>
     </div>
   );
 }

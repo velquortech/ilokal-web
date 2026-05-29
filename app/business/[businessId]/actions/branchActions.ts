@@ -28,7 +28,7 @@ const ALLOWED_DOC_TYPES = [
   'image/png',
   'image/webp',
 ];
-const MAX_DOC_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_DOC_SIZE = 2 * 1024 * 1024; // 2 MB
 
 export async function uploadBranchDocumentAction(
   formData: FormData,
@@ -52,7 +52,7 @@ export async function uploadBranchDocumentAction(
         success: false,
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'File must be less than 10 MB',
+          message: 'File must be less than 2 MB',
         },
       };
     }
@@ -103,7 +103,7 @@ const ALLOWED_IMAGE_TYPES = [
   'image/gif',
   'image/webp',
 ];
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2 MB
 
 export async function uploadBranchImageAction(
   formData: FormData,
@@ -127,7 +127,7 @@ export async function uploadBranchImageAction(
         success: false,
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'Image must be less than 5 MB',
+          message: 'Image must be less than 2 MB',
         },
       };
     }

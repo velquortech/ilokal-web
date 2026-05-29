@@ -99,3 +99,10 @@ export function businessBranchesPath(businessId: string): string {
 export function businessBranchesCreatePath(businessId: string): string {
   return businessPath(businessId, 'branches', 'create');
 }
+
+export function businessBranchPath(
+  businessId: string,
+  branchId: string,
+): string {
+  return businessPath(businessId, 'branches', branchId);
+}

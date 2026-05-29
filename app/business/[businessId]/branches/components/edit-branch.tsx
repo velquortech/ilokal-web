@@ -57,8 +57,8 @@ export function EditBranchDialog({
   const defaultValues: UpdateBranchRequest = {
     name: branch.name,
     address: branch.address ?? '',
-    latitude: branch.location?.coordinates[1] ?? undefined,
-    longitude: branch.location?.coordinates[0] ?? undefined,
+    latitude: branch.location?.coordinates?.[1] ?? undefined,
+    longitude: branch.location?.coordinates?.[0] ?? undefined,
     phone: branch.phone ?? '',
     email: branch.email ?? '',
     description: branch.description ?? '',

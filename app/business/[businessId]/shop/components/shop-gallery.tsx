@@ -1,6 +1,7 @@
 import { Masonry } from '@/components/custom/Masonry';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, Image as ImageIcon } from 'lucide-react';
+import Image from 'next/image';
 import { BusinessShop } from '@/providers/BusinessProvider';
 import type { Branch } from '@/lib/types';
 
@@ -48,18 +49,24 @@ export function ShopGallery({ business, branch }: ShopGalleryProps) {
       </div>
 
       {hasImages ? (
-        <Masonry images={images} unoptimized />
+        <Masonry images={images} />
       ) : hasAnyImages ? (
         // 1–3 images: simple row grid
         <div className="grid grid-cols-3 gap-3">
           {rawImages.map((src, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <div
               key={i}
-              src={src}
-              alt={`Photo ${i + 1}`}
-              className="aspect-video w-full rounded-xl object-cover"
-            />
+              className="relative aspect-video w-full overflow-hidden rounded-xl"
+            >
+              <Image
+                src={src}
+                alt={`Photo ${i + 1}`}
+                fill
+                loading="lazy"
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 33vw"
+              />
+            </div>
           ))}
         </div>
       ) : (

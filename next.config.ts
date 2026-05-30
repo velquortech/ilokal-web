@@ -1,14 +1,17 @@
 import type { NextConfig } from 'next';
 
-function parseImageUrl(
-  url: string | undefined,
-): { protocol: 'http' | 'https'; hostname: string } | null {
+function parseImageUrl(url: string | undefined): {
+  protocol: 'http' | 'https';
+  hostname: string;
+  port?: string;
+} | null {
   if (!url) return null;
   try {
     const parsed = new URL(url);
     return {
       protocol: parsed.protocol.slice(0, -1) as 'http' | 'https',
       hostname: parsed.hostname || '',
+      ...(parsed.port ? { port: parsed.port } : {}),
     };
   } catch {
     console.warn(`Invalid image URL: ${url}`);
@@ -20,24 +23,29 @@ const imageRemotePatterns: Array<{
   protocol: 'http' | 'https';
   hostname: string;
   port?: string;
+  pathname?: string;
 }> = [
   {
     protocol: 'http',
     hostname: '127.0.0.1',
     port: '54321',
+    pathname: '/**',
   },
   {
     protocol: 'http',
     hostname: 'localhost',
     port: '54321',
+    pathname: '/**',
   },
   {
     protocol: 'https',
     hostname: 'images.unsplash.com',
+    pathname: '/**',
   },
   {
     protocol: 'https',
     hostname: 'picsum.photos',
+    pathname: '/**',
   },
 ];
 
@@ -46,6 +54,8 @@ if (prodImageUrl) {
   imageRemotePatterns.push({
     protocol: prodImageUrl.protocol,
     hostname: prodImageUrl.hostname,
+    ...(prodImageUrl.port ? { port: prodImageUrl.port } : {}),
+    pathname: '/**',
   });
 }
 
@@ -57,26 +67,6 @@ const buildCSPImageSources = (): string => {
   }
   if (prodImageUrl) {
     sources.push(`${prodImageUrl.protocol}://${prodImageUrl.hostname}`);
-  }
-  return sources.join(' ');
-};
-
-// Build script-src for CSP. In production we disallow 'unsafe-inline' and 'unsafe-eval'.
-// For any inline scripts in production, prefer using nonces or CSP hashes.
-const buildScriptSrc = (): string => {
-  const sources = [`'self'`];
-  if (process.env.NODE_ENV !== 'production') {
-    // Keep relaxed CSP in development for convenience
-    sources.push("'unsafe-inline'", "'unsafe-eval'");
-  }
-  return sources.join(' ');
-};
-
-// Build style-src for CSP. Allow 'unsafe-inline' only in development.
-const buildStyleSrc = (): string => {
-  const sources = [`'self'`];
-  if (process.env.NODE_ENV !== 'production') {
-    sources.push("'unsafe-inline'");
   }
   return sources.join(' ');
 };
@@ -93,6 +83,10 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_SUPABASE_TOKEN: process.env.NEXT_PUBLIC_SUPABASE_TOKEN,
   },
   images: {
+    // Next.js blocks optimization requests to private IPs (127.0.0.1) as SSRF
+    // protection. In dev, Supabase Storage runs on localhost so we skip
+    // optimization here; production uses a public URL and optimizes normally.
+    unoptimized: process.env.NODE_ENV === 'development',
     remotePatterns: imageRemotePatterns,
   },
   async redirects() {

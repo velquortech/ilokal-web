@@ -3,13 +3,17 @@
  * Handles all direct Supabase database operations for products and categories
  */
 
+import { cache } from 'react';
 import { createServerSupabaseClient } from '@/supabase/server';
+import { normalizeProductSale } from '@/lib/product-helper';
 import type {
   Product,
+  ProductResponse,
   Category,
   PaginatedProductsResponse,
   ProductFilters,
   CategoryFilters,
+  ProductStats,
 } from '@/lib/types';
 
 // ===== Category Queries =====
@@ -147,7 +151,7 @@ export async function getProductsPaginated(
     let query = supabase.from('products').select(
       `*,
         category:category_id (id, name, slug, description),
-        business:business_id (id, name)`,
+        business:business_id (id, shop_name)`,
       { count: 'exact' },
     );
 
@@ -201,7 +205,7 @@ export async function getProductsPaginated(
     }
 
     return {
-      products: (data || []) as typeof data,
+      products: ((data || []) as ProductResponse[]).map(normalizeProductSale),
       total: count || 0,
       page,
       per_page,
@@ -225,7 +229,7 @@ export async function getProductById(id: string) {
       .select(
         `*,
         category:category_id (id, name, slug),
-        business:business_id (id, name)`,
+        business:business_id (id, shop_name)`,
       )
       .eq('id', id)
       .single();
@@ -234,7 +238,7 @@ export async function getProductById(id: string) {
       return { error: 'Product not found' as const };
     }
 
-    return { product: data };
+    return { product: normalizeProductSale(data as ProductResponse) };
   } catch (err) {
     console.error('[getProductById]', err);
     return { error: 'Failed to fetch product' as const };
@@ -242,38 +246,72 @@ export async function getProductById(id: string) {
 }
 
 /**
- * Get all products for a business
+ * Get per-status product counts for a business (for the stats bar).
+ * Wrapped with React cache() so parallel server component reads share one DB call.
  */
-export async function getProductsByBusinessId(
-  business_id: string,
-  status?: string,
-) {
-  try {
-    const supabase = await createServerSupabaseClient();
+export const getProductStatsByBusinessId = cache(
+  async (business_id: string): Promise<ProductStats> => {
+    try {
+      const supabase = await createServerSupabaseClient();
 
-    let query = supabase
-      .from('products')
-      .select('*,category:category_id (id, name, slug)')
-      .eq('business_id', business_id);
+      const { data, error } = await supabase
+        .from('products')
+        .select('status, sale_price')
+        .eq('business_id', business_id)
+        .is('archived_at', null);
 
-    if (status) {
-      query = query.eq('status', status);
+      if (error || !data) {
+        return { total: 0, active: 0, unlisted: 0, disabled: 0, on_sale: 0 };
+      }
+
+      return {
+        total: data.length,
+        active: data.filter((p) => p.status === 'active').length,
+        unlisted: data.filter((p) => p.status === 'unlisted').length,
+        disabled: data.filter((p) => p.status === 'disabled').length,
+        on_sale: data.filter((p) => p.sale_price != null).length,
+      };
+    } catch (err) {
+      console.error('[getProductStatsByBusinessId]', err);
+      return { total: 0, active: 0, unlisted: 0, disabled: 0, on_sale: 0 };
     }
+  },
+);
 
-    const { data, error } = await query.order('created_at', {
-      ascending: false,
-    });
+/**
+ * Get all products for a business.
+ * Wrapped with React cache() so parallel server component reads share one DB call.
+ */
+export const getProductsByBusinessId = cache(
+  async (business_id: string, status?: string) => {
+    try {
+      const supabase = await createServerSupabaseClient();
 
-    if (error) {
+      let query = supabase
+        .from('products')
+        .select('*,category:category_id (id, name, slug, description)')
+        .eq('business_id', business_id)
+        .is('archived_at', null);
+
+      if (status) {
+        query = query.eq('status', status);
+      }
+
+      const { data, error } = await query.order('created_at', {
+        ascending: false,
+      });
+
+      if (error) {
+        return { error: 'Failed to fetch business products' as const };
+      }
+
+      return { products: (data || []) as typeof data };
+    } catch (err) {
+      console.error('[getProductsByBusinessId]', err);
       return { error: 'Failed to fetch business products' as const };
     }
-
-    return { products: (data || []) as typeof data };
-  } catch (err) {
-    console.error('[getProductsByBusinessId]', err);
-    return { error: 'Failed to fetch business products' as const };
-  }
-}
+  },
+);
 
 /**
  * Get products by category
@@ -293,10 +331,96 @@ export async function getProductsByCategory(category_id: string) {
       return null;
     }
 
-    return (data || []) as Product[];
+    return ((data || []) as Product[]).map(normalizeProductSale);
   } catch (err) {
     console.error('[getProductsByCategory]', err);
     return null;
+  }
+}
+
+/**
+ * Apply a sale price to a product.
+ * Reusable: called from service layer and can be used by admin or mobile routes.
+ */
+export async function applySaleToProduct(
+  id: string,
+  data: {
+    sale_price: number;
+    sale_starts_at?: string | null;
+    sale_ends_at?: string | null;
+  },
+) {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data: updated, error } = await supabase
+      .from('products')
+      .update({
+        sale_price: data.sale_price,
+        sale_starts_at: data.sale_starts_at ?? null,
+        sale_ends_at: data.sale_ends_at ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) return { error: `Failed to apply sale: ${error.message}` };
+    return { product: updated };
+  } catch (err) {
+    console.error('[applySaleToProduct]', err);
+    return { error: 'Failed to apply sale' };
+  }
+}
+
+/**
+ * Remove an active sale from a product.
+ * Reusable: called from service layer and can be used by admin or mobile routes.
+ */
+export async function removeSaleFromProduct(id: string) {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data: updated, error } = await supabase
+      .from('products')
+      .update({
+        sale_price: null,
+        sale_starts_at: null,
+        sale_ends_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) return { error: `Failed to remove sale: ${error.message}` };
+    return { product: updated };
+  } catch (err) {
+    console.error('[removeSaleFromProduct]', err);
+    return { error: 'Failed to remove sale' };
+  }
+}
+
+/**
+ * Get product status counts for a business (used by stats panel)
+ */
+export async function getProductStatsByBusiness(business_id: string) {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('products')
+      .select('status')
+      .eq('business_id', business_id);
+
+    if (error) return { total: 0, active: 0, inactive: 0, archived: 0 };
+
+    const all = data || [];
+    return {
+      total: all.length,
+      active: all.filter((p) => p.status === 'active').length,
+      inactive: all.filter((p) => p.status === 'inactive').length,
+      archived: all.filter((p) => p.status === 'archived').length,
+    };
+  } catch {
+    return { total: 0, active: 0, inactive: 0, archived: 0 };
   }
 }
 

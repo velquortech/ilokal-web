@@ -26,7 +26,7 @@ export async function getCouponsPaginated(
       page = 1,
       per_page = 20,
       search,
-      status = 'active',
+      status,
       sort_by = 'newest',
     } = filters;
     const offset = (page - 1) * per_page;
@@ -43,12 +43,8 @@ export async function getCouponsPaginated(
       query = query.or(`code.ilike.%${search}%,description.ilike.%${search}%`);
     }
 
-    // Filter by status
-    const now = new Date().toISOString();
-    if (status === 'active') {
-      query = query.lte('start_date', now).gte('expiry_date', now);
-    } else if (status === 'expired') {
-      query = query.lt('expiry_date', now);
+    if (status) {
+      query = query.eq('status', status);
     }
 
     // Apply sorting
@@ -129,6 +125,7 @@ export async function getCouponByCode(code: string) {
       .from('coupons')
       .select('*')
       .eq('code', code.toUpperCase())
+      .eq('status', 'published')
       .is('archived_at', null)
       .single();
 
@@ -183,13 +180,13 @@ export async function getRedemptionStats(
 
     // Get redemption count
     const { count: totalRedemptions } = await supabase
-      .from('coupon_redemptions')
+      .from('user_redemptions')
       .select('id', { count: 'exact', head: true })
       .eq('coupon_id', couponId);
 
     // Get unique users
     const { data: redemptions } = await supabase
-      .from('coupon_redemptions')
+      .from('user_redemptions')
       .select('user_id')
       .eq('coupon_id', couponId);
 
@@ -197,7 +194,7 @@ export async function getRedemptionStats(
 
     // Get last redeemed date
     const { data: lastRedemption } = await supabase
-      .from('coupon_redemptions')
+      .from('user_redemptions')
       .select('redeemed_at')
       .eq('coupon_id', couponId)
       .order('redeemed_at', { ascending: false })
@@ -373,6 +370,32 @@ export async function getFeaturedDealById(id: string) {
   } catch (err) {
     console.error('[getFeaturedDealById]', err);
     return { error: 'Failed to fetch featured deal' as const };
+  }
+}
+
+/**
+ * Get coupon status counts for a business (used by stats panel)
+ */
+export async function getCouponStatsByBusiness(businessId: string) {
+  try {
+    const supabase = await createServerSupabaseClient();
+
+    const { data, error } = await supabase
+      .from('coupons')
+      .select('status, archived_at')
+      .eq('business_id', businessId);
+
+    if (error) return { total: 0, published: 0, draft: 0 };
+
+    const nonArchived = (data || []).filter((c) => c.archived_at === null);
+
+    return {
+      total: nonArchived.length,
+      published: nonArchived.filter((c) => c.status === 'published').length,
+      draft: nonArchived.filter((c) => c.status === 'draft').length,
+    };
+  } catch {
+    return { total: 0, published: 0, draft: 0 };
   }
 }
 

@@ -349,7 +349,7 @@ lib/
 │   ├── database.ts             # Supabase database types (auto-generated)
 │   ├── forms.ts                # Form-related types
 │   │   - FormFieldConfig, SelectFieldConfig, UserFormModalProps
-│   ├── middleware.ts           # Middleware types
+│   ├── proxy.ts                # Proxy types
 │   ├── phoneInput.ts           # Phone input types
 │   └── ...
 │

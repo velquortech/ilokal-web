@@ -32,16 +32,11 @@ export const ROUTES = {
       LOGOUT: '/api/auth/logout',
     },
     UPLOAD: '/api/upload',
-    // Canonical API base prefixes (use these to build matchers and guards)
     ADMIN_BASE: '/api/admin',
-    BILLING_BASE: '/api/billing',
-    PAYMENTS_BASE: '/api/payments',
-    SUBSCRIPTIONS_BASE: '/api/subscriptions',
-    USERS_BASE: '/api/users',
   },
   BUSINESS: {
     home: '/business',
-    registration: '/business-registration',
+    registration: '/business/registration',
   },
 } as const;
 
@@ -72,4 +67,27 @@ export const ROLE_ROUTES = {
 export function getDashboardRoute(role?: string): string {
   if (!role) return ROUTES.DASHBOARD.HOME;
   return ROLE_ROUTES[role as keyof typeof ROLE_ROUTES] ?? ROUTES.DASHBOARD.HOME;
+}
+
+/**
+ * Build any path under /business/[businessId].
+ * Pass additional segments as rest args, e.g. businessPath(id, 'shop').
+ */
+export function businessPath(
+  businessId: string,
+  ...segments: string[]
+): string {
+  return ['/business', businessId, ...segments].filter(Boolean).join('/');
+}
+
+export function businessShopPath(businessId: string): string {
+  return businessPath(businessId, 'shop');
+}
+
+export function businessProductCataloguesPath(businessId: string): string {
+  return businessPath(businessId, 'product-catalogues');
+}
+
+export function businessCouponsPath(businessId: string): string {
+  return businessPath(businessId, 'coupons');
 }

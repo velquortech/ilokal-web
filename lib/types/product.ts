@@ -3,7 +3,16 @@
  * All product-related TypeScript types and interfaces
  */
 
-export type ProductStatus = 'active' | 'inactive' | 'archived';
+export type ProductStatus = 'active' | 'unlisted' | 'disabled';
+
+export type PriceType =
+  | 'fixed'
+  | 'from'
+  | 'per_hour'
+  | 'per_day'
+  | 'per_person'
+  | 'per_event';
+
 export type ProductSortOrder =
   | 'newest'
   | 'oldest'
@@ -26,12 +35,19 @@ export type Category = {
 export type Product = {
   id: string;
   business_id: string;
-  category_id: string;
+  category_id: string | null;
   name: string;
   description: string | null;
   price: number;
+  sale_price: number | null;
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
+  price_type: PriceType;
+  price_unit: string | null;
   image_url: string | null;
   status: ProductStatus;
+  is_available: boolean;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -42,16 +58,26 @@ export type CreateProductRequest = {
   name: string;
   description?: string;
   price: number;
-  category_id: string;
-  image_url?: string;
+  sale_price?: number | null;
+  price_type?: PriceType;
+  price_unit?: string | null;
+  category_id?: string | null;
+  image_url?: string | null;
+  is_available?: boolean;
 };
 
 export type UpdateProductRequest = Partial<CreateProductRequest> & {
   status?: ProductStatus;
 };
 
+export type ApplySaleRequest = {
+  sale_price: number;
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
+};
+
 export type ProductResponse = Product & {
-  category?: Category;
+  category?: Category | null;
 };
 
 export type PaginatedProductsResponse = {
@@ -60,6 +86,14 @@ export type PaginatedProductsResponse = {
   page: number;
   per_page: number;
   total_pages: number;
+};
+
+export type ProductStats = {
+  total: number;
+  active: number;
+  unlisted: number;
+  disabled: number;
+  on_sale: number;
 };
 
 export type CreateCategoryRequest = {

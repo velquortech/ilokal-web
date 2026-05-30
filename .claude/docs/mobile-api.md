@@ -42,15 +42,15 @@ Migrations live in `supabase/migrations/`. Apply them in timestamp order.
 | `config/index.ts` | `createServerClient` (service role, cookie-based) | Server Components and web API routes |
 | `config/client.ts` | `createBrowserClient` (anon key) | Client Components |
 | `supabase/bearer.ts` | `createServerClient` (anon key, no cookies) | Public mobile routes (no session needed) |
-| `app/api/helpers/mobile-auth.ts` | `createClient` with `Authorization` header | Protected mobile routes — passes user JWT so RLS applies correctly |
+| `app/api/helpers/mobile-request.ts` | `createClient` with `Authorization` header | Protected mobile routes — passes user JWT so RLS applies correctly |
 
 **Never** use the service-role client in mobile routes. Use `getMobileUser()` instead so Supabase RLS enforces row-level access automatically.
 
 ## Auth & middleware
 
-The middleware stack (`proxy/stackMiddlewares.ts`) chains:
-1. `protectedRoutesMiddlware` — refreshes the Supabase session cookie for web routes
-2. `authMiddlware` — gates `/api/protected/**`; accepts either a session **cookie** (web) or an `Authorization: Bearer <jwt>` header (mobile)
+A single `proxy.ts` at the repo root handles both concerns:
+1. Page routes — refreshes the Supabase session cookie and enforces role-based redirects.
+2. `/api/protected/**` — shallow credential check (cookie or Bearer token present); full JWT verification happens inside each handler via `getMobileUser()`.
 
 Mobile clients obtain a JWT directly from the Supabase SDK (`supabase.auth.signInWithPassword` / OAuth) and include it in every protected request:
 ```
@@ -134,10 +134,10 @@ Active deals and coupons (excludes expired).
 ```json
 {
   "coupons": [
-    { "id": "uuid", "title": "string", "description": "string",
-      "type": "discount|deal|voucher",
-      "start_date": "iso", "end_date": "iso",
-      "redeem_time_limit_minutes": 30 }
+    { "id": "uuid", "code": "string", "description": "string",
+      "discount": { "type": "percentage|fixed_amount", "value": 20 },
+      "usage_scope": "string",
+      "start_date": "iso", "expiry_date": "iso" }
   ]
 }
 ```
@@ -194,8 +194,9 @@ List coupon redemptions. **Query:** `filter=active|claimed|expired` (omit for al
 {
   "redemptions": [
     { "id": "uuid", "redeemed_at": "iso", "expires_at": "iso", "is_claimed": false,
-      "coupons": { "id": "uuid", "title": "string", "type": "discount",
-        "redeem_time_limit_minutes": 30,
+      "coupons": { "id": "uuid", "code": "string", "description": "string",
+        "discount": { "type": "percentage|fixed_amount", "value": 20 },
+        "expiry_date": "iso",
         "businesses": { "id": "uuid", "shop_name": "string", "logo_url": "string" } },
       "branches": { "id": "uuid", "name": "string", "address": "string" } }
   ]
@@ -204,7 +205,7 @@ List coupon redemptions. **Query:** `filter=active|claimed|expired` (omit for al
 
 ### `POST /api/protected/mobile/redemptions`
 
-Redeem a coupon. Sets `expires_at` from `redeem_time_limit_minutes`. **Body:** `{ "coupon_id": "uuid", "branch_id": "uuid" }`
+Redeem a coupon. Sets `expires_at` from `coupons.expiry_date`. **Body:** `{ "coupon_id": "uuid", "branch_id": "uuid" }`
 
 ### `GET /api/protected/mobile/itinerary`
 
@@ -227,9 +228,9 @@ Combines active redemptions + followed businesses for the in-app trip planner.
 
 | Purpose | Path |
 |---|---|
-| Mobile auth helper | `app/api/helpers/mobile-auth.ts` |
+| Mobile auth helper | `app/api/helpers/mobile-request.ts` |
 | Response helpers | `app/api/helpers/response.ts` |
-| Auth middleware | `proxy/auth-middleware/auth-middleware.ts` |
+| Proxy | `proxy.ts` |
 | Bearer Supabase client | `supabase/bearer.ts` |
 | Server Supabase client | `config/index.ts` |
 | Browser Supabase client | `config/client.ts` |
@@ -241,11 +242,13 @@ Combines active redemptions + followed businesses for the in-app trip planner.
 
 ## Schema gotchas
 
-| Migration says | Actual DB column | Affected routes |
+| Topic | Actual state | Affected routes |
 |---|---|---|
-| `profiles.role = 'user'` | must be `'business_owner'` or `'admin'` — see profiles check constraint | signup, profile insert |
-
-`products` and `coupons` had RLS enabled but no public SELECT policy — fixed in `supabase/migrations/20260508000002_products_coupons_rls.sql`.
+| `profiles.role` | must be `'business_owner'` or `'admin'` — NOT `'user'` | signup, profile insert |
+| `coupons` columns | normalized in `20260523000000`: `code` (not `title`), `discount` JSONB (not `type` enum), `expiry_date` (not `end_date`), `status` (`draft\|published`). `redeem_time_limit_minutes` removed. | all coupon routes |
+| `products.status` | `'active' \| 'unlisted' \| 'disabled'` — NOT `inactive\|archived`. `is_available` synced by trigger; `status` is canonical. | products routes |
+| Redemption tables | `user_redemptions` is live (has `expires_at`, `is_claimed`, `branch_id`). `coupon_redemptions` exists but is unused by routes. Analytics reads from `user_redemptions`. | redemptions, analytics |
+| Mobile response shape | `successResponse(data)` returns flat data — NOT wrapped in `ApiResponse<T>`. The `success/error` envelope applies to web routes only. | all mobile routes |
 
 ## Local test seed data
 
@@ -265,7 +268,7 @@ INSERT INTO products (id, business_id, name, description, price, image_url, is_a
 VALUES ('cccccccc-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001',
   'Flat White', 'Smooth espresso', 185, 'https://picsum.photos/seed/flatwhite/200/200', true);
 
-INSERT INTO coupons (id, business_id, title, type, start_date, end_date, redeem_time_limit_minutes)
+INSERT INTO coupons (id, business_id, code, description, discount, start_date, expiry_date, status)
 VALUES ('dddddddd-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001',
-  '20% Off Any Drink', 'discount', NOW(), NOW() + INTERVAL '30 days', 30);
+  'DRINK20', '20% off any drink', '{"type":"percentage","value":20}', NOW(), NOW() + INTERVAL '30 days', 'published');
 ```

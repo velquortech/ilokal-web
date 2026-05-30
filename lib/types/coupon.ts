@@ -11,6 +11,12 @@ export type DiscountValue = {
   value: number; // percentage: 0-100, fixed_amount: in cents
 };
 
+// ===== Promotion Type =====
+export type PromotionType = 'coupon' | 'deal';
+
+// ===== Coupon Visibility Status =====
+export type CouponStatus = 'published' | 'draft';
+
 // ===== Usage Scope =====
 export type UsageScope = 'any' | 'specific_categories' | 'specific_products';
 
@@ -18,6 +24,8 @@ export type UsageScope = 'any' | 'specific_categories' | 'specific_products';
 export type Coupon = {
   id: string;
   business_id: string;
+  promotion_type: PromotionType;
+  status: CouponStatus;
   code: string;
   description: string | null;
   discount: DiscountValue;
@@ -27,13 +35,16 @@ export type Coupon = {
   expiry_date: string;
   max_redemptions_global: number | null; // null = unlimited
   max_redemptions_per_user: number | null; // null = unlimited
-  current_redemptions: number; // auto-calculated
+  current_redemptions: number;
+  requires_subscription: boolean;
   created_at: string;
   updated_at: string;
   archived_at: string | null;
 };
 
 export type CreateCouponRequest = {
+  promotion_type?: PromotionType;
+  status?: CouponStatus;
   code: string;
   description?: string;
   discount: DiscountValue;
@@ -43,6 +54,7 @@ export type CreateCouponRequest = {
   expiry_date: string;
   max_redemptions_global?: number;
   max_redemptions_per_user?: number;
+  requires_subscription?: boolean;
 };
 
 export type UpdateCouponRequest = Partial<CreateCouponRequest>;
@@ -51,7 +63,7 @@ export type CouponFilters = {
   page?: number;
   per_page?: number;
   search?: string;
-  status?: 'active' | 'expired' | 'all';
+  status?: CouponStatus;
   sort_by?: 'newest' | 'oldest' | 'expiry_asc' | 'expiry_desc';
 };
 

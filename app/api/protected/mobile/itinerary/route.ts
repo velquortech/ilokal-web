@@ -1,4 +1,4 @@
-import { getMobileUser } from '@/app/api/helpers/mobile-auth';
+import { getMobileUser } from '@/app/api/helpers/mobile-request';
 import {
   generalErrorResponse,
   successResponse,
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
         .select(
           `
           id, expires_at, is_claimed,
-          coupons(id, title, type,
+          coupons(id, code, discount,
             businesses(id, shop_name, logo_url, description)
           ),
           branches(id, name, address)
@@ -29,8 +29,8 @@ export async function GET(req: NextRequest) {
         )
         .eq('user_id', auth.user.id)
         .eq('is_claimed', false)
-        .gt('expires_at', now)
-        .order('expires_at', { ascending: true }),
+        .or(`expires_at.is.null,expires_at.gt.${now}`)
+        .order('expires_at', { ascending: true, nullsFirst: false }),
 
       auth.supabase
         .from('subscriptions')
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
           id,
           businesses(
             id, shop_name, logo_url, description,
-            coupons(id, title, type, end_date)
+            coupons(id, code, discount, expiry_date, status, archived_at, start_date)
           )
         `,
         )
@@ -56,9 +56,46 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Filter nested coupons to active/published only — Supabase doesn't support
+    // WHERE on nested selects, so we filter in application code.
+    const followedBusinesses = (subscriptionsResult.data ?? []).map((sub) => ({
+      ...sub,
+      businesses: sub.businesses
+        ? {
+            ...sub.businesses,
+            coupons: (
+              (
+                sub.businesses as unknown as {
+                  coupons: {
+                    id: string;
+                    code: string;
+                    discount: unknown;
+                    expiry_date: string;
+                    status: string;
+                    archived_at: string | null;
+                    start_date: string;
+                  }[];
+                }
+              ).coupons ?? []
+            )
+              .filter(
+                (c) =>
+                  c.archived_at === null &&
+                  c.status === 'published' &&
+                  new Date(c.start_date) <= new Date(now) &&
+                  new Date(c.expiry_date) >= new Date(now),
+              )
+              .map(
+                ({ status: _s, archived_at: _a, start_date: _sd, ...rest }) =>
+                  rest,
+              ),
+          }
+        : sub.businesses,
+    }));
+
     return successResponse({
       active_redemptions: redemptionsResult.data,
-      followed_businesses: subscriptionsResult.data,
+      followed_businesses: followedBusinesses,
     });
   } catch {
     return generalErrorResponse();

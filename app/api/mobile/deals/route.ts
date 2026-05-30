@@ -38,6 +38,7 @@ type CouponRow = {
   description: string | null;
   discount: { type: string; value: number };
   expiry_date: string;
+  promotion_type: 'deal' | 'coupon';
   max_redemptions_global: number | null;
   current_redemptions: number;
   businesses: BusinessRow | null;
@@ -61,7 +62,7 @@ export async function GET(req: NextRequest) {
     const { data, error } = await supabase
       .from('coupons')
       .select(
-        `id, code, description, discount, expiry_date,
+        `id, code, description, discount, expiry_date, promotion_type,
          max_redemptions_global, current_redemptions,
          businesses!business_id(
            id, shop_name, logo_url, interior_images,
@@ -75,7 +76,6 @@ export async function GET(req: NextRequest) {
            )
          )`,
       )
-      .eq('promotion_type', 'deal')
       .eq('status', 'published')
       .is('archived_at', null)
       .lte('start_date', now)
@@ -109,6 +109,7 @@ export async function GET(req: NextRequest) {
         description: row.description,
         discount: row.discount,
         expiry_date: row.expiry_date,
+        promotion_type: row.promotion_type,
         slots_remaining: slots,
         is_subscribed,
         business_id: biz?.id ?? '',

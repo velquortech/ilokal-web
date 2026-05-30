@@ -39,6 +39,7 @@ export const createCouponSchema = z
     expiry_date: z.string().datetime(),
     max_redemptions_global: z.number().min(1).optional(),
     max_redemptions_per_user: z.number().min(1).optional(),
+    requires_subscription: z.boolean().optional(),
   })
   .refine(
     (data) =>
@@ -60,6 +61,7 @@ export const updateCouponSchema = z
     expiry_date: z.string().datetime().optional(),
     max_redemptions_global: z.number().min(1).optional(),
     max_redemptions_per_user: z.number().min(1).optional(),
+    requires_subscription: z.boolean().optional(),
   })
   .refine((data) => {
     // If both start_date and expiry_date provided, validate order

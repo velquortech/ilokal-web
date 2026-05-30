@@ -260,8 +260,9 @@ describe('couponQuery', () => {
       // When branchId is set, chain is: .eq(business_id).eq(branch_id) — need
       // first eq to chain, second eq to resolve with data.
       chainedMock.eq
-        .mockReturnValueOnce(chainedMock)   // eq('business_id', ...) → chain
-        .mockResolvedValueOnce({            // eq('branch_id', ...) → data
+        .mockReturnValueOnce(chainedMock) // eq('business_id', ...) → chain
+        .mockResolvedValueOnce({
+          // eq('branch_id', ...) → data
           data: [{ status: 'published', archived_at: null }],
           error: null,
         });

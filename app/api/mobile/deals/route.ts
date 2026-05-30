@@ -28,7 +28,7 @@ type BusinessRow = {
   business_subscriptions: Array<{
     status: string;
     current_period_end: string;
-    subscription_plans: { price: number } | null;
+    subscription_plans: { features_promo_boost: boolean } | null;
   }>;
 };
 
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
            ),
            business_subscriptions(
              status, current_period_end,
-             subscription_plans!plan_id(price)
+             subscription_plans!plan_id(features_promo_boost)
            )
          )`,
       )
@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
         (sub) =>
           sub.status === 'active' &&
           new Date(sub.current_period_end) > now &&
-          (sub.subscription_plans?.price ?? 0) > 0,
+          sub.subscription_plans?.features_promo_boost === true,
       );
 
       return {

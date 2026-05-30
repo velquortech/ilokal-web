@@ -912,9 +912,7 @@ describe('getCouponPerformance', () => {
         if (table === 'coupons') return couponChain;
         return redemptionChain;
       }),
-    } as unknown as Awaited<
-      ReturnType<typeof createAnalyticsSupabaseClient>
-    >;
+    } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
     (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
       supabaseClient,
     );
@@ -948,9 +946,7 @@ describe('getCouponPerformance', () => {
         if (table === 'coupons') return couponChain;
         return redemptionChain;
       }),
-    } as unknown as Awaited<
-      ReturnType<typeof createAnalyticsSupabaseClient>
-    >;
+    } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
     (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
       supabaseClient,
     );
@@ -965,17 +961,16 @@ describe('getCouponPerformance', () => {
 
     const supabaseClient = {
       from: vi.fn().mockReturnValue(couponChain),
-    } as unknown as Awaited<
-      ReturnType<typeof createAnalyticsSupabaseClient>
-    >;
+    } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
     (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
       supabaseClient,
     );
 
     await getCouponPerformance('biz-1');
 
-    const branchEqCall = (couponChain.eq as ReturnType<typeof vi.fn>).mock.calls
-      .find(([col]: [string]) => col === 'branch_id');
+    const branchEqCall = (
+      couponChain.eq as ReturnType<typeof vi.fn>
+    ).mock.calls.find(([col]: [string]) => col === 'branch_id');
     expect(branchEqCall).toBeUndefined();
   });
 });

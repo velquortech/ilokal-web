@@ -1,6 +1,7 @@
 import { getMobileUser } from '@/app/api/helpers/mobile-request';
 import {
   badRequestResponse,
+  forbiddenResponse,
   generalErrorResponse,
   successResponse,
   unauthorizedResponse,
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
     const { data: coupon, error: couponError } = await auth.supabase
       .from('coupons')
       .select(
-        'id, start_date, expiry_date, status, max_redemptions_per_user, max_redemptions_global, current_redemptions',
+        'id, start_date, expiry_date, status, max_redemptions_per_user, max_redemptions_global, current_redemptions, requires_subscription, business_id',
       )
       .eq('id', coupon_id)
       .eq('status', 'published')
@@ -99,23 +100,54 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    if (coupon.max_redemptions_per_user !== null) {
-      const { count, error: countError } = await auth.supabase
-        .from('user_redemptions')
+    // Subscription gate — coupon requires user to follow the business
+    if (coupon.requires_subscription) {
+      const { count: subCount, error: subError } = await auth.supabase
+        .from('subscriptions')
         .select('id', { count: 'exact', head: true })
+        .eq('user_id', auth.user.id)
+        .eq('business_id', coupon.business_id);
+
+      if (subError) return generalErrorResponse({ message: subError.message });
+
+      if ((subCount ?? 0) === 0) {
+        return forbiddenResponse({
+          message: 'Follow this business to claim this deal',
+        });
+      }
+    }
+
+    // This user's redemptions of this coupon back both the active-dupe guard
+    // and the per-user cap below — fetch once instead of counting twice.
+    const { data: userRedemptions, error: redemptionsError } =
+      await auth.supabase
+        .from('user_redemptions')
+        .select('is_claimed, expires_at')
         .eq('coupon_id', coupon_id)
         .eq('user_id', auth.user.id);
 
-      if (countError) {
-        return generalErrorResponse({ message: countError.message });
-      }
+    if (redemptionsError) {
+      return generalErrorResponse({ message: redemptionsError.message });
+    }
 
-      if ((count ?? 0) >= coupon.max_redemptions_per_user) {
-        return badRequestResponse({
-          message:
-            'You have already redeemed this coupon the maximum number of times',
-        });
-      }
+    // Active-dupe — user can't hold two unclaimed, unexpired redemptions of the same coupon.
+    const hasActiveRedemption = userRedemptions.some(
+      (r) => !r.is_claimed && (r.expires_at === null || r.expires_at > now),
+    );
+    if (hasActiveRedemption) {
+      return badRequestResponse({
+        message: 'You already have this deal in your wallet',
+      });
+    }
+
+    if (
+      coupon.max_redemptions_per_user !== null &&
+      userRedemptions.length >= coupon.max_redemptions_per_user
+    ) {
+      return badRequestResponse({
+        message:
+          'You have already redeemed this coupon the maximum number of times',
+      });
     }
 
     const expires_at = coupon.expiry_date;

@@ -56,6 +56,7 @@ export async function createCoupon(
         expiry_date: input.expiry_date,
         max_redemptions_global: input.max_redemptions_global || null,
         max_redemptions_per_user: input.max_redemptions_per_user || null,
+        requires_subscription: input.requires_subscription ?? false,
         current_redemptions: 0,
       })
       .select()
@@ -131,6 +132,8 @@ export async function updateCoupon(
       updateData.max_redemptions_global = input.max_redemptions_global;
     if (input.max_redemptions_per_user !== undefined)
       updateData.max_redemptions_per_user = input.max_redemptions_per_user;
+    if (input.requires_subscription !== undefined)
+      updateData.requires_subscription = input.requires_subscription;
 
     const { data, error } = await supabase
       .from('coupons')

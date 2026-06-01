@@ -20,7 +20,6 @@ export async function GET(_req: NextRequest, { params }: Params) {
         `
         id, shop_name, description, logo_url, interior_images, status,
         business_category,
-        branches(id, name, address),
         profiles!owner_id(full_name, email),
         business_categories!category_id(name, business_types!business_type_id(name, icon))
       `,
@@ -33,6 +32,27 @@ export async function GET(_req: NextRequest, { params }: Params) {
     if (error || !data) {
       return notFoundResponse({ message: 'Business not found' });
     }
+
+    // branches.location is PostGIS — decode lat/lng via the business_branches RPC
+    // (the nested PostgREST select above can't expose geometry coordinates).
+    const { data: branchRows } = await supabase.rpc('business_branches', {
+      p_business_id: businessId,
+    });
+    const branches = (
+      (branchRows ?? []) as {
+        id: string;
+        name: string;
+        address: string | null;
+        latitude: number | null;
+        longitude: number | null;
+      }[]
+    ).map((b) => ({
+      id: b.id,
+      name: b.name,
+      address: b.address,
+      latitude: b.latitude,
+      longitude: b.longitude,
+    }));
 
     const owner =
       (data.profiles as unknown as {
@@ -78,6 +98,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
         ) ?? [],
       owner_handle: ownerHandle,
       category,
+      branches,
     };
 
     return successResponse({ business });

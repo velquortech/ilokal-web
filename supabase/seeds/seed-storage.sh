@@ -36,8 +36,25 @@ upload() {
     echo "  skipped $bucket/$path (already exists)"
     return
   fi
+  # picsum.photos has been unreliable (HTTP 522 outages). Rewrite its seeded URLs
+  # (picsum.photos/seed/<seed>/<w>/<h>) to loremflickr, which serves deterministic
+  # real photos via ?lock=<n> — the lock is a stable hash of the original seed.
+  if [[ "$url" == *picsum.photos/seed/* ]]; then
+    local rest seed w h lock
+    rest="${url#*picsum.photos/seed/}"   # <seed>/<w>/<h>
+    seed="${rest%%/*}"                    # <seed>
+    w="${rest#*/}"; w="${w%/*}"           # <w>
+    h="${rest##*/}"                       # <h>
+    lock=$(printf '%s' "$seed" | cksum | cut -d' ' -f1)
+    url="https://loremflickr.com/$w/$h?lock=$lock"
+  fi
   local tmp_file="$TMP/$(echo "$path" | tr '/' '_')"
-  curl -sfL "$url" -o "$tmp_file"
+  # Don't let a single flaky download (set -e) abort the whole seed run.
+  # --connect-timeout fails fast on a dead host instead of waiting the full --max-time.
+  if ! curl -sfL --connect-timeout 5 --retry 2 --max-time 30 "$url" -o "$tmp_file"; then
+    echo "  failed download $bucket/$path ($url)"
+    return
+  fi
   curl -sf -X POST "$BASE/object/$bucket/$path" \
     -H "Authorization: Bearer $SERVICE_KEY" \
     -H "Content-Type: $mime" \
@@ -284,6 +301,32 @@ upload "product-images" "33333333-3333-3333-3333-333333333366/product.jpg" "http
 upload "product-images" "33333333-3333-3333-3333-333333333367/product.jpg" "https://picsum.photos/seed/privatebooth/400/400"
 upload "product-images" "33333333-3333-3333-3333-333333333368/product.jpg" "https://picsum.photos/seed/cocktailpitcher/400/400"
 upload "product-images" "33333333-3333-3333-3333-333333333369/product.jpg" "https://picsum.photos/seed/karaokeroom/400/400"
+
+# ---------------------------------------------------------------------------
+# Cross-province businesses (117–121) — logo + interior (hero, gallery1)
+# These IDs match the Guimaras/Antique/Capiz/Aklan/Negros rows in businesses.sql.
+# ---------------------------------------------------------------------------
+echo "Uploading cross-province business images..."
+# Pitstop Mango Café (Guimaras)
+upload "shop-logos"      "11111111-1111-1111-1111-111111111117/logo.jpg"     "https://picsum.photos/seed/pitstopmango-logo/400/400"
+upload "interior-images" "11111111-1111-1111-1111-111111111117/hero.jpg"     "https://picsum.photos/seed/pitstopmango-hero/800/500"
+upload "interior-images" "11111111-1111-1111-1111-111111111117/gallery1.jpg" "https://picsum.photos/seed/pitstopmango-g1/800/520"
+# Antique Seafood Grill (Antique)
+upload "shop-logos"      "11111111-1111-1111-1111-111111111118/logo.jpg"     "https://picsum.photos/seed/antiqueseafood-logo/400/400"
+upload "interior-images" "11111111-1111-1111-1111-111111111118/hero.jpg"     "https://picsum.photos/seed/antiqueseafood-hero/800/500"
+upload "interior-images" "11111111-1111-1111-1111-111111111118/gallery1.jpg" "https://picsum.photos/seed/antiqueseafood-g1/800/520"
+# Roxas Bay Brews (Capiz)
+upload "shop-logos"      "11111111-1111-1111-1111-111111111119/logo.jpg"     "https://picsum.photos/seed/roxasbay-logo/400/400"
+upload "interior-images" "11111111-1111-1111-1111-111111111119/hero.jpg"     "https://picsum.photos/seed/roxasbay-hero/800/500"
+upload "interior-images" "11111111-1111-1111-1111-111111111119/gallery1.jpg" "https://picsum.photos/seed/roxasbay-g1/800/520"
+# Kalibo Heritage Bakeshop (Aklan)
+upload "shop-logos"      "11111111-1111-1111-1111-111111111120/logo.jpg"     "https://picsum.photos/seed/kalibobakeshop-logo/400/400"
+upload "interior-images" "11111111-1111-1111-1111-111111111120/hero.jpg"     "https://picsum.photos/seed/kalibobakeshop-hero/800/500"
+upload "interior-images" "11111111-1111-1111-1111-111111111120/gallery1.jpg" "https://picsum.photos/seed/kalibobakeshop-g1/800/520"
+# Bacolod Wellness Retreat (Negros Occidental)
+upload "shop-logos"      "11111111-1111-1111-1111-111111111121/logo.jpg"     "https://picsum.photos/seed/bacolodwellness-logo/400/400"
+upload "interior-images" "11111111-1111-1111-1111-111111111121/hero.jpg"     "https://picsum.photos/seed/bacolodwellness-hero/800/500"
+upload "interior-images" "11111111-1111-1111-1111-111111111121/gallery1.jpg" "https://picsum.photos/seed/bacolodwellness-g1/800/520"
 
 # ---------------------------------------------------------------------------
 rm -rf "$TMP"

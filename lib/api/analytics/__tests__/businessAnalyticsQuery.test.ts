@@ -55,6 +55,17 @@ function daysAgo(n: number): string {
   return new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
 }
 
+// Calendar-anchored helpers — safe regardless of which day of the month tests run.
+function currentMonthDate(day = 10): string {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), day).toISOString();
+}
+
+function lastMonthDate(day = 10): string {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth() - 1, day).toISOString();
+}
+
 vi.mock('@/supabase/server', () => ({
   createAnalyticsSupabaseClient: vi.fn(),
 }));
@@ -546,8 +557,10 @@ describe('getRetentionData', () => {
           return makeChain({ data: [{ id: 'c1' }], error: null });
         if (table === 'user_redemptions')
           return makeChain({
-            // User redeemed last month only — should appear as churned in current month
-            data: [{ user_id: 'user-churn', redeemed_at: daysAgo(35) }],
+            // User redeemed in last calendar month only — churned in current month.
+            // lastMonthDate() is always in the previous calendar month regardless of
+            // which day of the month the tests run.
+            data: [{ user_id: 'user-churn', redeemed_at: lastMonthDate() }],
             error: null,
           });
         return makeChain({ data: [], error: null });
@@ -600,14 +613,16 @@ describe('getMonthlyTrend', () => {
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'subscriptions')
           return makeChain({
-            data: [{ created_at: daysAgo(5) }],
+            // currentMonthDate() is always in the current calendar month so
+            // it maps to the last (most-recent) bucket in getMonthlyTrend.
+            data: [{ created_at: currentMonthDate() }],
             error: null,
           });
         if (table === 'coupons')
           return makeChain({ data: [{ id: 'c1' }], error: null });
         if (table === 'user_redemptions')
           return makeChain({
-            data: [{ redeemed_at: daysAgo(5) }],
+            data: [{ redeemed_at: currentMonthDate() }],
             error: null,
           });
         return makeChain({ data: [], error: null });

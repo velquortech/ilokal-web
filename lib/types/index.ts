@@ -42,6 +42,7 @@ export type {
   CreateBusinessInput,
   UpdateBusinessInput,
   BusinessVerificationStatus,
+  BusinessProfileData,
 } from './business';
 
 // Product Domain Types

@@ -8,12 +8,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import {
   Select,
@@ -38,7 +33,10 @@ interface BusinessInfoFormProps {
   business: BusinessProfileData;
 }
 
-export function BusinessInfoForm({ businessId, business }: BusinessInfoFormProps) {
+export function BusinessInfoForm({
+  businessId,
+  business,
+}: BusinessInfoFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
 
@@ -75,7 +73,9 @@ export function BusinessInfoForm({ businessId, business }: BusinessInfoFormProps
     try {
       const result = await updateBusinessProfileAction(businessId, data);
       if (!result.success) {
-        toast.error(result.error?.message ?? 'Failed to update business profile');
+        toast.error(
+          result.error?.message ?? 'Failed to update business profile',
+        );
         return;
       }
       toast.success('Business profile updated');
@@ -96,14 +96,15 @@ export function BusinessInfoForm({ businessId, business }: BusinessInfoFormProps
       </CardHeader>
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
-
           {/* Logo */}
           <Field>
             <FieldLabel>Business Logo</FieldLabel>
             <LogoUploader
               businessId={businessId}
               value={logoUrl ?? null}
-              onChange={(url) => setValue('logo_url', url, { shouldDirty: true })}
+              onChange={(url) =>
+                setValue('logo_url', url, { shouldDirty: true })
+              }
             />
             <FieldError>{errors.logo_url?.message}</FieldError>
           </Field>
@@ -140,7 +141,9 @@ export function BusinessInfoForm({ businessId, business }: BusinessInfoFormProps
               render={({ field }) => (
                 <Select
                   value={field.value ?? ''}
-                  onValueChange={(val) => field.onChange(val === '' ? null : val)}
+                  onValueChange={(val) =>
+                    field.onChange(val === '' ? null : val)
+                  }
                 >
                   <SelectTrigger id="category_id">
                     <SelectValue placeholder="Select a category" />

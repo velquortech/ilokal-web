@@ -31,19 +31,25 @@ export function Masonry({ images }: MasonryProps) {
     groups.push(images.slice(i, i + 4));
   }
 
-  const showPrev = useCallback((e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setCurrentIndex((prev) =>
-      prev === null ? null : prev === 0 ? images.length - 1 : prev - 1,
-    );
-  }, [images.length]);
+  const showPrev = useCallback(
+    (e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      setCurrentIndex((prev) =>
+        prev === null ? null : prev === 0 ? images.length - 1 : prev - 1,
+      );
+    },
+    [images.length],
+  );
 
-  const showNext = useCallback((e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setCurrentIndex((prev) =>
-      prev === null ? null : prev === images.length - 1 ? 0 : prev + 1,
-    );
-  }, [images.length]);
+  const showNext = useCallback(
+    (e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      setCurrentIndex((prev) =>
+        prev === null ? null : prev === images.length - 1 ? 0 : prev + 1,
+      );
+    },
+    [images.length],
+  );
 
   useEffect(() => {
     if (currentIndex === null) return;

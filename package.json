@@ -9,6 +9,7 @@
     "lint": "eslint",
     "db:types": "supabase gen types typescript --local > lib/types/database.ts",
     "test": "vitest",
+    "format:prettier": "yarn prettier --write .",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "test:run": "vitest run",

@@ -7,12 +7,7 @@ import { Camera, Loader2, UserCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -105,14 +100,13 @@ export function PersonalInfoForm({ user }: PersonalInfoFormProps) {
       </CardHeader>
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
-
           {/* Avatar upload */}
           <div className="flex items-center gap-5">
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
               disabled={avatarUploading}
-              className="group relative size-16 shrink-0 cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="group focus-visible:ring-ring relative size-16 shrink-0 cursor-pointer rounded-full focus-visible:ring-2 focus-visible:outline-none"
               aria-label="Change profile photo"
             >
               <Avatar size="lg" className="size-16">

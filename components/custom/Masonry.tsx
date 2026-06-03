@@ -17,10 +17,9 @@ type MasonryProps = {
     src: string;
     alt?: string;
   }[];
-  unoptimized?: boolean;
 };
 
-export function Masonry({ images, unoptimized }: MasonryProps) {
+export function Masonry({ images }: MasonryProps) {
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
 
   if (images.length < 4) {
@@ -112,8 +111,7 @@ export function Masonry({ images, unoptimized }: MasonryProps) {
                       alt={img.alt || 'Product gallery image'}
                       fill
                       sizes={sizeHint}
-                      unoptimized={unoptimized}
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      className="object-cover transition-transform duration-300 will-change-transform group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-black/0 transition group-hover:bg-black/20" />
                   </div>
@@ -148,7 +146,6 @@ export function Masonry({ images, unoptimized }: MasonryProps) {
                 priority
                 sizes="(max-width: 1280px) 90vw, 1280px"
                 className="object-contain p-4"
-                unoptimized={unoptimized}
               />
 
               {/* CONTROLS */}

@@ -255,6 +255,38 @@ describe('couponQuery', () => {
       expect(result.published).toBe(0);
       expect(result.draft).toBe(0);
     });
+
+    it('applies branch_id filter when branchId is provided', async () => {
+      // When branchId is set, chain is: .eq(business_id).eq(branch_id) — need
+      // first eq to chain, second eq to resolve with data.
+      chainedMock.eq
+        .mockReturnValueOnce(chainedMock) // eq('business_id', ...) → chain
+        .mockResolvedValueOnce({
+          // eq('branch_id', ...) → data
+          data: [{ status: 'published', archived_at: null }],
+          error: null,
+        });
+
+      const result = await couponQuery.getCouponStatsByBusiness(
+        'biz-1',
+        'branch-42',
+      );
+
+      expect(chainedMock.eq).toHaveBeenCalledWith('branch_id', 'branch-42');
+      expect(result.total).toBe(1);
+      expect(result.published).toBe(1);
+    });
+
+    it('does not filter by branch_id when branchId is omitted', async () => {
+      chainedMock.eq.mockResolvedValue({ data: [], error: null });
+
+      await couponQuery.getCouponStatsByBusiness('biz-1');
+
+      const branchCall = chainedMock.eq.mock.calls.find(
+        ([col]: [string]) => col === 'branch_id',
+      );
+      expect(branchCall).toBeUndefined();
+    });
   });
 
   // ===== getCouponById =====

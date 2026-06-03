@@ -109,10 +109,11 @@ export function PersonalInfoForm({ user }: PersonalInfoFormProps) {
               className="group focus-visible:ring-ring relative size-16 shrink-0 cursor-pointer rounded-full focus-visible:ring-2 focus-visible:outline-none"
               aria-label="Change profile photo"
             >
-              <Avatar size="lg" className="size-16">
+              <Avatar className="size-16">
                 <AvatarImage
                   src={avatarUrl || undefined}
                   alt={user.full_name ?? 'Avatar'}
+                  className="object-cover"
                 />
                 <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>

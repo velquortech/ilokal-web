@@ -19,20 +19,18 @@ export function ShopBanner({ business, branch }: ShopBannerProps) {
           alt={`${branch.name} cover`}
           src={branch.cover_image_url}
           fill
-          className="absolute top-0 left-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-          loading="eager"
+          className="absolute top-0 left-0 h-full w-full object-cover transition-transform duration-700 will-change-transform group-hover:scale-105"
+          priority
           sizes="100vw"
-          unoptimized
         />
       ) : hasBusinessData && business?.banner_url ? (
         <Image
           alt={`${business.shop_name} banner`}
           src={business.banner_url}
           fill
-          className="absolute top-0 left-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-          loading="eager"
+          className="absolute top-0 left-0 h-full w-full object-cover transition-transform duration-700 will-change-transform group-hover:scale-105"
+          priority
           sizes="100vw"
-          unoptimized
         />
       ) : (
         <div className="from-primary/20 via-primary/10 to-background absolute inset-0 bg-linear-to-br" />
@@ -55,7 +53,6 @@ export function ShopBanner({ business, branch }: ShopBannerProps) {
               width={96}
               height={96}
               className="aspect-square bg-white object-cover"
-              unoptimized
             />
           </div>
 

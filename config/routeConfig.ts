@@ -106,3 +106,7 @@ export function businessBranchPath(
 ): string {
   return businessPath(businessId, 'branches', branchId);
 }
+
+export function businessProfilePath(businessId: string): string {
+  return businessPath(businessId, 'profile');
+}

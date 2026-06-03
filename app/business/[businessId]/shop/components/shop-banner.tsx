@@ -19,7 +19,7 @@ export function ShopBanner({ business, branch }: ShopBannerProps) {
           alt={`${branch.name} cover`}
           src={branch.cover_image_url}
           fill
-          className="absolute top-0 left-0 h-full w-full object-cover transition-transform duration-700 will-change-transform group-hover:scale-105"
+          className="absolute top-0 left-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
           priority
           sizes="100vw"
         />
@@ -28,7 +28,7 @@ export function ShopBanner({ business, branch }: ShopBannerProps) {
           alt={`${business.shop_name} banner`}
           src={business.banner_url}
           fill
-          className="absolute top-0 left-0 h-full w-full object-cover transition-transform duration-700 will-change-transform group-hover:scale-105"
+          className="absolute top-0 left-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
           priority
           sizes="100vw"
         />

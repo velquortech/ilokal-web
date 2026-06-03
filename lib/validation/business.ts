@@ -8,6 +8,42 @@
 import { z } from 'zod';
 
 // ============================================================================
+// BUSINESS PROFILE UPDATE SCHEMA (business owner — profile page)
+// ============================================================================
+
+export const updateBusinessProfileSchema = z.object({
+  shop_name: z
+    .string()
+    .min(2, 'Business name must be at least 2 characters')
+    .max(255, 'Business name must not exceed 255 characters'),
+  description: z
+    .string()
+    .max(1000, 'Description must not exceed 1000 characters')
+    .optional()
+    .nullable(),
+  logo_url: z
+    .string()
+    .url('Logo URL must be a valid URL')
+    .optional()
+    .nullable(),
+  banner_url: z
+    .string()
+    .url('Banner URL must be a valid URL')
+    .optional()
+    .nullable(),
+  category_id: z.string().uuid('Invalid category ID').optional().nullable(),
+  interior_images: z
+    .array(z.string().url('Each gallery image must be a valid URL'))
+    .max(10, 'Maximum 10 gallery images allowed')
+    .optional()
+    .nullable(),
+});
+
+export type UpdateBusinessProfileInput = z.infer<
+  typeof updateBusinessProfileSchema
+>;
+
+// ============================================================================
 // BUSINESS CREATION & UPDATE SCHEMAS
 // ============================================================================
 

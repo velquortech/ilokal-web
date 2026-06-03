@@ -93,15 +93,13 @@ describe('updateCurrentUserProfileAction', () => {
     const removeMock = vi.fn().mockResolvedValue({ error: null });
     const chain: Record<string, unknown> = {};
     for (const m of ['select', 'eq']) chain[m] = vi.fn().mockReturnValue(chain);
-    chain.single = vi
-      .fn()
-      .mockResolvedValue({
-        data: {
-          avatar_url:
-            'https://proj.supabase.co/storage/v1/object/public/avatars/u1/old.png',
-        },
-        error: null,
-      });
+    chain.single = vi.fn().mockResolvedValue({
+      data: {
+        avatar_url:
+          'https://proj.supabase.co/storage/v1/object/public/avatars/u1/old.png',
+      },
+      error: null,
+    });
     const client = {
       from: vi.fn().mockReturnValue(chain),
       storage: { from: vi.fn().mockReturnValue({ remove: removeMock }) },
@@ -109,7 +107,8 @@ describe('updateCurrentUserProfileAction', () => {
     (createServerSupabaseClient as unknown as Mock).mockResolvedValue(client);
     (updateUserProfile as unknown as Mock).mockResolvedValue({
       ...mockUser,
-      avatar_url: 'https://proj.supabase.co/storage/v1/object/public/avatars/u1/new.png',
+      avatar_url:
+        'https://proj.supabase.co/storage/v1/object/public/avatars/u1/new.png',
     });
 
     await updateCurrentUserProfileAction({

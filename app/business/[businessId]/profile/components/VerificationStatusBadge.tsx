@@ -21,8 +21,7 @@ const STATUS_CONFIG: Record<
   },
   rejected: {
     label: 'Rejected',
-    className:
-      'bg-destructive/15 text-destructive border-destructive/30',
+    className: 'bg-destructive/15 text-destructive border-destructive/30',
   },
 };
 

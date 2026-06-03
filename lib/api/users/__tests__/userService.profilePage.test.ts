@@ -1,9 +1,6 @@
 import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
 import { createServerSupabaseClient } from '@/supabase/server';
-import {
-  fetchProfileForPage,
-  type ProfilePageData,
-} from '../userService';
+import { fetchProfileForPage, type ProfilePageData } from '../userService';
 
 vi.mock('@/supabase/server', () => ({
   createServerSupabaseClient: vi.fn(),

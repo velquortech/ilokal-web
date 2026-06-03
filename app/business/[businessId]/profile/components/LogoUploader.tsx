@@ -12,7 +12,11 @@ interface LogoUploaderProps {
   onChange: (url: string) => void;
 }
 
-export function LogoUploader({ businessId, value, onChange }: LogoUploaderProps) {
+export function LogoUploader({
+  businessId,
+  value,
+  onChange,
+}: LogoUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -54,7 +58,7 @@ export function LogoUploader({ businessId, value, onChange }: LogoUploaderProps)
           'group relative size-24 overflow-hidden rounded-xl border-2 border-dashed',
           'border-border bg-muted transition-colors',
           'hover:border-primary hover:bg-primary/5',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          'focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none',
           uploading && 'cursor-not-allowed opacity-60',
         )}
         aria-label="Upload business logo"

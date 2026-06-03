@@ -33,8 +33,14 @@ export async function updateBusinessProfileAction(
       };
     }
 
-    const { shop_name, description, logo_url, banner_url, category_id, interior_images } =
-      validation.data;
+    const {
+      shop_name,
+      description,
+      logo_url,
+      banner_url,
+      category_id,
+      interior_images,
+    } = validation.data;
 
     const supabase = await createServerSupabaseClient();
 
@@ -122,7 +128,10 @@ export async function updateBusinessProfileAction(
     console.error('[updateBusinessProfileAction]', err);
     return {
       success: false,
-      error: { code: 'INTERNAL_ERROR', message: 'Failed to update business profile' },
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to update business profile',
+      },
     };
   }
 }

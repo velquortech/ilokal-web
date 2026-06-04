@@ -65,21 +65,25 @@ supabase/                   # Supabase client helpers, migrations, seeds
 200 lines is a lagging indicator. A file is already too big before it hits the limit if it has more than one reason to change. Use these triggers instead:
 
 **Extract to a custom hook when:**
+
 - A component has more than two `useState` calls
 - Any `useEffect`, derived value, or async call lives in a component
 - The same state shape is needed in more than one component
 
 **Extract to a sub-component when:**
+
 - A JSX section has its own distinct props shape (you can type it independently)
 - A section has independent local state (e.g., a collapsible, a counter)
 - You can give the section a meaningful domain name (`<LocationFields />`, `<PricingTier />`)
 - A section appears — or is likely to appear — in more than one parent
 
 **Keep together when:**
+
 - Two pieces always change at the same time (co-location over premature splitting)
 - A sub-component would need 4+ props to mirror the parent's state — the split is wrong
 
 **Extract to `lib/utils/` when:**
+
 - A function is pure (no React, no side effects)
 - The same logic appears in two or more files (validation, error mapping, formatters)
 
@@ -133,13 +137,13 @@ Prefer small focused components composed at the page level over a single compone
 
 ### File size targets
 
-| File type | Soft limit | Hard limit | Action when exceeded |
-|---|---|---|---|
-| `components/ui/` | 80 lines | 120 lines | Split into sub-components |
-| `components/custom/` | 120 lines | 200 lines | Extract sub-components or move logic to hook |
-| `hooks/` | 80 lines | 150 lines | Split into smaller focused hooks |
-| `app/**/page.tsx` | 150 lines | 250 lines | Extract section components, move logic to hook |
-| `lib/utils/` | 100 lines | 200 lines | Split by concern |
-| `lib/api/` service files | 100 lines | 150 lines | Split by resource |
+| File type                | Soft limit | Hard limit | Action when exceeded                           |
+| ------------------------ | ---------- | ---------- | ---------------------------------------------- |
+| `components/ui/`         | 80 lines   | 120 lines  | Split into sub-components                      |
+| `components/custom/`     | 120 lines  | 200 lines  | Extract sub-components or move logic to hook   |
+| `hooks/`                 | 80 lines   | 150 lines  | Split into smaller focused hooks               |
+| `app/**/page.tsx`        | 150 lines  | 250 lines  | Extract section components, move logic to hook |
+| `lib/utils/`             | 100 lines  | 200 lines  | Split by concern                               |
+| `lib/api/` service files | 100 lines  | 150 lines  | Split by resource                              |
 
 These are guides, not laws. A 260-line page that is pure JSX composition (no logic, no state) is fine. A 100-line hook with three unrelated concerns is not.

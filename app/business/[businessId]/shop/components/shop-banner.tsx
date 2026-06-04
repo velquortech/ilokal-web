@@ -1,26 +1,36 @@
 import { Check, MapPin } from 'lucide-react';
 import Image from 'next/image';
 import { BusinessShop } from '@/providers/BusinessProvider';
+import type { Branch } from '@/lib/types';
 
 interface ShopBannerProps {
   business?: BusinessShop | null;
+  branch?: Branch | null;
 }
 
-export function ShopBanner({ business }: ShopBannerProps) {
+export function ShopBanner({ business, branch }: ShopBannerProps) {
   const hasBusinessData = business && business.shop_name;
 
   return (
     <div className="bg-muted border-border group relative flex h-80 w-full flex-row items-end justify-between overflow-hidden rounded-2xl border shadow-sm">
-      {/* 1. Main Banner Image */}
-      {hasBusinessData && business?.banner_url ? (
+      {/* 1. Main Banner Image — prefer branch cover, fall back to business banner */}
+      {branch?.cover_image_url ? (
+        <Image
+          alt={`${branch.name} cover`}
+          src={branch.cover_image_url}
+          fill
+          className="absolute top-0 left-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+          priority
+          sizes="100vw"
+        />
+      ) : hasBusinessData && business?.banner_url ? (
         <Image
           alt={`${business.shop_name} banner`}
           src={business.banner_url}
           fill
           className="absolute top-0 left-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-          loading="eager"
+          priority
           sizes="100vw"
-          unoptimized
         />
       ) : (
         <div className="from-primary/20 via-primary/10 to-background absolute inset-0 bg-linear-to-br" />
@@ -43,7 +53,6 @@ export function ShopBanner({ business }: ShopBannerProps) {
               width={96}
               height={96}
               className="aspect-square bg-white object-cover"
-              unoptimized
             />
           </div>
 
@@ -66,15 +75,29 @@ export function ShopBanner({ business }: ShopBannerProps) {
 
         {/* Location & Category Details */}
         <div className="flex flex-col items-end gap-1.5 pb-1">
-          {business?.location && (
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-white backdrop-blur-md">
-              <MapPin className="text-primary size-3" />
-              <span className="capitalize">
-                {business.location.street_address} {business.location.barangay},{' '}
-                {business.location.city}, {business.location.province}{' '}
-                {business.location.zip_code}
-              </span>
+          {branch ? (
+            <div className="flex flex-col items-end gap-1">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-white backdrop-blur-md">
+                <MapPin className="text-primary size-3" />
+                <span>{branch.name}</span>
+              </div>
+              {branch.address && (
+                <span className="text-[11px] font-medium text-white/70">
+                  {branch.address}
+                </span>
+              )}
             </div>
+          ) : (
+            business?.location && (
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-white backdrop-blur-md">
+                <MapPin className="text-primary size-3" />
+                <span className="capitalize">
+                  {business.location.street_address}{' '}
+                  {business.location.barangay}, {business.location.city},{' '}
+                  {business.location.province} {business.location.zip_code}
+                </span>
+              </div>
+            )
           )}
           {business?.business_category && (
             <span className="text-[11px] font-black tracking-widest text-white/60 uppercase">

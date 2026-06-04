@@ -15,6 +15,9 @@ import type {
   FeaturedDeal,
   CreateFeaturedDealRequest,
   UpdateFeaturedDealRequest,
+  RedemptionRecordFilters,
+  PaginatedRedemptionRecordsResponse,
+  RedemptionSummaryStats,
 } from '@/lib/types';
 import {
   createCouponSchema,
@@ -28,6 +31,8 @@ import {
   getCouponStatsByBusiness,
   getCouponById,
   getFeaturedDealById,
+  getRedeemedCouponsPaginated,
+  getRedemptionSummaryStatsByBusiness,
 } from '@/lib/api/coupons/couponQuery';
 
 // ===== Coupon Read Actions =====
@@ -62,7 +67,7 @@ export async function getBusinessCouponsPaginatedAction(
   }
 }
 
-export async function getBusinessCouponStatsAction(): Promise<
+export async function getBusinessCouponStatsAction(branchId?: string): Promise<
   ApiResponse<{
     total: number;
     published: number;
@@ -74,7 +79,7 @@ export async function getBusinessCouponStatsAction(): Promise<
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
-    const stats = await getCouponStatsByBusiness(verify.business!.id);
+    const stats = await getCouponStatsByBusiness(verify.business!.id, branchId);
     return { success: true, data: stats };
   } catch (error) {
     console.error('[getBusinessCouponStatsAction]', error);
@@ -431,6 +436,72 @@ export async function deleteFeaturedDealAction(
       error: {
         code: 'INTERNAL_ERROR',
         message: 'Failed to delete featured deal',
+      },
+    };
+  }
+}
+
+// ===== Redeemed Coupons Actions =====
+
+export async function getRedeemedCouponsAction(
+  filters: RedemptionRecordFilters,
+): Promise<ApiResponse<PaginatedRedemptionRecordsResponse>> {
+  try {
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+
+    const result = await getRedeemedCouponsPaginated(
+      verify.business!.id,
+      filters,
+    );
+
+    if ('error' in result) {
+      return {
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: result.error ?? 'Failed to fetch redemptions',
+        },
+      };
+    }
+
+    return {
+      success: true,
+      data: result as PaginatedRedemptionRecordsResponse,
+    };
+  } catch (error) {
+    console.error('[getRedeemedCouponsAction]', error);
+    return {
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to fetch redemptions',
+      },
+    };
+  }
+}
+
+export async function getRedemptionSummaryStatsAction(
+  branchId?: string,
+): Promise<ApiResponse<RedemptionSummaryStats>> {
+  try {
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+
+    const stats = await getRedemptionSummaryStatsByBusiness(
+      verify.business!.id,
+      branchId,
+    );
+    return { success: true, data: stats };
+  } catch (error) {
+    console.error('[getRedemptionSummaryStatsAction]', error);
+    return {
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to fetch redemption stats',
       },
     };
   }

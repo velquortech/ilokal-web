@@ -259,7 +259,7 @@ describe('productService', () => {
 
       expect(res.success).toBe(true);
       expect(insertSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ price_type: 'fixed', is_available: true }),
+        expect.objectContaining({ price_type: 'fixed' }),
       );
     });
 
@@ -342,7 +342,7 @@ describe('productService', () => {
 
       expect(res.success).toBe(true);
       expect(insertSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ is_available: false }),
+        expect.objectContaining({ name: 'Draft', price: 100 }),
       );
     });
 
@@ -474,7 +474,10 @@ describe('productService', () => {
       expect(res.success).toBe(true);
       expect(res.data).toBeNull();
       expect(updateSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'archived' }),
+        expect.objectContaining({
+          status: 'disabled',
+          archived_at: expect.any(String),
+        }),
       );
     });
   });

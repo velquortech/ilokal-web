@@ -9,6 +9,7 @@ import * as couponQuery from '@/lib/api/coupons/couponQuery';
 
 vi.mock('@/lib/api/verifyBusinessOwner');
 vi.mock('@/lib/api/coupons/couponQuery');
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('@/lib/services/couponService', () => ({
   default: {
     create: vi.fn(),
@@ -201,6 +202,36 @@ describe('getBusinessCouponStatsAction', () => {
     expect(data?.total).toBe(5);
     expect(data?.published).toBe(3);
     expect(data?.draft).toBe(2);
+  });
+
+  it('passes branchId to getCouponStatsByBusiness when provided', async () => {
+    vi.mocked(couponQuery.getCouponStatsByBusiness).mockResolvedValueOnce({
+      total: 2,
+      published: 1,
+      draft: 1,
+    });
+
+    await getBusinessCouponStatsAction('branch-42');
+
+    expect(couponQuery.getCouponStatsByBusiness).toHaveBeenCalledWith(
+      BUSINESS_ID,
+      'branch-42',
+    );
+  });
+
+  it('passes undefined branchId when not provided', async () => {
+    vi.mocked(couponQuery.getCouponStatsByBusiness).mockResolvedValueOnce({
+      total: 0,
+      published: 0,
+      draft: 0,
+    });
+
+    await getBusinessCouponStatsAction();
+
+    expect(couponQuery.getCouponStatsByBusiness).toHaveBeenCalledWith(
+      BUSINESS_ID,
+      undefined,
+    );
   });
 });
 

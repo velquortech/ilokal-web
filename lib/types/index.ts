@@ -42,6 +42,7 @@ export type {
   CreateBusinessInput,
   UpdateBusinessInput,
   BusinessVerificationStatus,
+  BusinessProfileData,
 } from './business';
 
 // Product Domain Types
@@ -68,6 +69,9 @@ export type {
 export type {
   Branch,
   BranchResponse,
+  BranchStats,
+  BranchStatus,
+  BranchDocument,
   CreateBranchRequest,
   UpdateBranchRequest,
   BranchFilters,
@@ -91,6 +95,11 @@ export type {
   CouponDetailResponse,
   CouponRedemption,
   RedemptionStats,
+  RedemptionStatus,
+  RedemptionRecord,
+  RedemptionRecordFilters,
+  PaginatedRedemptionRecordsResponse,
+  RedemptionSummaryStats,
   CreateFeaturedDealRequest,
   UpdateFeaturedDealRequest,
   FeaturedDealFilters,

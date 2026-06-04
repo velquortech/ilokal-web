@@ -6,7 +6,12 @@
  */
 
 import { createServerSupabaseClient } from '@/supabase/server';
-import { Business, AdminBusiness, BusinessFilters } from '@/lib/types/business';
+import {
+  Business,
+  AdminBusiness,
+  BusinessFilters,
+  BusinessProfileData,
+} from '@/lib/types/business';
 
 // ============================================================================
 // FETCH OPERATIONS
@@ -354,5 +359,54 @@ export async function deleteBusinessById(
       success: false,
       error: err instanceof Error ? err.message : 'Failed to delete business',
     };
+  }
+}
+
+/**
+ * Fetch the editable profile fields for the business profile page.
+ * Returns only the columns the profile page reads and mutates.
+ */
+export async function getBusinessProfileData(
+  businessId: string,
+): Promise<BusinessProfileData | null> {
+  try {
+    const supabase = await createServerSupabaseClient();
+
+    const { data, error } = await supabase
+      .from('businesses')
+      .select(
+        'id, shop_name, description, logo_url, banner_url, category_id, interior_images, status, updated_at',
+      )
+      .eq('id', businessId)
+      .is('archived_at', null)
+      .single();
+
+    if (error || !data) return null;
+
+    // Resolve relative storage paths to full public URLs — same pattern as getBusinessById.
+    // The DB may store bare paths (e.g. from the registration flow) or full URLs (from the
+    // upload API). Full URLs are passed through unchanged.
+    const resolve = (
+      bucket: string,
+      pathOrUrl: string | null,
+    ): string | null => {
+      if (!pathOrUrl) return null;
+      if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://'))
+        return pathOrUrl;
+      return supabase.storage.from(bucket).getPublicUrl(pathOrUrl).data
+        .publicUrl;
+    };
+
+    return {
+      ...data,
+      logo_url: resolve('shop-logos', data.logo_url),
+      banner_url: resolve('shop-banners', data.banner_url),
+      interior_images:
+        (data.interior_images as string[] | null)?.map(
+          (url) => resolve('interior-images', url) ?? url,
+        ) ?? null,
+    } as BusinessProfileData;
+  } catch {
+    return null;
   }
 }

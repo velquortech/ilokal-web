@@ -7,12 +7,15 @@ Tracks active refactors, near-term improvements, and long-term work items.
 ## In progress — `refactor/api-layer-overhaul`
 
 ### Middleware consolidation
+
 Replaced the `proxy/` middleware stack (`stackMiddlewares.ts`, `auth-middleware.ts`, `protectedRoutes.ts`) with a single `proxy.ts` at the project root. `config/updateSession.ts` was deleted; session refresh is now handled inline. `lib/utils/protectedRoutes.ts` and `lib/utils/auth/index.ts` updated to match.
 
 ### Folder restructure: `app/business-registration/` → `app/business/registration/`
+
 All business-registration pages, components, steps, hooks, and tests moved under `app/business/registration/` to co-locate them with the rest of `app/business/`. Import paths updated accordingly.
 
 ### API namespace cleanup
+
 `config/routeConfig.ts` updated: stale `BILLING_BASE`, `PAYMENTS_BASE`, `SUBSCRIPTIONS_BASE`, `USERS_BASE` constants removed; dead `API_PROTECTED_PREFIXES` entries cleaned up.
 
 ---
@@ -53,12 +56,12 @@ Migration `20260527000000_sync_role_to_jwt.sql` created. Adds a `AFTER INSERT OR
 
 ## Enforcement map (post-Phase 1 / `refactor/api-layer-overhaul`)
 
-| Path prefix | Middleware runs? | Guard mechanism |
-|---|---|---|
-| `/admin/*` | Yes — page route block | `isProtectedPath` + `roleAllowedForPath` → redirect |
-| `/business/*` | Yes — page route block | `isProtectedPath` + `roleAllowedForPath` → redirect |
-| `/api/protected/*` | Yes — shallow token check | `getMobileUser()` in each handler |
-| `/api/admin/*` | No | `assertAuthorized({ roles: ['admin'] })` in each handler |
-| `/api/web/*` | No | `assertAuthorized()` in each handler |
-| `/api/auth/*` | No | Public — no guard |
-| `/api/mobile/*` | No | Public — no guard |
+| Path prefix        | Middleware runs?          | Guard mechanism                                          |
+| ------------------ | ------------------------- | -------------------------------------------------------- |
+| `/admin/*`         | Yes — page route block    | `isProtectedPath` + `roleAllowedForPath` → redirect      |
+| `/business/*`      | Yes — page route block    | `isProtectedPath` + `roleAllowedForPath` → redirect      |
+| `/api/protected/*` | Yes — shallow token check | `getMobileUser()` in each handler                        |
+| `/api/admin/*`     | No                        | `assertAuthorized({ roles: ['admin'] })` in each handler |
+| `/api/web/*`       | No                        | `assertAuthorized()` in each handler                     |
+| `/api/auth/*`      | No                        | Public — no guard                                        |
+| `/api/mobile/*`    | No                        | Public — no guard                                        |

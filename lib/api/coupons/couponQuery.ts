@@ -574,8 +574,10 @@ export async function getRedeemedCouponsPaginated(
     }
 
     // Step 3: merge coupon metadata into each row.
+    // Cast through unknown because PostgREST infers FK-joined fields as arrays
+    // at the TypeScript level even though they resolve to single objects at runtime.
     const redemptions: RedemptionRecord[] = (data ?? []).map((row) => ({
-      ...(row as Omit<RedemptionRecord, 'coupons'>),
+      ...(row as unknown as Omit<RedemptionRecord, 'coupons'>),
       coupons: couponMap.get(row.coupon_id) ?? null,
     }));
 

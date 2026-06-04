@@ -24,6 +24,10 @@ make generate-types  # Regenerate lib/types/database.ts
 
 Soft test step: `yarn lint --fix && yarn build` (or `make review` to include tests)
 
+## Package manager
+
+**yarn** — always use `yarn` instead of `npm`. Never run `npm install`, `npm run`, or `npx` (use `yarn dlx` instead).
+
 ## Stack
 
 Next.js 16 (App Router) · React 19 · TypeScript strict · Supabase SSR + PostGIS · Zod · shadcn-ui + Radix UI · Tailwind CSS v4 · Vitest

@@ -8,8 +8,14 @@ import {
 import { ProductCataloguesClient } from './components/ProductCataloguesClient';
 import type { ProductResponse } from '@/lib/types';
 
-export default async function ProductCataloguesPage() {
-  const verify = await verifyBusinessOwner();
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export default async function ProductCataloguesPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const [verify, sp] = await Promise.all([verifyBusinessOwner(), searchParams]);
 
   if (!verify.authorized) {
     const isUnauthenticated =
@@ -22,13 +28,14 @@ export default async function ProductCataloguesPage() {
   }
 
   const businessId = verify.business?.id;
+  const branchId = typeof sp.branch === 'string' ? sp.branch : undefined;
 
   const [productsResult, stats, categoriesResult] = await Promise.all([
     businessId
-      ? getProductsByBusinessId(businessId)
+      ? getProductsByBusinessId(businessId, undefined, branchId)
       : Promise.resolve({ products: [] }),
     businessId
-      ? getProductStatsByBusinessId(businessId)
+      ? getProductStatsByBusinessId(businessId, branchId)
       : Promise.resolve({
           total: 0,
           active: 0,

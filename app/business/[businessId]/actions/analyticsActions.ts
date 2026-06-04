@@ -7,6 +7,7 @@ import type { ApiResponse, BusinessAnalyticsDashboard } from '@/lib/types';
 
 export async function getBusinessAnalyticsDashboardAction(
   businessId: string,
+  branchId?: string,
 ): Promise<ApiResponse<BusinessAnalyticsDashboard>> {
   try {
     const verify = await verifyBusinessOwner(businessId);
@@ -25,12 +26,12 @@ export async function getBusinessAnalyticsDashboardAction(
       segmentsRes,
       healthRes,
     ] = await Promise.all([
-      analyticsService.getRetentionData(businessId),
-      analyticsService.getMonthlyTrend(businessId),
-      analyticsService.getFollowerFunnel(businessId),
-      analyticsService.getCouponPerformance(businessId),
-      analyticsService.getCustomerSegments(businessId),
-      analyticsService.getBusinessHealthIndicators(businessId),
+      analyticsService.getRetentionData(businessId, branchId),
+      analyticsService.getMonthlyTrend(businessId, branchId),
+      analyticsService.getFollowerFunnel(businessId, branchId),
+      analyticsService.getCouponPerformance(businessId, branchId),
+      analyticsService.getCustomerSegments(businessId, branchId),
+      analyticsService.getBusinessHealthIndicators(businessId, branchId),
     ]);
 
     const health = healthRes.success

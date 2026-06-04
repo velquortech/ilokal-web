@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET } from '@/app/api/products/[id]/route';
+import { GET } from '@/app/api/web/products/[id]/route';
 import * as productQuery from '@/lib/api/products/productQuery';
 import { mockProductResponse, mockProduct } from '../../mockData/products.mock';
 

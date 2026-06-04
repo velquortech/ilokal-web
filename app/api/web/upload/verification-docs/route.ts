@@ -2,7 +2,7 @@ import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB for documents
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB for documents
 const ALLOWED_TYPES = [
   'application/pdf',
   'image/jpeg',
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { success: false, error: 'File size must be less than 10MB' },
+        { success: false, error: 'File size must be less than 2MB' },
         { status: 400 },
       );
     }

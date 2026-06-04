@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
 import type { NextRequest } from 'next/server';
 
 import { GET as getRevenue } from '@/app/api/admin/analytics/revenue/route';
-import { POST as postUpgrade } from '@/app/api/subscriptions/upgrade/route';
-import { PUT as putNotification } from '@/app/api/notifications/[id]/route';
+import { POST as postUpgrade } from '@/app/api/web/subscriptions/upgrade/route';
+import { PUT as putNotification } from '@/app/api/web/notifications/[id]/route';
 import { createServerSupabaseClient } from '@/supabase/server';
 
 vi.mock('@/supabase/server', () => ({

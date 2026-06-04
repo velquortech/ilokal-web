@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
 import type { NextRequest } from 'next/server';
 import type { TestNextRequest } from '@/lib/types';
 
-import { GET as getCurrentUser } from '@/app/api/users/me/route';
+import { GET as getCurrentUser } from '@/app/api/web/users/me/route';
 import { GET as getAdminProfiles } from '@/app/api/admin/profiles/route';
 import { createServerSupabaseClient } from '@/supabase/server';
 

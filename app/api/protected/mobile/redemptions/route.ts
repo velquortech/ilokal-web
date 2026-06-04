@@ -16,16 +16,28 @@ export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl;
     const filter = searchParams.get('filter'); // 'active' | 'claimed' | 'expired'
 
+    // Page the wallet so mobile pulls one screen at a time, never the whole
+    // history in a single batch. per_page is capped to keep payloads bounded.
+    const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1);
+    const perPageRaw = parseInt(searchParams.get('per_page') ?? '10', 10);
+    const perPage = Math.min(
+      50,
+      Math.max(1, Number.isFinite(perPageRaw) ? perPageRaw : 10),
+    );
+    const from = (page - 1) * perPage;
+    const to = from + perPage - 1;
+
     let query = auth.supabase
       .from('user_redemptions')
       .select(
         `
         id, redeemed_at, expires_at, is_claimed,
-        coupons(id, code, description, discount, expiry_date,
+        coupons(id, code, description, discount, expiry_date, promotion_type,
           businesses(id, shop_name, logo_url)
         ),
         branches(id, name, address)
       `,
+        { count: 'exact' },
       )
       .eq('user_id', auth.user.id)
       .order('redeemed_at', { ascending: false });
@@ -44,11 +56,13 @@ export async function GET(req: NextRequest) {
         .lt('expires_at', now);
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query.range(from, to);
 
     if (error) return generalErrorResponse({ message: error.message });
 
-    return successResponse({ redemptions: data });
+    const hasMore = count != null && from + (data?.length ?? 0) < count;
+
+    return successResponse({ redemptions: data, has_more: hasMore });
   } catch {
     return generalErrorResponse();
   }

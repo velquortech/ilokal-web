@@ -16,7 +16,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const { data, error } = await supabase
       .from('coupons')
       .select(
-        'id, code, description, discount, usage_scope, start_date, expiry_date',
+        'id, code, description, discount, usage_scope, promotion_type, start_date, expiry_date',
       )
       .eq('business_id', businessId)
       .eq('status', 'published')

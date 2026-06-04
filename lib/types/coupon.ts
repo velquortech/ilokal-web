@@ -37,6 +37,7 @@ export type Coupon = {
   max_redemptions_global: number | null; // null = unlimited
   max_redemptions_per_user: number | null; // null = unlimited
   current_redemptions: number;
+  requires_subscription: boolean;
   created_at: string;
   updated_at: string;
   archived_at: string | null;
@@ -54,7 +55,7 @@ export type CreateCouponRequest = {
   expiry_date: string;
   max_redemptions_global?: number;
   max_redemptions_per_user?: number;
-  branch_id?: string | null;
+  requires_subscription?: boolean;
 };
 
 export type UpdateCouponRequest = Partial<CreateCouponRequest>;

@@ -140,6 +140,54 @@ export type PaginatedFeaturedDealsResponse = {
   total_pages: number;
 };
 
+// ===== Redeemed Coupons (Business Owner View) =====
+
+export type RedemptionStatus = 'active' | 'claimed' | 'expired';
+
+export type RedemptionRecord = {
+  id: string;
+  coupon_id: string;
+  user_id: string;
+  branch_id: string | null;
+  redeemed_at: string;
+  expires_at: string | null;
+  is_claimed: boolean;
+  coupons: Pick<
+    Coupon,
+    'code' | 'discount' | 'usage_scope' | 'expiry_date' | 'description'
+  > | null;
+  profiles: {
+    full_name: string | null;
+    email: string;
+    avatar_url: string | null;
+  } | null;
+  branches: { name: string; address: string } | null;
+};
+
+export type RedemptionRecordFilters = {
+  page?: number;
+  per_page?: number;
+  search?: string;
+  status?: RedemptionStatus;
+  branch_id?: string;
+  sort_by?: 'newest' | 'oldest';
+};
+
+export type PaginatedRedemptionRecordsResponse = {
+  redemptions: RedemptionRecord[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+};
+
+export type RedemptionSummaryStats = {
+  total: number;
+  unique_users: number;
+  active: number;
+  claimed: number;
+};
+
 // ===== Error Types =====
 export type CouponError =
   | 'COUPON_NOT_FOUND'

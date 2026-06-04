@@ -5,6 +5,7 @@ import {
   Bell,
   Home,
   ShoppingBasket,
+  BadgeCheck,
 } from 'lucide-react';
 import { NavItem } from '@/components/custom/Nav';
 import { QuickAction } from '@/components/custom/ActionButton';
@@ -32,6 +33,11 @@ export const storeNavigation: NavItem[] = [
     title: 'Coupons & Deals',
     href: '/business/coupons',
     icon: Ticket,
+  },
+  {
+    title: 'Redeemed Coupons',
+    href: '/business/redeemed-coupons',
+    icon: BadgeCheck,
   },
   // {
   //   title: 'Shop Settings',

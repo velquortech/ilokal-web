@@ -29,7 +29,7 @@ export default function BusinessLayout({
         <div className="bg-background font-geist flex h-screen overflow-hidden">
           <AIChatProvider>
             <SidebarProvider
-              defaultOpen
+              defaultOpen={false}
               style={
                 {
                   '--sidebar-width': '18rem',

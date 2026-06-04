@@ -92,12 +92,40 @@ ON CONFLICT (provider, provider_id) DO NOTHING;
 
 -- ── Profiles ──────────────────────────────────────────────────────────────────
 
-INSERT INTO public.profiles (id, email, full_name, role, status)
+INSERT INTO public.profiles (id, email, full_name, phone_number, avatar_url, role, status)
 VALUES
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'admin@ilokal.dev',    'Seed Admin',          'admin',          'active'),
-  ('00000000-0000-0000-0000-000000000001', 'owner@ilokal.dev',    'Seed Business Owner', 'business_owner', 'active'),
-  ('ffffffff-ffff-ffff-ffff-ffffffffffff', 'testuser@ilokal.dev', 'Test User',           'app_user',       'active')
-ON CONFLICT (id) DO NOTHING;
+  (
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    'admin@ilokal.dev',
+    'Seed Admin',
+    '+63 9120000001',
+    'http://127.0.0.1:54321/storage/v1/object/public/avatars/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/avatar.png',
+    'admin',
+    'active'
+  ),
+  (
+    '00000000-0000-0000-0000-000000000001',
+    'owner@ilokal.dev',
+    'Seed Business Owner',
+    '+63 9120000002',
+    'http://127.0.0.1:54321/storage/v1/object/public/avatars/00000000-0000-0000-0000-000000000001/avatar.png',
+    'business_owner',
+    'active'
+  ),
+  (
+    'ffffffff-ffff-ffff-ffff-ffffffffffff',
+    'testuser@ilokal.dev',
+    'Test User',
+    '+63 9120000003',
+    'http://127.0.0.1:54321/storage/v1/object/public/avatars/ffffffff-ffff-ffff-ffff-ffffffffffff/avatar.png',
+    'app_user',
+    'active'
+  )
+ON CONFLICT (id) DO UPDATE SET
+  full_name    = EXCLUDED.full_name,
+  phone_number = EXCLUDED.phone_number,
+  avatar_url   = EXCLUDED.avatar_url,
+  updated_at   = NOW();
 
 -- ── Test user domain data (subscriptions, redemptions, ratings) ───────────────
 -- Depends on: businesses.sql, coupons.sql

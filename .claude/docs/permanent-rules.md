@@ -15,17 +15,21 @@ Types and validation
 Supabase
 
 - Use a single wrapper for Supabase interactions; prefer `lib/api/supabase.ts` or `supabase/*` helpers.
-- Generate DB types with `npm run db:types` and check them into `lib/types/database.ts` as needed.
+- Generate DB types with `make generate-types` and check them into `lib/types/database.ts` as needed.
 - Browser client: `supabase/client.ts` expects `NEXT_PUBLIC_SUPABASE_URL` and anon/publishable key.
 
 Error handling
 
 - API responses should follow `ApiResponse<T> = { success: boolean; data?: T; error?: { code: string; message: string } }`.
 
+Package manager
+
+- **yarn** is the package manager. Never use `npm run`, `npm install`, or `npx` — use `yarn`, `yarn add`, and `yarn dlx` respectively.
+
 Scripts and CI
 
-- Soft test step: `npm run lint -- --fix && npm run build` as a quick local validation.
-- Include `npm run test` (vitest) in CI; prefer small focused unit tests for server logic.
+- Soft test step: `yarn lint --fix && yarn build` as a quick local validation.
+- Include `yarn test:run` (vitest) in CI; prefer small focused unit tests for server logic.
 
 Docs and change management
 
@@ -47,7 +51,7 @@ Formatting and linting
 
 - Use Prettier + eslint-config-next. Run formatters before commits and CI runs lint/typecheck.
 
-- Remove unused imports after changes: ensure `no-unused-vars` / TypeScript `noUnusedLocals` are enabled and run `npm run lint -- --fix` (or `eslint --fix`) to automatically remove unused imports. Add `lint-staged` pre-commit hooks and a CI lint step that runs autofix and fails if unused imports remain.
+- Remove unused imports after changes: ensure `no-unused-vars` / TypeScript `noUnusedLocals` are enabled and run `yarn lint --fix` to automatically remove unused imports. Add `lint-staged` pre-commit hooks and a CI lint step that runs autofix and fails if unused imports remain.
 
 Tests and typing
 

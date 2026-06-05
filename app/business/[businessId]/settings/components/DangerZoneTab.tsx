@@ -92,8 +92,8 @@ export function DangerZoneTab() {
       <Card className="border-destructive/30">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-            <CardTitle className="text-base text-destructive">
+            <AlertTriangle className="text-destructive h-4 w-4" />
+            <CardTitle className="text-destructive text-base">
               Danger Zone
             </CardTitle>
           </div>

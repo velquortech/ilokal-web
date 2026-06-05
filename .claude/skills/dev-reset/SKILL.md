@@ -19,6 +19,7 @@ Run `make migrate-reset` (stops Supabase, wipes DB, re-applies all migrations).
   1. Display a formatted error block showing: which migration failed, the exact error line(s), and exit code.
   2. **Stop and ask the user:**
      > ⚠️ **Migration failed.** Options:
+     >
      > - `fix` — I'll wait while you fix the migration and we retry
      > - `skip` — continue to seeding anyway (risky; DB may be in broken state)
      > - `abort` — stop the reset entirely
@@ -47,6 +48,7 @@ Run `make seed` to populate storage buckets (logos, avatars, product images) and
   1. Display a formatted error block: which seed file or upload failed, the exact error line(s), and exit code.
   2. **Stop and ask the user:**
      > ⚠️ **Seeding failed.** Options:
+     >
      > - `fix` — I'll wait while you fix the seed file and we retry from this step
      > - `skip` — continue to dev server anyway (dev data will be missing or partial)
      > - `abort` — stop the reset entirely

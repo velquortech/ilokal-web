@@ -27,6 +27,7 @@ export const createProductSchema = z.object({
   price_unit: z.string().nullable().optional(),
   category_id: z.string().uuid('Invalid category ID').nullable().optional(),
   image_url: z.string().url().nullable().optional(),
+  branch_id: z.string().uuid().nullable().optional(),
 });
 
 export const updateProductSchema = createProductSchema.partial().extend({

@@ -1,24 +1,11 @@
 import {
   Store,
-  // TrendingUp,
-  // BarChart3,
-  // Megaphone,
   Ticket,
-  // Gift,
   MessageSquare,
-  // Star,
-  // Settings,
-  // HelpCircle,
-  // Sparkles,
-  // Zap,
-  // Users,
   Bell,
-  // Building2,
-  // Building,
-  // MapPin,
-  // Layers,
   Home,
   ShoppingBasket,
+  BadgeCheck,
 } from 'lucide-react';
 import { NavItem } from '@/components/custom/Nav';
 import { QuickAction } from '@/components/custom/ActionButton';
@@ -46,6 +33,11 @@ export const storeNavigation: NavItem[] = [
     title: 'Coupons & Deals',
     href: '/business/coupons',
     icon: Ticket,
+  },
+  {
+    title: 'Redeemed Coupons',
+    href: '/business/redeemed-coupons',
+    icon: BadgeCheck,
   },
   // {
   //   title: 'Shop Settings',

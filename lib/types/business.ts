@@ -21,6 +21,22 @@ export type BusinessVerificationStatus =
   | 'rejected';
 
 /**
+ * Business profile data — the editable fields shown on the profile page.
+ * Uses DB column names (shop_name, not name) for direct supabase compatibility.
+ */
+export type BusinessProfileData = {
+  id: string;
+  shop_name: string;
+  description: string | null;
+  logo_url: string | null;
+  banner_url: string | null;
+  category_id: string | null;
+  interior_images: string[] | null;
+  status: BusinessVerificationStatus;
+  updated_at: string | null;
+};
+
+/**
  * Core business record from database
  */
 export type Business = {

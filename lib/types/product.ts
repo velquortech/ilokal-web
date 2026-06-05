@@ -35,6 +35,7 @@ export type Category = {
 export type Product = {
   id: string;
   business_id: string;
+  branch_id: string | null;
   category_id: string | null;
   name: string;
   description: string | null;
@@ -64,10 +65,12 @@ export type CreateProductRequest = {
   category_id?: string | null;
   image_url?: string | null;
   is_available?: boolean;
+  branch_id?: string | null;
 };
 
 export type UpdateProductRequest = Partial<CreateProductRequest> & {
   status?: ProductStatus;
+  branch_id?: string | null;
 };
 
 export type ApplySaleRequest = {
@@ -113,6 +116,7 @@ export type ProductFilters = {
   category_id?: string;
   status?: ProductStatus;
   business_id?: string;
+  branch_id?: string;
   sort_by?: ProductSortOrder;
   min_price?: number;
   max_price?: number;

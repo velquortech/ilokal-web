@@ -11,6 +11,7 @@ export const OTHER_BUSINESS_ID = 'biz-00000000-0000-0000-0000-000000000002';
 export const mockProduct: Product = {
   id: 'prod-00000000-0000-0000-0000-000000000001',
   business_id: BUSINESS_ID,
+  branch_id: null,
   category_id: mockCategory.id,
   name: 'Flat White',
   description: 'Smooth espresso with steamed milk',
@@ -31,6 +32,7 @@ export const mockProduct: Product = {
 export const mockProductOnSale: Product = {
   id: 'prod-00000000-0000-0000-0000-000000000002',
   business_id: BUSINESS_ID,
+  branch_id: null,
   category_id: mockCategory.id,
   name: 'Cappuccino',
   description: 'Classic Italian coffee',
@@ -51,6 +53,7 @@ export const mockProductOnSale: Product = {
 export const mockProductInactive: Product = {
   id: 'prod-00000000-0000-0000-0000-000000000003',
   business_id: BUSINESS_ID,
+  branch_id: null,
   category_id: mockCategoryClothing.id,
   name: 'Cotton T-Shirt',
   description: 'Basic cotton tee',
@@ -71,6 +74,7 @@ export const mockProductInactive: Product = {
 export const mockProductArchived: Product = {
   id: 'prod-00000000-0000-0000-0000-000000000004',
   business_id: BUSINESS_ID,
+  branch_id: null,
   category_id: mockCategory.id,
   name: 'Old Brew',
   description: 'Discontinued item',
@@ -91,6 +95,7 @@ export const mockProductArchived: Product = {
 export const mockProductPerHour: Product = {
   id: 'prod-00000000-0000-0000-0000-000000000005',
   business_id: BUSINESS_ID,
+  branch_id: null,
   category_id: mockCategoryClothing.id,
   name: 'Sewing Lesson',
   description: 'Private tailoring lesson',

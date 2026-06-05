@@ -10,63 +10,65 @@ Follow these standards to keep the product visually consistent across features.
 **Config:** `components.json` — style `new-york`, base color `slate`, CSS variables on, RSC enabled.
 
 All primitive components live in `components/ui/`. Add new primitives via the shadcn CLI:
+
 ```bash
 npx shadcn@latest add <component>
 ```
+
 Never hand-write a primitive that shadcn provides — it will diverge from the design system.
 
 ### Available Primitives
 
-| Component | File | Notes |
-|---|---|---|
-| Button | `components/ui/button.tsx` | Variants: default, outline, ghost, destructive, secondary, link |
-| Input | `components/ui/input.tsx` | Always wrap in `<Field>` for error state |
-| Textarea | `components/ui/textarea.tsx` | Same Field wrapper rule |
-| Select | `components/ui/select.tsx` | Use for all dropdown choices; cascading via `disabled` prop |
-| Label | `components/ui/label.tsx` | Pair with `htmlFor` on every input |
-| Field / FieldError | `components/ui/field.tsx` | **Required** wrapper — drives `data-invalid` red border |
-| Dialog | `components/ui/dialog.tsx` | For blocking confirmations and multi-step modals |
-| Sheet | `components/ui/sheet.tsx` | For side-panel / drawer patterns (e.g. AI chat) |
-| Card | `components/ui/card.tsx` | Default surface container |
-| Badge | `components/ui/badge.tsx` | Status chips, category labels |
-| Tabs | `components/ui/tabs.tsx` | Top-level section switching |
-| Table | `components/ui/table.tsx` | Data grids — always pair with `@tanstack/react-table` |
-| Checkbox | `components/ui/checkbox.tsx` | |
-| Radio Group | `components/ui/radio-group.tsx` | |
-| Tooltip | `components/ui/tooltip.tsx` | Icon-only buttons must have a tooltip |
-| Popover | `components/ui/popover.tsx` | Non-blocking overlays |
-| Dropdown Menu | `components/ui/dropdown-menu.tsx` | Context menus, kebab menus |
-| Progress | `components/ui/progress.tsx` | Step indicators, upload progress |
-| Skeleton | `components/ui/skeleton.tsx` | Loading placeholders — never use spinners alone |
-| Scroll Area | `components/ui/scroll-area.tsx` | Scoped scroll within panels |
-| Separator | `components/ui/separator.tsx` | Section dividers |
-| Avatar | `components/ui/avatar.tsx` | |
-| Alert | `components/ui/alert.tsx` | Inline status banners |
-| Collapsible | `components/ui/collapsible.tsx` | |
-| Toggle / Toggle Group | `components/ui/toggle.tsx` | |
-| Searchable Select | `components/ui/searchable-select.tsx` | Use for long lists (locations, categories) |
+| Component             | File                                  | Notes                                                           |
+| --------------------- | ------------------------------------- | --------------------------------------------------------------- |
+| Button                | `components/ui/button.tsx`            | Variants: default, outline, ghost, destructive, secondary, link |
+| Input                 | `components/ui/input.tsx`             | Always wrap in `<Field>` for error state                        |
+| Textarea              | `components/ui/textarea.tsx`          | Same Field wrapper rule                                         |
+| Select                | `components/ui/select.tsx`            | Use for all dropdown choices; cascading via `disabled` prop     |
+| Label                 | `components/ui/label.tsx`             | Pair with `htmlFor` on every input                              |
+| Field / FieldError    | `components/ui/field.tsx`             | **Required** wrapper — drives `data-invalid` red border         |
+| Dialog                | `components/ui/dialog.tsx`            | For blocking confirmations and multi-step modals                |
+| Sheet                 | `components/ui/sheet.tsx`             | For side-panel / drawer patterns (e.g. AI chat)                 |
+| Card                  | `components/ui/card.tsx`              | Default surface container                                       |
+| Badge                 | `components/ui/badge.tsx`             | Status chips, category labels                                   |
+| Tabs                  | `components/ui/tabs.tsx`              | Top-level section switching                                     |
+| Table                 | `components/ui/table.tsx`             | Data grids — always pair with `@tanstack/react-table`           |
+| Checkbox              | `components/ui/checkbox.tsx`          |                                                                 |
+| Radio Group           | `components/ui/radio-group.tsx`       |                                                                 |
+| Tooltip               | `components/ui/tooltip.tsx`           | Icon-only buttons must have a tooltip                           |
+| Popover               | `components/ui/popover.tsx`           | Non-blocking overlays                                           |
+| Dropdown Menu         | `components/ui/dropdown-menu.tsx`     | Context menus, kebab menus                                      |
+| Progress              | `components/ui/progress.tsx`          | Step indicators, upload progress                                |
+| Skeleton              | `components/ui/skeleton.tsx`          | Loading placeholders — never use spinners alone                 |
+| Scroll Area           | `components/ui/scroll-area.tsx`       | Scoped scroll within panels                                     |
+| Separator             | `components/ui/separator.tsx`         | Section dividers                                                |
+| Avatar                | `components/ui/avatar.tsx`            |                                                                 |
+| Alert                 | `components/ui/alert.tsx`             | Inline status banners                                           |
+| Collapsible           | `components/ui/collapsible.tsx`       |                                                                 |
+| Toggle / Toggle Group | `components/ui/toggle.tsx`            |                                                                 |
+| Searchable Select     | `components/ui/searchable-select.tsx` | Use for long lists (locations, categories)                      |
 
 ### Custom Composites (`components/custom/`)
 
-| Component | Purpose |
-|---|---|
-| `ActionButton` | Icon + label button with loading state |
-| `AvatarImage` | Avatar with fallback initials |
-| `ChartCard` | Chart wrapper with title + period selector |
-| `StatCard` | KPI metric tile (value + delta + sparkline) |
-| `StatusBadge` | Coloured badge driven by a status string |
-| `ProductCard` | Listing card with image, price, availability toggle |
-| `GlobalSearch` | Command-palette style search |
-| `Searchbar` | Inline search input |
-| `Masonry` | CSS masonry grid layout |
-| `Header` / `Nav` | App-level navigation shell |
-| `FadeInAnimation` | Motion.js wrapper — fade + slide in on mount |
-| `FadeInOnScroll` | Intersection Observer–triggered fade |
-| `Footer` | Landing page footer |
-| `Navigation` | Landing page resizable navbar |
-| `pricing` | Landing page pricing cards |
-| `testimonial` | Landing page testimonial carousel |
-| `ThemeToggle` | Light/dark mode switcher |
+| Component         | Purpose                                             |
+| ----------------- | --------------------------------------------------- |
+| `ActionButton`    | Icon + label button with loading state              |
+| `AvatarImage`     | Avatar with fallback initials                       |
+| `ChartCard`       | Chart wrapper with title + period selector          |
+| `StatCard`        | KPI metric tile (value + delta + sparkline)         |
+| `StatusBadge`     | Coloured badge driven by a status string            |
+| `ProductCard`     | Listing card with image, price, availability toggle |
+| `GlobalSearch`    | Command-palette style search                        |
+| `Searchbar`       | Inline search input                                 |
+| `Masonry`         | CSS masonry grid layout                             |
+| `Header` / `Nav`  | App-level navigation shell                          |
+| `FadeInAnimation` | Motion.js wrapper — fade + slide in on mount        |
+| `FadeInOnScroll`  | Intersection Observer–triggered fade                |
+| `Footer`          | Landing page footer                                 |
+| `Navigation`      | Landing page resizable navbar                       |
+| `pricing`         | Landing page pricing cards                          |
+| `testimonial`     | Landing page testimonial carousel                   |
+| `ThemeToggle`     | Light/dark mode switcher                            |
 
 ---
 
@@ -75,6 +77,7 @@ Never hand-write a primitive that shadcn provides — it will diverge from the d
 **Library:** `lucide-react` `^0.577.0` (primary) + `@tabler/icons-react` `^3.36.1` (supplementary).
 
 Rules:
+
 - Default to Lucide. Use Tabler only for icons Lucide does not cover.
 - Size icons with `h-4 w-4` (16 px) in buttons; `h-5 w-5` in list items; `h-6 w-6` standalone.
 - All icon-only interactive elements (buttons, links) must have an `<title>` or `aria-label` and a `<Tooltip>`.
@@ -91,21 +94,25 @@ import { motion } from 'motion/react';
 ```
 
 **When to use Motion:**
+
 - Page / section entrance animations (mount, route transition)
 - Staggered list reveals
 - Interactive feedback on cards/buttons (scale, opacity)
 - The `FadeInAnimation` and `FadeInOnScroll` wrappers already cover most cases — prefer them.
 
 **CSS animations (`tw-animate-css` `^1.4.0`):**
+
 - Available as Tailwind utilities: `animate-fade-in`, `animate-slide-up`, etc.
 - Use for simple one-shot transitions (toasts, skeletons, loading states).
 - `animate-pulse` — loading placeholders and pending state icons.
 
 **Global view transition:**
+
 - `slide-up 0.5s ease-in-out` on `::view-transition-new(root)` — fires on Next.js navigation.
 - Do not add competing page-level animations on top of this.
 
 **Rules:**
+
 - Duration: `150ms`–`300ms` for micro-interactions; `400ms`–`600ms` for section entrances.
 - Easing: prefer `ease-in-out`; avoid linear for anything user-triggered.
 - Never animate layout-affecting properties (`width`, `height`, `padding`) — animate `opacity` and `transform` only.
@@ -141,10 +148,13 @@ import { motion } from 'motion/react';
 **Libraries:** `react-hook-form` `^7.71.2` + `@hookform/resolvers` `^5.2.2` + `zod` `^4.3.6`.
 
 Pattern:
+
 ```tsx
 const form = useForm<Schema>({ resolver: zodResolver(schema) });
 // ...
-<Controller name="field" control={form.control}
+<Controller
+  name="field"
+  control={form.control}
   render={({ field, fieldState }) => (
     <Field data-invalid={fieldState.invalid}>
       <Label htmlFor="field">Label</Label>
@@ -152,7 +162,7 @@ const form = useForm<Schema>({ resolver: zodResolver(schema) });
       {fieldState.error && <FieldError errors={[fieldState.error]} />}
     </Field>
   )}
-/>
+/>;
 ```
 
 - All schemas live in `lib/validation/` as Zod schemas.
@@ -201,18 +211,19 @@ toast.error('Something went wrong');
 
 ### Breakpoints (Tailwind v4 defaults)
 
-| Prefix | Min-width | Target |
-|---|---|---|
-| *(none)* | 0px | Mobile-first base |
-| `sm:` | 640px | Large phones / small tablets |
-| `md:` | 768px | Tablets |
-| `lg:` | 1024px | Laptops |
-| `xl:` | 1280px | Desktops |
-| `2xl:` | 1536px | Wide screens |
+| Prefix   | Min-width | Target                       |
+| -------- | --------- | ---------------------------- |
+| _(none)_ | 0px       | Mobile-first base            |
+| `sm:`    | 640px     | Large phones / small tablets |
+| `md:`    | 768px     | Tablets                      |
+| `lg:`    | 1024px    | Laptops                      |
+| `xl:`    | 1280px    | Desktops                     |
+| `2xl:`   | 1536px    | Wide screens                 |
 
 ### Layout Patterns
 
 **App shell (authenticated pages):**
+
 ```
 flex h-screen overflow-hidden
   ├── <Sidebar> — hidden on mobile (sheet/drawer), fixed on lg+
@@ -221,20 +232,24 @@ flex h-screen overflow-hidden
 ```
 
 **Business registration:**
+
 - Full-screen: `h-screen flex flex-col overflow-hidden`
 - Step content: side-by-side on `lg+` (`grid grid-cols-2`), stacked on smaller screens
 - Map panel: hidden on `md` and below, visible on `lg+`
 
 **Dashboard (business home):**
+
 - Stats row: `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4`
 - Charts section: `grid grid-cols-1 lg:grid-cols-2 gap-6`
 - Full-width on mobile, multi-column on desktop
 
 **Data tables:**
+
 - Horizontal scroll container on mobile: `overflow-x-auto`
 - Column visibility: hide secondary columns below `md` via TanStack column visibility
 
 **Cards / product grids:**
+
 - `Masonry` component handles responsive column count automatically
 - Fallback grid: `grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4`
 

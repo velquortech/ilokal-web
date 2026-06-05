@@ -8,10 +8,10 @@ One component per file. Filename matches the component name in PascalCase.
 // components/custom/StatCard.tsx
 
 type StatCardProps = {
-  label: string
-  value: string | number
-  delta?: number
-}
+  label: string;
+  value: string | number;
+  delta?: number;
+};
 
 export function StatCard({ label, value, delta }: StatCardProps) {
   return (
@@ -21,12 +21,13 @@ export function StatCard({ label, value, delta }: StatCardProps) {
         <p className="text-2xl font-semibold">{value}</p>
         {delta !== undefined && (
           <p className={delta >= 0 ? 'text-primary' : 'text-destructive'}>
-            {delta >= 0 ? '+' : ''}{delta}%
+            {delta >= 0 ? '+' : ''}
+            {delta}%
           </p>
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
 ```
 
@@ -41,6 +42,7 @@ export function StatCard({ label, value, delta }: StatCardProps) {
 ## Server vs Client Components
 
 Default to Server Components. Add `'use client'` only when the component needs:
+
 - `useState` / `useReducer`
 - `useEffect`
 - Browser APIs (`window`, `document`, event listeners)
@@ -67,14 +69,14 @@ export function FilterPanel({ onFilter }: FilterPanelProps) {
 // app/business/product-catalogues/page.tsx
 
 export default async function ProductCataloguesPage() {
-  const products = await getProducts();  // fetch in page, pass down as props
+  const products = await getProducts(); // fetch in page, pass down as props
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 p-6">
       <PageHeader title="Product Catalogues" />
       <ProductTable data={products} />
     </div>
-  )
+  );
 }
 ```
 
@@ -89,8 +91,8 @@ export default async function ProductCataloguesPage() {
 
 export function useDashboardTour() {
   const [step, setStep] = useState(0);
-  const next = () => setStep(s => s + 1);
-  return { step, next, isComplete: step >= STEPS.length }
+  const next = () => setStep((s) => s + 1);
+  return { step, next, isComplete: step >= STEPS.length };
 }
 ```
 
@@ -123,7 +125,7 @@ import { Label } from '@/components/ui/label';
       {fieldState.error && <FieldError errors={[fieldState.error]} />}
     </Field>
   )}
-/>
+/>;
 ```
 
 Never render a raw `<input>` — always use the shadcn `<Input>` primitive wrapped in `<Field>`.
@@ -131,6 +133,7 @@ Never render a raw `<input>` — always use the shadcn `<Input>` primitive wrapp
 ## Multi-Step Forms
 
 Follow the `registration-form-provider.tsx` pattern:
+
 - Context holds the form instance, current step, and navigation handlers.
 - Each step is a separate component file under `steps/`.
 - Locked/pre-filled fields: set value via `form.setValue` in a `useEffect` on mount, pass `disabled` to the input.
@@ -146,7 +149,7 @@ if (isLoading) {
       <Skeleton className="h-8 w-48" />
       <Skeleton className="h-32 w-full" />
     </div>
-  )
+  );
 }
 ```
 
@@ -155,12 +158,14 @@ if (isLoading) {
 Always render a meaningful empty state when a list has no items:
 
 ```tsx
-{items.length === 0 ? (
-  <div className="text-muted-foreground flex flex-col items-center py-16 text-sm">
-    <PackageIcon className="mb-2 h-8 w-8 opacity-40" />
-    <p>No products yet.</p>
-  </div>
-) : (
-  <ProductTable data={items} />
-)}
+{
+  items.length === 0 ? (
+    <div className="text-muted-foreground flex flex-col items-center py-16 text-sm">
+      <PackageIcon className="mb-2 h-8 w-8 opacity-40" />
+      <p>No products yet.</p>
+    </div>
+  ) : (
+    <ProductTable data={items} />
+  );
+}
 ```

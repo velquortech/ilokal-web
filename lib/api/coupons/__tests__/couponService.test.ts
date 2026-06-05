@@ -121,6 +121,26 @@ describe('couponService', () => {
       expect(res.error?.code).toBe('INTERNAL_ERROR');
     });
 
+    it('returns CONFLICT when Postgres unique constraint is violated (code 23505)', async () => {
+      const chain = makeInsertChain({
+        data: null,
+        error: {
+          code: '23505',
+          message:
+            'duplicate key value violates unique constraint "coupons_business_id_code_key"',
+        },
+      });
+      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce({
+        from: chain.from,
+      } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>);
+
+      const res = await svc.createCoupon(BUSINESS_ID, baseInput);
+
+      expect(res.success).toBe(false);
+      expect(res.error?.code).toBe('CONFLICT');
+      expect(res.error?.message).toMatch(/already exists/i);
+    });
+
     it('uppercases the coupon code on insert', async () => {
       const mockCoupon: Partial<Coupon> = {
         id: COUPON_ID,

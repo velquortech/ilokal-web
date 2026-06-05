@@ -110,3 +110,7 @@ export function businessBranchPath(
 export function businessProfilePath(businessId: string): string {
   return businessPath(businessId, 'profile');
 }
+
+export function businessSettingsPath(businessId: string): string {
+  return businessPath(businessId, 'settings');
+}

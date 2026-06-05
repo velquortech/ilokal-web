@@ -40,9 +40,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     );
 
     if (search) {
-      query = query.or(
-        `name.ilike.%${search}%,description.ilike.%${search}%`,
-      );
+      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
     }
 
     // Mobile sort key → PostgREST ordering on the RPC's aggregate columns.
@@ -84,27 +82,25 @@ export async function GET(req: NextRequest, { params }: Params) {
       return generalErrorResponse({ message: error.message });
     }
 
-    const products = (data ?? []).map(
-      (product: Record<string, unknown>) => ({
-        id: product.id,
-        name: product.name,
-        description: product.description,
-        price: product.price,
-        sale_price: product.sale_price ?? null,
-        price_type: product.price_type as string,
-        price_unit: product.price_unit as string | null,
-        image_url: resolveStorageUrl(
-          supabase,
-          'product-images',
-          product.image_url as string | null,
-        ),
-        is_available: product.is_available,
-        category: product.category ?? null,
-        average_rating:
-          product.average_rating != null ? Number(product.average_rating) : 0,
-        rating_count: Number(product.rating_count ?? 0),
-      }),
-    );
+    const products = (data ?? []).map((product: Record<string, unknown>) => ({
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      sale_price: product.sale_price ?? null,
+      price_type: product.price_type as string,
+      price_unit: product.price_unit as string | null,
+      image_url: resolveStorageUrl(
+        supabase,
+        'product-images',
+        product.image_url as string | null,
+      ),
+      is_available: product.is_available,
+      category: product.category ?? null,
+      average_rating:
+        product.average_rating != null ? Number(product.average_rating) : 0,
+      rating_count: Number(product.rating_count ?? 0),
+    }));
 
     if (paginated) {
       const total = count ?? 0;

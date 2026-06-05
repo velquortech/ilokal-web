@@ -1,0 +1,178 @@
+'use client';
+
+import { useState } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import Image from 'next/image';
+
+interface MFAEnrollDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
+}
+
+type Step = 'qr' | 'verify';
+
+export function MFAEnrollDialog({
+  open,
+  onOpenChange,
+  onSuccess,
+}: MFAEnrollDialogProps) {
+  const [step, setStep] = useState<Step>('qr');
+  const [factorId, setFactorId] = useState('');
+  const [qrCode, setQrCode] = useState('');
+  const [secret, setSecret] = useState('');
+  const [code, setCode] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
+
+  async function handleEnroll() {
+    setLoading(true);
+    setError('');
+    const { data, error: enrollError } = await supabase.auth.mfa.enroll({
+      factorType: 'totp',
+      issuer: 'iLokal',
+      friendlyName: 'Authenticator App',
+    });
+    setLoading(false);
+    if (enrollError || !data) {
+      setError(enrollError?.message ?? 'Failed to start enrollment');
+      return;
+    }
+    setFactorId(data.id);
+    setQrCode(data.totp.qr_code);
+    setSecret(data.totp.secret);
+    setStep('verify');
+  }
+
+  async function handleVerify() {
+    if (code.length !== 6) {
+      setError('Enter the 6-digit code from your authenticator app');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
+      factorId,
+      code,
+    });
+    setLoading(false);
+    if (verifyError) {
+      setError(verifyError.message);
+      return;
+    }
+    setStep('qr');
+    setCode('');
+    setQrCode('');
+    setSecret('');
+    onSuccess();
+    onOpenChange(false);
+  }
+
+  function handleClose(open: boolean) {
+    if (!open) {
+      setStep('qr');
+      setCode('');
+      setError('');
+    }
+    onOpenChange(open);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Enable Two-Factor Authentication</DialogTitle>
+          <DialogDescription>
+            {step === 'qr'
+              ? 'Scan the QR code with your authenticator app, then enter the code to verify.'
+              : 'Enter the 6-digit code shown in your authenticator app.'}
+          </DialogDescription>
+        </DialogHeader>
+
+        {step === 'qr' && (
+          <div className="flex flex-col items-center gap-4">
+            <Button
+              onClick={handleEnroll}
+              disabled={loading}
+              className="w-full"
+            >
+              {loading ? 'Generating QR code...' : 'Generate QR Code'}
+            </Button>
+          </div>
+        )}
+
+        {step === 'verify' && (
+          <div className="flex flex-col gap-4">
+            {qrCode && (
+              <div className="flex flex-col items-center gap-2">
+                <Image
+                  src={qrCode}
+                  alt="TOTP QR code"
+                  width={200}
+                  height={200}
+                  unoptimized
+                  className="rounded-lg border"
+                />
+                <p className="text-muted-foreground text-xs">
+                  Can&apos;t scan? Use this secret:{' '}
+                  <code className="bg-muted rounded px-1 py-0.5 font-mono text-xs">
+                    {secret}
+                  </code>
+                </p>
+              </div>
+            )}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="otp-code">Verification Code</Label>
+              <Input
+                id="otp-code"
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="000000"
+                value={code}
+                onChange={(e) =>
+                  setCode(e.target.value.replace(/\D/g, '').slice(0, 6))
+                }
+                className="text-center font-mono tracking-widest"
+              />
+            </div>
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            <Button
+              onClick={handleVerify}
+              disabled={loading || code.length !== 6}
+            >
+              {loading ? 'Verifying...' : 'Verify & Enable'}
+            </Button>
+          </div>
+        )}
+
+        {step === 'qr' && error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}

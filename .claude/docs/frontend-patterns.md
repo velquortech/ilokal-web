@@ -32,14 +32,14 @@ Single source of truth for how to fetch data and trigger mutations in business-o
 
 ## Which layer do I use?
 
-| Scenario | Layer | Example |
-|---|---|---|
-| Load initial page data | `lib/api/*/Query` in Server Component | `getProductsByBusinessId()` |
-| Create / update / delete from a button or form | Server Action in `app/.../actions/` | `createProductAction()` |
-| Read from a Client Component after mutation | `router.refresh()` re-runs the Server Component | — |
-| Public mobile endpoint | `app/api/mobile/` route, `createBearerClient()` | `GET /api/mobile/businesses/nearby` |
-| Authenticated mobile endpoint | `app/api/protected/mobile/` route, `getMobileUser(req)` | `POST /api/protected/mobile/redemptions` |
-| Admin panel (web, non-SA) | `lib/services/` barrel + axios client | `userService.getProfilesByRolePaginated()` |
+| Scenario                                       | Layer                                                   | Example                                    |
+| ---------------------------------------------- | ------------------------------------------------------- | ------------------------------------------ |
+| Load initial page data                         | `lib/api/*/Query` in Server Component                   | `getProductsByBusinessId()`                |
+| Create / update / delete from a button or form | Server Action in `app/.../actions/`                     | `createProductAction()`                    |
+| Read from a Client Component after mutation    | `router.refresh()` re-runs the Server Component         | —                                          |
+| Public mobile endpoint                         | `app/api/mobile/` route, `createBearerClient()`         | `GET /api/mobile/businesses/nearby`        |
+| Authenticated mobile endpoint                  | `app/api/protected/mobile/` route, `getMobileUser(req)` | `POST /api/protected/mobile/redemptions`   |
+| Admin panel (web, non-SA)                      | `lib/services/` barrel + axios client                   | `userService.getProfilesByRolePaginated()` |
 
 ---
 
@@ -83,14 +83,24 @@ export default async function Page() {
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import * as productService from '@/lib/api/products/productService';
 
-export async function createProductAction(input: CreateProductRequest): Promise<ApiResponse<Product>> {
+export async function createProductAction(
+  input: CreateProductRequest,
+): Promise<ApiResponse<Product>> {
   const validation = createProductSchema.safeParse(input);
-  if (!validation.success) return { success: false, error: { code: 'VALIDATION_ERROR', message: '...' } };
+  if (!validation.success)
+    return {
+      success: false,
+      error: { code: 'VALIDATION_ERROR', message: '...' },
+    };
 
   const verify = await verifyBusinessOwner();
-  if (!verify.authorized) return { success: false, error: verify.error as ApiError };
+  if (!verify.authorized)
+    return { success: false, error: verify.error as ApiError };
 
-  return await productService.createProduct(verify.business!.id, validation.data);
+  return await productService.createProduct(
+    verify.business!.id,
+    validation.data,
+  );
 }
 ```
 

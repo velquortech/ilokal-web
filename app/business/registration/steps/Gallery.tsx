@@ -127,7 +127,7 @@ function ShopLogo() {
                   <div>
                     <p className="mb-1 font-medium">Upload your logo</p>
                     <p className="text-muted-foreground text-sm">
-                      PNG, JPG or SVG (max. 5MB)
+                      PNG, JPG or SVG (max. 2MB)
                     </p>
                   </div>
 
@@ -246,7 +246,7 @@ function ShopBanner() {
                   <div>
                     <p className="mb-1 font-medium">Upload your banner</p>
                     <p className="text-muted-foreground text-sm">
-                      PNG, JPG or SVG (max. 5MB)
+                      PNG, JPG or SVG (max. 2MB)
                     </p>
                   </div>
 
@@ -407,7 +407,7 @@ function InteriorImages() {
                   <div>
                     <p className="mb-1 font-medium">Add Interior Images</p>
                     <p className="text-muted-foreground text-sm">
-                      PNG, JPG or SVG (max. 5MB)
+                      PNG, JPG or SVG (max. 2MB)
                     </p>
                   </div>
 

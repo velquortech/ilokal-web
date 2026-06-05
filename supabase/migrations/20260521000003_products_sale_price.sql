@@ -5,23 +5,32 @@ ALTER TABLE public.products
   ADD COLUMN IF NOT EXISTS sale_ends_at   TIMESTAMPTZ;
 
 -- sale_price must be positive when set
-ALTER TABLE public.products
-  ADD CONSTRAINT products_sale_price_positive
-    CHECK (sale_price IS NULL OR sale_price > 0);
+DO $$ BEGIN
+  ALTER TABLE public.products
+    ADD CONSTRAINT products_sale_price_positive
+      CHECK (sale_price IS NULL OR sale_price > 0);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- sale_price must be strictly less than the base price when both are set
-ALTER TABLE public.products
-  ADD CONSTRAINT products_sale_price_less_than_price
-    CHECK (sale_price IS NULL OR price IS NULL OR sale_price < price);
+DO $$ BEGIN
+  ALTER TABLE public.products
+    ADD CONSTRAINT products_sale_price_less_than_price
+      CHECK (sale_price IS NULL OR price IS NULL OR sale_price < price);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- end date must come after start date when both are provided
-ALTER TABLE public.products
-  ADD CONSTRAINT products_sale_dates_order
-    CHECK (
-      sale_ends_at IS NULL OR
-      sale_starts_at IS NULL OR
-      sale_ends_at > sale_starts_at
-    );
+DO $$ BEGIN
+  ALTER TABLE public.products
+    ADD CONSTRAINT products_sale_dates_order
+      CHECK (
+        sale_ends_at IS NULL OR
+        sale_starts_at IS NULL OR
+        sale_ends_at > sale_starts_at
+      );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Composite index for the most common owner query: filter by business + status
 CREATE INDEX IF NOT EXISTS idx_products_business_status

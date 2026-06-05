@@ -200,7 +200,7 @@ describe('uploadProductImageAction', () => {
     expect(res.error?.code).toBe('VALIDATION_ERROR');
   });
 
-  it('returns VALIDATION_ERROR when file exceeds 5 MB', async () => {
+  it('returns VALIDATION_ERROR when file exceeds 2 MB', async () => {
     const bigContent = new Uint8Array(6 * 1024 * 1024);
     const fd = new FormData();
     fd.append(
@@ -210,7 +210,7 @@ describe('uploadProductImageAction', () => {
     const res = await uploadProductImageAction(fd);
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('VALIDATION_ERROR');
-    expect(res.error?.message).toMatch(/5 MB/i);
+    expect(res.error?.message).toMatch(/2 MB/i);
   });
 
   it('returns VALIDATION_ERROR for a disallowed file type', async () => {

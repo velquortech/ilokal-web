@@ -22,16 +22,30 @@ import { ProCard } from './ProCard';
 import { GlobalSearch } from '@/components/custom/GlobalSearch';
 import { useBusinessShop } from '@/providers/BusinessProvider';
 import { businessPath } from '@/config/routeConfig';
+import { useSearchParams } from 'next/navigation';
 
 export function BusinessSidebar() {
-  const { business } = useBusinessShop();
+  const { business, selectedBranchId } = useBusinessShop();
+  const searchParams = useSearchParams();
 
   const injectId = (href: string) => {
     if (!business?.id) return href;
-    if (href === '/business') return businessPath(business.id);
-    if (href.startsWith('/business/'))
-      return href.replace('/business/', `/business/${business.id}/`);
-    return href;
+
+    let resolved: string;
+    if (href === '/business') resolved = businessPath(business.id);
+    else if (href.startsWith('/business/'))
+      resolved = href.replace('/business/', `/business/${business.id}/`);
+    else resolved = href;
+
+    // Preserve all current search params, ensuring branch param stays in sync
+    const params = new URLSearchParams(searchParams.toString());
+    if (selectedBranchId) {
+      params.set('branch', selectedBranchId);
+    } else {
+      params.delete('branch');
+    }
+    const qs = params.toString();
+    return qs ? `${resolved}?${qs}` : resolved;
   };
 
   const sections = SIDEBAR_SECTIONS.map((section) => ({

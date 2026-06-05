@@ -37,3 +37,5 @@ export {
   removePaymentMethodAction,
   setDefaultPaymentMethodAction,
 } from './billingActions';
+
+export { updateBusinessProfileAction } from './profileActions';

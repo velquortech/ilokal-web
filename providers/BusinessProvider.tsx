@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode } from 'react';
+import type { Branch } from '@/lib/types';
 
 export interface BusinessShop {
   id: string;
@@ -35,6 +36,9 @@ export interface BusinessShop {
 
 interface BusinessContextType {
   business?: BusinessShop | null;
+  branches: Branch[];
+  selectedBranchId: string | null;
+  setSelectedBranchId: (id: string | null) => void;
 }
 
 const businessContext = createContext<BusinessContextType | undefined>(
@@ -44,18 +48,28 @@ const businessContext = createContext<BusinessContextType | undefined>(
 export function BusinessShopProvider({
   children,
   businessShop,
+  branches = [],
 }: {
   children: ReactNode;
   businessShop?: BusinessShop | null;
+  branches?: Branch[];
 }) {
+  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
+
   return (
-    <businessContext.Provider value={{ business: businessShop }}>
+    <businessContext.Provider
+      value={{
+        business: businessShop,
+        branches,
+        selectedBranchId,
+        setSelectedBranchId,
+      }}
+    >
       {children}
     </businessContext.Provider>
   );
 }
 
-// 2. Custom hook for easy access
 export const useBusinessShop = () => {
   const context = useContext(businessContext);
   if (context === undefined) {

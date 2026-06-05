@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET } from '@/app/api/search/products/route';
+import { GET } from '@/app/api/web/search/products/route';
 import * as searchService from '@/lib/api/search/searchService';
 import { mockProduct, mockProductOnSale } from '../../mockData/products.mock';
 

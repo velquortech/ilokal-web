@@ -140,6 +140,7 @@ export async function getProductsPaginated(
       category_id,
       status = 'active',
       business_id,
+      branch_id,
       sort_by = 'newest',
       min_price,
       max_price,
@@ -169,6 +170,10 @@ export async function getProductsPaginated(
 
     if (business_id) {
       query = query.eq('business_id', business_id);
+    }
+
+    if (branch_id) {
+      query = query.eq('branch_id', branch_id);
     }
 
     if (min_price !== undefined) {
@@ -250,15 +255,21 @@ export async function getProductById(id: string) {
  * Wrapped with React cache() so parallel server component reads share one DB call.
  */
 export const getProductStatsByBusinessId = cache(
-  async (business_id: string): Promise<ProductStats> => {
+  async (business_id: string, branch_id?: string): Promise<ProductStats> => {
     try {
       const supabase = await createServerSupabaseClient();
 
-      const { data, error } = await supabase
+      let statsQuery = supabase
         .from('products')
         .select('status, sale_price')
         .eq('business_id', business_id)
         .is('archived_at', null);
+
+      if (branch_id) {
+        statsQuery = statsQuery.eq('branch_id', branch_id);
+      }
+
+      const { data, error } = await statsQuery;
 
       if (error || !data) {
         return { total: 0, active: 0, unlisted: 0, disabled: 0, on_sale: 0 };
@@ -279,11 +290,12 @@ export const getProductStatsByBusinessId = cache(
 );
 
 /**
- * Get all products for a business.
+ * Get all products for a business, optionally scoped to a branch.
+ * When branch_id is provided, returns only products assigned to that specific branch.
  * Wrapped with React cache() so parallel server component reads share one DB call.
  */
 export const getProductsByBusinessId = cache(
-  async (business_id: string, status?: string) => {
+  async (business_id: string, status?: string, branch_id?: string) => {
     try {
       const supabase = await createServerSupabaseClient();
 
@@ -295,6 +307,10 @@ export const getProductsByBusinessId = cache(
 
       if (status) {
         query = query.eq('status', status);
+      }
+
+      if (branch_id) {
+        query = query.eq('branch_id', branch_id);
       }
 
       const { data, error } = await query.order('created_at', {

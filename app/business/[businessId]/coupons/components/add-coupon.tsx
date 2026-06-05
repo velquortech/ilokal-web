@@ -34,6 +34,7 @@ import type {
 } from '@/lib/types';
 import { createCouponAction } from '../../actions/couponActions';
 import { ProductPicker } from './product-picker';
+import { useBusinessShop } from '@/providers/BusinessProvider';
 
 interface AddCouponDialogProps {
   children: React.ReactNode;
@@ -81,6 +82,7 @@ export function AddCouponDialog({
   products,
   onSuccess,
 }: AddCouponDialogProps) {
+  const { selectedBranchId } = useBusinessShop();
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
@@ -110,6 +112,9 @@ export function AddCouponDialog({
   });
 
   const watchedScope = watch('usage_scope');
+  const filteredProducts = selectedBranchId
+    ? products.filter((p) => p.branch_id === selectedBranchId)
+    : products;
 
   const onSubmit = async (data: CouponFormValues) => {
     setIsSubmitting(true);
@@ -132,6 +137,7 @@ export function AddCouponDialog({
         max_redemptions_per_user: data.max_redemptions_per_user
           ? parseInt(data.max_redemptions_per_user, 10)
           : undefined,
+        branch_id: selectedBranchId ?? null,
       });
 
       if (!result.success) {
@@ -159,7 +165,20 @@ export function AddCouponDialog({
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
-      reset();
+      reset({
+        promotion_type: 'coupon',
+        status: 'draft' as CouponStatus,
+        code: '',
+        description: '',
+        discount_type: 'percentage',
+        discount_value: 0,
+        usage_scope: 'any',
+        scope_values: [],
+        start_date: '',
+        expiry_date: '',
+        max_redemptions_global: '',
+        max_redemptions_per_user: '',
+      });
       setServerError(null);
     }
   };
@@ -401,7 +420,7 @@ export function AddCouponDialog({
                   name="scope_values"
                   render={({ field }) => (
                     <ProductPicker
-                      products={products}
+                      products={filteredProducts}
                       value={field.value}
                       onChange={field.onChange}
                     />

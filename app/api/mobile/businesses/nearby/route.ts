@@ -54,7 +54,9 @@ export async function GET(req: NextRequest) {
     // Unknown category key → empty result (matches the deals route contract).
     if (category && !CATEGORY_TO_BUSINESS_TYPE[category]) {
       return successResponse(
-        paginated ? { businesses: [], has_more: false, total: 0 } : { businesses: [] },
+        paginated
+          ? { businesses: [], has_more: false, total: 0 }
+          : { businesses: [] },
       );
     }
 

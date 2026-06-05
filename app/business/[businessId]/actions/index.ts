@@ -39,3 +39,14 @@ export {
 } from './billingActions';
 
 export { updateBusinessProfileAction } from './profileActions';
+
+export {
+  changePasswordAction,
+  changeEmailAction,
+  upsertBusinessSettingsAction,
+  updateNotificationPreferencesAction,
+  deactivateBusinessAction,
+  deleteAccountAction,
+} from './settingsActions';
+
+export { listMFAFactorsAction, unenrollMFAAction } from './mfaActions';

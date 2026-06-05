@@ -62,11 +62,28 @@ export async function GET(req: NextRequest) {
       50,
       Math.max(1, Number.isFinite(rawPerPage) ? rawPerPage : 20),
     );
+    // Strip the chars PostgREST uses as `.or()` delimiters so a stray comma /
+    // paren in the query can't break the filter string below.
+    const search = (searchParams.get('q') ?? '').replace(/[,()]/g, ' ').trim();
 
     const supabase = createBearerClient();
     const now = new Date().toISOString();
 
-    const { data, error } = await supabase
+    // When searching, also match by business name: resolve the matching shop ids
+    // (trigram-indexed on shop_name) and OR them into the coupons query by
+    // business_id — a base-table column, so PostgREST can OR it with the
+    // description / code predicates in one filter.
+    let businessIdMatches: string[] = [];
+    if (search) {
+      const { data: bizMatches } = await supabase
+        .from('businesses')
+        .select('id')
+        .ilike('shop_name', `%${search}%`)
+        .limit(200);
+      businessIdMatches = (bizMatches ?? []).map((b) => b.id as string);
+    }
+
+    let query = supabase
       .from('coupons')
       .select(
         `id, code, description, discount, expiry_date, promotion_type,
@@ -86,7 +103,22 @@ export async function GET(req: NextRequest) {
       .eq('status', 'published')
       .is('archived_at', null)
       .lte('start_date', now)
-      .gte('expiry_date', now)
+      .gte('expiry_date', now);
+
+    // Search the whole catalog (not just the top-N scan) so a match deep in the
+    // catalog is still found; the limit applies after the filter.
+    if (search) {
+      const orParts = [
+        `description.ilike.%${search}%`,
+        `code.ilike.%${search}%`,
+      ];
+      if (businessIdMatches.length > 0) {
+        orParts.push(`business_id.in.(${businessIdMatches.join(',')})`);
+      }
+      query = query.or(orParts.join(','));
+    }
+
+    const { data, error } = await query
       .order('current_redemptions', { ascending: false }) // most popular first
       .order('expiry_date', { ascending: true })
       .limit(MAX_DEALS_SCAN);

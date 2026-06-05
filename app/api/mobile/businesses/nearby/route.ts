@@ -54,7 +54,9 @@ export async function GET(req: NextRequest) {
     // Unknown category key → empty result (matches the deals route contract).
     if (category && !CATEGORY_TO_BUSINESS_TYPE[category]) {
       return successResponse(
-        paginated ? { businesses: [], has_more: false, total: 0 } : { businesses: [] },
+        paginated
+          ? { businesses: [], has_more: false, total: 0 }
+          : { businesses: [] },
       );
     }
 
@@ -76,7 +78,20 @@ export async function GET(req: NextRequest) {
       query = query.eq('category_name', subcategory);
     }
     if (search) {
-      query = query.ilike('business_name', `%${search}%`);
+      // Match free text across name, business type, sub-category, and
+      // description so a category-ish query ("restaurant", "salon") or a
+      // descriptive word ("coffee") works — not just exact names. Strip the
+      // chars PostgREST uses as `.or()` delimiters so a stray comma/paren can't
+      // break the filter. AND-ed with any selected category/sub-category above.
+      const s = search.replace(/[,()]/g, ' ').trim();
+      if (s) {
+        query = query.or(
+          `business_name.ilike.%${s}%,` +
+            `business_type.ilike.%${s}%,` +
+            `category_name.ilike.%${s}%,` +
+            `business_description.ilike.%${s}%`,
+        );
+      }
     }
 
     if (paginated) {

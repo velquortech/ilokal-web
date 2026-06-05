@@ -107,9 +107,10 @@ export async function getBusinessRevenue(
 
 export async function getRetentionData(
   businessId: string,
+  branchId?: string,
 ): Promise<ApiResponse<RetentionMonth[]>> {
   try {
-    const data = await query.getRetentionData(businessId);
+    const data = await query.getRetentionData(businessId, branchId);
     return { success: true, data };
   } catch (error) {
     console.error('[getRetentionData]', error);
@@ -125,9 +126,10 @@ export async function getRetentionData(
 
 export async function getMonthlyTrend(
   businessId: string,
+  branchId?: string,
 ): Promise<ApiResponse<MonthlyTrendPoint[]>> {
   try {
-    const data = await query.getMonthlyTrend(businessId);
+    const data = await query.getMonthlyTrend(businessId, branchId);
     return { success: true, data };
   } catch (error) {
     console.error('[getMonthlyTrend]', error);
@@ -143,9 +145,10 @@ export async function getMonthlyTrend(
 
 export async function getFollowerFunnel(
   businessId: string,
+  branchId?: string,
 ): Promise<ApiResponse<FollowerFunnelData>> {
   try {
-    const data = await query.getFollowerFunnel(businessId);
+    const data = await query.getFollowerFunnel(businessId, branchId);
     return { success: true, data };
   } catch (error) {
     console.error('[getFollowerFunnel]', error);
@@ -161,9 +164,10 @@ export async function getFollowerFunnel(
 
 export async function getCouponPerformance(
   businessId: string,
+  branchId?: string,
 ): Promise<ApiResponse<CouponPerformanceItem[]>> {
   try {
-    const data = await query.getCouponPerformance(businessId);
+    const data = await query.getCouponPerformance(businessId, branchId);
     return { success: true, data };
   } catch (error) {
     console.error('[getCouponPerformance]', error);
@@ -179,9 +183,10 @@ export async function getCouponPerformance(
 
 export async function getCustomerSegments(
   businessId: string,
+  branchId?: string,
 ): Promise<ApiResponse<CustomerSegmentCounts>> {
   try {
-    const data = await query.getCustomerSegments(businessId);
+    const data = await query.getCustomerSegments(businessId, branchId);
     return { success: true, data };
   } catch (error) {
     console.error('[getCustomerSegments]', error);
@@ -197,9 +202,10 @@ export async function getCustomerSegments(
 
 export async function getBusinessHealthIndicators(
   businessId: string,
+  branchId?: string,
 ): Promise<ApiResponse<BusinessHealthData>> {
   try {
-    const data = await query.getBusinessHealthIndicators(businessId);
+    const data = await query.getBusinessHealthIndicators(businessId, branchId);
     return { success: true, data };
   } catch (error) {
     console.error('[getBusinessHealthIndicators]', error);

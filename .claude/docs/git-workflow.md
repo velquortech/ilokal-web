@@ -4,16 +4,16 @@
 
 Format: `type(scope): description`
 
-| Type | When to use |
-|---|---|
-| `feat` | New feature or user-facing addition |
-| `fix` | Bug fix |
-| `chore` | Tooling, deps, config, seeds, migrations (no production logic change) |
-| `refactor` | Code change with no behaviour change |
-| `docs` | Documentation only |
-| `test` | Adding or updating tests |
-| `perf` | Performance improvement |
-| `style` | Formatting, whitespace — no logic change |
+| Type       | When to use                                                           |
+| ---------- | --------------------------------------------------------------------- |
+| `feat`     | New feature or user-facing addition                                   |
+| `fix`      | Bug fix                                                               |
+| `chore`    | Tooling, deps, config, seeds, migrations (no production logic change) |
+| `refactor` | Code change with no behaviour change                                  |
+| `docs`     | Documentation only                                                    |
+| `test`     | Adding or updating tests                                              |
+| `perf`     | Performance improvement                                               |
+| `style`    | Formatting, whitespace — no logic change                              |
 
 Scope is optional but encouraged: `feat(registration): add barangay cascade dropdown`
 
@@ -52,6 +52,7 @@ git merge origin/develop
 Prefer `merge` over `rebase` for shared feature branches — rebase rewrites history others may have pulled.
 
 **Conflict resolution priority:**
+
 1. `modify/delete` conflicts: keep your version unless the deletion was an intentional refactor.
 2. `package.json` dependencies: keep the superset (your branch usually has more deps).
 3. Migration files: never modify existing migration files — create a new one instead.
@@ -71,6 +72,7 @@ Flag these in the PR description with a **Risk:** line and include rollback step
 ## Commit Co-authorship
 
 When commits are AI-assisted, append:
+
 ```
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ```

@@ -8,6 +8,13 @@ import { NextRequest } from 'next/server';
 
 const FLASH_WINDOW_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
+// Safety cap on the coupons scan. Classification (flash/explore/featured) and
+// the subscribed-first sort happen in-app after the query, so we can't push the
+// page bound into the DB via .range() yet (see deals tech-debt, approach B).
+// This bounds the scan so it can't grow with the full catalog. Coupons are
+// ordered most-redeemed first, so the cap keeps the highest-signal deals.
+const MAX_DEALS_SCAN = 500;
+
 // Maps mobile category key → business_types.name in the DB
 const CATEGORY_TO_BUSINESS_TYPE: Record<string, string> = {
   Food: 'Food & Beverage',
@@ -81,7 +88,8 @@ export async function GET(req: NextRequest) {
       .lte('start_date', now)
       .gte('expiry_date', now)
       .order('current_redemptions', { ascending: false }) // most popular first
-      .order('expiry_date', { ascending: true });
+      .order('expiry_date', { ascending: true })
+      .limit(MAX_DEALS_SCAN);
 
     if (error) {
       return generalErrorResponse({ message: error.message });

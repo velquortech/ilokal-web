@@ -8,6 +8,9 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { UpdateCurrentUserProfileInput } from '@/lib/validation/auth';
 import { User } from '@/lib/types';
+import type { Profile } from '@/lib/types/user';
+
+export type ProfilePageData = User & { status: Profile['status'] };
 
 // ============================================================================
 // PROFILE DATABASE CONSTANTS
@@ -70,6 +73,33 @@ export async function fetchProfileById(userId: string): Promise<User> {
   }
 
   return mapProfileToUser(profile);
+}
+
+/**
+ * Fetch user profile with account status for the profile page.
+ * Extends the standard User with `status` from the profiles table.
+ */
+export async function fetchProfileForPage(
+  userId: string,
+): Promise<ProfilePageData> {
+  const supabase = await createServerSupabaseClient();
+
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select(PROFILE_SELECT_FIELDS)
+    .eq('id', userId)
+    .single();
+
+  if (error || !profile) {
+    throw new Error(
+      `Failed to fetch profile: ${error?.message || 'Profile not found'}`,
+    );
+  }
+
+  return {
+    ...mapProfileToUser(profile),
+    status: (profile.status as Profile['status']) ?? 'active',
+  };
 }
 
 /**

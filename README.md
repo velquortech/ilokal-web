@@ -101,11 +101,13 @@ Make sure the following are installed on your machine:
 After a reset the database and storage buckets are empty. Run these to populate them with development data:
 
 - Seed everything (storage images + database rows):
+
   ```bash
   make seed
   ```
 
 - Seed only the storage buckets (logos and interior photos):
+
   ```bash
   make seed-storage
   ```

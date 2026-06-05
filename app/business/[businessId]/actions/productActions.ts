@@ -358,7 +358,7 @@ const ALLOWED_IMAGE_TYPES = [
   'image/gif',
   'image/webp',
 ];
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2 MB
 
 export async function uploadProductImageAction(
   formData: FormData,
@@ -382,7 +382,7 @@ export async function uploadProductImageAction(
         success: false,
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'File must be less than 5 MB',
+          message: 'File must be less than 2 MB',
         },
       };
     }

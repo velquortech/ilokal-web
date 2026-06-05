@@ -8,9 +8,9 @@ Run `git status`, `git diff --staged`, and `git diff` (unstaged), then:
    - **Makefile project**: `make build` if the target exists
    - **Python**: `python -m py_compile` or `pytest --co -q` if tests exist
    - **No build system detected**: skip the smoke check and note it
-   Abort and report if either lint or the build fails. Never commit code that fails linting.
+     Abort and report if either lint or the build fails. Never commit code that fails linting.
 3. Stage relevant files by name (never `git add -A` or `git add .` — could accidentally include `.env` or binaries).
-4. Draft a conventional commit message following the pattern already used in this repo (`feat:` / `fix:` / `chore:` / `refactor:` / `docs:`). Focus on the *why*, not the *what*.
+4. Draft a conventional commit message following the pattern already used in this repo (`feat:` / `fix:` / `chore:` / `refactor:` / `docs:`). Focus on the _why_, not the _what_.
 5. Show the staged file list and proposed commit message to the user and **wait for explicit approval** before running `git commit`.
 6. After approval, commit using a HEREDOC so multi-line messages format correctly. Always append the Co-Authored-By trailer:
    ```

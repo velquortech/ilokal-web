@@ -31,6 +31,7 @@ export const products: Product[] = [
   {
     id: 'prod-1',
     business_id: DEMO_BUSINESS_ID,
+    branch_id: null,
     category_id: 'cat-coffees',
     name: 'Caramel Latte',
     description: 'Smooth espresso with steamed milk and caramel drizzle.',
@@ -51,6 +52,7 @@ export const products: Product[] = [
   {
     id: 'prod-2',
     business_id: DEMO_BUSINESS_ID,
+    branch_id: null,
     category_id: 'cat-coffees',
     name: 'Cappuccino',
     description: 'Classic espresso with steamed milk foam.',
@@ -71,6 +73,7 @@ export const products: Product[] = [
   {
     id: 'prod-3',
     business_id: DEMO_BUSINESS_ID,
+    branch_id: null,
     category_id: 'cat-coffees',
     name: 'Iced Americano',
     description: 'Refreshing espresso diluted with cold water over ice.',
@@ -91,6 +94,7 @@ export const products: Product[] = [
   {
     id: 'prod-4',
     business_id: DEMO_BUSINESS_ID,
+    branch_id: null,
     category_id: 'cat-coffees',
     name: 'Espresso Shot',
     description: 'Strong and bold single shot of espresso.',
@@ -111,6 +115,7 @@ export const products: Product[] = [
   {
     id: 'prod-5',
     business_id: DEMO_BUSINESS_ID,
+    branch_id: null,
     category_id: 'cat-pastries',
     name: 'Butter Croissant',
     description: 'Flaky and buttery French-style pastry.',
@@ -131,6 +136,7 @@ export const products: Product[] = [
   {
     id: 'prod-6',
     business_id: DEMO_BUSINESS_ID,
+    branch_id: null,
     category_id: 'cat-pastries',
     name: 'Blueberry Muffin',
     description: 'Moist muffin packed with fresh blueberries.',
@@ -151,6 +157,7 @@ export const products: Product[] = [
   {
     id: 'prod-7',
     business_id: DEMO_BUSINESS_ID,
+    branch_id: null,
     category_id: 'cat-pastries',
     name: 'Chocolate Donut',
     description: 'Soft donut topped with rich chocolate glaze.',
@@ -171,6 +178,7 @@ export const products: Product[] = [
   {
     id: 'prod-8',
     business_id: DEMO_BUSINESS_ID,
+    branch_id: null,
     category_id: 'cat-pastries',
     name: 'Strawberry Danish',
     description: 'Sweet pastry filled with cream cheese and strawberries.',

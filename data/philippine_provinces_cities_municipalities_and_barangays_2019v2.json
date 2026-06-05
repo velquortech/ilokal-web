@@ -5,9 +5,7 @@
       "ILOCOS NORTE": {
         "municipality_list": {
           "ADAMS": {
-            "barangay_list": [
-              "ADAMS (POB.)"
-            ]
+            "barangay_list": ["ADAMS (POB.)"]
           },
           "BACARRA": {
             "barangay_list": [
@@ -196,11 +194,7 @@
             ]
           },
           "CARASI": {
-            "barangay_list": [
-              "ANGSET",
-              "BARBAQUESO (POB.)",
-              "VIRBIRA"
-            ]
+            "barangay_list": ["ANGSET", "BARBAQUESO (POB.)", "VIRBIRA"]
           },
           "CURRIMAO": {
             "barangay_list": [
@@ -265,12 +259,7 @@
             ]
           },
           "DUMALNEG": {
-            "barangay_list": [
-              "CABARITAN",
-              "KALAW",
-              "QUIBEL",
-              "SAN ISIDRO"
-            ]
+            "barangay_list": ["CABARITAN", "KALAW", "QUIBEL", "SAN ISIDRO"]
           },
           "LAOAG CITY": {
             "barangay_list": [
@@ -3820,12 +3809,7 @@
             ]
           },
           "MAHATAO": {
-            "barangay_list": [
-              "HANIB",
-              "KAUMBAKAN",
-              "PANATAYAN",
-              "UVOY (POB.)"
-            ]
+            "barangay_list": ["HANIB", "KAUMBAKAN", "PANATAYAN", "UVOY (POB.)"]
           },
           "SABTANG": {
             "barangay_list": [
@@ -12513,11 +12497,7 @@
             ]
           },
           "KALAYAAN": {
-            "barangay_list": [
-              "LONGOS",
-              "SAN ANTONIO",
-              "SAN JUAN (POB.)"
-            ]
+            "barangay_list": ["LONGOS", "SAN ANTONIO", "SAN JUAN (POB.)"]
           },
           "LILIW": {
             "barangay_list": [
@@ -15984,9 +15964,7 @@
             ]
           },
           "KALAYAAN": {
-            "barangay_list": [
-              "PAG-ASA (POB.)"
-            ]
+            "barangay_list": ["PAG-ASA (POB.)"]
           },
           "LINAPACAN": {
             "barangay_list": [
@@ -38780,11 +38758,7 @@
             ]
           },
           "TALAINGOD": {
-            "barangay_list": [
-              "DAGOHOY",
-              "PALMA GIL",
-              "SANTO NIÑO"
-            ]
+            "barangay_list": ["DAGOHOY", "PALMA GIL", "SANTO NIÑO"]
           }
         }
       },
@@ -45682,10 +45656,7 @@
             ]
           },
           "TURTLE ISLANDS": {
-            "barangay_list": [
-              "LIKUD BAKKAO",
-              "TAGANAK POBLACION"
-            ]
+            "barangay_list": ["LIKUD BAKKAO", "TAGANAK POBLACION"]
           }
         }
       }
@@ -45769,20 +45740,10 @@
             ]
           },
           "BUCLOC": {
-            "barangay_list": [
-              "DUCLIGAN",
-              "LABAAN",
-              "LAMAO (POB.)",
-              "LINGAY"
-            ]
+            "barangay_list": ["DUCLIGAN", "LABAAN", "LAMAO (POB.)", "LINGAY"]
           },
           "DAGUIOMAN": {
-            "barangay_list": [
-              "ABLEG",
-              "CABARUYAN",
-              "PIKEK",
-              "TUI (POB.)"
-            ]
+            "barangay_list": ["ABLEG", "CABARUYAN", "PIKEK", "TUI (POB.)"]
           },
           "DANGLAS": {
             "barangay_list": [

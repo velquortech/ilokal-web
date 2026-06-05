@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
     // Subscription gate — coupon requires user to follow the business
     if (coupon.requires_subscription) {
       const { count: subCount, error: subError } = await auth.supabase
-        .from('subscriptions')
+        .from('follows')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', auth.user.id)
         .eq('business_id', coupon.business_id);

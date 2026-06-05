@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     if (!auth) return unauthorizedResponse();
 
     const { data, error } = await auth.supabase
-      .from('subscriptions')
+      .from('follows')
       .select(
         `
         id, created_at,
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 
     if (error) return generalErrorResponse({ message: error.message });
 
-    return successResponse({ subscriptions: data });
+    return successResponse({ follows: data });
   } catch {
     return generalErrorResponse();
   }
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { data, error } = await auth.supabase
-      .from('subscriptions')
+      .from('follows')
       .insert({ user_id: auth.user.id, business_id })
       .select()
       .single();
@@ -53,13 +53,13 @@ export async function POST(req: NextRequest) {
     if (error) {
       if (error.code === '23505') {
         return conflictRequestResponse({
-          message: 'Already subscribed to this business',
+          message: 'Already following this business',
         });
       }
       return generalErrorResponse({ message: error.message });
     }
 
-    return successResponse({ subscription: data });
+    return successResponse({ follow: data });
   } catch {
     return generalErrorResponse();
   }

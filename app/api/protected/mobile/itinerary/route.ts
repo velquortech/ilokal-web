@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
         .order('expires_at', { ascending: true, nullsFirst: false }),
 
       auth.supabase
-        .from('subscriptions')
+        .from('follows')
         .select(
           `
           id,

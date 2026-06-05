@@ -14,6 +14,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     const { searchParams } = req.nextUrl;
 
     const search = searchParams.get('q')?.trim();
+    const category = searchParams.get('category')?.trim(); // category slug
     // Page-based browse (mobile products/menu screen). When `page` is absent the
     // response keeps the legacy single-batch shape (`{ products }`) used by the
     // detail "must-try" preview and the home popular-products scan.
@@ -40,9 +41,13 @@ export async function GET(req: NextRequest, { params }: Params) {
     );
 
     if (search) {
-      query = query.or(
-        `name.ilike.%${search}%,description.ilike.%${search}%`,
-      );
+      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+    }
+
+    // Filter by product category (slug) — the RPC returns `category` as JSONB,
+    // so match on its `slug` key.
+    if (category) {
+      query = query.eq('category->>slug', category);
     }
 
     // Mobile sort key → PostgREST ordering on the RPC's aggregate columns.
@@ -84,34 +89,43 @@ export async function GET(req: NextRequest, { params }: Params) {
       return generalErrorResponse({ message: error.message });
     }
 
-    const products = (data ?? []).map(
-      (product: Record<string, unknown>) => ({
-        id: product.id,
-        name: product.name,
-        description: product.description,
-        price: product.price,
-        sale_price: product.sale_price ?? null,
-        price_type: product.price_type as string,
-        price_unit: product.price_unit as string | null,
-        image_url: resolveStorageUrl(
-          supabase,
-          'product-images',
-          product.image_url as string | null,
-        ),
-        is_available: product.is_available,
-        category: product.category ?? null,
-        average_rating:
-          product.average_rating != null ? Number(product.average_rating) : 0,
-        rating_count: Number(product.rating_count ?? 0),
-      }),
-    );
+    const products = (data ?? []).map((product: Record<string, unknown>) => ({
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      sale_price: product.sale_price ?? null,
+      price_type: product.price_type as string,
+      price_unit: product.price_unit as string | null,
+      image_url: resolveStorageUrl(
+        supabase,
+        'product-images',
+        product.image_url as string | null,
+      ),
+      is_available: product.is_available,
+      category: product.category ?? null,
+      average_rating:
+        product.average_rating != null ? Number(product.average_rating) : 0,
+      rating_count: Number(product.rating_count ?? 0),
+    }));
 
     if (paginated) {
       const total = count ?? 0;
+      // Surface the business's full category list on page 1 (one extra cheap
+      // call, not repeated while paging) so the client can build the filter.
+      let categories: { id: string; name: string; slug: string }[] = [];
+      if (page === 1) {
+        const { data: catData } = await supabase.rpc(
+          'business_product_categories',
+          { p_business_id: businessId },
+        );
+        categories = (catData ?? []) as typeof categories;
+      }
       return successResponse({
         products,
         has_more: from + products.length < total,
         total,
+        categories,
       });
     }
 

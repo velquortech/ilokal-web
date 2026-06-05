@@ -3,13 +3,19 @@
  * Handles all direct Supabase database operations for coupons and featured deals
  */
 
-import { createServerSupabaseClient } from '@/supabase/server';
+import {
+  createServerSupabaseClient,
+  createAnalyticsSupabaseClient,
+} from '@/supabase/server';
 import type {
   Coupon,
   CouponFilters,
   FeaturedDeal,
   FeaturedDealFilters,
   RedemptionStats,
+  RedemptionRecord,
+  RedemptionRecordFilters,
+  RedemptionSummaryStats,
 } from '@/lib/types';
 
 // ===== Coupon Queries =====
@@ -28,6 +34,7 @@ export async function getCouponsPaginated(
       search,
       status,
       sort_by = 'newest',
+      branch_id,
     } = filters;
     const offset = (page - 1) * per_page;
 
@@ -45,6 +52,10 @@ export async function getCouponsPaginated(
 
     if (status) {
       query = query.eq('status', status);
+    }
+
+    if (branch_id) {
+      query = query.eq('branch_id', branch_id);
     }
 
     // Apply sorting
@@ -376,14 +387,23 @@ export async function getFeaturedDealById(id: string) {
 /**
  * Get coupon status counts for a business (used by stats panel)
  */
-export async function getCouponStatsByBusiness(businessId: string) {
+export async function getCouponStatsByBusiness(
+  businessId: string,
+  branchId?: string,
+) {
   try {
     const supabase = await createServerSupabaseClient();
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('coupons')
       .select('status, archived_at')
       .eq('business_id', businessId);
+
+    if (branchId) {
+      query = query.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await query;
 
     if (error) return { total: 0, published: 0, draft: 0 };
 
@@ -416,5 +436,217 @@ export async function featuredDealExists(id: string): Promise<boolean> {
   } catch (err) {
     console.error('[featuredDealExists]', err);
     return false;
+  }
+}
+
+// ===== Redeemed Coupons Queries =====
+
+/**
+ * Get paginated redemption records for a business owner's coupons.
+ * Uses the analytics client to bypass the profiles SELECT RLS restriction
+ * so user display info (name, email, avatar) is readable.
+ * Authorization is enforced in the calling server action via verifyBusinessOwner.
+ */
+export async function getRedeemedCouponsPaginated(
+  businessId: string,
+  filters: RedemptionRecordFilters,
+) {
+  try {
+    const {
+      page = 1,
+      per_page = 10,
+      search,
+      status,
+      branch_id,
+      sort_by = 'newest',
+    } = filters;
+    const offset = (page - 1) * per_page;
+    const now = new Date().toISOString();
+
+    const supabase = await createAnalyticsSupabaseClient();
+
+    // Step 1: fetch coupon metadata for this business.
+    // We select full display fields here because user_redemptions has no FK to coupons
+    // in the generated database types, so PostgREST cannot auto-detect the embedded join.
+    // We carry the coupon data ourselves and merge it after the redemptions query.
+    let couponFetch = supabase
+      .from('coupons')
+      .select('id, code, discount, usage_scope, expiry_date, description')
+      .eq('business_id', businessId)
+      .is('archived_at', null);
+
+    if (search) {
+      couponFetch = couponFetch.ilike('code', `%${search}%`);
+    }
+
+    const { data: couponRows, error: couponError } = await couponFetch;
+
+    if (couponError) {
+      return {
+        redemptions: [] as RedemptionRecord[],
+        total: 0,
+        error: `Failed to fetch coupons: ${couponError.message}` as const,
+      };
+    }
+
+    const couponIds = (couponRows ?? []).map((c) => c.id);
+
+    if (couponIds.length === 0) {
+      return {
+        redemptions: [] as RedemptionRecord[],
+        total: 0,
+        page,
+        per_page,
+        total_pages: 0,
+      };
+    }
+
+    // Build a lookup map so we can merge coupon fields into each redemption row.
+    type CouponMeta = NonNullable<RedemptionRecord['coupons']>;
+    const couponMap = new Map<string, CouponMeta>(
+      (couponRows ?? []).map((c) => [
+        c.id,
+        {
+          code: c.code,
+          discount: c.discount as CouponMeta['discount'],
+          usage_scope: c.usage_scope as CouponMeta['usage_scope'],
+          expiry_date: c.expiry_date,
+          description: c.description,
+        },
+      ]),
+    );
+
+    // Step 2: query redemptions.
+    // Only embed profiles and branches — both have confirmed FK entries in database.ts.
+    // (user_redemptions_user_id_fkey → profiles, user_redemptions_branch_id_fkey → branches)
+    let query = supabase
+      .from('user_redemptions')
+      .select(
+        `
+        id,
+        coupon_id,
+        user_id,
+        branch_id,
+        redeemed_at,
+        expires_at,
+        is_claimed,
+        profiles (full_name, email, avatar_url),
+        branches (name, address)
+      `,
+        { count: 'exact' },
+      )
+      .in('coupon_id', couponIds);
+
+    if (branch_id) {
+      query = query.eq('branch_id', branch_id);
+    }
+
+    if (status === 'active') {
+      query = query
+        .eq('is_claimed', false)
+        .or(`expires_at.is.null,expires_at.gt.${now}`);
+    } else if (status === 'claimed') {
+      query = query.eq('is_claimed', true);
+    } else if (status === 'expired') {
+      query = query
+        .eq('is_claimed', false)
+        .not('expires_at', 'is', null)
+        .lt('expires_at', now);
+    }
+
+    if (sort_by === 'oldest') {
+      query = query.order('redeemed_at', { ascending: true });
+    } else {
+      query = query.order('redeemed_at', { ascending: false });
+    }
+
+    const { data, count, error } = await query.range(
+      offset,
+      offset + per_page - 1,
+    );
+
+    if (error) {
+      return {
+        redemptions: [] as RedemptionRecord[],
+        total: 0,
+        error: `Failed to fetch redemptions: ${error.message}` as const,
+      };
+    }
+
+    // Step 3: merge coupon metadata into each row.
+    // Cast through unknown because PostgREST infers FK-joined fields as arrays
+    // at the TypeScript level even though they resolve to single objects at runtime.
+    const redemptions: RedemptionRecord[] = (data ?? []).map((row) => ({
+      ...(row as unknown as Omit<RedemptionRecord, 'coupons'>),
+      coupons: couponMap.get(row.coupon_id) ?? null,
+    }));
+
+    return {
+      redemptions,
+      total: count ?? 0,
+      page,
+      per_page,
+      total_pages: Math.ceil((count ?? 0) / per_page),
+    };
+  } catch (err) {
+    console.error('[getRedeemedCouponsPaginated]', err);
+    return {
+      redemptions: [] as RedemptionRecord[],
+      total: 0,
+      error: 'Failed to fetch redemptions' as const,
+    };
+  }
+}
+
+/**
+ * Get summary stats for all redemptions on a business's coupons.
+ * Uses the analytics client for the same RLS bypass reason as above.
+ */
+export async function getRedemptionSummaryStatsByBusiness(
+  businessId: string,
+  branchId?: string,
+): Promise<RedemptionSummaryStats> {
+  try {
+    const now = new Date().toISOString();
+    const supabase = await createAnalyticsSupabaseClient();
+
+    const { data: couponRows } = await supabase
+      .from('coupons')
+      .select('id')
+      .eq('business_id', businessId)
+      .is('archived_at', null);
+
+    const couponIds = (couponRows ?? []).map((c) => c.id);
+
+    if (couponIds.length === 0) {
+      return { total: 0, unique_users: 0, active: 0, claimed: 0 };
+    }
+
+    let query = supabase
+      .from('user_redemptions')
+      .select('user_id, is_claimed, expires_at')
+      .in('coupon_id', couponIds);
+
+    if (branchId) {
+      query = query.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await query;
+
+    if (error || !data) {
+      return { total: 0, unique_users: 0, active: 0, claimed: 0 };
+    }
+
+    const total = data.length;
+    const unique_users = new Set(data.map((r) => r.user_id)).size;
+    const claimed = data.filter((r) => r.is_claimed).length;
+    const active = data.filter(
+      (r) => !r.is_claimed && (!r.expires_at || r.expires_at > now),
+    ).length;
+
+    return { total, unique_users, active, claimed };
+  } catch (err) {
+    console.error('[getRedemptionSummaryStatsByBusiness]', err);
+    return { total: 0, unique_users: 0, active: 0, claimed: 0 };
   }
 }

@@ -45,9 +45,9 @@ export function AvatarUpload({
       setError(null);
 
       // Validate file (client-side pre-check)
-      const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+      const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
       if (file.size > MAX_FILE_SIZE) {
-        setError('File size must be less than 5MB');
+        setError('File size must be less than 2MB');
         return;
       }
 
@@ -166,7 +166,7 @@ export function AvatarUpload({
             className="hidden"
           />
           <p className="text-xs text-gray-500">
-            Recommended: Square image, at least 200x200px (max 5MB)
+            Recommended: Square image, at least 200x200px (max 2MB)
           </p>
         </div>
       </div>

@@ -254,6 +254,7 @@ export async function createProduct(
       .from('products')
       .insert({
         business_id,
+        branch_id: input.branch_id ?? null,
         category_id: input.category_id ?? null,
         name: input.name,
         description: input.description ?? null,
@@ -357,6 +358,7 @@ export async function updateProduct(
         }),
         ...(input.image_url !== undefined && { image_url: input.image_url }),
         ...(input.status !== undefined && { status: input.status }),
+        ...('branch_id' in input && { branch_id: input.branch_id ?? null }),
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

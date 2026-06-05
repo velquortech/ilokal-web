@@ -36,6 +36,26 @@ export async function createServerSupabaseClient() {
   });
 }
 
+// Analytics client — uses the service secret key to bypass RLS so aggregate
+// queries (retention, segments, funnel) can read all users' redemptions and
+// subscriptions, not just the logged-in user's own rows.
+export async function createAnalyticsSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_SECRET_KEY ??
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    throw new Error(
+      'Missing NEXT_PUBLIC_SUPABASE_URL or service secret key for analytics client',
+    );
+  }
+
+  return createServerClient(url, key, {
+    cookies: { getAll: () => [], setAll: () => {} },
+  });
+}
+
 // Admin/service client (server-only). Use this for privileged operations
 // such as `auth.admin.*`. This client MUST use a server-only key.
 export async function createServerAdminClient() {

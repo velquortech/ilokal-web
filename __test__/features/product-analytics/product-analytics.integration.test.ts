@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET } from '@/app/api/analytics/products/route';
+import { GET } from '@/app/api/web/analytics/products/route';
 import * as assertAuthorizedModule from '@/lib/utils/assertAuthorized';
 import * as subscriptionQuery from '@/lib/api/subscriptions/subscriptionQuery';
 import * as service from '@/lib/api/analytics/businessAnalyticsService';

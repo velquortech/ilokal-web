@@ -1,5 +1,3 @@
-yarn run v1.22.22
-$ /home/zneret03/ilokal-web/node_modules/.bin/supabase gen types typescript --local
 export type Json =
   | string
   | number
@@ -2255,5 +2253,3 @@ export const Constants = {
     },
   },
 } as const
-
-Done in 3.75s.

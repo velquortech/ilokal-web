@@ -36,7 +36,7 @@ export function BusinessPreferencesTab({
     (initialSettings?.operating_hours as OperatingHours) ?? DEFAULT_HOURS,
   );
   const [socialLinks, setSocialLinks] = useState<SocialLinks>(
-    (initialSettings?.social_links as SocialLinks) ?? {},
+    (initialSettings?.social_links as SocialLinks) ?? { facebook: null, instagram: null, tiktok: null, website: null },
   );
   const [contactWebsite, setContactWebsite] = useState(
     initialSettings?.contact_website ?? '',

@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
-import { ROUTES } from '@/config/routeConfig';
+import { ROUTES, businessPath } from '@/config/routeConfig';
 import { User } from '@/lib/types/user';
 import { SignupInput } from '@/lib/validation/auth';
 
@@ -283,9 +283,21 @@ export async function redirectByRole(role: string): Promise<void> {
     case 'admin':
       redirect(ROUTES.DASHBOARD.ADMIN);
       break;
-    case 'business_owner':
-      redirect(ROUTES.DASHBOARD.BUSINESS);
+    case 'business_owner': {
+      const supabase = await createServerSupabaseClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const { data: business } = user
+        ? await supabase
+            .from('businesses')
+            .select('id')
+            .eq('owner_id', user.id)
+            .maybeSingle()
+        : { data: null };
+      redirect(business ? businessPath(business.id) : ROUTES.BUSINESS.registration);
       break;
+    }
     case 'app_user':
     default:
       redirect(ROUTES.BUSINESS.home);

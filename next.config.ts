@@ -61,12 +61,16 @@ if (prodImageUrl) {
 
 const buildCSPImageSources = (): string => {
   const sources = ["'self'", 'data:', 'blob:'];
-  sources.push('http://127.0.0.1:54321');
+  // Derive allowed image sources from the same list Next.js uses for remotePatterns
+  // so CSP and next/image config never diverge.
+  for (const pattern of imageRemotePatterns) {
+    const origin = pattern.port
+      ? `${pattern.protocol}://${pattern.hostname}:${pattern.port}`
+      : `${pattern.protocol}://${pattern.hostname}`;
+    if (!sources.includes(origin)) sources.push(origin);
+  }
   if (process.env.NODE_ENV === 'production') {
     sources.push('https:');
-  }
-  if (prodImageUrl) {
-    sources.push(`${prodImageUrl.protocol}://${prodImageUrl.hostname}`);
   }
   return sources.join(' ');
 };

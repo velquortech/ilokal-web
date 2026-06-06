@@ -9,10 +9,10 @@ export type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 export type OperatingHours = Record<DayKey, OperatingHoursDay>;
 
 export type SocialLinks = {
-  facebook?: string | null;
-  instagram?: string | null;
-  tiktok?: string | null;
-  website?: string | null;
+  facebook: string | null;
+  instagram: string | null;
+  tiktok: string | null;
+  website: string | null;
 };
 
 export type BusinessSettings = {

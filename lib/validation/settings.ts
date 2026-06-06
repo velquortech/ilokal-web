@@ -97,7 +97,7 @@ export type UpdateBusinessSettingsInput = z.infer<
 
 export const deactivateBusinessSchema = z.object({
   confirmation: z.literal('DEACTIVATE', {
-    errorMap: () => ({ message: 'Type DEACTIVATE to confirm' }),
+    error: 'Type DEACTIVATE to confirm',
   }),
 });
 
@@ -106,7 +106,7 @@ export type DeactivateBusinessInput = z.infer<typeof deactivateBusinessSchema>;
 export const deleteAccountSchema = z.object({
   password: z.string().min(1, 'Password is required'),
   confirmation: z.literal('DELETE', {
-    errorMap: () => ({ message: 'Type DELETE to confirm' }),
+    error: 'Type DELETE to confirm',
   }),
 });
 

@@ -12,6 +12,7 @@ vi.mock('@/supabase/server', () => ({
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('@/config/routeConfig', () => ({
   businessSettingsPath: (id: string) => `/business/${id}/settings`,
+  businessPath: (id: string) => `/business/${id}`,
 }));
 vi.mock('@/lib/api/settings/settingsQuery', () => ({
   upsertBusinessSettings: vi.fn(),

@@ -1,7 +1,6 @@
-// schemas.ts
 import { z } from 'zod';
 
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
+export const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
 
 export const businessCategorySchema = z
   .object({

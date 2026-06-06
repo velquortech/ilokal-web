@@ -16,8 +16,7 @@ import {
 } from 'lucide-react';
 import { MouseEvent, useRef } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
+import { MAX_FILE_SIZE } from '../validator/business-registration-form-schema';
 
 export function ShopDocuments() {
   return (

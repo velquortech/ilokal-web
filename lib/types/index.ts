@@ -255,6 +255,16 @@ export type { SelectFieldConfig, UserFormModalProps } from './forms';
 // Phone Input Types
 export type { CountryCode } from './phoneInput';
 
+// Settings Domain Types
+export type {
+  OperatingHoursDay,
+  DayKey,
+  OperatingHours,
+  SocialLinks,
+  BusinessSettings,
+  MFAFactor,
+} from './settings';
+
 // Database Types
 export type {
   Database,

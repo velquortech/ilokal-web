@@ -261,7 +261,7 @@ export async function loginAsAdmin(
 export async function loginAsBusiness(
   email: string,
   password: string,
-): Promise<{ user: User; message: string }> {
+): Promise<{ user: User; businessId: string | null; message: string }> {
   const result = await loginAction(email, password);
 
   if (result.user.role !== 'business_owner') {
@@ -272,32 +272,32 @@ export async function loginAsBusiness(
     );
   }
 
-  return result;
+  const supabase = await createServerSupabaseClient();
+  const { data: business } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_id', result.user.id)
+    .maybeSingle();
+
+  return { ...result, businessId: business?.id ?? null };
 }
 
 /**
  * Server Action: Redirect user to appropriate dashboard
  */
-export async function redirectByRole(role: string): Promise<void> {
+export async function redirectByRole(
+  role: string,
+  businessId?: string | null,
+): Promise<void> {
   switch (role) {
     case 'admin':
       redirect(ROUTES.DASHBOARD.ADMIN);
       break;
-    case 'business_owner': {
-      const supabase = await createServerSupabaseClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      const { data: business } = user
-        ? await supabase
-            .from('businesses')
-            .select('id')
-            .eq('owner_id', user.id)
-            .maybeSingle()
-        : { data: null };
-      redirect(business ? businessPath(business.id) : ROUTES.BUSINESS.registration);
+    case 'business_owner':
+      redirect(
+        businessId ? businessPath(businessId) : ROUTES.BUSINESS.registration,
+      );
       break;
-    }
     case 'app_user':
     default:
       redirect(ROUTES.BUSINESS.home);

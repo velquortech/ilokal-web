@@ -17,6 +17,8 @@ import {
 import { MouseEvent, useRef } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
+
 export function ShopDocuments() {
   return (
     <div className="flex flex-1 flex-col gap-7">
@@ -139,6 +141,15 @@ function DocumentFileUpload(props: {
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
+
+                if (file.size > MAX_FILE_SIZE) {
+                  form.setError(props.fieldName, {
+                    type: 'manual',
+                    message: 'File must be 2MB or less',
+                  });
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                  return;
+                }
 
                 form.setValue(props.fieldName, file, { shouldValidate: true });
 

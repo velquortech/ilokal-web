@@ -10,6 +10,8 @@ import { useMultiStepForm } from '../provider/registration-form-provider';
 import { Field, FieldError } from '@/components/ui/field';
 import { cn } from '@/lib/utils';
 
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
+
 export function ShopGallery() {
   return (
     <div className="flex flex-1 flex-col space-y-8">
@@ -148,11 +150,16 @@ function ShopLogo() {
                 const file = e.target.files?.[0];
                 if (!file) return;
 
-                form.setValue('shop_logo', file, {
-                  shouldValidate: true,
-                });
+                if (file.size > MAX_FILE_SIZE) {
+                  form.setError('shop_logo', {
+                    type: 'manual',
+                    message: 'Image must be 2MB or less',
+                  });
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                  return;
+                }
 
-                // Cache the file
+                form.setValue('shop_logo', file, { shouldValidate: true });
                 cacheFile('shop_logo', file);
 
                 if (fileInputRef.current) {
@@ -267,11 +274,16 @@ function ShopBanner() {
                 const file = e.target.files?.[0];
                 if (!file) return;
 
-                form.setValue('shop_banner', file, {
-                  shouldValidate: true,
-                });
+                if (file.size > MAX_FILE_SIZE) {
+                  form.setError('shop_banner', {
+                    type: 'manual',
+                    message: 'Image must be 2MB or less',
+                  });
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                  return;
+                }
 
-                // Cache the file
+                form.setValue('shop_banner', file, { shouldValidate: true });
                 cacheFile('shop_banner', file);
 
                 if (fileInputRef.current) {
@@ -341,19 +353,29 @@ function InteriorImages() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const interiorImages = form.watch('interior_images') || [];
+  const [sizeError, setSizeError] = useState<string | null>(null);
 
   const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
+    const allFiles = Array.from(e.target.files || []);
+    if (!allFiles.length) return;
 
-    const currentFiles = form.getValues('interior_images') || [];
-    const newFiles = [...currentFiles, ...files];
-    form.setValue('interior_images', newFiles, { shouldValidate: true });
+    setSizeError(null);
+    const validFiles = allFiles.filter((f) => f.size <= MAX_FILE_SIZE);
+    const rejectedCount = allFiles.length - validFiles.length;
 
-    // Cache all interior images
-    cacheFiles('interior_images', newFiles);
+    if (rejectedCount > 0) {
+      setSizeError(
+        `${rejectedCount} image${rejectedCount > 1 ? 's' : ''} exceeded the 2MB limit and ${rejectedCount > 1 ? 'were' : 'was'} not added`,
+      );
+    }
 
-    // Reset input value to allow selecting same files again
+    if (validFiles.length > 0) {
+      const currentFiles = form.getValues('interior_images') || [];
+      const newFiles = [...currentFiles, ...validFiles];
+      form.setValue('interior_images', newFiles, { shouldValidate: true });
+      cacheFiles('interior_images', newFiles);
+    }
+
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -428,6 +450,7 @@ function InteriorImages() {
               onChange={handleAddImages}
             />
 
+            {sizeError && <FieldError errors={[{ message: sizeError }]} />}
             {fieldState.error && <FieldError errors={[fieldState.error]} />}
           </div>
         </Field>

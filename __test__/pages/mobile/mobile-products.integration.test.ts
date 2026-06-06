@@ -6,27 +6,25 @@ import { mockMobileProduct, BUSINESS_ID } from '../../mockData/products.mock';
 
 vi.mock('@/supabase/bearer');
 
-type BearerChain = {
-  select: ReturnType<typeof vi.fn>;
-  eq: ReturnType<typeof vi.fn>;
-  is: ReturnType<typeof vi.fn>;
+type RpcChain = {
+  or: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
+  range: ReturnType<typeof vi.fn>;
 };
 
-function buildBearerChain(overrides: Partial<BearerChain> = {}): BearerChain {
-  const chain: BearerChain = {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    is: vi.fn().mockReturnThis(),
-    order: vi.fn(),
+function buildRpcChain(overrides: Partial<RpcChain> = {}): RpcChain {
+  const chain: RpcChain = {
+    or: vi.fn().mockReturnThis(),
+    order: vi.fn().mockReturnThis(),
+    range: vi.fn(),
     ...overrides,
   };
   return chain;
 }
 
-function mockBearerClient(chain: BearerChain) {
+function mockBearerClient(chain: RpcChain) {
   vi.mocked(createBearerClient).mockReturnValue({
-    from: vi.fn(() => chain),
+    rpc: vi.fn().mockReturnValue(chain),
   } as unknown as ReturnType<typeof createBearerClient>);
 }
 
@@ -49,7 +47,8 @@ const rawDbProduct = {
   price_unit: mockMobileProduct.price_unit,
   image_url: mockMobileProduct.image_url,
   is_available: mockMobileProduct.is_available,
-  ratings: [{ rating: 4 }, { rating: 5 }],
+  average_rating: 4.5,
+  rating_count: 2,
 };
 
 describe('GET /api/mobile/businesses/:businessId/products', () => {
@@ -58,10 +57,11 @@ describe('GET /api/mobile/businesses/:businessId/products', () => {
   });
 
   it('returns 200 with available products for a business', async () => {
-    const chain = buildBearerChain();
+    const chain = buildRpcChain();
     chain.order = vi.fn().mockResolvedValue({
       data: [rawDbProduct],
       error: null,
+      count: null,
     });
     mockBearerClient(chain);
 
@@ -73,44 +73,41 @@ describe('GET /api/mobile/businesses/:businessId/products', () => {
     expect(body.products).toHaveLength(1);
   });
 
-  it('filters by is_available=true', async () => {
-    const chain = buildBearerChain();
-    chain.order = vi.fn().mockResolvedValue({ data: [], error: null });
+  it('calls rpc with the correct business_id', async () => {
+    const chain = buildRpcChain();
+    chain.order = vi.fn().mockResolvedValue({ data: [], error: null, count: null });
+    const rpcFn = vi.fn().mockReturnValue(chain);
+    vi.mocked(createBearerClient).mockReturnValue({
+      rpc: rpcFn,
+    } as unknown as ReturnType<typeof createBearerClient>);
+
+    const { req, params } = makeRequest(BUSINESS_ID);
+    await GET(req, { params });
+
+    expect(rpcFn).toHaveBeenCalledWith(
+      'business_products',
+      { p_business_id: BUSINESS_ID },
+      expect.any(Object),
+    );
+  });
+
+  it('orders results by name for non-paginated requests', async () => {
+    const chain = buildRpcChain();
+    chain.order = vi.fn().mockResolvedValue({ data: [], error: null, count: null });
     mockBearerClient(chain);
 
     const { req, params } = makeRequest(BUSINESS_ID);
     await GET(req, { params });
 
-    expect(chain.eq).toHaveBeenCalledWith('is_available', true);
+    expect(chain.order).toHaveBeenCalledWith('name', expect.objectContaining({ ascending: true }));
   });
 
-  it('filters by business_id', async () => {
-    const chain = buildBearerChain();
-    chain.order = vi.fn().mockResolvedValue({ data: [], error: null });
-    mockBearerClient(chain);
-
-    const { req, params } = makeRequest(BUSINESS_ID);
-    await GET(req, { params });
-
-    expect(chain.eq).toHaveBeenCalledWith('business_id', BUSINESS_ID);
-  });
-
-  it('excludes archived products (is null archived_at)', async () => {
-    const chain = buildBearerChain();
-    chain.order = vi.fn().mockResolvedValue({ data: [], error: null });
-    mockBearerClient(chain);
-
-    const { req, params } = makeRequest(BUSINESS_ID);
-    await GET(req, { params });
-
-    expect(chain.is).toHaveBeenCalledWith('archived_at', null);
-  });
-
-  it('computes average_rating and rating_count from ratings', async () => {
-    const chain = buildBearerChain();
+  it('computes average_rating and rating_count from rpc response', async () => {
+    const chain = buildRpcChain();
     chain.order = vi.fn().mockResolvedValue({
       data: [rawDbProduct],
       error: null,
+      count: null,
     });
     mockBearerClient(chain);
 
@@ -124,10 +121,11 @@ describe('GET /api/mobile/businesses/:businessId/products', () => {
   });
 
   it('returns average_rating=0 and rating_count=0 when product has no ratings', async () => {
-    const chain = buildBearerChain();
+    const chain = buildRpcChain();
     chain.order = vi.fn().mockResolvedValue({
-      data: [{ ...rawDbProduct, ratings: [] }],
+      data: [{ ...rawDbProduct, average_rating: null, rating_count: null }],
       error: null,
+      count: null,
     });
     mockBearerClient(chain);
 
@@ -141,8 +139,8 @@ describe('GET /api/mobile/businesses/:businessId/products', () => {
   });
 
   it('returns empty products array when business has no available products', async () => {
-    const chain = buildBearerChain();
-    chain.order = vi.fn().mockResolvedValue({ data: [], error: null });
+    const chain = buildRpcChain();
+    chain.order = vi.fn().mockResolvedValue({ data: [], error: null, count: null });
     mockBearerClient(chain);
 
     const { req, params } = makeRequest(BUSINESS_ID);
@@ -153,10 +151,11 @@ describe('GET /api/mobile/businesses/:businessId/products', () => {
   });
 
   it('returns error response on DB failure', async () => {
-    const chain = buildBearerChain();
+    const chain = buildRpcChain();
     chain.order = vi.fn().mockResolvedValue({
       data: null,
       error: { message: 'connection refused' },
+      count: null,
     });
     mockBearerClient(chain);
 
@@ -167,10 +166,11 @@ describe('GET /api/mobile/businesses/:businessId/products', () => {
   });
 
   it('product response shape includes all expected fields', async () => {
-    const chain = buildBearerChain();
+    const chain = buildRpcChain();
     chain.order = vi.fn().mockResolvedValue({
       data: [rawDbProduct],
       error: null,
+      count: null,
     });
     mockBearerClient(chain);
 
@@ -198,15 +198,12 @@ describe('GET /api/mobile/businesses/:businessId/products', () => {
     expect(res.status).toBe(500);
   });
 
-  it('rounds average_rating to 1 decimal place', async () => {
-    const productWithThreeRatings = {
-      ...rawDbProduct,
-      ratings: [{ rating: 4 }, { rating: 3 }, { rating: 5 }],
-    };
-    const chain = buildBearerChain();
+  it('passes through average_rating rounded to 1 decimal place', async () => {
+    const chain = buildRpcChain();
     chain.order = vi.fn().mockResolvedValue({
-      data: [productWithThreeRatings],
+      data: [{ ...rawDbProduct, average_rating: 4.0, rating_count: 3 }],
       error: null,
+      count: null,
     });
     mockBearerClient(chain);
 

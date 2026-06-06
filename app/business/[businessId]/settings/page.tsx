@@ -1,8 +1,10 @@
 import { notFound, redirect } from 'next/navigation';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
-import { getBusinessSettings } from '@/lib/api/settings/settingsQuery';
-import { getNotificationPreferences } from '@/lib/api/settings/settingsQuery';
-import { createServerSupabaseClient } from '@/supabase/server';
+import {
+  getBusinessSettings,
+  getNotificationPreferences,
+} from '@/lib/api/settings/settingsQuery';
+import { listMFAFactorsAction } from '@/app/business/[businessId]/actions/mfaActions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SecurityTab } from './components/SecurityTab';
 import { NotificationsTab } from './components/NotificationsTab';
@@ -31,22 +33,14 @@ export default async function SettingsPage({ params }: { params: Params }) {
 
   const userId = verify.user!.id;
 
-  const supabase = await createServerSupabaseClient();
   const [businessSettings, notificationPreferences, mfaResult] =
     await Promise.all([
       getBusinessSettings(businessId),
       getNotificationPreferences(userId),
-      supabase.auth.mfa.listFactors(),
+      listMFAFactorsAction(businessId),
     ]);
 
-  const factors: MFAFactor[] = (mfaResult.data?.totp ?? []).map((f) => ({
-    id: f.id,
-    friendly_name: f.friendly_name ?? null,
-    factor_type: 'totp' as const,
-    status: f.status as 'verified' | 'unverified',
-    created_at: f.created_at,
-    updated_at: f.updated_at,
-  }));
+  const factors: MFAFactor[] = mfaResult.success ? (mfaResult.data ?? []) : [];
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6">

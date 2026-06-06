@@ -11,14 +11,12 @@ export async function createBusiness(payload: FormData) {
   } = await supabase.auth.getUser();
   if (!user) throw new Error('Unauthorized');
 
-  // 1. Extract Files
   const shop_logo = payload.get('shop_logo') as File;
   const shop_banner = payload.get('shop_banner') as File;
   const interior_images = payload.getAll('interior_images') as File[];
   const business_license = payload.get('business_license') as File;
   const tax_certificate = payload.get('tax_certificate') as File;
 
-  // 2. Extract Metadata & Parse JSON strings
   const shop_name = payload.get('shop_name') as string;
   const description = payload.get('description') as string;
   const business_category = JSON.parse(
@@ -101,7 +99,6 @@ export async function createBusiness(payload: FormData) {
     throw uploadError;
   }
 
-  // 5. Patch the business row with the resolved file paths
   const { data, error: updateError } = await supabase
     .from('businesses')
     .update({

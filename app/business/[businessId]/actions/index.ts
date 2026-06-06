@@ -1,4 +1,3 @@
-// Re-export all business actions for backward compatibility and easy importing
 export {
   createProductAction,
   updateProductAction,
@@ -49,4 +48,9 @@ export {
   deleteAccountAction,
 } from './settingsActions';
 
-export { listMFAFactorsAction, unenrollMFAAction } from './mfaActions';
+export {
+  listMFAFactorsAction,
+  unenrollMFAAction,
+  enrollMFAAction,
+  verifyMFAEnrollmentAction,
+} from './mfaActions';

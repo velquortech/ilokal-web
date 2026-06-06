@@ -25,9 +25,7 @@ import {
   type DeactivateBusinessInput,
 } from '@/lib/validation/settings';
 import * as settingsQuery from '@/lib/api/settings/settingsQuery';
-import { businessSettingsPath } from '@/config/routeConfig';
-
-// ── Change Password ───────────────────────────────────────────────────────────
+import { businessSettingsPath, businessPath } from '@/config/routeConfig';
 
 export async function changePasswordAction(
   businessId: string,
@@ -89,8 +87,6 @@ export async function changePasswordAction(
   return { success: true, data: null };
 }
 
-// ── Change Email ──────────────────────────────────────────────────────────────
-
 export async function changeEmailAction(
   businessId: string,
   data: ChangeEmailInput,
@@ -149,8 +145,6 @@ export async function changeEmailAction(
   return { success: true, data: null };
 }
 
-// ── Business Settings ─────────────────────────────────────────────────────────
-
 export async function upsertBusinessSettingsAction(
   businessId: string,
   data: UpdateBusinessSettingsInput,
@@ -184,8 +178,6 @@ export async function upsertBusinessSettingsAction(
   }
 }
 
-// ── Notification Preferences ──────────────────────────────────────────────────
-
 export async function updateNotificationPreferencesAction(
   businessId: string,
   data: UpdateNotificationPreferencesInput,
@@ -217,8 +209,6 @@ export async function updateNotificationPreferencesAction(
     return { success: false, error: { code: 'DB_ERROR', message } };
   }
 }
-
-// ── Deactivate Business ───────────────────────────────────────────────────────
 
 export async function deactivateBusinessAction(
   businessId: string,
@@ -252,13 +242,9 @@ export async function deactivateBusinessAction(
     };
   }
 
-  revalidatePath(`/business/${businessId}`);
+  revalidatePath(businessPath(businessId));
   return { success: true, data: null };
 }
-
-// ── Delete Account ────────────────────────────────────────────────────────────
-// HIGH RISK — requires human approval before merge.
-// Soft-deletes the profile first; then removes the Supabase auth user via admin client.
 
 export async function deleteAccountAction(
   businessId: string,

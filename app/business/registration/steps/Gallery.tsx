@@ -9,8 +9,7 @@ import { Controller } from 'react-hook-form';
 import { useMultiStepForm } from '../provider/registration-form-provider';
 import { Field, FieldError } from '@/components/ui/field';
 import { cn } from '@/lib/utils';
-
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
+import { MAX_FILE_SIZE } from '../validator/business-registration-form-schema';
 
 export function ShopGallery() {
   return (

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   enrollMFAAction,
   verifyMFAEnrollmentAction,
-} from '@/app/business/[businessId]/settings/actions/mfaActions';
+} from '@/app/business/[businessId]/actions/mfaActions';
 import {
   Dialog,
   DialogContent,

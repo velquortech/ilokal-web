@@ -75,7 +75,9 @@ describe('GET /api/mobile/businesses/:businessId/products', () => {
 
   it('calls rpc with the correct business_id', async () => {
     const chain = buildRpcChain();
-    chain.order = vi.fn().mockResolvedValue({ data: [], error: null, count: null });
+    chain.order = vi
+      .fn()
+      .mockResolvedValue({ data: [], error: null, count: null });
     const rpcFn = vi.fn().mockReturnValue(chain);
     vi.mocked(createBearerClient).mockReturnValue({
       rpc: rpcFn,
@@ -93,13 +95,18 @@ describe('GET /api/mobile/businesses/:businessId/products', () => {
 
   it('orders results by name for non-paginated requests', async () => {
     const chain = buildRpcChain();
-    chain.order = vi.fn().mockResolvedValue({ data: [], error: null, count: null });
+    chain.order = vi
+      .fn()
+      .mockResolvedValue({ data: [], error: null, count: null });
     mockBearerClient(chain);
 
     const { req, params } = makeRequest(BUSINESS_ID);
     await GET(req, { params });
 
-    expect(chain.order).toHaveBeenCalledWith('name', expect.objectContaining({ ascending: true }));
+    expect(chain.order).toHaveBeenCalledWith(
+      'name',
+      expect.objectContaining({ ascending: true }),
+    );
   });
 
   it('computes average_rating and rating_count from rpc response', async () => {
@@ -140,7 +147,9 @@ describe('GET /api/mobile/businesses/:businessId/products', () => {
 
   it('returns empty products array when business has no available products', async () => {
     const chain = buildRpcChain();
-    chain.order = vi.fn().mockResolvedValue({ data: [], error: null, count: null });
+    chain.order = vi
+      .fn()
+      .mockResolvedValue({ data: [], error: null, count: null });
     mockBearerClient(chain);
 
     const { req, params } = makeRequest(BUSINESS_ID);

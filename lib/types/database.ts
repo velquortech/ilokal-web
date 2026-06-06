@@ -75,35 +75,88 @@ export type Database = {
           },
         ];
       };
+      branch_documents: {
+        Row: {
+          branch_id: string;
+          created_at: string;
+          document_type: string;
+          file_url: string;
+          id: string;
+        };
+        Insert: {
+          branch_id: string;
+          created_at?: string;
+          document_type: string;
+          file_url: string;
+          id?: string;
+        };
+        Update: {
+          branch_id?: string;
+          created_at?: string;
+          document_type?: string;
+          file_url?: string;
+          id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'branch_documents_branch_id_fkey';
+            columns: ['branch_id'];
+            isOneToOne: false;
+            referencedRelation: 'branches';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       branches: {
         Row: {
           address: string | null;
           archived_at: string | null;
           business_id: string;
+          cover_image_url: string | null;
           created_at: string | null;
+          description: string | null;
+          email: string | null;
+          gallery_images: string[];
           id: string;
           location: unknown;
           name: string;
+          phone: string | null;
+          rejection_reason: string | null;
+          status: string;
           updated_at: string | null;
         };
         Insert: {
           address?: string | null;
           archived_at?: string | null;
           business_id: string;
+          cover_image_url?: string | null;
           created_at?: string | null;
+          description?: string | null;
+          email?: string | null;
+          gallery_images?: string[];
           id?: string;
           location?: unknown;
           name: string;
+          phone?: string | null;
+          rejection_reason?: string | null;
+          status?: string;
           updated_at?: string | null;
         };
         Update: {
           address?: string | null;
           archived_at?: string | null;
           business_id?: string;
+          cover_image_url?: string | null;
           created_at?: string | null;
+          description?: string | null;
+          email?: string | null;
+          gallery_images?: string[];
           id?: string;
           location?: unknown;
           name?: string;
+          phone?: string | null;
+          rejection_reason?: string | null;
+          status?: string;
           updated_at?: string | null;
         };
         Relationships: [
@@ -209,6 +262,54 @@ export type Database = {
             columns: ['user_id'];
             isOneToOne: false;
             referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      business_settings: {
+        Row: {
+          allow_reviews: boolean;
+          business_id: string;
+          contact_phone_public: string | null;
+          contact_website: string | null;
+          coupon_default_expiry_days: number;
+          operating_hours: Json | null;
+          social_links: Json | null;
+          updated_at: string;
+        };
+        Insert: {
+          allow_reviews?: boolean;
+          business_id: string;
+          contact_phone_public?: string | null;
+          contact_website?: string | null;
+          coupon_default_expiry_days?: number;
+          operating_hours?: Json | null;
+          social_links?: Json | null;
+          updated_at?: string;
+        };
+        Update: {
+          allow_reviews?: boolean;
+          business_id?: string;
+          contact_phone_public?: string | null;
+          contact_website?: string | null;
+          coupon_default_expiry_days?: number;
+          operating_hours?: Json | null;
+          social_links?: Json | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'business_settings_business_id_fkey';
+            columns: ['business_id'];
+            isOneToOne: true;
+            referencedRelation: 'business_dashboard_stats';
+            referencedColumns: ['business_id'];
+          },
+          {
+            foreignKeyName: 'business_settings_business_id_fkey';
+            columns: ['business_id'];
+            isOneToOne: true;
+            referencedRelation: 'businesses';
             referencedColumns: ['id'];
           },
         ];
@@ -433,6 +534,7 @@ export type Database = {
       coupons: {
         Row: {
           archived_at: string | null;
+          branch_id: string | null;
           business_id: string;
           code: string;
           created_at: string | null;
@@ -444,6 +546,7 @@ export type Database = {
           max_redemptions_global: number | null;
           max_redemptions_per_user: number | null;
           promotion_type: string;
+          requires_subscription: boolean;
           scope_values: string[] | null;
           start_date: string;
           status: string;
@@ -452,6 +555,7 @@ export type Database = {
         };
         Insert: {
           archived_at?: string | null;
+          branch_id?: string | null;
           business_id: string;
           code: string;
           created_at?: string | null;
@@ -463,6 +567,7 @@ export type Database = {
           max_redemptions_global?: number | null;
           max_redemptions_per_user?: number | null;
           promotion_type?: string;
+          requires_subscription?: boolean;
           scope_values?: string[] | null;
           start_date: string;
           status?: string;
@@ -471,6 +576,7 @@ export type Database = {
         };
         Update: {
           archived_at?: string | null;
+          branch_id?: string | null;
           business_id?: string;
           code?: string;
           created_at?: string | null;
@@ -482,6 +588,7 @@ export type Database = {
           max_redemptions_global?: number | null;
           max_redemptions_per_user?: number | null;
           promotion_type?: string;
+          requires_subscription?: boolean;
           scope_values?: string[] | null;
           start_date?: string;
           status?: string;
@@ -489,6 +596,13 @@ export type Database = {
           usage_scope?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: 'coupons_branch_id_fkey';
+            columns: ['branch_id'];
+            isOneToOne: false;
+            referencedRelation: 'branches';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'coupons_business_id_fkey';
             columns: ['business_id'];
@@ -504,6 +618,30 @@ export type Database = {
             referencedColumns: ['id'];
           },
         ];
+      };
+      notification_preferences: {
+        Row: {
+          digest: string;
+          email: boolean;
+          push: boolean;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          digest?: string;
+          email?: boolean;
+          push?: boolean;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          digest?: string;
+          email?: boolean;
+          push?: boolean;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
       };
       payments: {
         Row: {
@@ -569,6 +707,7 @@ export type Database = {
       products: {
         Row: {
           archived_at: string | null;
+          branch_id: string | null;
           business_id: string;
           category_id: string | null;
           created_at: string | null;
@@ -588,6 +727,7 @@ export type Database = {
         };
         Insert: {
           archived_at?: string | null;
+          branch_id?: string | null;
           business_id: string;
           category_id?: string | null;
           created_at?: string | null;
@@ -607,6 +747,7 @@ export type Database = {
         };
         Update: {
           archived_at?: string | null;
+          branch_id?: string | null;
           business_id?: string;
           category_id?: string | null;
           created_at?: string | null;
@@ -625,6 +766,13 @@ export type Database = {
           updated_at?: string | null;
         };
         Relationships: [
+          {
+            foreignKeyName: 'products_branch_id_fkey';
+            columns: ['branch_id'];
+            isOneToOne: false;
+            referencedRelation: 'branches';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'products_business_id_fkey';
             columns: ['business_id'];
@@ -780,6 +928,7 @@ export type Database = {
         Row: {
           created_at: string | null;
           description: string | null;
+          features_promo_boost: boolean;
           id: string;
           interval: Database['public']['Enums']['plan_interval'];
           interval_count: number | null;
@@ -791,6 +940,7 @@ export type Database = {
         Insert: {
           created_at?: string | null;
           description?: string | null;
+          features_promo_boost?: boolean;
           id?: string;
           interval: Database['public']['Enums']['plan_interval'];
           interval_count?: number | null;
@@ -802,6 +952,7 @@ export type Database = {
         Update: {
           created_at?: string | null;
           description?: string | null;
+          features_promo_boost?: boolean;
           id?: string;
           interval?: Database['public']['Enums']['plan_interval'];
           interval_count?: number | null;
@@ -889,6 +1040,13 @@ export type Database = {
             columns: ['branch_id'];
             isOneToOne: false;
             referencedRelation: 'branches';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'user_redemptions_coupon_id_fkey';
+            columns: ['coupon_id'];
+            isOneToOne: false;
+            referencedRelation: 'coupons';
             referencedColumns: ['id'];
           },
           {
@@ -1113,6 +1271,34 @@ export type Database = {
             };
             Returns: string;
           };
+      business_branches: {
+        Args: { p_business_id: string };
+        Returns: {
+          address: string;
+          id: string;
+          latitude: number;
+          longitude: number;
+          name: string;
+        }[];
+      };
+      business_products: {
+        Args: { p_business_id: string };
+        Returns: {
+          average_rating: number;
+          category: Json;
+          description: string;
+          id: string;
+          image_url: string;
+          is_available: boolean;
+          name: string;
+          popularity: number;
+          price: number;
+          price_type: string;
+          price_unit: string;
+          rating_count: number;
+          sale_price: number;
+        }[];
+      };
       disablelongtransactions: { Args: never; Returns: string };
       dropgeometrycolumn:
         | {
@@ -1248,6 +1434,10 @@ export type Database = {
       };
       geomfromewkt: { Args: { '': string }; Returns: unknown };
       gettransactionid: { Args: never; Returns: unknown };
+      increment_coupon_redemptions: {
+        Args: { p_coupon_id: string };
+        Returns: boolean;
+      };
       is_admin: { Args: never; Returns: boolean };
       longtransactionsenabled: { Args: never; Returns: boolean };
       nearby_businesses: {
@@ -1256,6 +1446,8 @@ export type Database = {
           address: string;
           average_rating: number;
           branch_id: string;
+          branch_lat: number;
+          branch_lng: number;
           branch_name: string;
           business_description: string;
           business_id: string;

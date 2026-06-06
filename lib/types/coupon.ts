@@ -56,6 +56,7 @@ export type CreateCouponRequest = {
   max_redemptions_global?: number;
   max_redemptions_per_user?: number;
   requires_subscription?: boolean;
+  branch_id?: string | null;
 };
 
 export type UpdateCouponRequest = Partial<CreateCouponRequest>;

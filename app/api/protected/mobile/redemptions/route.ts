@@ -18,7 +18,10 @@ export async function GET(req: NextRequest) {
 
     // Page the wallet so mobile pulls one screen at a time, never the whole
     // history in a single batch. per_page is capped to keep payloads bounded.
-    const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1);
+    const page = Math.max(
+      1,
+      parseInt(searchParams.get('page') ?? '1', 10) || 1,
+    );
     const perPageRaw = parseInt(searchParams.get('per_page') ?? '10', 10);
     const perPage = Math.min(
       50,

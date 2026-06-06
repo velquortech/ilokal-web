@@ -18,6 +18,7 @@ export async function POST(request: Request) {
     const newBusiness = await createBusiness(formData);
     return NextResponse.json(newBusiness, { status: 201 });
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: error }, { status: 400 });
   }
 }

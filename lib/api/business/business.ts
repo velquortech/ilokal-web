@@ -11,25 +11,14 @@ export async function createBusiness(payload: FormData) {
   } = await supabase.auth.getUser();
   if (!user) throw new Error('Unauthorized');
 
-  // 1. Helper for consistent uploads and fixing 2-byte corruption
-  const uploadFile = async (bucket: string, file: File, path: string) => {
-    const arrayBuffer = await file.arrayBuffer();
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(path, arrayBuffer, { contentType: file.type, upsert: true });
-
-    if (error) throw new Error(`Upload to ${bucket} failed: ${error.message}`);
-    return data.path;
-  };
-
-  // 2. Extract Files
+  // 1. Extract Files
   const shop_logo = payload.get('shop_logo') as File;
   const shop_banner = payload.get('shop_banner') as File;
   const interior_images = payload.getAll('interior_images') as File[];
   const business_license = payload.get('business_license') as File;
   const tax_certificate = payload.get('tax_certificate') as File;
 
-  // 3. Extract Metadata & Parse JSON strings
+  // 2. Extract Metadata & Parse JSON strings
   const shop_name = payload.get('shop_name') as string;
   const description = payload.get('description') as string;
   const business_category = JSON.parse(
@@ -38,41 +27,10 @@ export async function createBusiness(payload: FormData) {
   const location = JSON.parse(payload.get('location') as string);
   const category_id = (payload.get('category_id') as string) || null;
 
-  // 4. Perform Uploads
-  const logoPath = await uploadFile(
-    'shop-logos',
-    shop_logo,
-    `${user.id}/logo-${Date.now()}.png`,
-  );
-  const bannerPath = await uploadFile(
-    'shop-banners',
-    shop_banner,
-    `${user.id}/banner-${Date.now()}.png`,
-  );
-
-  const licensePath = await uploadFile(
-    'business-docs',
-    business_license,
-    `${user.id}/license-${Date.now()}.pdf`,
-  );
-  const taxPath = await uploadFile(
-    'business-docs',
-    tax_certificate,
-    `${user.id}/tax-cert-${Date.now()}.pdf`,
-  );
-
-  const interiorPaths = await Promise.all(
-    interior_images.map((file) =>
-      uploadFile(
-        'interior-images',
-        file,
-        `${user.id}/interior-${Date.now()}-${file.name}`,
-      ),
-    ),
-  );
-
-  // 5. Insert into DB
-  const { data, error } = await supabase
+  // 3. Insert the business row first so storage RLS policies can verify
+  // that the uploading user owns the business matching the folder name.
+  // File URL columns are nullable — they get filled in step 5.
+  const { data: business, error: insertError } = await supabase
     .from('businesses')
     .insert([
       {
@@ -82,18 +40,86 @@ export async function createBusiness(payload: FormData) {
         business_category,
         category_id,
         location,
-        logo_url: logoPath,
-        banner_url: bannerPath,
-        interior_images: interiorPaths,
-        verification_documents: {
-          business_license: licensePath,
-          tax_certificate: taxPath,
-        },
       },
     ])
     .select()
     .single();
-  if (error) throw error;
+  if (insertError) throw insertError;
+
+  // 4. Upload files. Paths use business.id as the folder so the RLS policy:
+  //    "WHERE businesses.id = folder AND businesses.owner_id = auth.uid()"
+  //    resolves correctly now that the row exists.
+  const uploadFile = async (bucket: string, file: File, path: string) => {
+    const arrayBuffer = await file.arrayBuffer();
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(path, arrayBuffer, { contentType: file.type, upsert: true });
+    if (error) throw new Error(`Upload to ${bucket} failed: ${error.message}`);
+    return data.path;
+  };
+
+  let logoPath: string;
+  let bannerPath: string;
+  let licensePath: string;
+  let taxPath: string;
+  let interiorPaths: string[];
+
+  try {
+    const ts = Date.now();
+    logoPath = await uploadFile(
+      'shop-logos',
+      shop_logo,
+      `${business.id}/logo-${ts}.png`,
+    );
+    bannerPath = await uploadFile(
+      'shop-banners',
+      shop_banner,
+      `${business.id}/banner-${ts}.png`,
+    );
+    licensePath = await uploadFile(
+      'business-docs',
+      business_license,
+      `${business.id}/license-${ts}.pdf`,
+    );
+    taxPath = await uploadFile(
+      'business-docs',
+      tax_certificate,
+      `${business.id}/tax-cert-${ts}.pdf`,
+    );
+    interiorPaths = await Promise.all(
+      interior_images.map((file, idx) =>
+        uploadFile(
+          'interior-images',
+          file,
+          `${business.id}/interior-${ts}-${idx}.${file.name.split('.').pop() ?? 'jpg'}`,
+        ),
+      ),
+    );
+  } catch (uploadError) {
+    // Roll back the business row so the user can retry cleanly
+    await supabase.from('businesses').delete().eq('id', business.id);
+    throw uploadError;
+  }
+
+  // 5. Patch the business row with the resolved file paths
+  const { data, error: updateError } = await supabase
+    .from('businesses')
+    .update({
+      logo_url: logoPath,
+      banner_url: bannerPath,
+      interior_images: interiorPaths,
+      verification_documents: {
+        business_license: licensePath,
+        tax_certificate: taxPath,
+      },
+    })
+    .eq('id', business.id)
+    .select()
+    .single();
+  if (updateError) {
+    await supabase.from('businesses').delete().eq('id', business.id);
+    throw updateError;
+  }
 
   // 6. Create a branch so the business appears in nearby searches.
   // The nearby_businesses SQL function JOINs on branches.location (PostGIS GEOGRAPHY),

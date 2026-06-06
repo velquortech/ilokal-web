@@ -1,7 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
+import {
+  enrollMFAAction,
+  verifyMFAEnrollmentAction,
+} from '@/app/business/[businessId]/settings/actions/mfaActions';
 import {
   Dialog,
   DialogContent,
@@ -36,28 +39,18 @@ export function MFAEnrollDialog({
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
-
   async function handleEnroll() {
     setLoading(true);
     setError('');
-    const { data, error: enrollError } = await supabase.auth.mfa.enroll({
-      factorType: 'totp',
-      issuer: 'iLokal',
-      friendlyName: 'Authenticator App',
-    });
+    const result = await enrollMFAAction();
     setLoading(false);
-    if (enrollError || !data) {
-      setError(enrollError?.message ?? 'Failed to start enrollment');
+    if (result.error) {
+      setError(result.error);
       return;
     }
-    setFactorId(data.id);
-    setQrCode(data.totp.qr_code);
-    setSecret(data.totp.secret);
+    setFactorId(result.factorId);
+    setQrCode(result.qrCode);
+    setSecret(result.secret);
     setStep('verify');
   }
 
@@ -68,13 +61,10 @@ export function MFAEnrollDialog({
     }
     setLoading(true);
     setError('');
-    const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
-      factorId,
-      code,
-    });
+    const result = await verifyMFAEnrollmentAction(factorId, code);
     setLoading(false);
-    if (verifyError) {
-      setError(verifyError.message);
+    if (!result.success) {
+      setError(result.error ?? 'Verification failed');
       return;
     }
     setStep('qr');

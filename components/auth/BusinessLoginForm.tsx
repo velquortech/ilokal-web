@@ -13,9 +13,13 @@ import {
   Loader2,
   ShieldCheck,
 } from 'lucide-react';
-import { createBrowserClient } from '@supabase/ssr';
 import { loginSchema, LoginInput } from '@/lib/validation/auth';
-import { loginAsBusiness, redirectByRole } from '@/app/(auth)/actions';
+import {
+  loginAsBusiness,
+  redirectByRole,
+  checkMFARequiredAction,
+  verifyMFALoginAction,
+} from '@/app/(auth)/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,11 +41,8 @@ export default function BusinessLoginForm() {
   const [mfaError, setMfaError] = useState('');
   const [mfaLoading, setMfaLoading] = useState(false);
   const [pendingUser, setPendingUser] = useState<User | null>(null);
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  const [pendingBusinessId, setPendingBusinessId] = useState<string | null>(
+    null,
   );
 
   const form = useForm<LoginInput>({
@@ -56,22 +57,16 @@ export default function BusinessLoginForm() {
         const response = await loginAsBusiness(data.email, data.password);
 
         // Check if MFA elevation is needed
-        const { data: aalData } =
-          await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-        if (aalData?.nextLevel === 'aal2' && aalData.currentLevel !== 'aal2') {
-          const { data: factorsData } = await supabase.auth.mfa.listFactors();
-          const totpFactor = factorsData?.totp?.find(
-            (f) => f.status === 'verified',
-          );
-          if (totpFactor) {
-            setMfaFactorId(totpFactor.id);
-            setPendingUser(response.user);
-            setStep('mfa');
-            return;
-          }
+        const mfa = await checkMFARequiredAction();
+        if (mfa.required && mfa.factorId) {
+          setMfaFactorId(mfa.factorId);
+          setPendingUser(response.user);
+          setPendingBusinessId(response.businessId);
+          setStep('mfa');
+          return;
         }
 
-        await redirectByRole(response.user.role);
+        await redirectByRole(response.user.role, response.businessId);
       } catch (error) {
         if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
           return;
@@ -91,16 +86,13 @@ export default function BusinessLoginForm() {
     }
     setMfaLoading(true);
     setMfaError('');
-    const { error } = await supabase.auth.mfa.challengeAndVerify({
-      factorId: mfaFactorId,
-      code: mfaCode,
-    });
+    const result = await verifyMFALoginAction(mfaFactorId, mfaCode);
     setMfaLoading(false);
-    if (error) {
-      setMfaError(error.message);
+    if (!result.success) {
+      setMfaError(result.error ?? 'Verification failed');
       return;
     }
-    if (pendingUser) await redirectByRole(pendingUser.role);
+    if (pendingUser) await redirectByRole(pendingUser.role, pendingBusinessId);
   }
 
   if (step === 'mfa') {

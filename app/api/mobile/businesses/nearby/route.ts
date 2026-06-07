@@ -114,10 +114,18 @@ export async function GET(req: NextRequest) {
       (b: Record<string, unknown>) => b.business_id as string,
     );
 
-    const { data: ratingsData } = await supabase
-      .from('business_ratings')
-      .select('business_id, rating')
-      .in('business_id', businessIds);
+    // Ratings (tallied client-side) + follower counts (aggregated by the
+    // get_follower_counts RPC, which keeps the follow graph private). Both keyed
+    // on the same business ids, so fetch in parallel.
+    const [{ data: ratingsData }, { data: followerCounts }] = await Promise.all(
+      [
+        supabase
+          .from('business_ratings')
+          .select('business_id, rating')
+          .in('business_id', businessIds),
+        supabase.rpc('get_follower_counts', { p_business_ids: businessIds }),
+      ],
+    );
 
     const ratingsMap = new Map<string, { sum: number; count: number }>();
     for (const r of ratingsData ?? []) {
@@ -125,6 +133,14 @@ export async function GET(req: NextRequest) {
       entry.sum += r.rating;
       entry.count += 1;
       ratingsMap.set(r.business_id, entry);
+    }
+
+    const followersMap = new Map<string, number>();
+    for (const f of (followerCounts ?? []) as {
+      business_id: string;
+      follower_count: number;
+    }[]) {
+      followersMap.set(f.business_id, Number(f.follower_count));
     }
 
     const businesses = data.map((b: Record<string, unknown>) => {
@@ -144,6 +160,7 @@ export async function GET(req: NextRequest) {
           ? Math.round((stats.sum / stats.count) * 10) / 10
           : 0,
         rating_count: stats?.count ?? 0,
+        total_followers: followersMap.get(b.business_id as string) ?? 0,
       };
     });
 

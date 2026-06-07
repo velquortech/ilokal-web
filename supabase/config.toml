@@ -71,6 +71,7 @@ sql_paths = [
   "./seeds/coupons.sql",
   "./seeds/ratings.sql",
   "./seeds/business_subscriptions.sql",
+  "./seeds/business_posts.sql",
 ]
 
 [db.network_restrictions]

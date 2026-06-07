@@ -15,6 +15,13 @@ export async function GET(req: NextRequest, { params }: Params) {
 
     const search = searchParams.get('q')?.trim();
     const category = searchParams.get('category')?.trim(); // category slug
+    const num = (key: string): number | null => {
+      const n = parseFloat(searchParams.get(key) ?? '');
+      return Number.isFinite(n) ? n : null;
+    };
+    const priceMin = num('price_min');
+    const priceMax = num('price_max');
+    const minRating = num('min_rating');
     // Page-based browse (mobile products/menu screen). When `page` is absent the
     // response keeps the legacy single-batch shape (`{ products }`) used by the
     // detail "must-try" preview and the home popular-products scan.
@@ -41,7 +48,12 @@ export async function GET(req: NextRequest, { params }: Params) {
     );
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+      // Strip the chars PostgREST uses as `.or()` delimiters so a stray
+      // comma/paren can't inject extra filter conditions (mirrors nearby route).
+      const s = search.replace(/[,()]/g, ' ').trim();
+      if (s) {
+        query = query.or(`name.ilike.%${s}%,description.ilike.%${s}%`);
+      }
     }
 
     // Filter by product category (slug) — the RPC returns `category` as JSONB,
@@ -49,6 +61,12 @@ export async function GET(req: NextRequest, { params }: Params) {
     if (category) {
       query = query.eq('category->>slug', category);
     }
+
+    // Price range (on base price) + minimum average rating — both filter on the
+    // RPC's projected columns, mirroring the category filter.
+    if (priceMin != null) query = query.gte('price', priceMin);
+    if (priceMax != null) query = query.lte('price', priceMax);
+    if (minRating != null) query = query.gte('average_rating', minRating);
 
     // Mobile sort key → PostgREST ordering on the RPC's aggregate columns.
     // `popular` is the menu default; `name` backs the legacy non-paginated batch.
@@ -107,6 +125,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       average_rating:
         product.average_rating != null ? Number(product.average_rating) : 0,
       rating_count: Number(product.rating_count ?? 0),
+      weekly_view_count: Number(product.weekly_view_count ?? 0),
     }));
 
     if (paginated) {

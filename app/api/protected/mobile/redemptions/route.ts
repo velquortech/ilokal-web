@@ -6,6 +6,7 @@ import {
   successResponse,
   unauthorizedResponse,
 } from '@/app/api/helpers/response';
+import { redeemCouponSchema } from '@/lib/validation/redemptions';
 import { NextRequest } from 'next/server';
 
 export async function GET(req: NextRequest) {
@@ -18,7 +19,10 @@ export async function GET(req: NextRequest) {
 
     // Page the wallet so mobile pulls one screen at a time, never the whole
     // history in a single batch. per_page is capped to keep payloads bounded.
-    const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1);
+    const page = Math.max(
+      1,
+      parseInt(searchParams.get('page') ?? '1', 10) || 1,
+    );
     const perPageRaw = parseInt(searchParams.get('per_page') ?? '10', 10);
     const perPage = Math.min(
       50,
@@ -73,21 +77,22 @@ export async function POST(req: NextRequest) {
     const auth = await getMobileUser(req);
     if (!auth) return unauthorizedResponse();
 
-    const body = await req.json();
-    const { coupon_id, branch_id } = body;
-
-    if (!coupon_id || !branch_id) {
+    const parsed = redeemCouponSchema.safeParse(
+      await req.json().catch(() => null),
+    );
+    if (!parsed.success) {
       return badRequestResponse({
-        message: 'coupon_id and branch_id are required',
+        message: 'coupon_id and branch_id must be valid UUIDs',
       });
     }
+    const { coupon_id, branch_id } = parsed.data;
 
     const now = new Date().toISOString();
 
     const { data: coupon, error: couponError } = await auth.supabase
       .from('coupons')
       .select(
-        'id, start_date, expiry_date, status, max_redemptions_per_user, max_redemptions_global, current_redemptions, requires_subscription, business_id',
+        'id, start_date, expiry_date, status, max_redemptions_per_user, max_redemptions_global, current_redemptions, requires_follow, business_id',
       )
       .eq('id', coupon_id)
       .eq('status', 'published')
@@ -114,17 +119,18 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Subscription gate — coupon requires user to follow the business
-    if (coupon.requires_subscription) {
-      const { count: subCount, error: subError } = await auth.supabase
+    // Follow gate — coupon requires user to follow the business
+    if (coupon.requires_follow) {
+      const { count: followCount, error: followError } = await auth.supabase
         .from('follows')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', auth.user.id)
         .eq('business_id', coupon.business_id);
 
-      if (subError) return generalErrorResponse({ message: subError.message });
+      if (followError)
+        return generalErrorResponse({ message: followError.message });
 
-      if ((subCount ?? 0) === 0) {
+      if ((followCount ?? 0) === 0) {
         return forbiddenResponse({
           message: 'Follow this business to claim this deal',
         });

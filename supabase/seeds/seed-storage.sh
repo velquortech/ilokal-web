@@ -253,7 +253,7 @@ upload "interior-images" "11111111-1111-1111-1111-111111111116/gallery2.jpg" "$(
 upload "interior-images" "11111111-1111-1111-1111-111111111116/gallery3.jpg" "$(lf 800 520 nightclub)"
 
 # ---------------------------------------------------------------------------
-# New products — Product images (400x400)  IDs 326–369
+# New products — Product images (400x400)  IDs 326–369, plus 370–385 (Iloilo Street Eats)
 # ---------------------------------------------------------------------------
 echo "Uploading new product images..."
 # El Tapas & Brew
@@ -266,6 +266,22 @@ upload "product-images" "33333333-3333-3333-3333-333333333330/product.jpg" "$(lf
 upload "product-images" "33333333-3333-3333-3333-333333333331/product.jpg" "$(lf 400 400 barbecue)"
 upload "product-images" "33333333-3333-3333-3333-333333333332/product.jpg" "$(lf 400 400 friedfood)"
 upload "product-images" "33333333-3333-3333-3333-333333333333/product.jpg" "$(lf 400 400 noodlesoup)"
+upload "product-images" "33333333-3333-3333-3333-333333333370/product.jpg" "$(lf 400 400 streetfood)"
+upload "product-images" "33333333-3333-3333-3333-333333333371/product.jpg" "$(lf 400 400 friedbanana)"
+upload "product-images" "33333333-3333-3333-3333-333333333372/product.jpg" "$(lf 400 400 sweetpotato)"
+upload "product-images" "33333333-3333-3333-3333-333333333373/product.jpg" "$(lf 400 400 grill)"
+upload "product-images" "33333333-3333-3333-3333-333333333374/product.jpg" "$(lf 400 400 grill)"
+upload "product-images" "33333333-3333-3333-3333-333333333375/product.jpg" "$(lf 400 400 friedchicken)"
+upload "product-images" "33333333-3333-3333-3333-333333333376/product.jpg" "$(lf 400 400 friedfood)"
+upload "product-images" "33333333-3333-3333-3333-333333333377/product.jpg" "$(lf 400 400 friedfood)"
+upload "product-images" "33333333-3333-3333-3333-333333333378/product.jpg" "$(lf 400 400 streetfood)"
+upload "product-images" "33333333-3333-3333-3333-333333333379/product.jpg" "$(lf 400 400 friedfood)"
+upload "product-images" "33333333-3333-3333-3333-333333333380/product.jpg" "$(lf 400 400 springroll)"
+upload "product-images" "33333333-3333-3333-3333-333333333381/product.jpg" "$(lf 400 400 friedbanana)"
+upload "product-images" "33333333-3333-3333-3333-333333333382/product.jpg" "$(lf 400 400 tofu)"
+upload "product-images" "33333333-3333-3333-3333-333333333383/product.jpg" "$(lf 400 400 drink)"
+upload "product-images" "33333333-3333-3333-3333-333333333384/product.jpg" "$(lf 400 400 coconut)"
+upload "product-images" "33333333-3333-3333-3333-333333333385/product.jpg" "$(lf 400 400 barbecue)"
 # Sari-Sari ni Nena
 upload "product-images" "33333333-3333-3333-3333-333333333334/product.jpg" "$(lf 400 400 noodles)"
 upload "product-images" "33333333-3333-3333-3333-333333333335/product.jpg" "$(lf 400 400 eggs)"

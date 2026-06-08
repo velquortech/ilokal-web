@@ -34,13 +34,13 @@ export const createCouponSchema = z
     description: z.string().optional(),
     discount: discountValueSchema,
     usage_scope: usageScopeSchema,
-    scope_values: z.array(z.string().uuid()).optional(),
+    scope_values: z.array(z.guid()).optional(),
     start_date: z.string().datetime(),
     expiry_date: z.string().datetime(),
     max_redemptions_global: z.number().min(1).optional(),
     max_redemptions_per_user: z.number().min(1).optional(),
     requires_follow: z.boolean().optional(),
-    branch_id: z.string().uuid().nullable().optional(), // null = all branches
+    branch_id: z.guid().nullable().optional(), // null = all branches
   })
   .refine(
     (data) =>
@@ -57,13 +57,13 @@ export const updateCouponSchema = z
     description: z.string().optional(),
     discount: discountValueSchema.optional(),
     usage_scope: usageScopeSchema.optional(),
-    scope_values: z.array(z.string().uuid()).optional(),
+    scope_values: z.array(z.guid()).optional(),
     start_date: z.string().datetime().optional(),
     expiry_date: z.string().datetime().optional(),
     max_redemptions_global: z.number().min(1).optional(),
     max_redemptions_per_user: z.number().min(1).optional(),
     requires_follow: z.boolean().optional(),
-    branch_id: z.string().uuid().nullable().optional(), // null = all branches
+    branch_id: z.guid().nullable().optional(), // null = all branches
   })
   .refine((data) => {
     // If both start_date and expiry_date provided, validate order
@@ -95,7 +95,7 @@ export const placementSchema = z.enum([
 
 export const createFeaturedDealSchema = z
   .object({
-    coupon_id: z.string().uuid('Invalid coupon ID'),
+    coupon_id: z.guid('Invalid coupon ID'),
     duration: durationSchema,
     placement: placementSchema,
     start_date: z.string().datetime(),
@@ -112,7 +112,7 @@ export const createFeaturedDealSchema = z
 
 export const updateFeaturedDealSchema = z
   .object({
-    coupon_id: z.string().uuid('Invalid coupon ID').optional(),
+    coupon_id: z.guid('Invalid coupon ID').optional(),
     duration: durationSchema.optional(),
     placement: placementSchema.optional(),
     start_date: z.string().datetime().optional(),

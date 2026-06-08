@@ -12,8 +12,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ChangePasswordForm } from './ChangePasswordForm';
-import { ChangeEmailForm } from './ChangeEmailForm';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
+import { ChangeEmailDialog } from './ChangeEmailDialog';
 import { MFAEnrollDialog } from './MFAEnrollDialog';
 import { unenrollMFAAction } from '../../actions/mfaActions';
 import { useBusinessShop } from '@/providers/BusinessProvider';
@@ -26,6 +26,8 @@ interface SecurityTabProps {
 export function SecurityTab({ initialFactors }: SecurityTabProps) {
   const { business } = useBusinessShop();
   const [factors, setFactors] = useState<MFAFactor[]>(initialFactors);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [changeEmailOpen, setChangeEmailOpen] = useState(false);
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [unenrollError, setUnenrollError] = useState('');
   const [unenrolling, setUnenrolling] = useState(false);
@@ -49,8 +51,34 @@ export function SecurityTab({ initialFactors }: SecurityTabProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <ChangePasswordForm />
-      <ChangeEmailForm />
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Change Password</CardTitle>
+          <CardDescription>
+            Update your account password. You&apos;ll need your current password
+            to confirm.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button size="sm" onClick={() => setChangePasswordOpen(true)}>
+            Change Password
+          </Button>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Change Email</CardTitle>
+          <CardDescription>
+            Update the email address linked to your account. A confirmation link
+            will be sent to the new address.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button size="sm" onClick={() => setChangeEmailOpen(true)}>
+            Change Email
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -121,6 +149,14 @@ export function SecurityTab({ initialFactors }: SecurityTabProps) {
         </CardContent>
       </Card>
 
+      <ChangePasswordDialog
+        open={changePasswordOpen}
+        onOpenChange={setChangePasswordOpen}
+      />
+      <ChangeEmailDialog
+        open={changeEmailOpen}
+        onOpenChange={setChangeEmailOpen}
+      />
       <MFAEnrollDialog
         open={enrollOpen}
         onOpenChange={setEnrollOpen}

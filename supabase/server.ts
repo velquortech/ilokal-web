@@ -41,13 +41,13 @@ export async function createServerSupabaseClient() {
 // subscriptions, not just the logged-in user's own rows.
 export async function createAnalyticsSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_SECRET_KEY ??
-    process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // Server-only secret — MUST NOT carry a NEXT_PUBLIC_ prefix (would inline into
+  // the client bundle and bypass all RLS).
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !key) {
     throw new Error(
-      'Missing NEXT_PUBLIC_SUPABASE_URL or service secret key for analytics client',
+      'Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY (server-only) for analytics client',
     );
   }
 

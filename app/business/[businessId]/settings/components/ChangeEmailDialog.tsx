@@ -4,12 +4,13 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -29,7 +30,15 @@ import { changeEmailAction } from '../../actions/settingsActions';
 import { useBusinessShop } from '@/providers/BusinessProvider';
 import { useUser } from '@/providers/UserContext';
 
-export function ChangeEmailForm() {
+interface ChangeEmailDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function ChangeEmailDialog({
+  open,
+  onOpenChange,
+}: ChangeEmailDialogProps) {
   const { business } = useBusinessShop();
   const user = useUser();
   const [serverError, setServerError] = useState('');
@@ -40,6 +49,15 @@ export function ChangeEmailForm() {
     defaultValues: { newEmail: '', password: '' },
   });
 
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) {
+      form.reset();
+      setServerError('');
+      setSuccess(false);
+    }
+    onOpenChange(nextOpen);
+  }
+
   async function onSubmit(values: ChangeEmailInput) {
     if (!business?.id) return;
     setServerError('');
@@ -48,23 +66,26 @@ export function ChangeEmailForm() {
     if (result.success) {
       setSuccess(true);
       form.reset();
+      setTimeout(() => handleOpenChange(false), 2000);
     } else {
       setServerError(result.error?.message ?? 'Something went wrong');
     }
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Change Email</CardTitle>
-        <CardDescription>
-          Current email: <span className="font-medium">{user?.email}</span>. A
-          confirmation link will be sent to the new address.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Change Email</DialogTitle>
+          <DialogDescription>
+            Current email: <span className="font-medium">{user?.email}</span>. A
+            confirmation link will be sent to the new address.
+          </DialogDescription>
+        </DialogHeader>
+
         <Form {...form}>
           <form
+            id="change-email-form"
             onSubmit={form.handleSubmit(onSubmit)}
             className="flex flex-col gap-4"
           >
@@ -98,6 +119,7 @@ export function ChangeEmailForm() {
                 </FormItem>
               )}
             />
+
             {serverError && (
               <Alert variant="destructive">
                 <AlertDescription>{serverError}</AlertDescription>
@@ -111,16 +133,26 @@ export function ChangeEmailForm() {
                 </AlertDescription>
               </Alert>
             )}
-            <Button
-              type="submit"
-              disabled={form.formState.isSubmitting}
-              className="self-start"
-            >
-              {form.formState.isSubmitting ? 'Sending...' : 'Change Email'}
-            </Button>
           </form>
         </Form>
-      </CardContent>
-    </Card>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => handleOpenChange(false)}
+            disabled={form.formState.isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="change-email-form"
+            disabled={form.formState.isSubmitting || success}
+          >
+            {form.formState.isSubmitting ? 'Sending...' : 'Change Email'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

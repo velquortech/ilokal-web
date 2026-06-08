@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
       .from('user_redemptions')
       .select(
         `
-        id, redeemed_at, expires_at, is_claimed,
+        id, redeemed_at, expires_at, is_claimed, code,
         coupons(id, code, description, discount, expiry_date, promotion_type,
           businesses(id, shop_name, logo_url)
         ),

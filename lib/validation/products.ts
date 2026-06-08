@@ -25,9 +25,9 @@ export const createProductSchema = z.object({
   sale_price: z.number().min(0).nullable().optional(),
   price_type: priceTypeSchema.optional(),
   price_unit: z.string().nullable().optional(),
-  category_id: z.string().uuid('Invalid category ID').nullable().optional(),
+  category_id: z.guid('Invalid category ID').nullable().optional(),
   image_url: z.string().url().nullable().optional(),
-  branch_id: z.string().uuid().nullable().optional(),
+  branch_id: z.guid().nullable().optional(),
 });
 
 export const updateProductSchema = createProductSchema.partial().extend({
@@ -38,9 +38,9 @@ export const productFiltersSchema = z.object({
   page: z.number().min(1).default(1),
   per_page: z.number().min(1).max(100).default(10),
   search: z.string().optional(),
-  category_id: z.string().uuid().optional(),
+  category_id: z.guid().optional(),
   status: productStatusSchema.optional(),
-  business_id: z.string().uuid().optional(),
+  business_id: z.guid().optional(),
   sort_by: z
     .enum([
       'newest',

@@ -31,7 +31,7 @@ type ApiResponse<T = unknown> = {
 };
 
 const uuidSchema = z.object({
-  id: z.string().uuid('Invalid user ID format'),
+  id: z.guid('Invalid user ID format'),
 });
 
 const updateUserSchema = z.object({

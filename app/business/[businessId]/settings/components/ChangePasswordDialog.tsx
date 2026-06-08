@@ -4,12 +4,13 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -28,7 +29,15 @@ import {
 import { changePasswordAction } from '../../actions/settingsActions';
 import { useBusinessShop } from '@/providers/BusinessProvider';
 
-export function ChangePasswordForm() {
+interface ChangePasswordDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function ChangePasswordDialog({
+  open,
+  onOpenChange,
+}: ChangePasswordDialogProps) {
   const { business } = useBusinessShop();
   const [serverError, setServerError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -42,6 +51,15 @@ export function ChangePasswordForm() {
     },
   });
 
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) {
+      form.reset();
+      setServerError('');
+      setSuccess(false);
+    }
+    onOpenChange(nextOpen);
+  }
+
   async function onSubmit(values: ChangePasswordInput) {
     if (!business?.id) return;
     setServerError('');
@@ -50,23 +68,26 @@ export function ChangePasswordForm() {
     if (result.success) {
       setSuccess(true);
       form.reset();
+      setTimeout(() => handleOpenChange(false), 1500);
     } else {
       setServerError(result.error?.message ?? 'Something went wrong');
     }
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Change Password</CardTitle>
-        <CardDescription>
-          Update your account password. You&apos;ll need your current password
-          to confirm.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Change Password</DialogTitle>
+          <DialogDescription>
+            Update your account password. You&apos;ll need your current password
+            to confirm.
+          </DialogDescription>
+        </DialogHeader>
+
         <Form {...form}>
           <form
+            id="change-password-form"
             onSubmit={form.handleSubmit(onSubmit)}
             className="flex flex-col gap-4"
           >
@@ -109,6 +130,7 @@ export function ChangePasswordForm() {
                 </FormItem>
               )}
             />
+
             {serverError && (
               <Alert variant="destructive">
                 <AlertDescription>{serverError}</AlertDescription>
@@ -121,16 +143,26 @@ export function ChangePasswordForm() {
                 </AlertDescription>
               </Alert>
             )}
-            <Button
-              type="submit"
-              disabled={form.formState.isSubmitting}
-              className="self-start"
-            >
-              {form.formState.isSubmitting ? 'Saving...' : 'Update Password'}
-            </Button>
           </form>
         </Form>
-      </CardContent>
-    </Card>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => handleOpenChange(false)}
+            disabled={form.formState.isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="change-password-form"
+            disabled={form.formState.isSubmitting || success}
+          >
+            {form.formState.isSubmitting ? 'Saving...' : 'Update Password'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

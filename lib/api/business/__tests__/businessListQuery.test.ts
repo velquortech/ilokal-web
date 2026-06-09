@@ -15,7 +15,7 @@ vi.mock('@/supabase/server', () => ({
 interface QueryBuilder {
   select: Mock;
   eq: Mock;
-  or: Mock;
+  ilike: Mock;
   order: Mock;
   range: Mock;
 }
@@ -25,7 +25,7 @@ function makeClient() {
   const chain = () => builder as QueryBuilder;
   builder.select = vi.fn(chain);
   builder.eq = vi.fn(chain);
-  builder.or = vi.fn(chain);
+  builder.ilike = vi.fn(chain);
   builder.order = vi.fn(chain);
   // terminal — awaited
   builder.range = vi
@@ -38,18 +38,15 @@ function makeClient() {
 beforeEach(() => vi.clearAllMocks());
 
 describe('getBusinessesPaginated', () => {
-  it('searches against shop_name (not the renamed-away name column)', async () => {
+  it('searches the base shop_name column (renamed-away `name`; no embedded owner OR)', async () => {
     const { client, builder } = makeClient();
     (createServerSupabaseClient as unknown as Mock).mockResolvedValue(client);
 
     await getBusinessesPaginated({ search: 'cafe' });
 
-    expect(builder.or).toHaveBeenCalledTimes(1);
-    const filter = (builder.or as Mock).mock.calls[0][0] as string;
-    expect(filter).toContain('shop_name.ilike.%cafe%');
-    // must not reference the bare (renamed-away) `name` column
-    expect(filter.startsWith('name.ilike')).toBe(false);
-    expect(filter).not.toContain(',name.ilike');
+    // Single base-table ILIKE — not an .or() across the embedded `owner` table,
+    // which would make PostgREST error and return zero rows.
+    expect(builder.ilike).toHaveBeenCalledWith('shop_name', '%cafe%');
   });
 
   it('sorts by shop_name when sortBy is name', async () => {

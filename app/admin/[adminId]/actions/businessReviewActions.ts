@@ -1,3 +1,5 @@
+'use server';
+
 /**
  * Business Document Review — Admin Server Actions
  *
@@ -6,8 +8,6 @@
  * business owner (with the admin's remarks). All notification writes go through
  * the `create_notification` RPC via the notification service.
  */
-
-'use server';
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';

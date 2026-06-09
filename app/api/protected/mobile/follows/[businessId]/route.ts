@@ -4,6 +4,7 @@ import {
   notFoundResponse,
   successResponse,
   unauthorizedResponse,
+  loggedServerError,
 } from '@/app/api/helpers/response';
 import { NextRequest } from 'next/server';
 
@@ -22,7 +23,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       .eq('user_id', auth.user.id)
       .eq('business_id', businessId);
 
-    if (error) return generalErrorResponse({ message: error.message });
+    if (error)
+      return loggedServerError('protected/mobile/follows/[businessId]', error);
     if (count === 0) return notFoundResponse({ message: 'Follow not found' });
 
     return successResponse({ message: 'Unfollowed successfully' });

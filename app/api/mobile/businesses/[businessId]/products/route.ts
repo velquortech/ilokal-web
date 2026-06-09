@@ -2,6 +2,7 @@ import { createBearerClient } from '@/supabase/bearer';
 import {
   generalErrorResponse,
   successResponse,
+  loggedServerError,
 } from '@/app/api/helpers/response';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { NextRequest } from 'next/server';
@@ -104,7 +105,10 @@ export async function GET(req: NextRequest, { params }: Params) {
     const { data, error, count } = await query;
 
     if (error) {
-      return generalErrorResponse({ message: error.message });
+      return loggedServerError(
+        'mobile/businesses/[businessId]/products',
+        error,
+      );
     }
 
     const products = (data ?? []).map((product: Record<string, unknown>) => ({

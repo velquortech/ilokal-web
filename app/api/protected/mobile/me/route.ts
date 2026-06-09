@@ -5,6 +5,7 @@ import {
   notFoundResponse,
   successResponse,
   unauthorizedResponse,
+  loggedServerError,
 } from '@/app/api/helpers/response';
 import { NextRequest } from 'next/server';
 
@@ -54,7 +55,7 @@ export async function PATCH(req: NextRequest) {
       .select('id, email, full_name, phone_number, avatar_url, role, status')
       .single();
 
-    if (error) return generalErrorResponse({ message: error.message });
+    if (error) return loggedServerError('protected/mobile/me', error);
 
     return successResponse({ profile: data });
   } catch {

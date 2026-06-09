@@ -3,6 +3,7 @@ import {
   generalErrorResponse,
   successResponse,
   unauthorizedResponse,
+  loggedServerError,
 } from '@/app/api/helpers/response';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -86,7 +87,7 @@ export async function GET(req: NextRequest) {
       .eq('user_id', auth.user.id);
 
     if (followsError)
-      return generalErrorResponse({ message: followsError.message });
+      return loggedServerError('protected/mobile/updates', followsError);
 
     const businessIds = (follows ?? []).map((f) => f.business_id as string);
     if (businessIds.length === 0) {
@@ -126,7 +127,7 @@ export async function GET(req: NextRequest) {
 
     const sourceError = postsRes.error || couponsRes.error || productsRes.error;
     if (sourceError)
-      return generalErrorResponse({ message: sourceError.message });
+      return loggedServerError('protected/mobile/updates', sourceError);
 
     const posts: UpdateItem[] = (
       (postsRes.data ?? []) as unknown as PostRow[]

@@ -3,6 +3,7 @@ import {
   generalErrorResponse,
   successResponse,
   unauthorizedResponse,
+  loggedServerError,
 } from '@/app/api/helpers/response';
 import { NextRequest } from 'next/server';
 
@@ -48,12 +49,16 @@ export async function GET(req: NextRequest) {
     ]);
 
     if (redemptionsResult.error) {
-      return generalErrorResponse({ message: redemptionsResult.error.message });
+      return loggedServerError(
+        'protected/mobile/itinerary',
+        redemptionsResult.error,
+      );
     }
     if (followsResult.error) {
-      return generalErrorResponse({
-        message: followsResult.error.message,
-      });
+      return loggedServerError(
+        'protected/mobile/itinerary',
+        followsResult.error,
+      );
     }
 
     // Filter nested coupons to active/published only — Supabase doesn't support

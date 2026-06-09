@@ -2,6 +2,7 @@ import { createBearerClient } from '@/supabase/bearer';
 import {
   generalErrorResponse,
   successResponse,
+  loggedServerError,
 } from '@/app/api/helpers/response';
 import { NextRequest } from 'next/server';
 
@@ -26,7 +27,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       .order('expiry_date', { ascending: true });
 
     if (error) {
-      return generalErrorResponse({ message: error.message });
+      return loggedServerError('mobile/businesses/[businessId]/coupons', error);
     }
 
     return successResponse({ coupons: data });

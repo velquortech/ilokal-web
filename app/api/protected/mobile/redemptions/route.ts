@@ -5,6 +5,7 @@ import {
   generalErrorResponse,
   successResponse,
   unauthorizedResponse,
+  loggedServerError,
 } from '@/app/api/helpers/response';
 import { redeemCouponSchema } from '@/lib/validation/redemptions';
 import { NextRequest } from 'next/server';
@@ -62,7 +63,7 @@ export async function GET(req: NextRequest) {
 
     const { data, error, count } = await query.range(from, to);
 
-    if (error) return generalErrorResponse({ message: error.message });
+    if (error) return loggedServerError('protected/mobile/redemptions', error);
 
     const hasMore = count != null && from + (data?.length ?? 0) < count;
 
@@ -128,7 +129,7 @@ export async function POST(req: NextRequest) {
         .eq('business_id', coupon.business_id);
 
       if (followError)
-        return generalErrorResponse({ message: followError.message });
+        return loggedServerError('protected/mobile/redemptions', followError);
 
       if ((followCount ?? 0) === 0) {
         return forbiddenResponse({
@@ -147,7 +148,10 @@ export async function POST(req: NextRequest) {
         .eq('user_id', auth.user.id);
 
     if (redemptionsError) {
-      return generalErrorResponse({ message: redemptionsError.message });
+      return loggedServerError(
+        'protected/mobile/redemptions',
+        redemptionsError,
+      );
     }
 
     // Active-dupe — user can't hold two unclaimed, unexpired redemptions of the same coupon.
@@ -183,7 +187,7 @@ export async function POST(req: NextRequest) {
       .select()
       .single();
 
-    if (error) return generalErrorResponse({ message: error.message });
+    if (error) return loggedServerError('protected/mobile/redemptions', error);
 
     // Atomic increment — DB function updates current_redemptions + 1 only if still
     // under max_redemptions_global, catching the race between the cap check above

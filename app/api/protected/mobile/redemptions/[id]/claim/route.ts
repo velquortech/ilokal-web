@@ -5,6 +5,7 @@ import {
   notFoundResponse,
   successResponse,
   unauthorizedResponse,
+  loggedServerError,
 } from '@/app/api/helpers/response';
 import { NextRequest } from 'next/server';
 
@@ -45,7 +46,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       .select('id, is_claimed, redeemed_at, expires_at')
       .maybeSingle();
 
-    if (error) return generalErrorResponse({ message: error.message });
+    if (error)
+      return loggedServerError(
+        'protected/mobile/redemptions/[id]/claim',
+        error,
+      );
     if (!data)
       return badRequestResponse({ message: 'Redemption already claimed' });
 

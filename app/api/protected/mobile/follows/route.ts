@@ -5,6 +5,7 @@ import {
   generalErrorResponse,
   successResponse,
   unauthorizedResponse,
+  loggedServerError,
 } from '@/app/api/helpers/response';
 import { NextRequest } from 'next/server';
 
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
       .eq('user_id', auth.user.id)
       .order('created_at', { ascending: false });
 
-    if (error) return generalErrorResponse({ message: error.message });
+    if (error) return loggedServerError('protected/mobile/follows', error);
 
     return successResponse({ follows: data });
   } catch {
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
           message: 'Already following this business',
         });
       }
-      return generalErrorResponse({ message: error.message });
+      return loggedServerError('protected/mobile/follows', error);
     }
 
     return successResponse({ follow: data });

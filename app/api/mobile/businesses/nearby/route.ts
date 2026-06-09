@@ -3,6 +3,7 @@ import {
   badRequestResponse,
   generalErrorResponse,
   successResponse,
+  loggedServerError,
 } from '@/app/api/helpers/response';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { NextRequest } from 'next/server';
@@ -107,7 +108,7 @@ export async function GET(req: NextRequest) {
     const { data, error, count } = await query;
 
     if (error) {
-      return generalErrorResponse({ message: error.message });
+      return loggedServerError('mobile/businesses/nearby', error);
     }
 
     const businessIds: string[] = data.map(

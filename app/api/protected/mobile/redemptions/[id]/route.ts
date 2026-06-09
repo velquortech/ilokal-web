@@ -4,6 +4,7 @@ import {
   notFoundResponse,
   successResponse,
   unauthorizedResponse,
+  loggedServerError,
 } from '@/app/api/helpers/response';
 import { NextRequest } from 'next/server';
 
@@ -36,7 +37,8 @@ export async function GET(req: NextRequest, { params }: Params) {
       .eq('user_id', auth.user.id)
       .maybeSingle();
 
-    if (error) return generalErrorResponse({ message: error.message });
+    if (error)
+      return loggedServerError('protected/mobile/redemptions/[id]', error);
     if (!data) return notFoundResponse({ message: 'Redemption not found' });
 
     return successResponse({ redemption: data });

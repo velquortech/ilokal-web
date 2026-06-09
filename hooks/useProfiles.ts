@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { userService } from '@/services';
 import { UserRole, Profile } from '@/lib/types/user';
 import { AdminStatusFilter, AdminSortOrder } from '@/lib/types/admin';
-import { ADMIN_CONFIG } from '@/app/admin/config/adminConfig';
+import { ADMIN_CONFIG } from '@/app/admin/[adminId]/config/adminConfig';
 import { PaginatedResponse } from '@/services';
 
 interface UseProfilesByRoleOptions {

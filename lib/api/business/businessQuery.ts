@@ -106,15 +106,16 @@ export async function getBusinessesPaginated(
 
     // Apply search filter
     if (filters.search) {
+      // Column is `shop_name` (renamed from `name` in 20260418094212).
       query = query.or(
-        `name.ilike.%${filters.search}%,owner->email.ilike.%${filters.search}%`,
+        `shop_name.ilike.%${filters.search}%,owner->email.ilike.%${filters.search}%`,
       );
     }
 
     // Apply sorting
     const sortField =
       filters.sortBy === 'name'
-        ? 'name'
+        ? 'shop_name'
         : filters.sortBy === 'updated'
           ? 'updated_at'
           : 'created_at';

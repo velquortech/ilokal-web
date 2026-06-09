@@ -1,28 +1,20 @@
 import type {
   ApiResponse,
   NotificationPreferences,
-  PaginatedNotificationsResponse,
-  CreateNotificationRequest,
-  Notification,
+  NotificationPage,
+  NotificationListParams,
+  EmitNotificationInput,
 } from '@/lib/types';
 import * as q from './notificationsQuery';
 
+/** Keyset (cursor) page of a recipient's notifications. */
 export async function listNotifications(
   user_id: string,
-  page = 1,
-  per_page = 20,
-): Promise<ApiResponse<PaginatedNotificationsResponse>> {
+  params: NotificationListParams = {},
+): Promise<ApiResponse<NotificationPage>> {
   try {
-    const res = await q.fetchNotifications(user_id, page, per_page);
-    return {
-      success: true,
-      data: {
-        items: res.items,
-        total: res.total,
-        page: res.page,
-        per_page: res.per_page,
-      },
-    };
+    const data = await q.fetchNotifications(user_id, params);
+    return { success: true, data };
   } catch (error) {
     console.error('[notificationsService.listNotifications]', error);
     return {
@@ -35,19 +27,36 @@ export async function listNotifications(
   }
 }
 
-export async function createNotification(
-  input: Partial<CreateNotificationRequest>,
-): Promise<ApiResponse<Notification | null>> {
+/** Unread count for a recipient. */
+export async function getUnreadCount(
+  user_id: string,
+): Promise<ApiResponse<number>> {
   try {
-    const data = await q.createNotification(input as Partial<Notification>);
-    if (!data)
+    const count = await q.getUnreadCount(user_id);
+    return { success: true, data: count };
+  } catch (error) {
+    console.error('[notificationsService.getUnreadCount]', error);
+    return {
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'Failed to count unread' },
+    };
+  }
+}
+
+/** Emit a notification (admin/system → recipient) via the RPC. */
+export async function emitNotification(
+  input: EmitNotificationInput,
+): Promise<ApiResponse<{ id: string }>> {
+  try {
+    const id = await q.emitNotification(input);
+    if (!id)
       return {
         success: false,
         error: { code: 'CONFLICT', message: 'Unable to create notification' },
       };
-    return { success: true, data };
+    return { success: true, data: { id } };
   } catch (error) {
-    console.error('[notificationsService.createNotification]', error);
+    console.error('[notificationsService.emitNotification]', error);
     return {
       success: false,
       error: {
@@ -58,13 +67,10 @@ export async function createNotification(
   }
 }
 
-export async function markRead(
-  id: string,
-  read = true,
-  user_id?: string,
-): Promise<ApiResponse<null>> {
+/** Mark one notification read. */
+export async function markRead(id: string): Promise<ApiResponse<null>> {
   try {
-    const ok = await q.markAsRead(id, read, user_id);
+    const ok = await q.markAsRead(id);
     if (!ok)
       return {
         success: false,
@@ -76,6 +82,25 @@ export async function markRead(
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to mark notification' },
+    };
+  }
+}
+
+/** Mark all of a recipient's notifications read. */
+export async function markAllRead(user_id: string): Promise<ApiResponse<null>> {
+  try {
+    const ok = await q.markAllAsRead(user_id);
+    if (!ok)
+      return {
+        success: false,
+        error: { code: 'INTERNAL_ERROR', message: 'Failed to mark all read' },
+      };
+    return { success: true };
+  } catch (error) {
+    console.error('[notificationsService.markAllRead]', error);
+    return {
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'Failed to mark all read' },
     };
   }
 }

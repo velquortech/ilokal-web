@@ -206,10 +206,16 @@ export type {
 // Notification types
 export type {
   Notification,
+  NotificationType,
+  NotificationMetadata,
   NotificationPreferences,
   CreateNotificationRequest,
+  EmitNotificationInput,
+  NotificationListParams,
+  NotificationPage,
   PaginatedNotificationsResponse,
 } from './notification';
+export { NOTIFICATION_TYPES } from './notification';
 
 // Review types
 export type {

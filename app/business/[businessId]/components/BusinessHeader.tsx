@@ -2,14 +2,12 @@
 
 import { useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { Sparkles } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { BranchSelector } from './BranchSelector';
-import { ActionButton } from '@/components/custom/ActionButton';
 import { ThemeToggle } from '@/components/custom/ThemeTogge';
-import { notificationActions } from '../libs/configs/config';
+import { NotificationBell } from './NotificationBell';
 import type { Branch as BranchSelectorItem } from '../libs/configs/config';
-import { useAIContext } from './AIChatSheet';
+// import { useAIContext } from './AIChatSheet'; // TODO: re-enable with AI assistant
 import { useBusinessShop } from '@/providers/BusinessProvider';
 import type { Branch } from '@/lib/types';
 
@@ -28,7 +26,7 @@ export function BusinessHeader({ branches = [] }: BusinessHeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { setIsAIChatOpen } = useAIContext();
+  // const { setIsAIChatOpen } = useAIContext(); // TODO: re-enable with AI assistant
   const { business, setSelectedBranchId } = useBusinessShop();
 
   const branchParam = searchParams.get('branch');
@@ -74,16 +72,15 @@ export function BusinessHeader({ branches = [] }: BusinessHeaderProps) {
 
         <div className="flex items-center">
           <div className="hidden items-center gap-2 sm:flex">
-            <button
+            {/* TODO: re-enable once the AI assistant is functional */}
+            {/* <button
               onClick={() => setIsAIChatOpen((prev) => !prev)}
               className="font-font-giest-mono inline-flex cursor-pointer items-center gap-1 rounded-full bg-linear-to-r from-fuchsia-600 to-pink-600 px-3 py-1.5 text-xs font-medium text-white"
             >
               <Sparkles className="size-4" />
               Ask (BETA)
-            </button>
-            {notificationActions.map((action) => (
-              <ActionButton key={action.href} action={action} />
-            ))}
+            </button> */}
+            <NotificationBell />
           </div>
 
           <div className="bg-border mx-4 hidden h-9 w-px sm:block" />

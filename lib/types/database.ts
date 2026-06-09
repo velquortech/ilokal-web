@@ -643,6 +643,53 @@ export type Database = {
         };
         Relationships: [];
       };
+      notifications: {
+        Row: {
+          actor_id: string | null;
+          body: string | null;
+          business_id: string | null;
+          created_at: string;
+          id: string;
+          metadata: Json;
+          read_at: string | null;
+          title: string;
+          type: string;
+          user_id: string;
+        };
+        Insert: {
+          actor_id?: string | null;
+          body?: string | null;
+          business_id?: string | null;
+          created_at?: string;
+          id?: string;
+          metadata?: Json;
+          read_at?: string | null;
+          title: string;
+          type: string;
+          user_id: string;
+        };
+        Update: {
+          actor_id?: string | null;
+          body?: string | null;
+          business_id?: string | null;
+          created_at?: string;
+          id?: string;
+          metadata?: Json;
+          read_at?: string | null;
+          title?: string;
+          type?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'notifications_business_id_fkey';
+            columns: ['business_id'];
+            isOneToOne: false;
+            referencedRelation: 'businesses';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       payments: {
         Row: {
           amount: number;
@@ -1138,6 +1185,18 @@ export type Database = {
       };
     };
     Functions: {
+      create_notification: {
+        Args: {
+          p_user_id: string;
+          p_type: string;
+          p_title: string;
+          p_body?: string | null;
+          p_business_id?: string | null;
+          p_actor_id?: string | null;
+          p_metadata?: Json;
+        };
+        Returns: string;
+      };
       _postgis_deprecate: {
         Args: { newname: string; oldname: string; version: string };
         Returns: undefined;

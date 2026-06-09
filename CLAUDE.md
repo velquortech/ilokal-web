@@ -1,5 +1,10 @@
 # CLAUDE.md — iLokal Web
 
+<!-- TEMP: remove when admin rework is merged -->
+> **Active work:** Admin design-parity + `/admin/[adminId]` migration — see
+> [`.claude/ADMIN_REWORK.md`](.claude/ADMIN_REWORK.md) for parities, phased action
+> items, and the testing plan. Delete that file and this note when finished.
+
 ## Commands
 
 ```bash

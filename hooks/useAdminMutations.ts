@@ -1,7 +1,7 @@
 'use client';
 
 import { useTransition, useCallback } from 'react';
-import { UserFormData } from '@/app/admin/schemas/userFormSchema';
+import { UserFormData } from '@/app/admin/[adminId]/schemas/userFormSchema';
 import type { AdminUpdateUserInput } from '@/services';
 import { AdminUser } from '@/lib/types/admin';
 import {
@@ -15,7 +15,7 @@ import {
   createBusinessOwnerAction,
   updateBusinessOwnerAction,
   deleteBusinessOwnerAction,
-} from '@/app/admin/actions';
+} from '@/app/admin/[adminId]/actions';
 
 /**
  * Create mutations hook with typed action function

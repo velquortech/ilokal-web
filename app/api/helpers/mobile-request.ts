@@ -1,4 +1,4 @@
-import { createClient, type User } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import { NextRequest } from 'next/server';
 
 export const VERIFIED_USER_ID_HEADER = 'x-verified-user-id';
@@ -24,22 +24,15 @@ export async function getMobileUser(req: NextRequest) {
 
   const supabase = createUserSupabaseClient(token);
 
-  // Fast path: proxy already called getUser() and forwarded the verified ID.
-  // Reuse it to avoid a redundant round-trip to the Supabase auth server.
-  // Only user.id is guaranteed accurate on this path — handlers must not
-  // read other user fields without calling getUser() themselves if needed.
-  const verifiedId = req.headers.get(VERIFIED_USER_ID_HEADER);
-  if (verifiedId) {
-    const user = {
-      id: verifiedId,
-      app_metadata: {},
-      user_metadata: {},
-      aud: 'authenticated',
-      created_at: '',
-    } as User;
-    return { user, token, supabase };
-  }
-
+  // Always verify the JWT here — do NOT trust the proxy-forwarded
+  // `x-verified-user-id` header on its own. The proxy sets that header after its
+  // own getUser(), but if the proxy/middleware is ever bypassed (a recurring
+  // Next.js App Router bug class), a client could supply the header itself and
+  // impersonate any user by id. getUser() validates the token, so a forged or
+  // garbage token is rejected regardless of whether the proxy ran. This costs
+  // one auth round-trip per protected request (the previous header fast-path
+  // skipped it); a cheaper local verify is possible later via getClaims() with
+  // asymmetric signing keys.
   const {
     data: { user },
     error,

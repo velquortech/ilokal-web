@@ -4,7 +4,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { userFormSchema, adminEditSchema } from '../schemas/userFormSchema';
+import {
+  userFormSchema,
+  adminEditSchema,
+} from '../[adminId]/schemas/userFormSchema';
 
 describe('Admin User Form Schema', () => {
   describe('Email Validation', () => {

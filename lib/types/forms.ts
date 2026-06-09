@@ -1,4 +1,4 @@
-import { UserFormData } from '@/app/admin/schemas/userFormSchema';
+import { UserFormData } from '@/app/admin/[adminId]/schemas/userFormSchema';
 
 export type FormFieldConfig = {
   name: string;

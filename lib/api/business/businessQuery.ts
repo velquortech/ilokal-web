@@ -104,12 +104,12 @@ export async function getBusinessesPaginated(
       query = query.eq('status', filters.status);
     }
 
-    // Apply search filter
+    // Apply search filter. Column is `shop_name` (renamed from `name` in
+    // 20260418094212). We filter the base table only — `owner` is an embedded
+    // foreign relation, not a JSONB column, so it can't be OR'd here (doing so
+    // makes PostgREST error and return zero rows).
     if (filters.search) {
-      // Column is `shop_name` (renamed from `name` in 20260418094212).
-      query = query.or(
-        `shop_name.ilike.%${filters.search}%,owner->email.ilike.%${filters.search}%`,
-      );
+      query = query.ilike('shop_name', `%${filters.search}%`);
     }
 
     // Apply sorting

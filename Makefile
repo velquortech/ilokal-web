@@ -99,7 +99,11 @@ seed-db:
 seed: seed-storage seed-db
 
 generate-types:
-	yarn supabase gen types typescript --local > lib/types/database.ts
+	# Delegate to the db:types script so the `>` redirect lives *inside* the
+	# yarn-run shell and captures only supabase's output — running
+	# `yarn supabase ... > file` here would also capture yarn's banner
+	# (`yarn run vX`, `$ ...`, `Done in`) and corrupt the generated file.
+	yarn db:types
 
 test:
 	yarn test

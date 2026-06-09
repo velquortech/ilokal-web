@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { SearchBar } from '@/components/custom/Searchbar';
 import { FilterBusinesses } from './filter-businesses';
 import { BusinessDocumentsTable } from './business-documents-table';
+import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import type { AdminBusinessWithMeta } from '@/lib/types/business';
 
 interface BusinessDocumentsContentProps {
@@ -24,14 +25,6 @@ export function BusinessDocumentsContent({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [searchInput, setSearchInput] = React.useState(
-    searchParams.get('search') ?? '',
-  );
-
-  React.useEffect(() => {
-    setSearchInput(searchParams.get('search') ?? '');
-  }, [searchParams]);
-
   const updateParams = React.useCallback(
     (newParams: Record<string, string | null>) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -47,43 +40,31 @@ export function BusinessDocumentsContent({
     [router, searchParams],
   );
 
-  // Debounced search → resets to page 1
-  React.useEffect(() => {
-    const timeout = setTimeout(() => {
-      const current = searchParams.get('search') ?? '';
-      if (searchInput !== current) {
-        updateParams({ search: searchInput || null, page: '1' });
-      }
-    }, 400);
-    return () => clearTimeout(timeout);
-  }, [searchInput, searchParams, updateParams]);
+  // Debounced search → writes straight to the URL and resets to page 1.
+  const handleSearch = useDebouncedCallback((value: string) => {
+    updateParams({ search: value.trim() || null, page: '1' });
+  }, 400);
+
+  const handleStatusChange = (status: string) => {
+    updateParams({ status: status || null, page: '1' });
+  };
+
+  const handlePaginationChange = (page: number, pageSize: number) => {
+    updateParams({
+      page: page === 1 ? null : String(page),
+      perPage: pageSize === 10 ? null : String(pageSize),
+    });
+  };
 
   const selectedStatus = searchParams.get('status') ?? '';
-
-  const handleStatusChange = React.useCallback(
-    (status: string) => {
-      updateParams({ status: status || null, page: '1' });
-    },
-    [updateParams],
-  );
-
-  const handlePaginationChange = React.useCallback(
-    (page: number, pageSize: number) => {
-      updateParams({
-        page: page === 1 ? null : String(page),
-        perPage: pageSize === 10 ? null : String(pageSize),
-      });
-    },
-    [updateParams],
-  );
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-end gap-2">
         <SearchBar
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Search by business or owner email..."
+          defaultValue={searchParams.get('search') ?? ''}
+          onSearch={handleSearch}
+          placeholder="Search by business name..."
           className="max-w-xs"
         />
         <FilterBusinesses

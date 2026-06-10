@@ -1,5 +1,46 @@
 # Changelog
 
+## 2026-06-09 — Business document review + notifications (feat/admin-rework)
+
+> Plan in `.claude/DOCS_NOTIFICATIONS.md`. **`20260609000000_notifications.sql` is a
+> pending HIGH-risk schema migration — needs `make migrate-up` + `make generate-types`
+> + human approval before merge.** Built against manually-added `database.ts` entries
+> that match what `generate-types` will produce.
+
+- **Quick win:** commented out the non-functional **Ask (BETA)** button + **Messages**
+  icon in `BusinessHeader` (kept the bell).
+- **Schema:** new normalized `notifications` table — FKs to `auth.users` (recipient +
+  `actor_id`) and `businesses`, `type` CHECK, title/body length CHECKs, object-CHECKed
+  `metadata` JSONB, keyset index `(user_id, created_at DESC, id DESC)` + partial unread
+  index, RLS (own select/update), and a `create_notification` SECURITY DEFINER RPC
+  (authorizes caller as admin or recipient — authenticated users have no direct INSERT).
+- **Foundation:** reconciled the pre-existing half-finished notification stub
+  (`is_read`/offset) into the normalized `read_at`/keyset model. `lib/utils/cursor.ts`
+  (opaque base64url `(created_at,id)` cursor), `lib/types/notification.ts`,
+  `lib/validation/notification.ts`, and `lib/api/notifications/*` rewritten for keyset
+  pagination + RPC emit + mark-read/all. Existing web routes (`/api/web/notifications`,
+  `[id]`) updated to the new signatures.
+- **Admin — document review:** `/admin/[adminId]/businesses` — searchable, status-filterable,
+  paginated table matching the business-side table spec (URL-param search + filter popover +
+  TanStack `manualPagination` + `DataTablePagination`). Row actions live in an `Ellipsis`
+  kebab dropdown (View Documents / Approve / Disapprove), each opening a modal dialog
+  (approve = optional remarks, disapprove = required; signed-URL document viewer via the
+  private `verification-docs` bucket). `businessReviewActions.ts`: each decision flips
+  business status (via `verifyBusiness`/`rejectBusiness`) **and** emits the matching
+  notification to the owner (remarks in `metadata`; required on disapprove). Added a
+  **Business Documents** sidebar entry. Fixed a latent bug: `getBusinessesPaginated`
+  searched/sorted by the renamed-away `name` column → now `shop_name` (so admin search/sort work).
+- **Business — notification bell:** `NotificationBell` (Popover dropdown, live unread
+  badge, IntersectionObserver infinite scroll over the keyset cursor, mark-read on
+  click + mark-all-read), wired into `BusinessHeader`. Backed by
+  `notificationActions.ts` server actions.
+- **Tests (+~35):** `cursor` round-trip/malformed, notification validation
+  (decision/list/emit/type), keyset query (page slicing, `next_cursor`, `.or()` filter,
+  RPC params, mark-read), admin review actions (status + correct notification type +
+  remarks + auth/remarks guards), business notification actions (auth + delegation).
+  Reconciled the pre-existing `notificationsService` test to the new API. Verified:
+  lint + **1243** tests + build all green.
+
 ## 2026-06-09 — Admin design-parity + `/admin/[adminId]` migration (feat/admin-rework)
 
 > **HIGH-risk (routing/auth) — needs human approval before merge.** Plan in

@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type { ApiResponse } from '@/lib/types';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import * as notificationsService from '@/lib/api/notifications/notificationsService';
-import { markReadSchema } from '@/lib/validation/notification';
+import { markNotificationReadSchema } from '@/lib/validation/notification';
 
 export async function PUT(
   request: NextRequest,
@@ -15,23 +15,21 @@ export async function PUT(
     if (!auth.authorized) return auth.error;
 
     const params = await Promise.resolve(context.params);
-    const { id } = params;
-    const body = await request.json();
-    const parsed = markReadSchema.safeParse(body);
+    const parsed = markNotificationReadSchema.safeParse(params);
     if (!parsed.success) {
       return NextResponse.json(
         {
           success: false,
-          error: { code: 'VALIDATION_ERROR', message: 'Invalid payload' },
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid notification id',
+          },
         } as ApiResponse<null>,
         { status: 400 },
       );
     }
-    const result = await notificationsService.markRead(
-      id,
-      parsed.data.read,
-      auth.user.id,
-    );
+    // RLS guarantees the row belongs to the caller.
+    const result = await notificationsService.markRead(parsed.data.id);
     return NextResponse.json(result, { status: result.success ? 200 : 400 });
   } catch (error) {
     console.error('[PUT /api/notifications/:id]', error);

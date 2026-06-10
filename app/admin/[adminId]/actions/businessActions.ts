@@ -12,6 +12,7 @@
 import { revalidatePath } from 'next/cache';
 import { verifyCurrentUserIsAdmin } from '@/lib/api/admin/adminActionHelpers';
 import { businessFiltersSchema } from '@/lib/validation/business';
+import { countBusinessesByStatus } from '@/lib/api/business/businessQuery';
 import businessService from '@/lib/services/businessService';
 import {
   BusinessActionResponse,
@@ -110,15 +111,13 @@ export async function getBusinessCountsAction(): Promise<
     const { authorized, error } = await verifyCurrentUserIsAdmin();
     if (!authorized) return { error: error || 'Unauthorized' };
 
-    const { error: apiError } = await businessService.list();
+    const { counts, error: countError } = await countBusinessesByStatus();
 
-    if (apiError) {
-      return { error: apiError };
+    if (countError) {
+      return { error: countError };
     }
 
-    // Counts should be fetched from a dedicated endpoint
-    // TODO: Create a dedicated getBusinessCountsAction or include in list response
-    return { counts: {} };
+    return { counts };
   } catch (err) {
     return {
       error: err instanceof Error ? err.message : 'Failed to fetch counts',

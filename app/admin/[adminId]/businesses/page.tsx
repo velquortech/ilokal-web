@@ -1,5 +1,9 @@
-import { getBusinessesAction } from '../actions/businessActions';
+import {
+  getBusinessesAction,
+  getBusinessCountsAction,
+} from '../actions/businessActions';
 import { BusinessDocumentsContent } from './components/business-documents-content';
+import { BusinessDocumentStats } from './components/business-document-stats';
 import type { AdminBusinessWithMeta } from '@/lib/types/business';
 
 export const dynamic = 'force-dynamic';
@@ -36,8 +40,16 @@ export default async function AdminBusinessesPage({
   if (search) filters.search = search;
   if (status) filters.status = status;
 
-  const result = await getBusinessesAction(filters);
+  const [result, countsResult] = await Promise.all([
+    getBusinessesAction(filters),
+    getBusinessCountsAction(),
+  ]);
   const hasData = 'data' in result;
+
+  const counts =
+    'counts' in countsResult
+      ? countsResult.counts
+      : ({} as Record<string, number>);
 
   const businesses: AdminBusinessWithMeta[] = hasData ? result.data : [];
   const metadata = hasData
@@ -60,6 +72,7 @@ export default async function AdminBusinessesPage({
           verification. Owners are notified of every decision.
         </p>
       </div>
+      <BusinessDocumentStats counts={counts} />
       <BusinessDocumentsContent businesses={businesses} metadata={metadata} />
     </div>
   );

@@ -11,6 +11,7 @@ export type NotificationType =
   | 'business_document_rejected'
   | 'business_verified'
   | 'business_rejected'
+  | 'coupon_redeemed'
   | 'system';
 
 export const NOTIFICATION_TYPES: NotificationType[] = [
@@ -18,15 +19,23 @@ export const NOTIFICATION_TYPES: NotificationType[] = [
   'business_document_rejected',
   'business_verified',
   'business_rejected',
+  'coupon_redeemed',
   'system',
 ];
 
 /**
  * Free-form, normalized-out metadata. `remarks` carries the admin's
- * approve/disapprove note; other keys are notification-type specific.
+ * approve/disapprove note; the `redeemer_*`/`coupon_code`/`branch_*` keys are
+ * set on `coupon_redeemed` notifications; other keys are type-specific.
  */
 export interface NotificationMetadata {
   remarks?: string;
+  redemption_id?: string;
+  redeemer_id?: string;
+  redeemer_name?: string;
+  coupon_code?: string | null;
+  branch_id?: string | null;
+  branch_name?: string | null;
   [key: string]: unknown;
 }
 

@@ -1,5 +1,36 @@
 # Changelog
 
+## 2026-06-10 — Coupon-redemption notifications (feat/business-document-page)
+
+> **HIGH-risk schema migration** `20260610000000_coupon_redeemed_notification.sql`
+> — applied locally via `make migrate-up` + `make generate-types`; needs human
+> approval before merge.
+
+- **Schema:** widened the `notifications` type CHECK to add `'coupon_redeemed'` and
+  added a SECURITY DEFINER RPC `notify_coupon_redemption(p_redemption_id)`. The RPC
+  authorizes the caller as the **owner of the redemption row** (the existing
+  `create_notification` RPC only allows admin/self, so it couldn't be reused —
+  caller = customer, recipient = business owner), then inserts a notification for
+  the `businesses.owner_id` naming the customer, the coupon (code/description), and
+  the branch. Wrapped in `EXCEPTION WHEN OTHERS → RETURN NULL` so a notification
+  failure can never roll back a redemption.
+- **Mobile redeem route:** `POST /api/protected/mobile/redemptions` now calls the
+  RPC after a successful insert + counter increment, non-fatal (logs on error) —
+  matching the existing emit-after-mutation pattern.
+- **Notification bell:** added `coupon_redeemed` to the icon/tone maps
+  (`BadgePercent`/`text-primary`) and made those rows **deep-link** on click — mark
+  read, then navigate to the business's Redeemed Coupons page
+  (`businessRedeemedCouponsPath`, new helper in `config/routeConfig.ts`) via
+  `notification.business_id`. (Per product decision: open the page, no pre-applied
+  per-customer filter.)
+- **Types/validation:** added `'coupon_redeemed'` to `NotificationType` +
+  `NOTIFICATION_TYPES` + `notificationTypeSchema`, and the `redeemer_*`/`coupon_code`/
+  `branch_*` keys to `NotificationMetadata`. Regenerated `lib/types/database.ts`.
+- **Tests (+7):** redeem-route integration (RPC called with the new redemption id;
+  non-fatal on RPC error), validation accepts `coupon_redeemed`,
+  `businessRedeemedCouponsPath` shape, and `notificationHref` deep-link logic.
+  Verified: lint + **1262** tests + build all green.
+
 ## 2026-06-09 — Business document review + notifications (feat/admin-rework)
 
 > Plan in `.claude/DOCS_NOTIFICATIONS.md`. **`20260609000000_notifications.sql` is a

@@ -203,6 +203,17 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Notify the business owner — names the customer, coupon, and branch. The RPC
+    // is SECURITY DEFINER and authorizes this caller as the redemption's owner.
+    // Non-fatal: a notification failure must never break the redemption.
+    const { error: notifyError } = await auth.supabase.rpc(
+      'notify_coupon_redemption',
+      { p_redemption_id: data.id },
+    );
+    if (notifyError) {
+      console.error('[redemptions] notify failed:', notifyError.message);
+    }
+
     return successResponse({ redemption: data });
   } catch {
     return generalErrorResponse();

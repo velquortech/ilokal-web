@@ -92,6 +92,10 @@ export function businessCouponsPath(businessId: string): string {
   return businessPath(businessId, 'coupons');
 }
 
+export function businessRedeemedCouponsPath(businessId: string): string {
+  return businessPath(businessId, 'redeemed-coupons');
+}
+
 export function businessBranchesPath(businessId: string): string {
   return businessPath(businessId, 'branches');
 }

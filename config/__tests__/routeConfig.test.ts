@@ -10,9 +10,19 @@ import {
   adminUsersPath,
   adminBranchesPath,
   adminAccountStatusPath,
+  businessRedeemedCouponsPath,
 } from '../routeConfig';
 
 const ADMIN_ID = '11111111-1111-1111-1111-111111111111';
+const BUSINESS_ID = '22222222-2222-2222-2222-222222222222';
+
+describe('businessRedeemedCouponsPath', () => {
+  it('targets the redeemed-coupons page for a business', () => {
+    expect(businessRedeemedCouponsPath(BUSINESS_ID)).toBe(
+      `/business/${BUSINESS_ID}/redeemed-coupons`,
+    );
+  });
+});
 
 describe('adminPath', () => {
   it('builds the base path with no extra segments', () => {

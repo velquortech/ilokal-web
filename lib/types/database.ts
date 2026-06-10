@@ -1517,6 +1517,10 @@ export type Database = {
           rating_count: number
         }[]
       }
+      notify_coupon_redemption: {
+        Args: { p_redemption_id: string }
+        Returns: string
+      }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
         | { Args: { use_typmod?: boolean }; Returns: string }

@@ -29,7 +29,12 @@ import type { NotificationType, EmitNotificationInput } from '@/lib/types';
 
 const businessIdSchema = z.string().uuid();
 
-const DOCS_BUCKET = 'verification-docs';
+// Business registration (`lib/api/business/business.ts`) uploads verification
+// documents to the `business-docs` bucket and stores those raw paths in
+// `verification_documents`. The standalone upload route writes to the legacy
+// `verification-docs` bucket, so we sign against the primary bucket first and
+// fall back to the legacy one for older rows.
+const DOCS_BUCKETS = ['business-docs', 'verification-docs'] as const;
 const SIGNED_URL_TTL = 60 * 30; // 30 minutes
 
 export interface BusinessDocumentLink {
@@ -98,10 +103,15 @@ export async function getBusinessDocumentsAction(
         return { key, label: DOC_LABELS[key], url: null };
       if (isAbsoluteUrl(raw)) return { key, label: DOC_LABELS[key], url: raw };
 
-      const { data: signed } = await supabase.storage
-        .from(DOCS_BUCKET)
-        .createSignedUrl(raw, SIGNED_URL_TTL);
-      return { key, label: DOC_LABELS[key], url: signed?.signedUrl ?? null };
+      // Try each bucket in priority order; the path only lives in one of them.
+      for (const bucket of DOCS_BUCKETS) {
+        const { data: signed } = await supabase.storage
+          .from(bucket)
+          .createSignedUrl(raw, SIGNED_URL_TTL);
+        if (signed?.signedUrl)
+          return { key, label: DOC_LABELS[key], url: signed.signedUrl };
+      }
+      return { key, label: DOC_LABELS[key], url: null };
     }),
   );
 

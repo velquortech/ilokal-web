@@ -117,6 +117,9 @@ export default function AccountStatusPage() {
       {/* Status Cards */}
       <StatusCards counts={counts} loading={loading} />
 
+      {/* Account Lifecycle Info */}
+      <AccountLifecycleInfo />
+
       {/* Tabs */}
       <Tabs
         value={activeTab}
@@ -157,9 +160,6 @@ export default function AccountStatusPage() {
           onReactivate={handleReactivate}
         />
       </Tabs>
-
-      {/* Account Lifecycle Info */}
-      <AccountLifecycleInfo />
     </div>
   );
 }

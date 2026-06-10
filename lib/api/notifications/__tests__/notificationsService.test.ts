@@ -7,21 +7,43 @@ vi.mock('@/lib/api/notifications/notificationsQuery');
 describe('notificationsService', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('listNotifications returns paginated data', async () => {
-    const mock = { items: [{ id: 'n1' }], total: 1, page: 1, per_page: 20 };
+  it('listNotifications returns a keyset page', async () => {
+    const mock = {
+      notifications: [
+        {
+          id: 'n1',
+          user_id: 'u1',
+          type: 'system',
+          title: 'Hi',
+          body: null,
+          business_id: null,
+          actor_id: null,
+          metadata: {},
+          read_at: null,
+          created_at: '2026-06-09T00:00:00Z',
+        },
+      ],
+      next_cursor: null,
+      unread_count: 1,
+    };
     vi.mocked(q.fetchNotifications).mockResolvedValueOnce(
       mock as unknown as Awaited<ReturnType<typeof q.fetchNotifications>>,
     );
     const res = await svc.listNotifications('u1');
     expect(res.success).toBe(true);
-    expect(res.data?.items).toHaveLength(1);
+    expect(res.data?.notifications).toHaveLength(1);
+    expect(res.data?.unread_count).toBe(1);
   });
 
-  it('createNotification returns conflict when create fails', async () => {
-    vi.mocked(q.createNotification).mockResolvedValueOnce(
-      null as unknown as Awaited<ReturnType<typeof q.createNotification>>,
+  it('emitNotification returns conflict when create fails', async () => {
+    vi.mocked(q.emitNotification).mockResolvedValueOnce(
+      null as unknown as Awaited<ReturnType<typeof q.emitNotification>>,
     );
-    const res = await svc.createNotification({ title: 'Hi' });
+    const res = await svc.emitNotification({
+      user_id: '22222222-2222-4222-8222-222222222222',
+      type: 'system',
+      title: 'Hi',
+    });
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('CONFLICT');
   });

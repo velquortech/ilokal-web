@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Lock, MapPin } from 'lucide-react';
+import { LayoutDashboard, Users, Lock, MapPin, FileCheck } from 'lucide-react';
 import { NavItem } from '@/components/custom/Nav';
 
 /**
@@ -15,6 +15,11 @@ export const mainNavigation: NavItem[] = [
     title: 'Dashboard',
     href: '/admin',
     icon: LayoutDashboard,
+  },
+  {
+    title: 'Business Documents',
+    href: '/admin/businesses',
+    icon: FileCheck,
   },
   {
     title: 'Branch Applications',

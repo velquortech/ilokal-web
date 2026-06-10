@@ -50,6 +50,7 @@ export const notificationTypeSchema = z.enum([
   'business_document_rejected',
   'business_verified',
   'business_rejected',
+  'coupon_redeemed',
   'system',
 ]);
 

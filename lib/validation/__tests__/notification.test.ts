@@ -81,6 +81,12 @@ describe('notificationTypeSchema', () => {
       false,
     );
   });
+
+  it('accepts coupon_redeemed', () => {
+    expect(notificationTypeSchema.safeParse('coupon_redeemed').success).toBe(
+      true,
+    );
+  });
 });
 
 describe('emitNotificationSchema', () => {

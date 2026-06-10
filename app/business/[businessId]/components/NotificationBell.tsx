@@ -1,14 +1,17 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Bell,
+  BadgePercent,
   CheckCheck,
   CircleCheck,
   CircleX,
   Info,
   Loader2,
 } from 'lucide-react';
+import { businessRedeemedCouponsPath } from '@/config/routeConfig';
 import {
   Popover,
   PopoverContent,
@@ -33,6 +36,7 @@ const TYPE_ICON: Record<NotificationType, typeof Info> = {
   business_verified: CircleCheck,
   business_document_rejected: CircleX,
   business_rejected: CircleX,
+  coupon_redeemed: BadgePercent,
   system: Info,
 };
 
@@ -41,8 +45,20 @@ const TYPE_TONE: Record<NotificationType, string> = {
   business_verified: 'text-emerald-600',
   business_document_rejected: 'text-destructive',
   business_rejected: 'text-destructive',
+  coupon_redeemed: 'text-primary',
   system: 'text-muted-foreground',
 };
+
+/**
+ * Where a notification should deep-link on click, or null if it only marks read.
+ * `coupon_redeemed` opens the business's Redeemed Coupons page.
+ */
+export function notificationHref(notification: Notification): string | null {
+  if (notification.type === 'coupon_redeemed' && notification.business_id) {
+    return businessRedeemedCouponsPath(notification.business_id);
+  }
+  return null;
+}
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -102,6 +118,7 @@ function NotificationRow({
 }
 
 export function NotificationBell() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Notification[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -155,16 +172,28 @@ export function NotificationBell() {
     return () => io.disconnect();
   }, [open, cursor, loadPage]);
 
-  const handleRead = useCallback(async (n: Notification) => {
-    if (n.read_at) return;
-    setItems((prev) =>
-      prev.map((x) =>
-        x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x,
-      ),
-    );
-    setUnread((u) => Math.max(0, u - 1));
-    await markNotificationReadAction(n.id);
-  }, []);
+  const handleRead = useCallback(
+    async (n: Notification) => {
+      const href = notificationHref(n);
+
+      if (!n.read_at) {
+        setItems((prev) =>
+          prev.map((x) =>
+            x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x,
+          ),
+        );
+        setUnread((u) => Math.max(0, u - 1));
+        void markNotificationReadAction(n.id);
+      }
+
+      // Deep-link notifications close the panel and navigate.
+      if (href) {
+        setOpen(false);
+        router.push(href);
+      }
+    },
+    [router],
+  );
 
   const handleMarkAll = useCallback(async () => {
     setItems((prev) =>

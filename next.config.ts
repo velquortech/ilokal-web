@@ -65,6 +65,11 @@ const buildCSPImageSources = (): string => {
   if (process.env.NODE_ENV === 'production') {
     sources.push('https:');
   }
+  // Demo: allow the public storage tunnel host so the share landing page's
+  // <img> isn't CSP-blocked in real browsers (dev only; prod already has https:).
+  if (process.env.NEXT_PUBLIC_PUBLIC_STORAGE_URL) {
+    sources.push(process.env.NEXT_PUBLIC_PUBLIC_STORAGE_URL);
+  }
   if (prodImageUrl) {
     sources.push(`${prodImageUrl.protocol}://${prodImageUrl.hostname}`);
   }

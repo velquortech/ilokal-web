@@ -27,7 +27,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
-    const shareUrl = `${appUrl}/business/${businessId}`;
+    // Public, OG-tagged landing page (app/s/[businessId]) — NOT the owner
+    // dashboard at /business/[businessId], which would dead-end a social visitor.
+    const shareUrl = `${appUrl}/s/${businessId}`;
 
     return successResponse({
       share_url: shareUrl,

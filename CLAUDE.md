@@ -114,7 +114,7 @@ Load on request (read when topic is relevant):
 - `.claude/docs/session-management.md` — role-based timeouts, activity detection
 - `.claude/docs/rbac-model.md` — permission tiers, audit logging
 - `.claude/docs/api-wrapper.md` — isomorphic service layer, client vs server imports
-- `.claude/docs/roadmap.md` — active refactors, protected-route audit phases, and enforcement map
+- `.claude/docs/tech-debt.md` — universal debt/roadmap doc: audit findings log (TD-NNN), active refactors, protected-route audit phases, and enforcement map
 - `.claude/docs/api-strategy.md` — full endpoint implementation plan and status
 - `.claude/docs/coupon-rules.md` — coupon claim rules, redeem gates, error codes
 - `.claude/docs/testing.md` — untested routes matrix, test templates

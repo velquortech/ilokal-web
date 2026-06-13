@@ -1,63 +1,139 @@
 import { createServerSupabaseClient } from '@/supabase/server';
-import type { Notification, NotificationPreferences } from '@/lib/types';
+import type {
+  Notification,
+  NotificationPage,
+  NotificationPreferences,
+  EmitNotificationInput,
+} from '@/lib/types';
+import { encodeCursor, decodeCursor } from '@/lib/utils/cursor';
 
+const DEFAULT_LIMIT = 20;
+const MAX_LIMIT = 50;
+
+function clampLimit(limit?: number): number {
+  if (!limit || Number.isNaN(limit)) return DEFAULT_LIMIT;
+  return Math.min(MAX_LIMIT, Math.max(1, Math.floor(limit)));
+}
+
+/**
+ * Keyset (cursor) page of the recipient's notifications, newest first.
+ * RLS scopes rows to the authenticated user; we also filter `user_id`
+ * explicitly so the `(user_id, created_at DESC, id DESC)` index is used.
+ */
 export async function fetchNotifications(
   user_id: string,
-  page = 1,
-  per_page = 20,
-): Promise<{
-  items: Notification[];
-  total: number;
-  page: number;
-  per_page: number;
-}> {
+  params: { cursor?: string | null; limit?: number } = {},
+): Promise<NotificationPage> {
   const supabase = await createServerSupabaseClient();
-  const offset = (page - 1) * per_page;
+  const limit = clampLimit(params.limit);
+  const cursor = decodeCursor(params.cursor);
 
-  const { data, count, error } = await supabase
+  let query = supabase
     .from('notifications')
-    .select('*', { count: 'exact' })
+    .select('*')
     .eq('user_id', user_id)
     .order('created_at', { ascending: false })
-    .range(offset, offset + per_page - 1);
+    .order('id', { ascending: false })
+    .limit(limit + 1);
+
+  if (cursor) {
+    // (created_at, id) < (cursor.created_at, cursor.id)
+    query = query.or(
+      `created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`,
+    );
+  }
+
+  const [{ data, error }, unread_count] = await Promise.all([
+    query,
+    getUnreadCount(user_id),
+  ]);
 
   if (error) {
     console.error('[fetchNotifications]', error);
-    return { items: [], total: 0, page, per_page };
+    return { notifications: [], next_cursor: null, unread_count };
   }
 
-  return {
-    items: (data as Notification[]) || [],
-    total: count || 0,
-    page,
-    per_page,
-  };
+  const rows = (data as Notification[]) ?? [];
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  const last = page[page.length - 1];
+  const next_cursor =
+    hasMore && last
+      ? encodeCursor({ created_at: last.created_at, id: last.id })
+      : null;
+
+  return { notifications: page, next_cursor, unread_count };
 }
 
-export async function createNotification(input: Partial<Notification>) {
+/** Count of the recipient's unread notifications (RLS-scoped). */
+export async function getUnreadCount(user_id: string): Promise<number> {
   const supabase = await createServerSupabaseClient();
-  const { data, error } = await supabase
+  const { count, error } = await supabase
     .from('notifications')
-    .insert([input])
-    .select()
-    .single();
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user_id)
+    .is('read_at', null);
+
   if (error) {
-    console.error('[createNotification]', error);
+    console.error('[getUnreadCount]', error);
+    return 0;
+  }
+  return count ?? 0;
+}
+
+/**
+ * Emit a notification to a recipient via the `create_notification` RPC
+ * (SECURITY DEFINER — authorizes the caller as admin or the recipient).
+ * Returns the new notification id, or null on failure.
+ */
+export async function emitNotification(
+  input: EmitNotificationInput,
+): Promise<string | null> {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase.rpc('create_notification', {
+    p_user_id: input.user_id,
+    p_type: input.type,
+    p_title: input.title,
+    p_body: input.body ?? null,
+    p_business_id: input.business_id ?? null,
+    p_actor_id: input.actor_id ?? null,
+    p_metadata: (input.metadata ?? {}) as never,
+  });
+
+  if (error) {
+    console.error('[emitNotification]', error);
     return null;
   }
-  return data as Notification;
+  return (data as string) ?? null;
 }
 
-export async function markAsRead(id: string, read = true, user_id?: string) {
+/** Mark a single notification read (RLS guarantees ownership). */
+export async function markAsRead(id: string): Promise<boolean> {
   const supabase = await createServerSupabaseClient();
-  let query = supabase
+  const { error } = await supabase
     .from('notifications')
-    .update({ is_read: read })
-    .eq('id', id);
-  if (user_id) query = query.eq('user_id', user_id);
-  const { error } = await query;
+    .update({ read_at: new Date().toISOString() })
+    .eq('id', id)
+    .is('read_at', null);
+
   if (error) {
     console.error('[markAsRead]', error);
+    return false;
+  }
+  return true;
+}
+
+/** Mark every unread notification of the recipient read (RLS-scoped). */
+export async function markAllAsRead(user_id: string): Promise<boolean> {
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .eq('user_id', user_id)
+    .is('read_at', null);
+
+  if (error) {
+    console.error('[markAllAsRead]', error);
     return false;
   }
   return true;

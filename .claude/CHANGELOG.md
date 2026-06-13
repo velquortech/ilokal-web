@@ -1,5 +1,98 @@
 # Changelog
 
+## 2026-06-10 — Coupon-redemption notifications (feat/business-document-page)
+
+> **HIGH-risk schema migration** `20260610000000_coupon_redeemed_notification.sql`
+> — applied locally via `make migrate-up` + `make generate-types`; needs human
+> approval before merge.
+
+- **Schema:** widened the `notifications` type CHECK to add `'coupon_redeemed'` and
+  added a SECURITY DEFINER RPC `notify_coupon_redemption(p_redemption_id)`. The RPC
+  authorizes the caller as the **owner of the redemption row** (the existing
+  `create_notification` RPC only allows admin/self, so it couldn't be reused —
+  caller = customer, recipient = business owner), then inserts a notification for
+  the `businesses.owner_id` naming the customer, the coupon (code/description), and
+  the branch. Wrapped in `EXCEPTION WHEN OTHERS → RETURN NULL` so a notification
+  failure can never roll back a redemption.
+- **Mobile redeem route:** `POST /api/protected/mobile/redemptions` now calls the
+  RPC after a successful insert + counter increment, non-fatal (logs on error) —
+  matching the existing emit-after-mutation pattern.
+- **Notification bell:** added `coupon_redeemed` to the icon/tone maps
+  (`BadgePercent`/`text-primary`) and made those rows **deep-link** on click — mark
+  read, then navigate to the business's Redeemed Coupons page
+  (`businessRedeemedCouponsPath`, new helper in `config/routeConfig.ts`) via
+  `notification.business_id`. (Per product decision: open the page, no pre-applied
+  per-customer filter.)
+- **Types/validation:** added `'coupon_redeemed'` to `NotificationType` +
+  `NOTIFICATION_TYPES` + `notificationTypeSchema`, and the `redeemer_*`/`coupon_code`/
+  `branch_*` keys to `NotificationMetadata`. Regenerated `lib/types/database.ts`.
+- **Tests (+7):** redeem-route integration (RPC called with the new redemption id;
+  non-fatal on RPC error), validation accepts `coupon_redeemed`,
+  `businessRedeemedCouponsPath` shape, and `notificationHref` deep-link logic.
+  Verified: lint + **1262** tests + build all green.
+
+## 2026-06-09 — Business document review + notifications (feat/admin-rework)
+
+> Plan in `.claude/DOCS_NOTIFICATIONS.md`. **`20260609000000_notifications.sql` is a
+> pending HIGH-risk schema migration — needs `make migrate-up` + `make generate-types`
+> + human approval before merge.** Built against manually-added `database.ts` entries
+> that match what `generate-types` will produce.
+
+- **Quick win:** commented out the non-functional **Ask (BETA)** button + **Messages**
+  icon in `BusinessHeader` (kept the bell).
+- **Schema:** new normalized `notifications` table — FKs to `auth.users` (recipient +
+  `actor_id`) and `businesses`, `type` CHECK, title/body length CHECKs, object-CHECKed
+  `metadata` JSONB, keyset index `(user_id, created_at DESC, id DESC)` + partial unread
+  index, RLS (own select/update), and a `create_notification` SECURITY DEFINER RPC
+  (authorizes caller as admin or recipient — authenticated users have no direct INSERT).
+- **Foundation:** reconciled the pre-existing half-finished notification stub
+  (`is_read`/offset) into the normalized `read_at`/keyset model. `lib/utils/cursor.ts`
+  (opaque base64url `(created_at,id)` cursor), `lib/types/notification.ts`,
+  `lib/validation/notification.ts`, and `lib/api/notifications/*` rewritten for keyset
+  pagination + RPC emit + mark-read/all. Existing web routes (`/api/web/notifications`,
+  `[id]`) updated to the new signatures.
+- **Admin — document review:** `/admin/[adminId]/businesses` — searchable, status-filterable,
+  paginated table matching the business-side table spec (URL-param search + filter popover +
+  TanStack `manualPagination` + `DataTablePagination`). Row actions live in an `Ellipsis`
+  kebab dropdown (View Documents / Approve / Disapprove), each opening a modal dialog
+  (approve = optional remarks, disapprove = required; signed-URL document viewer via the
+  private `verification-docs` bucket). `businessReviewActions.ts`: each decision flips
+  business status (via `verifyBusiness`/`rejectBusiness`) **and** emits the matching
+  notification to the owner (remarks in `metadata`; required on disapprove). Added a
+  **Business Documents** sidebar entry. Fixed a latent bug: `getBusinessesPaginated`
+  searched/sorted by the renamed-away `name` column → now `shop_name` (so admin search/sort work).
+- **Business — notification bell:** `NotificationBell` (Popover dropdown, live unread
+  badge, IntersectionObserver infinite scroll over the keyset cursor, mark-read on
+  click + mark-all-read), wired into `BusinessHeader`. Backed by
+  `notificationActions.ts` server actions.
+- **Tests (+~35):** `cursor` round-trip/malformed, notification validation
+  (decision/list/emit/type), keyset query (page slicing, `next_cursor`, `.or()` filter,
+  RPC params, mark-read), admin review actions (status + correct notification type +
+  remarks + auth/remarks guards), business notification actions (auth + delegation).
+  Reconciled the pre-existing `notificationsService` test to the new API. Verified:
+  lint + **1243** tests + build all green.
+
+## 2026-06-09 — Admin design-parity + `/admin/[adminId]` migration (feat/admin-rework)
+
+> **HIGH-risk (routing/auth) — needs human approval before merge.** Plan in
+> `.claude/ADMIN_REWORK.md`; delete that file + its `CLAUDE.md` note **after** merge.
+
+- **Phase 0 — scaffolding:** added `adminPath(adminId, ...segments)` + `adminUsersPath`/`adminBranchesPath`/`adminAccountStatusPath` to `config/routeConfig.ts` (mirrors `businessPath`). New `providers/AdminProvider.tsx` carries the `adminId` to the client shell (`useAdmin()`).
+- **Phase 1 — route migration:** moved every admin page + co-located dir (`actions`, `components`, `config`, `schemas`, `constants`, `users`, `account-status`, `branches`) under `app/admin/[adminId]/` via `git mv`. New `app/admin/[adminId]/layout.tsx` does auth (`getAdminUserOrRedirect`) + segment guard (`adminId !== user.id` → `redirect(adminPath(user.id))`). `app/admin/page.tsx` is now a resolver; `app/admin/layout.tsx` is a thin auth wrapper. Updated all absolute `@/app/admin/*` imports (incl. external: `hooks/useAdminMutations.ts`, `hooks/useProfiles.ts`, `lib/types/forms.ts`). `userActions.ts` `revalidatePath('/admin')` → `revalidatePath('/admin', 'layout')` (×11) and dropped 4 stale `/admin/${id}` calls (targeted a non-existent per-user page). **No proxy change needed** (matcher already covers `/admin` + `/admin/:path+`).
+- **Phase 2 — sidebar parity:** replaced the hand-rolled dark-gradient `Sidebar` with `AdminSidebar` on `@/components/ui/sidebar` + `@/components/custom/Nav` (`collapsible="icon"`, `SidebarRail`, `NavSection`/`NavSectionHeader`, footer `AdminUserMenu`). Migrated `sidebarConfig.ts` to the canonical `NavItem { title, href, icon }` + `SIDEBAR_SECTIONS` grouping with an `injectAdminId()` helper (base hrefs, segment injected at render).
+- **Phase 3 — header + shell parity:** replaced `AdminLayoutClient` with `AdminLayout` on `SidebarProvider`/`SidebarInset` (`font-geist`, token bg). New `AdminHeader` mirrors `BusinessHeader` (`SidebarTrigger` + real `next-themes` `ThemeToggle`) — removed the inert fake toggle and the broken `/dashboard/*` links.
+- **Phase 4 — polish:** dashboard + page headers now use design tokens (`text-muted-foreground`, `border-primary`, `tracking-tight`) instead of `gray-*`/`blue-*`; page roots use the business `flex flex-1 flex-col space-y-6` idiom (outer padding owned by the layout).
+- **Phase 5 — cleanup:** deleted dead `AdminLayoutClient.tsx`, `shared/Sidebar.tsx`, `shared/Header.tsx`.
+- **Tests (+20):** `config/__tests__/routeConfig.test.ts` (adminPath helpers), `app/admin/[adminId]/config/__tests__/sidebarConfig.test.ts` (`injectAdminId` + section shape), `app/admin/__tests__/resolver.test.tsx` (resolver redirect), `app/admin/[adminId]/__tests__/layout.test.tsx` (segment guard), `app/admin/[adminId]/actions/__tests__/userActions.revalidate.test.ts` (layout-scoped revalidation). Verified: lint + **1207** tests + build all green.
+
+## 2026-06-08 — Security audit remediation C1/C2/M1/M2 (feat/business-settings)
+
+- **C1 — secrets de-publicized:** renamed `NEXT_PUBLIC_SUPABASE_SERVICE_SECRET_KEY` → `SUPABASE_SERVICE_ROLE_KEY` and `NEXT_PUBLIC_SUPABASE_DB_URL` → `SUPABASE_DB_URL` (`.env`, `Makefile`, `supabase/server.ts`, docs). Removed the service-role key from the browser-inlined `env` block in `next.config.ts`. **Follow-up (manual): rotate the service-role key and update deploy env vars.**
+- **C2 — dead RLS-bypassing client removed:** deleted `config/index.ts` (service-role "web API route" client, zero importers). `supabase/server.ts` is now the only server client; the service-role path (`createAnalyticsSupabaseClient`/`createServerAdminClient`) reads the server-only `SUPABASE_SERVICE_ROLE_KEY`.
+- **M1 — handler guards on admin-only `/api/web` mutations:** added `assertAuthorized(undefined, { roles: ['admin'] })` to `business-types` POST + `[id]` PATCH/DELETE and `business-categories` POST + `[id]` PATCH/DELETE (previously relied on RLS only).
+- **M2 — proxy gates `/api/admin/**`:** new admin branch verifies authenticated `role === 'admin'`, returns JSON `401`/`403`; added `/api/admin` + `/api/admin/:path+` to the matcher. Handlers keep their own checks (defense in depth).
+- Verified: lint + 1187 tests + build all pass; service secret appears in 0 client bundle chunks.
+
 ## 2026-05-27 — Next.js 16 proxy convention (refactor/api-layer-overhaul)
 
 - Ran `npx @next/codemod@canary middleware-to-proxy` — renamed `middleware.ts` → `proxy.ts`, exported function renamed `middleware` → `proxy`.

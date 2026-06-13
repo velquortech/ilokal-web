@@ -1,5 +1,6 @@
-// schemas.ts
 import { z } from 'zod';
+
+export const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
 
 export const businessCategorySchema = z
   .object({
@@ -55,21 +56,29 @@ const fileArraySchema = z.custom<File[]>(
 export const step3Schema = z.object({
   shop_logo: fileSchema
     .refine((file) => file && file.size > 0, 'Logo is required')
+    .refine((file) => file.size <= MAX_FILE_SIZE, 'Image must be 2MB or less')
     .optional(),
   shop_banner: fileSchema
     .refine((file) => file && file.size > 0, 'Banner is required')
+    .refine((file) => file.size <= MAX_FILE_SIZE, 'Image must be 2MB or less')
     .optional(),
   interior_images: fileArraySchema
     .refine((files) => files && files.length >= 4, 'At least 4 images required')
+    .refine(
+      (files) => files.every((f) => f.size <= MAX_FILE_SIZE),
+      'Each image must be 2MB or less',
+    )
     .optional(),
 });
 
 export const step4Schema = z.object({
   business_license: fileSchema
     .refine((file) => file && file.size > 0, 'Required')
+    .refine((file) => file.size <= MAX_FILE_SIZE, 'File must be 2MB or less')
     .optional(),
   tax_certificate: fileSchema
     .refine((file) => file && file.size > 0, 'Required')
+    .refine((file) => file.size <= MAX_FILE_SIZE, 'File must be 2MB or less')
     .optional(),
 });
 

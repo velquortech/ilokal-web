@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { MouseEvent, useRef } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { MAX_FILE_SIZE } from '../validator/business-registration-form-schema';
 
 export function ShopDocuments() {
   return (
@@ -139,6 +140,15 @@ function DocumentFileUpload(props: {
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
+
+                if (file.size > MAX_FILE_SIZE) {
+                  form.setError(props.fieldName, {
+                    type: 'manual',
+                    message: 'File must be 2MB or less',
+                  });
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                  return;
+                }
 
                 form.setValue(props.fieldName, file, { shouldValidate: true });
 

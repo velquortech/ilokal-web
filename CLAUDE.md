@@ -1,5 +1,10 @@
 # CLAUDE.md — iLokal Web
 
+<!-- TEMP: remove when admin rework is merged -->
+> **Active work:** Admin design-parity + `/admin/[adminId]` migration — see
+> [`.claude/ADMIN_REWORK.md`](.claude/ADMIN_REWORK.md) for parities, phased action
+> items, and the testing plan. Delete that file and this note when finished.
+
 ## Commands
 
 ```bash
@@ -36,6 +41,7 @@ Next.js 16.2.7 (App Router; latest stable — open proxy-bypass advisories have 
 
 - **Routing:** App Router only. Server Actions for internal mutations, API routes for external/mobile integrations.
 - **Server Actions:** Use static imports from `lib/api/*/Service` and `lib/api/*/Query` directly. Never call `lib/services/` HTTP wrappers from a Server Action — they make an unnecessary network round-trip. `lib/services/` is for the admin/axios pattern only.
+- **Supabase must never appear in components.** Components (`.tsx` files) must never import from `@supabase/ssr`, `@supabase/supabase-js`, `config/client.ts`, or call `createBrowserClient` / `createServerClient` directly. All Supabase queries and auth calls belong in Server Actions (`'use server'`) under `app/**/actions/` or `lib/api/`. Components call the exported action function — they never touch the Supabase client. This keeps auth logic, RLS scoping, and DB access in one auditable layer and prevents credential leakage into client bundles.
 - **API namespaces:** `app/api/web/` — web-facing routes; `app/api/mobile/` — public mobile; `app/api/protected/mobile/` — JWT-gated mobile; `app/api/admin/` — admin only; `app/api/auth/` — auth flows.
 - **Proxy:** Single `proxy.ts` at repo root (Next.js 16 replaces `middleware.ts`). (1) **Rate-limits** the whole mobile surface (`/api/mobile` + `/api/protected/mobile`) by client IP before any auth/DB work — 200 req / 60s default (env `MOBILE_RATE_LIMIT` / `MOBILE_RATE_WINDOW_MS`), returns 429 + `Retry-After`. In-memory/per-instance (`app/api/helpers/rateLimit.ts`) — a baseline flood guard, not a distributed quota (swap for Upstash/KV for that). (2) Refreshes session cookies for page routes. (3) Verifies JWTs for `/api/protected/**` via `supabase.auth.getUser()` and forwards `x-verified-user-id`. That header is **defense-in-depth only** — `getMobileUser()` always re-verifies the JWT itself and does NOT trust the header to skip `getUser()`, so a proxy bypass can't yield impersonation (compensating control for the open Next ≤16.3.0-canary proxy-bypass advisories).
   - Protected mobile handlers: call `getMobileUser(req)` from `app/api/helpers/mobile-request.ts` — **always verifies the JWT via `getUser()`**, returns `{ user, token, supabase }` with an RLS-scoped client.

@@ -5,7 +5,9 @@ import {
   generalErrorResponse,
   successResponse,
   unauthorizedResponse,
+  loggedServerError,
 } from '@/app/api/helpers/response';
+import { redeemCouponSchema } from '@/lib/validation/redemptions';
 import { NextRequest } from 'next/server';
 
 export async function GET(req: NextRequest) {
@@ -34,7 +36,7 @@ export async function GET(req: NextRequest) {
       .from('user_redemptions')
       .select(
         `
-        id, redeemed_at, expires_at, is_claimed,
+        id, redeemed_at, expires_at, is_claimed, code,
         coupons(id, code, description, discount, expiry_date, promotion_type,
           businesses(id, shop_name, logo_url)
         ),
@@ -61,7 +63,7 @@ export async function GET(req: NextRequest) {
 
     const { data, error, count } = await query.range(from, to);
 
-    if (error) return generalErrorResponse({ message: error.message });
+    if (error) return loggedServerError('protected/mobile/redemptions', error);
 
     const hasMore = count != null && from + (data?.length ?? 0) < count;
 
@@ -76,21 +78,22 @@ export async function POST(req: NextRequest) {
     const auth = await getMobileUser(req);
     if (!auth) return unauthorizedResponse();
 
-    const body = await req.json();
-    const { coupon_id, branch_id } = body;
-
-    if (!coupon_id || !branch_id) {
+    const parsed = redeemCouponSchema.safeParse(
+      await req.json().catch(() => null),
+    );
+    if (!parsed.success) {
       return badRequestResponse({
-        message: 'coupon_id and branch_id are required',
+        message: 'coupon_id and branch_id must be valid UUIDs',
       });
     }
+    const { coupon_id, branch_id } = parsed.data;
 
     const now = new Date().toISOString();
 
     const { data: coupon, error: couponError } = await auth.supabase
       .from('coupons')
       .select(
-        'id, start_date, expiry_date, status, max_redemptions_per_user, max_redemptions_global, current_redemptions, requires_subscription, business_id',
+        'id, start_date, expiry_date, status, max_redemptions_per_user, max_redemptions_global, current_redemptions, requires_follow, business_id',
       )
       .eq('id', coupon_id)
       .eq('status', 'published')
@@ -117,17 +120,18 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Subscription gate — coupon requires user to follow the business
-    if (coupon.requires_subscription) {
-      const { count: subCount, error: subError } = await auth.supabase
-        .from('subscriptions')
+    // Follow gate — coupon requires user to follow the business
+    if (coupon.requires_follow) {
+      const { count: followCount, error: followError } = await auth.supabase
+        .from('follows')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', auth.user.id)
         .eq('business_id', coupon.business_id);
 
-      if (subError) return generalErrorResponse({ message: subError.message });
+      if (followError)
+        return loggedServerError('protected/mobile/redemptions', followError);
 
-      if ((subCount ?? 0) === 0) {
+      if ((followCount ?? 0) === 0) {
         return forbiddenResponse({
           message: 'Follow this business to claim this deal',
         });
@@ -144,7 +148,10 @@ export async function POST(req: NextRequest) {
         .eq('user_id', auth.user.id);
 
     if (redemptionsError) {
-      return generalErrorResponse({ message: redemptionsError.message });
+      return loggedServerError(
+        'protected/mobile/redemptions',
+        redemptionsError,
+      );
     }
 
     // Active-dupe — user can't hold two unclaimed, unexpired redemptions of the same coupon.
@@ -180,7 +187,7 @@ export async function POST(req: NextRequest) {
       .select()
       .single();
 
-    if (error) return generalErrorResponse({ message: error.message });
+    if (error) return loggedServerError('protected/mobile/redemptions', error);
 
     // Atomic increment — DB function updates current_redemptions + 1 only if still
     // under max_redemptions_global, catching the race between the cap check above

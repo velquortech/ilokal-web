@@ -130,8 +130,8 @@ ON CONFLICT (id) DO UPDATE SET
 -- ── Test user domain data (subscriptions, redemptions, ratings) ───────────────
 -- Depends on: businesses.sql, coupons.sql
 
--- Subscriptions: follows Artisan Roastery, Flora & Flour, Luna & Leaf
-INSERT INTO public.subscriptions (id, user_id, business_id)
+-- Follows: Artisan Roastery, Flora & Flour, Luna & Leaf
+INSERT INTO public.follows (id, user_id, business_id)
 VALUES
   ('55555555-5555-5555-5555-555555555501', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111101'),
   ('55555555-5555-5555-5555-555555555502', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111102'),
@@ -173,8 +173,8 @@ VALUES
   ('77777777-7777-7777-7777-777777777705', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111105', 4, 'Healthy and filling bowls. Turmeric latte is a must-try.')
 ON CONFLICT (id) DO NOTHING;
 
--- Subscriptions: testuser follows 3 of the new businesses
-INSERT INTO public.subscriptions (id, user_id, business_id)
+-- Follows: testuser follows 3 of the new businesses
+INSERT INTO public.follows (id, user_id, business_id)
 VALUES
   ('55555555-5555-5555-5555-555555555504', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111106'),
   ('55555555-5555-5555-5555-555555555505', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111111'),

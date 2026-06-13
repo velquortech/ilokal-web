@@ -2,6 +2,7 @@ import { createBearerClient } from '@/supabase/bearer';
 import {
   generalErrorResponse,
   successResponse,
+  loggedServerError,
 } from '@/app/api/helpers/response';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { NextRequest } from 'next/server';
@@ -14,6 +15,14 @@ export async function GET(req: NextRequest, { params }: Params) {
     const { searchParams } = req.nextUrl;
 
     const search = searchParams.get('q')?.trim();
+    const category = searchParams.get('category')?.trim(); // category slug
+    const num = (key: string): number | null => {
+      const n = parseFloat(searchParams.get(key) ?? '');
+      return Number.isFinite(n) ? n : null;
+    };
+    const priceMin = num('price_min');
+    const priceMax = num('price_max');
+    const minRating = num('min_rating');
     // Page-based browse (mobile products/menu screen). When `page` is absent the
     // response keeps the legacy single-batch shape (`{ products }`) used by the
     // detail "must-try" preview and the home popular-products scan.
@@ -40,8 +49,25 @@ export async function GET(req: NextRequest, { params }: Params) {
     );
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+      // Strip the chars PostgREST uses as `.or()` delimiters so a stray
+      // comma/paren can't inject extra filter conditions (mirrors nearby route).
+      const s = search.replace(/[,()]/g, ' ').trim();
+      if (s) {
+        query = query.or(`name.ilike.%${s}%,description.ilike.%${s}%`);
+      }
     }
+
+    // Filter by product category (slug) — the RPC returns `category` as JSONB,
+    // so match on its `slug` key.
+    if (category) {
+      query = query.eq('category->>slug', category);
+    }
+
+    // Price range (on base price) + minimum average rating — both filter on the
+    // RPC's projected columns, mirroring the category filter.
+    if (priceMin != null) query = query.gte('price', priceMin);
+    if (priceMax != null) query = query.lte('price', priceMax);
+    if (minRating != null) query = query.gte('average_rating', minRating);
 
     // Mobile sort key → PostgREST ordering on the RPC's aggregate columns.
     // `popular` is the menu default; `name` backs the legacy non-paginated batch.
@@ -79,7 +105,10 @@ export async function GET(req: NextRequest, { params }: Params) {
     const { data, error, count } = await query;
 
     if (error) {
-      return generalErrorResponse({ message: error.message });
+      return loggedServerError(
+        'mobile/businesses/[businessId]/products',
+        error,
+      );
     }
 
     const products = (data ?? []).map((product: Record<string, unknown>) => ({
@@ -100,14 +129,26 @@ export async function GET(req: NextRequest, { params }: Params) {
       average_rating:
         product.average_rating != null ? Number(product.average_rating) : 0,
       rating_count: Number(product.rating_count ?? 0),
+      weekly_view_count: Number(product.weekly_view_count ?? 0),
     }));
 
     if (paginated) {
       const total = count ?? 0;
+      // Surface the business's full category list on page 1 (one extra cheap
+      // call, not repeated while paging) so the client can build the filter.
+      let categories: { id: string; name: string; slug: string }[] = [];
+      if (page === 1) {
+        const { data: catData } = await supabase.rpc(
+          'business_product_categories',
+          { p_business_id: businessId },
+        );
+        categories = (catData ?? []) as typeof categories;
+      }
       return successResponse({
         products,
         has_more: from + products.length < total,
         total,
+        categories,
       });
     }
 

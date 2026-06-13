@@ -3,11 +3,12 @@ import {
   generalErrorResponse,
   successResponse,
   unauthorizedResponse,
+  loggedServerError,
 } from '@/app/api/helpers/response';
 import { NextRequest } from 'next/server';
 
 // Itinerary = places the user has active redemptions at (must visit to claim)
-// combined with businesses they follow (subscribed to)
+// combined with businesses they follow
 export async function GET(req: NextRequest) {
   try {
     const auth = await getMobileUser(req);
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
 
     const now = new Date().toISOString();
 
-    const [redemptionsResult, subscriptionsResult] = await Promise.all([
+    const [redemptionsResult, followsResult] = await Promise.all([
       auth.supabase
         .from('user_redemptions')
         .select(
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
         .order('expires_at', { ascending: true, nullsFirst: false }),
 
       auth.supabase
-        .from('subscriptions')
+        .from('follows')
         .select(
           `
           id,
@@ -48,24 +49,28 @@ export async function GET(req: NextRequest) {
     ]);
 
     if (redemptionsResult.error) {
-      return generalErrorResponse({ message: redemptionsResult.error.message });
+      return loggedServerError(
+        'protected/mobile/itinerary',
+        redemptionsResult.error,
+      );
     }
-    if (subscriptionsResult.error) {
-      return generalErrorResponse({
-        message: subscriptionsResult.error.message,
-      });
+    if (followsResult.error) {
+      return loggedServerError(
+        'protected/mobile/itinerary',
+        followsResult.error,
+      );
     }
 
     // Filter nested coupons to active/published only — Supabase doesn't support
     // WHERE on nested selects, so we filter in application code.
-    const followedBusinesses = (subscriptionsResult.data ?? []).map((sub) => ({
-      ...sub,
-      businesses: sub.businesses
+    const followedBusinesses = (followsResult.data ?? []).map((follow) => ({
+      ...follow,
+      businesses: follow.businesses
         ? {
-            ...sub.businesses,
+            ...follow.businesses,
             coupons: (
               (
-                sub.businesses as unknown as {
+                follow.businesses as unknown as {
                   coupons: {
                     id: string;
                     code: string;
@@ -90,7 +95,7 @@ export async function GET(req: NextRequest) {
                   rest,
               ),
           }
-        : sub.businesses,
+        : follow.businesses,
     }));
 
     return successResponse({

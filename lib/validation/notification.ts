@@ -16,7 +16,7 @@ export const notificationPreferencesSchema = z.object({
 });
 
 export const createNotificationSchema = z.object({
-  user_id: z.string().uuid(),
+  user_id: z.guid(),
   title: z.string().max(200),
   body: z.string().max(2000),
   data: z.record(z.string(), z.unknown()).optional().nullable(),

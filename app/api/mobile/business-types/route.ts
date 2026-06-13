@@ -2,6 +2,7 @@ import { createBearerClient } from '@/supabase/bearer';
 import {
   generalErrorResponse,
   successResponse,
+  loggedServerError,
 } from '@/app/api/helpers/response';
 
 export async function GET() {
@@ -17,7 +18,7 @@ export async function GET() {
       .is('business_categories.deleted_at', null)
       .order('name');
 
-    if (error) return generalErrorResponse({ message: error.message });
+    if (error) return loggedServerError('mobile/business-types', error);
 
     return successResponse({ business_types: data });
   } catch {

@@ -4,7 +4,7 @@ export const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
 
 export const businessCategorySchema = z
   .object({
-    id: z.string().uuid().optional(),
+    id: z.guid().optional(),
     type: z.enum(['predefined', 'custom']),
     name: z.string().min(1, 'Category is required'),
     description: z.string().optional(),

@@ -4,6 +4,7 @@ import {
   generalErrorResponse,
   successResponse,
   unauthorizedResponse,
+  loggedServerError,
 } from '@/app/api/helpers/response';
 import { NextRequest } from 'next/server';
 
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
       .upload(filePath, file, { cacheControl: '3600', upsert: true });
 
     if (uploadError) {
-      return generalErrorResponse({ message: uploadError.message });
+      return loggedServerError('protected/mobile/me/avatar', uploadError);
     }
 
     const { data } = auth.supabase.storage

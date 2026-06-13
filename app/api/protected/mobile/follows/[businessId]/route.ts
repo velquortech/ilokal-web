@@ -4,6 +4,7 @@ import {
   notFoundResponse,
   successResponse,
   unauthorizedResponse,
+  loggedServerError,
 } from '@/app/api/helpers/response';
 import { NextRequest } from 'next/server';
 
@@ -17,16 +18,16 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     const { businessId } = await params;
 
     const { error, count } = await auth.supabase
-      .from('subscriptions')
+      .from('follows')
       .delete({ count: 'exact' })
       .eq('user_id', auth.user.id)
       .eq('business_id', businessId);
 
-    if (error) return generalErrorResponse({ message: error.message });
-    if (count === 0)
-      return notFoundResponse({ message: 'Subscription not found' });
+    if (error)
+      return loggedServerError('protected/mobile/follows/[businessId]', error);
+    if (count === 0) return notFoundResponse({ message: 'Follow not found' });
 
-    return successResponse({ message: 'Unsubscribed successfully' });
+    return successResponse({ message: 'Unfollowed successfully' });
   } catch {
     return generalErrorResponse();
   }

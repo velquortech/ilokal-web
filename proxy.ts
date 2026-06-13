@@ -108,6 +108,60 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
+  // Admin API routes: verify an authenticated admin before the handler runs.
+  // These are cookie-session (web) routes, so unlike /api/protected we check the
+  // role here and return JSON 401/403 rather than a redirect. Handlers still run
+  // their own assertAuthorized check (defense in depth).
+  if (pathname.startsWith('/api/admin')) {
+    const refreshedCookies: {
+      name: string;
+      value: string;
+      options: CookieOptions;
+    }[] = [];
+
+    const supabase = createServerClient(url, key, {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (cs) => {
+          refreshedCookies.push(...cs);
+        },
+      },
+    });
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return unauthorizedResponse();
+
+    // Role from JWT app_metadata (sync_role_to_jwt trigger), profiles fallback.
+    let role = (user.app_metadata?.role as string | undefined) ?? null;
+    if (!role) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      role = profile?.role ?? null;
+    }
+
+    if (role !== 'admin') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'Admin access required' },
+        },
+        { status: 403 },
+      );
+    }
+
+    const response = NextResponse.next({ request });
+    refreshedCookies.forEach(({ name, value, options }) =>
+      response.cookies.set(name, value, options),
+    );
+    return response;
+  }
+
   // Page route protection: refresh session cookie and enforce role-based redirects
   let response = NextResponse.next({ request });
 
@@ -193,6 +247,8 @@ export const config = {
     '/admin/:path+',
     '/business',
     '/business/:path+',
+    '/api/admin',
+    '/api/admin/:path+',
     '/api/protected/:path+',
     '/api/mobile/:path+',
   ],

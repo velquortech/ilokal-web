@@ -24,6 +24,7 @@ export default tseslint.config(
       'next.**',
       'next-**',
       'lib/types/database.ts',
+      'WORKFLOW/**',
     ],
   },
 
@@ -37,6 +38,9 @@ export default tseslint.config(
       prettier: pluginPrettier,
       react: reactPlugin,
       'jsx-a11y': jsxA11yPlugin,
+    },
+    settings: {
+      react: { version: 'detect' },
     },
     rules: {
       ...nextPlugin.configs.recommended.rules,

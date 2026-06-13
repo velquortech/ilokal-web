@@ -1,7 +1,6 @@
 import {
   Store,
   Ticket,
-  MessageSquare,
   Bell,
   Home,
   ShoppingBasket,
@@ -233,13 +232,14 @@ export const DEFAULT_BRANCHES: Branch[] = [
 ];
 
 export const notificationActions: QuickAction[] = [
-  {
-    icon: MessageSquare,
-    href: '/business/messages',
-    badge: 5,
-    badgeVariant: 'destructive',
-    label: 'Messages',
-  },
+  // TODO: re-enable Messages once the messaging feature is functional
+  // {
+  //   icon: MessageSquare,
+  //   href: '/business/messages',
+  //   badge: 5,
+  //   badgeVariant: 'destructive',
+  //   label: 'Messages',
+  // },
   {
     icon: Bell,
     href: '/business/notifications',

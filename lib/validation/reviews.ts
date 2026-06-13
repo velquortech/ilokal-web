@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 export const createReviewSchema = z.object({
-  user_id: z.string().uuid(),
-  business_id: z.string().uuid().optional().nullable(),
-  product_id: z.string().uuid().optional().nullable(),
+  user_id: z.guid(),
+  business_id: z.guid().optional().nullable(),
+  product_id: z.guid().optional().nullable(),
   rating: z.number().int().min(1).max(5),
   title: z.string().max(200).optional(),
   body: z.string().max(2000).optional(),

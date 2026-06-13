@@ -29,7 +29,7 @@ export const createPaymentSchema = z.object({
     .max(999999999, 'Amount exceeds maximum'),
   currency: currencySchema,
   payment_method: paymentMethodSchema,
-  business_id: z.string().uuid().optional(),
+  business_id: z.guid().optional(),
   metadata: z
     .object({
       order_id: z.string().optional(),
@@ -56,7 +56,7 @@ export const checkoutRequestSchema = z.object({
   payment_method: paymentMethodSchema,
   success_url: z.string().url(),
   cancel_url: z.string().url(),
-  business_id: z.string().uuid().optional(),
+  business_id: z.guid().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -65,11 +65,11 @@ export const checkoutRequestSchema = z.object({
 export const invoiceStatusSchema = z.enum(['draft', 'sent', 'paid', 'voided']);
 
 export const createInvoiceSchema = z.object({
-  payment_id: z.string().uuid().optional(),
+  payment_id: z.guid().optional(),
   amount: z.number().min(1),
   currency: currencySchema,
   due_date: z.string().datetime().optional(),
-  business_id: z.string().uuid().optional(),
+  business_id: z.guid().optional(),
 });
 
 export const invoiceFiltersSchema = z.object({

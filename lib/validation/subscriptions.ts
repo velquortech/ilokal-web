@@ -41,14 +41,10 @@ export const currencySchema = z
  * Validates business owner subscribing to a plan
  */
 export const createSubscriptionSchema = z.object({
-  plan_id: z
-    .string()
-    .uuid('Invalid plan ID')
-    .describe('UUID of the subscription plan'),
+  plan_id: z.guid('Invalid plan ID').describe('UUID of the subscription plan'),
   billing_cycle: billingCycleSchema.describe('Monthly or yearly billing'),
   payment_method_id: z
-    .string()
-    .uuid()
+    .guid()
     .optional()
     .describe('Optional: pre-existing payment method ID'),
 });
@@ -63,11 +59,7 @@ export const updateSubscriptionSchema = z.object({
   billing_cycle: billingCycleSchema
     .optional()
     .describe('Switch between monthly/yearly'),
-  payment_method_id: z
-    .string()
-    .uuid()
-    .optional()
-    .describe('Update payment method'),
+  payment_method_id: z.guid().optional().describe('Update payment method'),
   auto_renew: z.boolean().optional().describe('Enable/disable auto-renewal'),
 });
 
@@ -79,8 +71,7 @@ export type UpdateSubscriptionInput = z.infer<typeof updateSubscriptionSchema>;
  */
 export const upgradeSubscriptionSchema = z.object({
   new_plan_id: z
-    .string()
-    .uuid('Invalid plan ID')
+    .guid('Invalid plan ID')
     .describe('UUID of new higher-tier plan'),
   billing_cycle: billingCycleSchema
     .optional()
@@ -97,8 +88,7 @@ export type UpgradeSubscriptionInput = z.infer<
  */
 export const downgradeSubscriptionSchema = z.object({
   new_plan_id: z
-    .string()
-    .uuid('Invalid plan ID')
+    .guid('Invalid plan ID')
     .describe('UUID of new lower-tier plan'),
   downgrade_at: z
     .enum(['immediately', 'period_end'])

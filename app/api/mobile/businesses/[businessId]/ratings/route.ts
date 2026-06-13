@@ -2,6 +2,7 @@ import { createBearerClient } from '@/supabase/bearer';
 import {
   generalErrorResponse,
   successResponse,
+  loggedServerError,
 } from '@/app/api/helpers/response';
 import { NextRequest } from 'next/server';
 
@@ -18,7 +19,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       .eq('business_id', businessId);
 
     if (error) {
-      return generalErrorResponse({ message: error.message });
+      return loggedServerError('mobile/businesses/[businessId]/ratings', error);
     }
 
     const ratings = data ?? [];

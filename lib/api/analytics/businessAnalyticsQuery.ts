@@ -358,10 +358,7 @@ export async function getMonthlyTrend(
   const supabase = await createAnalyticsSupabaseClient();
 
   const [subResult, couponIds] = await Promise.all([
-    supabase
-      .from('subscriptions')
-      .select('created_at')
-      .eq('business_id', businessId),
+    supabase.from('follows').select('created_at').eq('business_id', businessId),
     getBusinessCouponIds(supabase, businessId),
   ]);
 
@@ -411,10 +408,7 @@ export async function getFollowerFunnel(
   const supabase = await createAnalyticsSupabaseClient();
 
   const [subResult, couponIds] = await Promise.all([
-    supabase
-      .from('subscriptions')
-      .select('user_id')
-      .eq('business_id', businessId),
+    supabase.from('follows').select('user_id').eq('business_id', businessId),
     getBusinessCouponIds(supabase, businessId),
   ]);
 
@@ -638,7 +632,7 @@ export async function getBusinessHealthIndicators(
     await Promise.all([
       getRetentionData(businessId, branchId),
       supabase
-        .from('subscriptions')
+        .from('follows')
         .select('created_at')
         .eq('business_id', businessId),
       supabase

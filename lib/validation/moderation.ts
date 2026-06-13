@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 export const createReportSchema = z.object({
-  reporter_id: z.string().uuid(),
+  reporter_id: z.guid(),
   target_type: z.enum(['user', 'business', 'content', 'coupon', 'product']),
-  target_id: z.string().uuid(),
+  target_id: z.guid(),
   reason: z.string().max(200),
   details: z.string().max(2000).optional().nullable(),
 });

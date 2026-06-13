@@ -35,9 +35,17 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
     // branches.location is PostGIS — decode lat/lng via the business_branches RPC
     // (the nested PostgREST select above can't expose geometry coordinates).
-    const { data: branchRows } = await supabase.rpc('business_branches', {
-      p_business_id: businessId,
-    });
+    // Follower count comes from the get_follower_counts RPC (counts only — the
+    // follow graph stays private); independent of the branches RPC, so parallel.
+    const [{ data: branchRows }, { data: followerRows }] = await Promise.all([
+      supabase.rpc('business_branches', { p_business_id: businessId }),
+      supabase.rpc('get_follower_counts', { p_business_ids: [businessId] }),
+    ]);
+    const followerCount = Number(
+      (
+        followerRows as { business_id: string; follower_count: number }[] | null
+      )?.[0]?.follower_count ?? 0,
+    );
     const branches = (
       (branchRows ?? []) as {
         id: string;
@@ -99,6 +107,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       owner_handle: ownerHandle,
       category,
       branches,
+      total_followers: followerCount ?? 0,
     };
 
     return successResponse({ business });

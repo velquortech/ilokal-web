@@ -15,11 +15,13 @@ vi.mock('@/app/api/helpers/mobile-request', () => ({
 import { getMobileUser } from '@/app/api/helpers/mobile-request';
 import { POST } from '../route';
 
-const USER_ID = 'usr-00000000-0000-0000-0000-000000000001';
-const COUPON_ID = 'cou-00000000-0000-0000-0000-000000000001';
-const BRANCH_ID = 'brn-00000000-0000-0000-0000-000000000001';
-const BUSINESS_ID = 'biz-00000000-0000-0000-0000-000000000001';
-const REDEMPTION_ID = 'red-00000000-0000-0000-0000-000000000001';
+// GUID-shaped ids — z.guid() in redeemCouponSchema rejects non-hex prefixes
+// (e.g. 'cou-…'), which would 400 the request before any redemption logic runs.
+const USER_ID = '11111111-0000-0000-0000-000000000001';
+const COUPON_ID = '22222222-0000-0000-0000-000000000001';
+const BRANCH_ID = '33333333-0000-0000-0000-000000000001';
+const BUSINESS_ID = '44444444-0000-0000-0000-000000000001';
+const REDEMPTION_ID = '55555555-0000-0000-0000-000000000001';
 
 const coupon = {
   id: COUPON_ID,
@@ -29,7 +31,7 @@ const coupon = {
   max_redemptions_per_user: null,
   max_redemptions_global: null,
   current_redemptions: 0,
-  requires_subscription: false,
+  requires_follow: false,
   business_id: BUSINESS_ID,
 };
 

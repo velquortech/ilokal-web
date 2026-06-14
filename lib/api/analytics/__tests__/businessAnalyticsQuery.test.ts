@@ -585,10 +585,10 @@ describe('getMonthlyTrend', () => {
     vi.clearAllMocks();
   });
 
-  it('returns 6 months with zero counts when no subscriptions or redemptions exist', async () => {
+  it('returns 6 months with zero counts when no followers or redemptions exist', async () => {
     const supabaseClient = {
       from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'subscriptions')
+        if (table === 'follows')
           return makeChain({ data: [], error: null });
         if (table === 'coupons') return makeChain({ data: [], error: null });
         return makeChain({ data: [], error: null });
@@ -608,10 +608,10 @@ describe('getMonthlyTrend', () => {
     });
   });
 
-  it('counts subscriptions and redemptions in the correct month bucket', async () => {
+  it('counts followers and redemptions in the correct month bucket', async () => {
     const supabaseClient = {
       from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'subscriptions')
+        if (table === 'follows')
           return makeChain({
             // currentMonthDate() is always in the current calendar month so
             // it maps to the last (most-recent) bucket in getMonthlyTrend.
@@ -645,7 +645,7 @@ describe('getMonthlyTrend', () => {
   it('returns 6 data points regardless of data volume', async () => {
     const supabaseClient = {
       from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'subscriptions')
+        if (table === 'follows')
           return makeChain({
             data: Array.from({ length: 20 }, (_, i) => ({
               created_at: daysAgo(i * 3),
@@ -683,7 +683,7 @@ describe('getFollowerFunnel', () => {
   it('returns all zeros when no followers exist', async () => {
     const supabaseClient = {
       from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'subscriptions')
+        if (table === 'follows')
           return makeChain({ data: [], error: null });
         if (table === 'coupons') return makeChain({ data: [], error: null });
         return makeChain({ data: [], error: null });
@@ -705,7 +705,7 @@ describe('getFollowerFunnel', () => {
   it('counts total followers correctly', async () => {
     const supabaseClient = {
       from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'subscriptions')
+        if (table === 'follows')
           return makeChain({
             data: [{ user_id: 'u1' }, { user_id: 'u2' }, { user_id: 'u3' }],
             error: null,
@@ -727,7 +727,7 @@ describe('getFollowerFunnel', () => {
   it('marks users who redeemed within 30 days as active', async () => {
     const supabaseClient = {
       from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'subscriptions')
+        if (table === 'follows')
           return makeChain({
             data: [{ user_id: 'u1' }],
             error: null,
@@ -759,7 +759,7 @@ describe('getFollowerFunnel', () => {
 
     const supabaseClient = {
       from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'subscriptions')
+        if (table === 'follows')
           return makeChain({
             data: [{ user_id: 'u1' }],
             error: null,

@@ -214,6 +214,98 @@ export type Database = {
           },
         ]
       }
+      business_notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          data: Json | null
+          id: string
+          is_read: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_posts: {
+        Row: {
+          archived_at: string | null
+          body: string | null
+          business_id: string
+          created_at: string | null
+          id: string
+          image_url: string | null
+          published_at: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          body?: string | null
+          business_id: string
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          published_at?: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          body?: string | null
+          business_id?: string
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          published_at?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_posts_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_dashboard_stats"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "business_posts_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_ratings: {
         Row: {
           business_id: string
@@ -416,6 +508,7 @@ export type Database = {
           status: Database["public"]["Enums"]["verification_status"] | null
           updated_at: string | null
           verification_documents: Json | null
+          weekly_view_count: number
         }
         Insert: {
           archived_at?: string | null
@@ -433,6 +526,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["verification_status"] | null
           updated_at?: string | null
           verification_documents?: Json | null
+          weekly_view_count?: number
         }
         Update: {
           archived_at?: string | null
@@ -450,6 +544,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["verification_status"] | null
           updated_at?: string | null
           verification_documents?: Json | null
+          weekly_view_count?: number
         }
         Relationships: [
           {
@@ -546,7 +641,7 @@ export type Database = {
           max_redemptions_global: number | null
           max_redemptions_per_user: number | null
           promotion_type: string
-          requires_subscription: boolean
+          requires_follow: boolean
           scope_values: string[] | null
           start_date: string
           status: string
@@ -567,7 +662,7 @@ export type Database = {
           max_redemptions_global?: number | null
           max_redemptions_per_user?: number | null
           promotion_type?: string
-          requires_subscription?: boolean
+          requires_follow?: boolean
           scope_values?: string[] | null
           start_date: string
           status?: string
@@ -588,7 +683,7 @@ export type Database = {
           max_redemptions_global?: number | null
           max_redemptions_per_user?: number | null
           promotion_type?: string
-          requires_subscription?: boolean
+          requires_follow?: boolean
           scope_values?: string[] | null
           start_date?: string
           status?: string
@@ -615,6 +710,49 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      follows: {
+        Row: {
+          business_id: string
+          created_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_dashboard_stats"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "subscriptions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -778,6 +916,7 @@ export type Database = {
           sale_starts_at: string | null
           status: string
           updated_at: string | null
+          weekly_view_count: number
         }
         Insert: {
           archived_at?: string | null
@@ -798,6 +937,7 @@ export type Database = {
           sale_starts_at?: string | null
           status?: string
           updated_at?: string | null
+          weekly_view_count?: number
         }
         Update: {
           archived_at?: string | null
@@ -818,6 +958,7 @@ export type Database = {
           sale_starts_at?: string | null
           status?: string
           updated_at?: string | null
+          weekly_view_count?: number
         }
         Relationships: [
           {
@@ -1017,52 +1158,10 @@ export type Database = {
         }
         Relationships: []
       }
-      subscriptions: {
-        Row: {
-          business_id: string
-          created_at: string | null
-          id: string
-          user_id: string
-        }
-        Insert: {
-          business_id: string
-          created_at?: string | null
-          id?: string
-          user_id: string
-        }
-        Update: {
-          business_id?: string
-          created_at?: string | null
-          id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "subscriptions_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "business_dashboard_stats"
-            referencedColumns: ["business_id"]
-          },
-          {
-            foreignKeyName: "subscriptions_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "businesses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "subscriptions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       user_redemptions: {
         Row: {
           branch_id: string | null
+          code: string
           coupon_id: string
           expires_at: string | null
           id: string
@@ -1072,6 +1171,7 @@ export type Database = {
         }
         Insert: {
           branch_id?: string | null
+          code: string
           coupon_id: string
           expires_at?: string | null
           id?: string
@@ -1081,6 +1181,7 @@ export type Database = {
         }
         Update: {
           branch_id?: string | null
+          code?: string
           coupon_id?: string
           expires_at?: string | null
           id?: string
@@ -1105,6 +1206,62 @@ export type Database = {
           },
           {
             foreignKeyName: "user_redemptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      view_events: {
+        Row: {
+          business_id: string | null
+          id: string
+          product_id: string | null
+          user_id: string
+          viewed_at: string
+          viewed_on: string
+        }
+        Insert: {
+          business_id?: string | null
+          id?: string
+          product_id?: string | null
+          user_id: string
+          viewed_at?: string
+          viewed_on?: string
+        }
+        Update: {
+          business_id?: string | null
+          id?: string
+          product_id?: string | null
+          user_id?: string
+          viewed_at?: string
+          viewed_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "view_events_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_dashboard_stats"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "view_events_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "view_events_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "view_events_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -1329,6 +1486,14 @@ export type Database = {
           name: string
         }[]
       }
+      business_product_categories: {
+        Args: { p_business_id: string }
+        Returns: {
+          id: string
+          name: string
+          slug: string
+        }[]
+      }
       business_products: {
         Args: { p_business_id: string }
         Returns: {
@@ -1345,6 +1510,7 @@ export type Database = {
           price_unit: string
           rating_count: number
           sale_price: number
+          weekly_view_count: number
         }[]
       }
       create_notification: {
@@ -1392,6 +1558,7 @@ export type Database = {
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      gen_redemption_code: { Args: never; Returns: string }
       geometry: { Args: { "": string }; Returns: unknown }
       geometry_above: {
         Args: { geom1: unknown; geom2: unknown }
@@ -1490,6 +1657,13 @@ export type Database = {
         Returns: boolean
       }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
+      get_follower_counts: {
+        Args: { p_business_ids: string[] }
+        Returns: {
+          business_id: string
+          follower_count: number
+        }[]
+      }
       gettransactionid: { Args: never; Returns: unknown }
       increment_coupon_redemptions: {
         Args: { p_coupon_id: string }
@@ -1513,13 +1687,26 @@ export type Database = {
           category_name: string
           distance_meters: number
           interior_images: string[]
+          is_featured: boolean
+          is_trending: boolean
           logo_url: string
           rating_count: number
+          weekly_view_count: number
         }[]
       }
       notify_coupon_redemption: {
         Args: { p_redemption_id: string }
         Returns: string
+      }
+      notify_followers: {
+        Args: {
+          p_body: string
+          p_business_id: string
+          p_data: Json
+          p_title: string
+          p_type: string
+        }
+        Returns: undefined
       }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
@@ -1561,6 +1748,13 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      record_view: {
+        Args: { p_business_id?: string; p_product_id?: string }
+        Returns: undefined
+      }
+      rollup_weekly_view_counts: { Args: never; Returns: undefined }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       st_3dclosestpoint: {
         Args: { geom1: unknown; geom2: unknown }
         Returns: unknown

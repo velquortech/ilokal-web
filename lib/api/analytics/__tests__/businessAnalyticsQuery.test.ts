@@ -588,8 +588,7 @@ describe('getMonthlyTrend', () => {
   it('returns 6 months with zero counts when no followers or redemptions exist', async () => {
     const supabaseClient = {
       from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'follows')
-          return makeChain({ data: [], error: null });
+        if (table === 'follows') return makeChain({ data: [], error: null });
         if (table === 'coupons') return makeChain({ data: [], error: null });
         return makeChain({ data: [], error: null });
       }),
@@ -683,8 +682,7 @@ describe('getFollowerFunnel', () => {
   it('returns all zeros when no followers exist', async () => {
     const supabaseClient = {
       from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'follows')
-          return makeChain({ data: [], error: null });
+        if (table === 'follows') return makeChain({ data: [], error: null });
         if (table === 'coupons') return makeChain({ data: [], error: null });
         return makeChain({ data: [], error: null });
       }),

@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     if (!auth) return unauthorizedResponse();
 
     const { error, count } = await auth.supabase
-      .from('notifications')
+      .from('business_notifications')
       .update({ is_read: true }, { count: 'exact' })
       .eq('user_id', auth.user.id)
       .eq('is_read', false);

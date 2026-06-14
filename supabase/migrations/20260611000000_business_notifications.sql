@@ -1,17 +1,20 @@
--- Notifications — per-user inbox rows behind the mobile tab badge.
+-- business_notifications — per-user inbox rows behind the mobile tab badge.
 --
 -- The mobile Updates feed derives "what's new" by scanning the source tables
 -- at read time; this table materializes the same events per follower at write
 -- time, so a client can (a) read an unread count cheaply and (b) subscribe to
--- its own INSERTs over Supabase Realtime for a live badge. Column shape
--- matches the web's existing `Notification` type (lib/types/notification.ts),
--- so the dormant web read routes work against it unchanged; `type` is an
--- extra column those routes simply don't select on.
+-- its own INSERTs over Supabase Realtime for a live badge.
 --
--- Consumed by the mobile-only routes under /api/protected/mobile/notifications
--- — the web /api/web/notifications scaffolding is intentionally untouched.
+-- Deliberately a SEPARATE table from `notifications` (20260609000000), which is
+-- the web/admin business-document + coupon-redemption inbox keyed on a
+-- different schema (read_at / metadata / business_document_* types). This is
+-- the follower-facing feed (post / promo / product), keyed on is_read / data.
+-- Keeping them apart means neither surface's writes or schema changes can break
+-- the other.
+--
+-- Consumed by the mobile-only routes under /api/protected/mobile/notifications.
 
-CREATE TABLE public.notifications (
+CREATE TABLE public.business_notifications (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   type TEXT NOT NULL CHECK (type IN ('post', 'promo', 'product')),
@@ -23,35 +26,35 @@ CREATE TABLE public.notifications (
 );
 
 -- List query is "mine, newest first"; badge query is "mine, unread count".
-CREATE INDEX idx_notifications_user_created
-  ON public.notifications (user_id, created_at DESC);
-CREATE INDEX idx_notifications_user_unread
-  ON public.notifications (user_id) WHERE is_read = FALSE;
+CREATE INDEX idx_business_notifications_user_created
+  ON public.business_notifications (user_id, created_at DESC);
+CREATE INDEX idx_business_notifications_user_unread
+  ON public.business_notifications (user_id) WHERE is_read = FALSE;
 
 -- RLS: users see and update (mark read) only their own rows. There are no
 -- user INSERT/DELETE policies — rows are produced solely by the SECURITY
 -- DEFINER fan-out below.
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.business_notifications ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users view own notifications"
-ON public.notifications FOR SELECT
+CREATE POLICY "Users view own business notifications"
+ON public.business_notifications FOR SELECT
 USING (user_id = auth.uid());
 
-CREATE POLICY "Users update own notifications"
-ON public.notifications FOR UPDATE
+CREATE POLICY "Users update own business notifications"
+ON public.business_notifications FOR UPDATE
 USING (user_id = auth.uid());
 
-CREATE POLICY "Admins manage all notifications"
-ON public.notifications FOR ALL
+CREATE POLICY "Admins manage all business notifications"
+ON public.business_notifications FOR ALL
 USING (auth.uid() IN (SELECT id FROM public.profiles WHERE role = 'admin'));
 
 -- Fan-out: one notification per follower of the business. SECURITY DEFINER
 -- because the inserting role (a business owner in the dashboard) has no
--- INSERT right on notifications. The verified/non-archived gate mirrors the
--- visibility rule RLS applies to every mobile feed source. Runs inside the
--- source row's INSERT transaction — one INSERT…SELECT per event; if follower
--- counts grow large enough to slow dashboard writes, move this to an async
--- outbox (see tech-debt).
+-- INSERT right on business_notifications. The verified/non-archived gate
+-- mirrors the visibility rule RLS applies to every mobile feed source. Runs
+-- inside the source row's INSERT transaction — one INSERT…SELECT per event; if
+-- follower counts grow large enough to slow dashboard writes, move this to an
+-- async outbox (see tech-debt).
 CREATE OR REPLACE FUNCTION public.notify_followers(
   p_business_id UUID,
   p_type TEXT,
@@ -63,7 +66,7 @@ LANGUAGE sql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  INSERT INTO public.notifications (user_id, type, title, body, data)
+  INSERT INTO public.business_notifications (user_id, type, title, body, data)
   SELECT f.user_id, p_type, p_title, p_body, p_data
   FROM public.follows f
   JOIN public.businesses b ON b.id = f.business_id
@@ -173,4 +176,4 @@ WHEN (
 EXECUTE FUNCTION public.handle_coupon_notification();
 
 -- Live badge: let clients subscribe to INSERTs on their own rows.
-ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.business_notifications;

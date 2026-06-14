@@ -7,10 +7,11 @@ import {
 } from '@/app/api/helpers/response';
 import { NextRequest } from 'next/server';
 
-// Mobile-only notification inbox, backed by the `notifications` table the
-// fan-out triggers populate (migration 20260611000000). Deliberately separate
-// from the cookie-auth /api/web/notifications routes — neither imports the
-// other, so the two surfaces can't break each other.
+// Mobile-only notification inbox, backed by the `business_notifications` table
+// the fan-out triggers populate (migration 20260611000000). Deliberately
+// separate from the cookie-auth /api/web/notifications routes (and their own
+// `notifications` table) — neither imports the other, so the two surfaces
+// can't break each other.
 
 export async function GET(req: NextRequest) {
   try {
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
     // query plan on the (user_id, created_at) index regardless.
     const [listRes, unreadRes] = await Promise.all([
       supabase
-        .from('notifications')
+        .from('business_notifications')
         .select('id, type, title, body, data, is_read, created_at', {
           count: 'exact',
         })
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
         .order('created_at', { ascending: false })
         .range(offset, offset + per_page - 1),
       supabase
-        .from('notifications')
+        .from('business_notifications')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', auth.user.id)
         .eq('is_read', false),

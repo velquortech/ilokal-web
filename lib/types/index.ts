@@ -206,10 +206,16 @@ export type {
 // Notification types
 export type {
   Notification,
+  NotificationType,
+  NotificationMetadata,
   NotificationPreferences,
   CreateNotificationRequest,
+  EmitNotificationInput,
+  NotificationListParams,
+  NotificationPage,
   PaginatedNotificationsResponse,
 } from './notification';
+export { NOTIFICATION_TYPES } from './notification';
 
 // Review types
 export type {
@@ -254,6 +260,16 @@ export type { SelectFieldConfig, UserFormModalProps } from './forms';
 
 // Phone Input Types
 export type { CountryCode } from './phoneInput';
+
+// Settings Domain Types
+export type {
+  OperatingHoursDay,
+  DayKey,
+  OperatingHours,
+  SocialLinks,
+  BusinessSettings,
+  MFAFactor,
+} from './settings';
 
 // Database Types
 export type {

@@ -1,4 +1,3 @@
-// Re-export all auth actions for backward compatibility
 export {
   loginAction,
   loginAsAdmin,
@@ -11,3 +10,5 @@ export {
 } from './authActions';
 
 export { updateCurrentUserProfileAction } from './userActions';
+
+export { checkMFARequiredAction, verifyMFALoginAction } from './mfaActions';

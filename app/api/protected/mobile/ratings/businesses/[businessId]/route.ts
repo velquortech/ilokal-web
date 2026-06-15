@@ -5,6 +5,7 @@ import {
   notFoundResponse,
   successResponse,
   unauthorizedResponse,
+  loggedServerError,
 } from '@/app/api/helpers/response';
 import { NextRequest } from 'next/server';
 
@@ -52,7 +53,11 @@ export async function POST(req: NextRequest, { params }: Params) {
       .select('id, rating, comment, created_at, updated_at')
       .single();
 
-    if (error) return generalErrorResponse({ message: error.message });
+    if (error)
+      return loggedServerError(
+        'protected/mobile/ratings/businesses/[businessId]',
+        error,
+      );
 
     return successResponse({ rating: data });
   } catch {

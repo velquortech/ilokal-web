@@ -31,7 +31,7 @@ export const updateBusinessProfileSchema = z.object({
     .url('Banner URL must be a valid URL')
     .optional()
     .nullable(),
-  category_id: z.string().uuid('Invalid category ID').optional().nullable(),
+  category_id: z.guid('Invalid category ID').optional().nullable(),
   interior_images: z
     .array(z.string().url('Each gallery image must be a valid URL'))
     .max(10, 'Maximum 10 gallery images allowed')
@@ -156,7 +156,7 @@ export type BusinessFilters = z.infer<typeof businessFiltersSchema>;
  * Schema for validating UUID
  */
 export const uuidSchema = z.object({
-  id: z.string().uuid('Invalid business ID format'),
+  id: z.guid('Invalid business ID format'),
 });
 
 // ============================================================================
@@ -173,7 +173,7 @@ export const businessLogoUploadSchema = z.object({
       (file) => file.size <= 2 * 1024 * 1024,
       'File size must be less than 2MB',
     ),
-  businessId: z.string().uuid('Invalid business ID format'),
+  businessId: z.guid('Invalid business ID format'),
 });
 
 export type BusinessLogoUploadInput = z.infer<typeof businessLogoUploadSchema>;
@@ -188,7 +188,7 @@ export const interiorPhotosUploadSchema = z.object({
       (file) => file.size <= 2 * 1024 * 1024,
       'File size must be less than 2MB',
     ),
-  businessId: z.string().uuid('Invalid business ID format'),
+  businessId: z.guid('Invalid business ID format'),
 });
 
 export type InteriorPhotosUploadInput = z.infer<
@@ -205,7 +205,7 @@ export const verificationDocsUploadSchema = z.object({
       (file) => file.size <= 2 * 1024 * 1024,
       'File size must be less than 2MB',
     ),
-  businessId: z.string().uuid('Invalid business ID format'),
+  businessId: z.guid('Invalid business ID format'),
 });
 
 export type VerificationDocsUploadInput = z.infer<

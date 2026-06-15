@@ -12,7 +12,7 @@ VALUES
     '{"type":"percentage","value":20}', NOW(), NOW() + INTERVAL '30 days', 'published', 'coupon'),
   ('44444444-4444-4444-4444-444444444402', '11111111-1111-1111-1111-111111111101',
     'BOGO-COLDBREW', 'Buy one Cold Brew, get the second free all weekend.',
-    '{"type":"percentage","value":50}', NOW(), NOW() + INTERVAL '14 days', 'published', 'deal'),
+    '{"type":"percentage","value":50}', NOW(), NOW() + INTERVAL '3 days', 'published', 'deal'),
 
   -- Flora & Flour Bakery
   ('44444444-4444-4444-4444-444444444403', '11111111-1111-1111-1111-111111111102',
@@ -41,7 +41,7 @@ VALUES
   -- Luna & Leaf Bistro
   ('44444444-4444-4444-4444-444444444409', '11111111-1111-1111-1111-111111111105',
     'SMOOTHIE-FREE', 'Order any grain or acai bowl and get a smoothie free.',
-    '{"type":"percentage","value":20}', NOW(), NOW() + INTERVAL '10 days', 'published', 'coupon'),
+    '{"type":"percentage","value":20}', NOW(), NOW() + INTERVAL '5 days', 'published', 'coupon'),
   ('44444444-4444-4444-4444-444444444410', '11111111-1111-1111-1111-111111111105',
     'FIRST15', 'First-time dine-in customers get 15% off their entire bill.',
     '{"type":"percentage","value":15}', NOW(), NOW() + INTERVAL '60 days', 'published', 'deal'),
@@ -57,7 +57,7 @@ VALUES
   -- Iloilo Street Eats
   ('44444444-4444-4444-4444-444444444413', '11111111-1111-1111-1111-111111111107',
     'ISAW10', 'Order 10 isaw skewers and receive 5 pieces free.',
-    '{"type":"percentage","value":33}', NOW(), NOW() + INTERVAL '14 days', 'published', 'deal'),
+    '{"type":"percentage","value":33}', NOW(), NOW() + INTERVAL '2 days', 'published', 'deal'),
   ('44444444-4444-4444-4444-444444444414', '11111111-1111-1111-1111-111111111107',
     'ORDER15', '15% off any combined street food order totaling ₱100+.',
     '{"type":"percentage","value":15}', NOW(), NOW() + INTERVAL '30 days', 'published', 'coupon'),
@@ -76,7 +76,7 @@ VALUES
     '{"type":"percentage","value":10}', NOW(), NOW() + INTERVAL '30 days', 'published', 'coupon'),
   ('44444444-4444-4444-4444-444444444418', '11111111-1111-1111-1111-111111111109',
     'FREE-TOTE', 'Buy any dress and receive a complimentary souvenir tote bag.',
-    '{"type":"percentage","value":15}', NOW(), NOW() + INTERVAL '14 days', 'published', 'deal'),
+    '{"type":"percentage","value":15}', NOW(), NOW() + INTERVAL '6 days', 'published', 'deal'),
 
   -- PageTurner Books
   ('44444444-4444-4444-4444-444444444419', '11111111-1111-1111-1111-111111111110',

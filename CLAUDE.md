@@ -1,5 +1,10 @@
 # CLAUDE.md — iLokal Web
 
+<!-- TEMP: remove when admin rework is merged -->
+> **Active work:** Admin design-parity + `/admin/[adminId]` migration — see
+> [`.claude/ADMIN_REWORK.md`](.claude/ADMIN_REWORK.md) for parities, phased action
+> items, and the testing plan. Delete that file and this note when finished.
+
 ## Commands
 
 ```bash
@@ -30,31 +35,36 @@ Soft test step: `yarn lint --fix && yarn build` (or `make review` to include tes
 
 ## Stack
 
-Next.js 16 (App Router) · React 19 · TypeScript strict · Supabase SSR + PostGIS · Zod · shadcn-ui + Radix UI · Tailwind CSS v4 · Vitest
+Next.js 16.2.7 (App Router; latest stable — open proxy-bypass advisories have no stable fix yet, compensated in the Proxy bullet) · React 19 · TypeScript strict · Supabase SSR + PostGIS · Zod 4 · shadcn-ui + Radix UI · Tailwind CSS v4 · Vitest
 
 ## Architecture
 
 - **Routing:** App Router only. Server Actions for internal mutations, API routes for external/mobile integrations.
 - **Server Actions:** Use static imports from `lib/api/*/Service` and `lib/api/*/Query` directly. Never call `lib/services/` HTTP wrappers from a Server Action — they make an unnecessary network round-trip. `lib/services/` is for the admin/axios pattern only.
+- **Supabase must never appear in components.** Components (`.tsx` files) must never import from `@supabase/ssr`, `@supabase/supabase-js`, `config/client.ts`, or call `createBrowserClient` / `createServerClient` directly. All Supabase queries and auth calls belong in Server Actions (`'use server'`) under `app/**/actions/` or `lib/api/`. Components call the exported action function — they never touch the Supabase client. This keeps auth logic, RLS scoping, and DB access in one auditable layer and prevents credential leakage into client bundles.
 - **API namespaces:** `app/api/web/` — web-facing routes; `app/api/mobile/` — public mobile; `app/api/protected/mobile/` — JWT-gated mobile; `app/api/admin/` — admin only; `app/api/auth/` — auth flows.
-- **Proxy:** Single `proxy.ts` at repo root (Next.js 16 replaces `middleware.ts`) — refreshes session cookies for page routes and verifies JWTs for `/api/protected/**` via `supabase.auth.getUser()`. Sets `x-verified-user-id` header after verification (spoofing-safe); handlers reuse it to skip a redundant `getUser()` round-trip.
-  - Protected mobile handlers: call `getMobileUser(req)` from `app/api/helpers/mobile-request.ts` — returns `{ user, token, supabase }` with RLS-scoped client.
+- **Proxy:** Single `proxy.ts` at repo root (Next.js 16 replaces `middleware.ts`). (1) **Rate-limits** the whole mobile surface (`/api/mobile` + `/api/protected/mobile`) by client IP before any auth/DB work — 200 req / 60s default (env `MOBILE_RATE_LIMIT` / `MOBILE_RATE_WINDOW_MS`), returns 429 + `Retry-After`. In-memory/per-instance (`app/api/helpers/rateLimit.ts`) — a baseline flood guard, not a distributed quota (swap for Upstash/KV for that). (2) Refreshes session cookies for page routes. (3) Verifies JWTs for `/api/protected/**` via `supabase.auth.getUser()` and forwards `x-verified-user-id`. That header is **defense-in-depth only** — `getMobileUser()` always re-verifies the JWT itself and does NOT trust the header to skip `getUser()`, so a proxy bypass can't yield impersonation (compensating control for the open Next ≤16.3.0-canary proxy-bypass advisories).
+  - Protected mobile handlers: call `getMobileUser(req)` from `app/api/helpers/mobile-request.ts` — **always verifies the JWT via `getUser()`**, returns `{ user, token, supabase }` with an RLS-scoped client.
   - Web/admin handlers: call `assertAuthorized(req)` from `lib/utils/auth/`.
 - **Auth:** Supabase SSR with HTTP-only cookies (web) or `Authorization: Bearer <jwt>` (mobile).
 - **Types:** `lib/types/` — re-export from `lib/types/index.ts`.
-- **Validation:** Zod schemas in `lib/validation/`.
+- **Validation:** Zod schemas in `lib/validation/`. For UUID ids use `z.guid()`, NOT `z.uuid()`/`z.string().uuid()` — Zod 4's `z.uuid()` is strict RFC-9562 and rejects this app's Postgres/seed UUIDs (silently 400s every request that validates an id).
 - **Error format:** `ApiResponse<T> = { success: boolean; data?: T; error?: { code: string; message: string } }`.
+- **Error leakage:** never pass a backend/Supabase `error.message` into a client response. On 500 paths use `loggedServerError(context, error)` (`app/api/helpers/response.ts`) — logs server-side, returns a generic body. Raw driver errors leak table/column/constraint names; reserve message text for hand-written 4xx.
 - **Path alias:** `@/*` maps to project root.
 
 ## Schema state
 
-Key facts about the current normalized schema (as of 2026-05-30):
+Key facts about the current normalized schema (as of 2026-06-08):
 
-- **`coupons`** — fully normalized in `20260523000000`. Columns: `code` (NOT `title`), `discount` JSONB `{type:'percentage'|'fixed_amount', value:number}` (NOT `type` enum), `expiry_date` (NOT `end_date`), `status` (`draft|published`). `redeem_time_limit_minutes` is gone. `promotion_type` (`'coupon' | 'deal'`, migration `20260523000001`) — the deals feed (`/api/mobile/deals`) filters `promotion_type = 'deal'`. Redemption caps live on the row: `max_redemptions_per_user`, `max_redemptions_global`, `current_redemptions`. `requires_subscription` (boolean, default false, `20260530000001`) — when true the redeem route requires the user to follow the business first.
+- **`coupons`** — fully normalized in `20260523000000`. Columns: `code` (NOT `title`), `discount` JSONB `{type:'percentage'|'fixed_amount', value:number}` (NOT `type` enum), `expiry_date` (NOT `end_date`), `status` (`draft|published`). `redeem_time_limit_minutes` is gone. `promotion_type` (`'coupon' | 'deal'`, migration `20260523000001`) — the deals feed (`/api/mobile/deals`) filters `promotion_type = 'deal'`. Redemption caps live on the row: `max_redemptions_per_user`, `max_redemptions_global`, `current_redemptions`. `requires_follow` (boolean, default false; renamed from `requires_subscription` in `20260605000004`) — when true the redeem route requires the user to follow the business first. `branch_id` (nullable FK → `branches`, `20260528000001`; `null` = all branches) scopes a coupon to one branch — carried through `CreateCouponRequest`, `createCouponSchema`/`updateCouponSchema`, and `couponService`.
 - **`products.status`** — `'active' | 'unlisted' | 'disabled'` (NOT `inactive|archived`). `is_available` is kept in sync by trigger; `status` is canonical. Also has `sale_price` (nullable) and `category_id` → `categories(id, name, slug)` (the `categories` table, NOT `business_categories`).
 - **Ratings** — two tables: `ratings` (product-level: `product_id`, `business_id`, `review_text`) and `business_ratings` (`comment`). Mobile rating routes `upsert` with `onConflict`, so each needs a matching UNIQUE: `ratings(user_id, product_id)` (`20260528000000`) and `business_ratings(user_id, business_id)` (`20260508000003`).
 - **Redemptions** — `user_redemptions` is the live table (has `expires_at`, `is_claimed`, `branch_id`). `coupon_redemptions` is a dead table — never insert into or query it; use `user_redemptions` for all redemption reads/writes (routes, analytics, service layer). `user_redemptions.coupon_id` has an FK → `coupons(id)` (restored in `20260530000000`; the `20260523000000` normalization dropped it via CASCADE, which broke PostgREST nested `coupons(...)` selects until restored).
-- **Coupon claim flow** — redeeming inserts a `user_redemptions` row (`is_claimed=false`); claiming flips it via `PATCH /api/protected/mobile/redemptions/[id]/claim` with an atomic `.eq('is_claimed', false)` guard. RLS `"Users manage own interactions"` (`FOR ALL USING auth.uid() = user_id`) lets the user's RLS-scoped client do both. The redeem route (POST) also enforces a subscription gate (`requires_subscription` → 403) and rejects a second unclaimed, unexpired redemption of the same coupon (active-dupe → 400). Full rule matrix in `.claude/docs/coupon-rules.md`.
+- **Coupon claim flow** — redeeming inserts a `user_redemptions` row (`is_claimed=false`); claiming flips it via `PATCH /api/protected/mobile/redemptions/[id]/claim` with an atomic `.eq('is_claimed', false)` guard. RLS `"Users manage own interactions"` (`FOR ALL USING auth.uid() = user_id`) lets the user's RLS-scoped client do both. The redeem route (POST) also enforces a follow gate (`requires_follow` → 403) and rejects a second unclaimed, unexpired redemption of the same coupon (active-dupe → 400). Full rule matrix in `.claude/docs/coupon-rules.md`.
+- **`follows`** — social follow table, renamed from `subscriptions` in `20260605000000` (distinct from the billing tables `subscription_plans`/`business_subscriptions`). Policies are self (`"Users manage own follows"`) + admin only — **never publicly readable**. A `USING(true)` public read (`20260607000000`) leaked the whole follow graph to anon and was dropped in `20260608000001`. Follower counts (nearby/detail badges) come from `get_follower_counts(p_business_ids uuid[])`, a SECURITY DEFINER RPC (granted anon/authenticated) returning counts only — never `user_id`. Don't re-add a broad SELECT on `follows`.
+- **`business_posts`** (`20260605000003`) — content behind `GET /api/protected/mobile/updates` (merges posts + live coupons + new products from followed businesses). RLS: public read for posts of verified, non-archived businesses; writes owner/admin only (no mobile write path).
+- **`user_redemptions.code`** (`20260608000002`) — 6-char display code shown to the cashier, **server-generated** by the `trg_set_redemption_code` BEFORE INSERT trigger (single source of truth — no client/dashboard hashing). The trigger is `ENABLE ALWAYS` so it still fires under `session_replication_role = replica` (see seed-trigger gotcha below).
 - **Deals promotion** — the explore feed (`/api/mobile/deals`) sizes bento cards by `subscription_plans.features_promo_boost` (boolean, `20260530000002`), NOT by `price`. The anon feed reads promoted subs via the public SELECT policy in `20260530000003` (active subs on promo-boost plans only). Set the flag on new promoted plans, or they silently won't get boosted.
 - **Coupon access invariant** — every route that fetches a coupon for display or redemption must filter `.eq('status', 'published').is('archived_at', null).lte('start_date', now)`. Omitting any of the three allows draft, archived, or not-yet-active coupons to be acted on.
 - **`increment_coupon_redemptions(p_coupon_id uuid)`** — SECURITY DEFINER RPC (`20260527000001`). Call via `supabase.rpc('increment_coupon_redemptions', { p_coupon_id })` after inserting into `user_redemptions`. Returns `true` if incremented, `false` if global cap already hit. Must be SECURITY DEFINER — authenticated users have no UPDATE policy on `coupons`. Only the **global** cap is race-safe via this RPC; the per-user cap in the redeem route is a non-atomic count-then-insert (TOCTOU) — concurrent redeems by one user can slip past it.
@@ -63,11 +73,12 @@ Key facts about the current normalized schema (as of 2026-05-30):
   - `20260527000001_coupon_atomic_increment.sql` — creates `increment_coupon_redemptions` RPC.
   - `20260528000000_ratings_unique_user_product.sql` — UNIQUE(user_id, product_id) on `ratings`; backs the product-rating upsert. `ADD CONSTRAINT` fails if duplicate pairs exist — dedupe before applying to a populated DB.
   - `20260530000000_restore_user_redemptions_coupon_fk.sql` — restores the `user_redemptions.coupon_id` → `coupons(id)` FK.
-  - `20260530000001_coupons_requires_subscription.sql` — adds `coupons.requires_subscription`.
+  - `20260530000001_coupons_requires_subscription.sql` — adds `coupons.requires_subscription` (later renamed to `requires_follow` in `20260605000004`).
   - `20260530000002_subscription_plans_promo_boost.sql` — adds `subscription_plans.features_promo_boost`.
   - `20260530000003_public_read_promoted_subscriptions.sql` — public SELECT policy for active subs on promo-boost plans (anon deals feed).
 - **Mobile response envelope** — `successResponse(data)` returns data flat (e.g. `{ businesses: [...] }`), NOT wrapped in `ApiResponse<T>`. The `success/error` wrapper applies to web routes only.
 - **Migration timestamps must be unique** — `supabase_migrations.schema_migrations` uses version as PK. Two files sharing a timestamp will fail on the second insert.
+- **Seed triggers under replica mode** — seed files set `session_replication_role = replica` to bypass the `auth.users` FK, which **skips normal (`O`-enabled) triggers**. A `BEFORE INSERT` trigger that must populate a `NOT NULL` column during seeding needs `ENABLE ALWAYS` (e.g. `trg_set_redemption_code`), or `migrate-reset` fails on the seed insert.
 
 ## Mobile route conventions
 
@@ -103,7 +114,7 @@ Load on request (read when topic is relevant):
 - `.claude/docs/session-management.md` — role-based timeouts, activity detection
 - `.claude/docs/rbac-model.md` — permission tiers, audit logging
 - `.claude/docs/api-wrapper.md` — isomorphic service layer, client vs server imports
-- `.claude/docs/roadmap.md` — active refactors, protected-route audit phases, and enforcement map
+- `.claude/docs/tech-debt.md` — universal debt/roadmap doc: audit findings log (TD-NNN), active refactors, protected-route audit phases, and enforcement map
 - `.claude/docs/api-strategy.md` — full endpoint implementation plan and status
 - `.claude/docs/coupon-rules.md` — coupon claim rules, redeem gates, error codes
 - `.claude/docs/testing.md` — untested routes matrix, test templates

@@ -1,4 +1,3 @@
-// Re-export all business actions for backward compatibility and easy importing
 export {
   createProductAction,
   updateProductAction,
@@ -39,3 +38,19 @@ export {
 } from './billingActions';
 
 export { updateBusinessProfileAction } from './profileActions';
+
+export {
+  changePasswordAction,
+  changeEmailAction,
+  upsertBusinessSettingsAction,
+  updateNotificationPreferencesAction,
+  deactivateBusinessAction,
+  deleteAccountAction,
+} from './settingsActions';
+
+export {
+  listMFAFactorsAction,
+  unenrollMFAAction,
+  enrollMFAAction,
+  verifyMFAEnrollmentAction,
+} from './mfaActions';

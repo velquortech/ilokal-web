@@ -1,31 +1,18 @@
 import { getAdminUserOrRedirect } from '@/lib/api/getCurrentUser';
-import { AdminLayoutClient } from '@/app/admin/components/AdminLayoutClient';
 
 // This route uses cookies for authentication, must be dynamic
 export const dynamic = 'force-dynamic';
 
 /**
- * Admin Layout - Server Component
- *
- * This layout:
- * - Verifies user is authenticated and is admin (server-side)
- * - Redirects to auth/home if not authorized
- * - Fetches user data from database (SSR)
- * - Renders interactive UI as client component
- *
- * Benefits:
- * - No client-side auth checks needed (middleware handles this too)
- * - Fresh user data on each page load
- * - Can add Suspense boundaries for streaming
- * - Server can fetch admin-specific data if needed
+ * Thin admin auth wrapper — mirrors `app/business/layout.tsx`.
+ * The real shell + dynamic-segment guard live in `[adminId]/layout.tsx`;
+ * the index resolver (`page.tsx`) redirects to `/admin/[adminId]`.
  */
-export default async function AdminDashboardLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // ✅ This will redirect if not authenticated or not admin
-  const user = await getAdminUserOrRedirect();
-
-  return <AdminLayoutClient user={user}>{children}</AdminLayoutClient>;
+  await getAdminUserOrRedirect();
+  return <>{children}</>;
 }

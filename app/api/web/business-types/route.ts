@@ -1,7 +1,8 @@
 import { businessService } from '@/lib/api/business-categories/businessCategoriesService';
+import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { NextResponse } from 'next/server';
 
-// GET all business types with their categories
+// GET all business types with their categories (public)
 export async function GET() {
   const { data, error } = await businessService.getBusinessTypes();
 
@@ -10,9 +11,12 @@ export async function GET() {
   return NextResponse.json(data);
 }
 
-// CREATE a new business type
+// CREATE a new business type (admin only)
 export async function POST(request: Request) {
   try {
+    const auth = await assertAuthorized(undefined, { roles: ['admin'] });
+    if (!auth.authorized) return auth.error;
+
     const body = await request.json();
     const { data, error } = await businessService.createBusinessType(body);
 

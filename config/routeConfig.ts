@@ -92,6 +92,10 @@ export function businessCouponsPath(businessId: string): string {
   return businessPath(businessId, 'coupons');
 }
 
+export function businessRedeemedCouponsPath(businessId: string): string {
+  return businessPath(businessId, 'redeemed-coupons');
+}
+
 export function businessBranchesPath(businessId: string): string {
   return businessPath(businessId, 'branches');
 }
@@ -109,4 +113,28 @@ export function businessBranchPath(
 
 export function businessProfilePath(businessId: string): string {
   return businessPath(businessId, 'profile');
+}
+
+export function businessSettingsPath(businessId: string): string {
+  return businessPath(businessId, 'settings');
+}
+
+/**
+ * Build any path under /admin/[adminId].
+ * Pass additional segments as rest args, e.g. adminPath(id, 'users').
+ */
+export function adminPath(adminId: string, ...segments: string[]): string {
+  return ['/admin', adminId, ...segments].filter(Boolean).join('/');
+}
+
+export function adminUsersPath(adminId: string): string {
+  return adminPath(adminId, 'users');
+}
+
+export function adminBranchesPath(adminId: string): string {
+  return adminPath(adminId, 'branches');
+}
+
+export function adminAccountStatusPath(adminId: string): string {
+  return adminPath(adminId, 'account-status');
 }

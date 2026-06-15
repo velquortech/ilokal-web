@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 const baseRatingSchema = z.object({
-  product_id: z.string().uuid('Must be a valid UUID').optional(),
-  business_id: z.string().uuid('Must be a valid UUID').optional(),
+  product_id: z.guid('Must be a valid UUID').optional(),
+  business_id: z.guid('Must be a valid UUID').optional(),
   rating: z
     .number('Rating must be a number')
     .int('Rating must be an integer')

@@ -17,11 +17,11 @@ make clean            # Full teardown (stops Supabase, deletes .env)
 | ----------------------------------------- | ------------------------------------------------------ |
 | `NEXT_PUBLIC_SUPABASE_URL`                | Supabase project URL                                   |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`    | Anon/publishable key (client-safe)                     |
-| `NEXT_PUBLIC_SUPABASE_SERVICE_SECRET_KEY` | Service role key (server only — bypasses RLS)          |
+| `SUPABASE_SERVICE_ROLE_KEY`               | Service role key — **server only, bypasses RLS. NEVER use a `NEXT_PUBLIC_` prefix (would inline into the client bundle).** |
 | `NEXT_PUBLIC_APP_URL`                     | Base URL used to generate share links                  |
 | `NEXT_PUBLIC_SUPABASE_TOKEN`              | Used to name the auth cookie (`sb-<token>-auth-token`) |
 | `NEXT_IMAGE_PUBLIC_URL`                   | Supabase Storage base URL for `next/image`             |
-| `NEXT_PUBLIC_SUPABASE_DB_URL`             | Direct Postgres connection string                      |
+| `SUPABASE_DB_URL`                         | Direct Postgres connection string (server only)        |
 
 ## Database migrations
 
@@ -37,12 +37,14 @@ Migrations live in `supabase/migrations/`. Apply them in timestamp order.
 
 ## Supabase clients
 
-| File                                | Client                                            | When to use                                                        |
-| ----------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------ |
-| `config/index.ts`                   | `createServerClient` (service role, cookie-based) | Server Components and web API routes                               |
-| `config/client.ts`                  | `createBrowserClient` (anon key)                  | Client Components                                                  |
-| `supabase/bearer.ts`                | `createServerClient` (anon key, no cookies)       | Public mobile routes (no session needed)                           |
-| `app/api/helpers/mobile-request.ts` | `createClient` with `Authorization` header        | Protected mobile routes — passes user JWT so RLS applies correctly |
+| File                                | Client                                                | When to use                                                        |
+| ----------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------ |
+| `supabase/server.ts`                | `createServerSupabaseClient` (anon key + cookies, RLS)| Server Components, Server Actions, and web/admin API routes         |
+| `config/client.ts`                  | `createBrowserClient` (anon key)                      | Client Components                                                  |
+| `supabase/bearer.ts`                | `createServerClient` (anon key, no cookies)           | Public mobile routes (no session needed)                           |
+| `app/api/helpers/mobile-request.ts` | `createClient` with `Authorization` header            | Protected mobile routes — passes user JWT so RLS applies correctly |
+
+The RLS-bypassing service-role client lives only in `supabase/server.ts` as `createAnalyticsSupabaseClient` / `createServerAdminClient` — it reads the **server-only** `SUPABASE_SERVICE_ROLE_KEY` (no `NEXT_PUBLIC_` prefix). Use it only for aggregate analytics or `auth.admin.*`.
 
 **Never** use the service-role client in mobile routes. Use `getMobileUser()` instead so Supabase RLS enforces row-level access automatically.
 
@@ -282,7 +284,7 @@ Combines active redemptions + followed businesses for the in-app trip planner.
 | Response helpers        | `app/api/helpers/response.ts`                                        |
 | Proxy                   | `proxy.ts`                                                           |
 | Bearer Supabase client  | `supabase/bearer.ts`                                                 |
-| Server Supabase client  | `config/index.ts`                                                    |
+| Server Supabase client  | `supabase/server.ts`                                                 |
 | Browser Supabase client | `config/client.ts`                                                   |
 | DB types                | `lib/types/database.ts` (auto-generated — run `make generate-types`) |
 | Migrations              | `supabase/migrations/`                                               |

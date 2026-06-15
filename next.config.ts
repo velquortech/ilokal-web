@@ -61,9 +61,21 @@ if (prodImageUrl) {
 
 const buildCSPImageSources = (): string => {
   const sources = ["'self'", 'data:', 'blob:'];
-  sources.push('http://127.0.0.1:54321');
+  // Derive allowed image sources from the same list Next.js uses for remotePatterns
+  // so CSP and next/image config never diverge.
+  for (const pattern of imageRemotePatterns) {
+    const origin = pattern.port
+      ? `${pattern.protocol}://${pattern.hostname}:${pattern.port}`
+      : `${pattern.protocol}://${pattern.hostname}`;
+    if (!sources.includes(origin)) sources.push(origin);
+  }
   if (process.env.NODE_ENV === 'production') {
     sources.push('https:');
+  }
+  // Demo: allow the public storage tunnel host so the share landing page's
+  // <img> isn't CSP-blocked in real browsers (dev only; prod already has https:).
+  if (process.env.NEXT_PUBLIC_PUBLIC_STORAGE_URL) {
+    sources.push(process.env.NEXT_PUBLIC_PUBLIC_STORAGE_URL);
   }
   if (prodImageUrl) {
     sources.push(`${prodImageUrl.protocol}://${prodImageUrl.hostname}`);
@@ -78,8 +90,6 @@ const nextConfig: NextConfig = {
     NEXT_IMAGE_PUBLIC_URL: process.env.NEXT_IMAGE_PUBLIC_URL,
     NEXT_PUBLIC_DESTINATION: process.env.NEXT_PUBLIC_DESTINATION,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY:
-      process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY,
     NEXT_PUBLIC_SUPABASE_TOKEN: process.env.NEXT_PUBLIC_SUPABASE_TOKEN,
   },
   images: {

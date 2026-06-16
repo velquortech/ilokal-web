@@ -58,6 +58,14 @@ VALUES
     '', '', '', '', '', ''
   )
 ON CONFLICT (id) DO UPDATE SET
+  -- Re-seed must restore the known dev password + clear any ban, so the three
+  -- sanctioned accounts always remain loginable with `ilokal@dev` on cloud
+  -- (a plain INSERT..ON CONFLICT would leave a pre-existing rotated/banned row
+  -- untouched and silently lock these out). The ~150 sample accounts are still
+  -- locked by cloud-lockdown.sql — only these three IDs are reset here.
+  encrypted_password        = crypt('ilokal@dev', gen_salt('bf')),
+  banned_until              = NULL,
+  email_confirmed_at        = COALESCE(auth.users.email_confirmed_at, NOW()),
   confirmation_token        = '',
   recovery_token            = '',
   email_change_token_new    = '',

@@ -90,7 +90,7 @@ seed-storage:
 	@bash supabase/seeds/seed-storage.sh
 
 seed-db:
-	@for f in supabase/seeds/users.sql supabase/seeds/subscription_plans.sql supabase/seeds/business_categories.sql supabase/seeds/businesses.sql supabase/seeds/products.sql supabase/seeds/coupons.sql supabase/seeds/ratings.sql supabase/seeds/business_subscriptions.sql supabase/seeds/follows.sql supabase/seeds/view_counts.sql; do \
+	@for f in supabase/seeds/users.sql supabase/seeds/subscription_plans.sql supabase/seeds/business_categories.sql supabase/seeds/businesses.sql supabase/seeds/products.sql supabase/seeds/coupons.sql supabase/seeds/ratings.sql supabase/seeds/business_subscriptions.sql supabase/seeds/business_posts.sql supabase/seeds/follows.sql supabase/seeds/bulk_seed.sql supabase/seeds/view_counts.sql; do \
 		echo "  seeding $$f..."; \
 		docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < $$f; \
 	done
@@ -128,7 +128,8 @@ migrate-cloud:
 # uploads storage objects to the cloud buckets. Run `make migrate-cloud` first.
 # Re-runnable: seeds use ON CONFLICT and the lockdown is idempotent.
 CLOUD_SEED_FILES = users subscription_plans business_categories businesses products \
-                   coupons ratings business_subscriptions business_posts follows view_counts
+                   coupons ratings business_subscriptions business_posts follows \
+                   bulk_seed view_counts
 
 seed-cloud:
 	@if [ -z "$$SUPABASE_DB_URL" ] || [ -z "$$NEXT_PUBLIC_SUPABASE_URL" ] || [ -z "$$SUPABASE_SERVICE_ROLE_KEY" ]; then \

@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-06-16 — Dev accounts pinned to `ilokal@dev` across re-seeds (mvp)
+
+> No schema migration. Seed/script/docs only. **Security note:** the 3 sanctioned
+> dev accounts now intentionally keep the in-git `ilokal@dev` password on cloud —
+> use a hand-set dashboard password for any preview that must not ship a known cred.
+
+- **Root cause:** `cloud-lockdown.sql` step 3 rotated `admin@/owner@/testuser@ilokal.dev`
+  to `$SEED_DEV_PASSWORD` when set, and `users.sql`'s `ON CONFLICT DO UPDATE` never
+  reset `encrypted_password`/`banned_until` — so a re-seed silently left those three
+  on the rotated (or any stale) password and `ilokal@dev` stopped working on cloud.
+- **Fix:** `users.sql` upsert now restores `encrypted_password = crypt('ilokal@dev', …)`,
+  clears `banned_until`, and re-confirms email for the three sanctioned IDs on every
+  run — they are deterministically loginable with `ilokal@dev`. Removed the password-
+  rotation block (step 3) from `cloud-lockdown.sql` and the `SEED_DEV_PASSWORD`
+  forwarding from the `seed-cloud` Make target, `cloud-clean-replace.sh`, and README.
+  The ~150 sample/follower accounts stay banned + password-nulled (unchanged).
+
 ## 2026-06-16 — Cloud-portable seeds + APK-preview deploy flow (mvp)
 
 > No schema migration. Edits are to seed SQL, the storage seed script, and the

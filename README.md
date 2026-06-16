@@ -139,8 +139,6 @@ Use these to push the schema and seed data to a **hosted Supabase project** so t
 export SUPABASE_DB_URL="postgresql://postgres:<percent-encoded-pass>@<host>:5432/postgres"
 export NEXT_PUBLIC_SUPABASE_URL="https://<ref>.supabase.co"
 export SUPABASE_SERVICE_ROLE_KEY="<cloud-service-role-key>"
-# Optional: rotate the 3 dev accounts off the in-git default password
-export SEED_DEV_PASSWORD="<a-strong-password>"
 ```
 
 **Step 2 — Push migrations** (creates tables + storage buckets on the cloud DB):
@@ -163,7 +161,7 @@ make deploy-cloud
 
 After this, point the mobile app's env at `NEXT_PUBLIC_SUPABASE_URL` + the anon key and build the APK.
 
-> **Login lockdown:** `seed-cloud` runs `supabase/seeds/cloud-lockdown.sql`, so on the cloud DB only **`admin@ilokal.dev`**, **`owner@ilokal.dev`**, and **`testuser@ilokal.dev`** can sign in (password `ilokal@dev`, or `SEED_DEV_PASSWORD` if set). The ~150 sample/follower accounts are disabled. Real accounts created via sign-up afterwards are unaffected.
+> **Login lockdown:** `seed-cloud` runs `supabase/seeds/cloud-lockdown.sql`, so on the cloud DB only **`admin@ilokal.dev`**, **`owner@ilokal.dev`**, and **`testuser@ilokal.dev`** can sign in (password `ilokal@dev`, restored on every re-seed by `users.sql`). The ~150 sample/follower accounts are disabled. Real accounts created via sign-up afterwards are unaffected. Need a secret password for a real preview? Change it by hand in the dashboard *after* seeding.
 
 > **Safety & idempotency:** every cloud target refuses to run against a `localhost`/`127.0.0.1` URL, and `seed-storage.sh` refuses to upload to a cloud URL with the local dev key. The whole flow is re-runnable — existing rows and storage objects are skipped, nothing duplicates. (Rows seeded with `ON CONFLICT DO NOTHING` are **not** updated on re-run; reset those rows first if you change their seed values.)
 

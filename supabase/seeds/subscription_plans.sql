@@ -22,3 +22,11 @@ FROM (VALUES
 WHERE NOT EXISTS (
   SELECT 1 FROM public.subscription_plans sp WHERE sp.name = v.name
 );
+
+-- Idempotent flag reconciliation. The INSERT above only sets features_promo_boost
+-- on a *fresh* row; if the plans already existed (e.g. an earlier seed run that
+-- predated the flag) their stale FALSE survives and the promoted "featured" deals
+-- feed shows nothing. Force the canonical value on every run, keyed by plan name:
+-- paid/promoted plans boosted, Free Tier not.
+UPDATE public.subscription_plans
+SET features_promo_boost = (name IN ('Beta Access', 'Pro Monthly', 'Pro Yearly'));

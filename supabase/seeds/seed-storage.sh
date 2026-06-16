@@ -44,6 +44,7 @@ lf() {
 create_bucket() {
   local id="$1"
   curl -sf -X POST "$BASE/bucket" \
+    -H "apikey: $SERVICE_KEY" \
     -H "Authorization: Bearer $SERVICE_KEY" \
     -H "Content-Type: application/json" \
     -d "{\"id\":\"$id\",\"name\":\"$id\",\"public\":true}" \
@@ -54,6 +55,7 @@ upload() {
   local bucket="$1" path="$2" url="$3" mime="${4:-image/jpeg}"
   local status
   status=$(curl -so /dev/null -w "%{http_code}" \
+    -H "apikey: $SERVICE_KEY" \
     -H "Authorization: Bearer $SERVICE_KEY" \
     "$BASE/object/$bucket/$path")
   if [ "$status" = "200" ]; then
@@ -75,6 +77,7 @@ upload() {
     return
   fi
   curl -sf -X POST "$BASE/object/$bucket/$path" \
+    -H "apikey: $SERVICE_KEY" \
     -H "Authorization: Bearer $SERVICE_KEY" \
     -H "Content-Type: $mime" \
     --data-binary "@$tmp_file" \

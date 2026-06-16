@@ -121,6 +121,54 @@ After a reset the database and storage buckets are empty. Run these to populate 
 
 ---
 
+## ☁️ Cloud Deployment (APK Preview Build)
+
+Use these to push the schema and seed data to a **hosted Supabase project** so the mobile APK preview build has a real backend. Unlike the local commands, these talk to the cloud project over its direct Postgres connection.
+
+**Prerequisites**
+
+- `psql` and the Supabase CLI installed locally.
+- A Supabase cloud project, with its values from **Project Settings → Database / API**:
+  - `SUPABASE_DB_URL` — direct connection string (**must be percent-encoded**, e.g. escape `@` in the password as `%40`).
+  - `NEXT_PUBLIC_SUPABASE_URL` — `https://<ref>.supabase.co`.
+  - `SUPABASE_SERVICE_ROLE_KEY` — service-role key (used only to upload storage objects).
+
+**Step 1 — Export the cloud env vars** (point all of them at the cloud project, never local):
+
+```bash
+export SUPABASE_DB_URL="postgresql://postgres:<percent-encoded-pass>@<host>:5432/postgres"
+export NEXT_PUBLIC_SUPABASE_URL="https://<ref>.supabase.co"
+export SUPABASE_SERVICE_ROLE_KEY="<cloud-service-role-key>"
+# Optional: rotate the 3 dev accounts off the in-git default password
+export SEED_DEV_PASSWORD="<a-strong-password>"
+```
+
+**Step 2 — Push migrations** (creates tables + storage buckets on the cloud DB):
+
+```bash
+make migrate-cloud
+```
+
+**Step 3 — Seed data, lock down logins, and upload images:**
+
+```bash
+make seed-cloud
+```
+
+**Or do steps 2 + 3 in one command:**
+
+```bash
+make deploy-cloud
+```
+
+After this, point the mobile app's env at `NEXT_PUBLIC_SUPABASE_URL` + the anon key and build the APK.
+
+> **Login lockdown:** `seed-cloud` runs `supabase/seeds/cloud-lockdown.sql`, so on the cloud DB only **`admin@ilokal.dev`**, **`owner@ilokal.dev`**, and **`testuser@ilokal.dev`** can sign in (password `ilokal@dev`, or `SEED_DEV_PASSWORD` if set). The ~150 sample/follower accounts are disabled. Real accounts created via sign-up afterwards are unaffected.
+
+> **Safety & idempotency:** every cloud target refuses to run against a `localhost`/`127.0.0.1` URL, and `seed-storage.sh` refuses to upload to a cloud URL with the local dev key. The whole flow is re-runnable — existing rows and storage objects are skipped, nothing duplicates. (Rows seeded with `ON CONFLICT DO NOTHING` are **not** updated on re-run; reset those rows first if you change their seed values.)
+
+---
+
 ## 📌 Notes
 
 - Replace `[file-name]` with a descriptive name for the migration.

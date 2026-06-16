@@ -98,6 +98,58 @@ seed-db:
 
 seed: seed-storage seed-db
 
+# ── Cloud deploy (APK preview build) ──────────────────────────────────────────
+# Full flow: `make deploy-cloud` = migrate-cloud (schema + buckets) then seed-cloud
+# (data + login lockdown + storage). Or run either step on its own.
+#
+# Required env for ALL cloud targets (point at the CLOUD project, NOT local):
+#   SUPABASE_DB_URL              postgres connection string (must be percent-encoded)
+#   NEXT_PUBLIC_SUPABASE_URL     https://<ref>.supabase.co        (seed-cloud only)
+#   SUPABASE_SERVICE_ROLE_KEY    service-role key (storage upload) (seed-cloud only)
+# Optional:
+#   SEED_DEV_PASSWORD            rotate the 3 dev accounts off the in-git default password
+
+deploy-cloud: migrate-cloud seed-cloud
+
+# Push local migrations (creates tables + storage buckets) to the cloud DB.
+# --include-all applies every migration missing from the remote history table.
+migrate-cloud:
+	@if [ -z "$$SUPABASE_DB_URL" ]; then \
+		echo "Set SUPABASE_DB_URL to the CLOUD project's connection string first." >&2; exit 1; \
+	fi
+	@case "$$SUPABASE_DB_URL" in \
+		*127.0.0.1*|*localhost*) echo "Refusing: SUPABASE_DB_URL looks local. Use \`make migrate-up\` for local." >&2; exit 1;; \
+	esac
+	@echo "Pushing migrations to CLOUD database..."
+	@yarn supabase db push --db-url "$$SUPABASE_DB_URL" --include-all --yes
+
+# Seed a CLOUD project: runs every seed file over the direct Postgres connection,
+# then cloud-lockdown.sql (only the 3 sanctioned dev accounts can log in), then
+# uploads storage objects to the cloud buckets. Run `make migrate-cloud` first.
+# Re-runnable: seeds use ON CONFLICT and the lockdown is idempotent.
+CLOUD_SEED_FILES = users subscription_plans business_categories businesses products \
+                   coupons ratings business_subscriptions business_posts follows view_counts
+
+seed-cloud:
+	@if [ -z "$$SUPABASE_DB_URL" ] || [ -z "$$NEXT_PUBLIC_SUPABASE_URL" ] || [ -z "$$SUPABASE_SERVICE_ROLE_KEY" ]; then \
+		echo "Set SUPABASE_DB_URL, NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to the CLOUD project first." >&2; \
+		exit 1; \
+	fi
+	@case "$$NEXT_PUBLIC_SUPABASE_URL" in \
+		*127.0.0.1*|*localhost*) echo "Refusing: NEXT_PUBLIC_SUPABASE_URL ($$NEXT_PUBLIC_SUPABASE_URL) looks local. Use \`make seed\` for local." >&2; exit 1;; \
+	esac
+	@echo "Seeding CLOUD project at $$NEXT_PUBLIC_SUPABASE_URL ..."
+	@for f in $(CLOUD_SEED_FILES); do \
+		echo "  seeding $$f.sql..."; \
+		psql "$$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -q -f supabase/seeds/$$f.sql || exit 1; \
+	done
+	@echo "  applying login lockdown (only admin@/owner@/testuser@ilokal.dev can sign in)..."
+	@PWARG=""; [ -n "$$SEED_DEV_PASSWORD" ] && PWARG="-v dev_password=$$SEED_DEV_PASSWORD"; \
+		psql "$$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 $$PWARG -f supabase/seeds/cloud-lockdown.sql || exit 1
+	@echo "  uploading storage objects to cloud buckets..."
+	@bash supabase/seeds/seed-storage.sh
+	@echo "Cloud seed complete."
+
 generate-types:
 	# Delegate to the db:types script so the `>` redirect lives *inside* the
 	# yarn-run shell and captures only supabase's output — running
@@ -123,4 +175,4 @@ review:
 	yarn test:run
 	@echo "Review complete: lint, build, and tests passed"
 
-.PHONY: all init-log setup-supabase clean migrate-new migrate-up migrate-diff migrate-reset stop-db run-dev test test-run test-ui test-coverage review seed-storage seed-db seed
+.PHONY: all init-log setup-supabase clean migrate-new migrate-up migrate-diff migrate-reset stop-db run-dev test test-run test-ui test-coverage review seed-storage seed-db seed seed-cloud migrate-cloud deploy-cloud

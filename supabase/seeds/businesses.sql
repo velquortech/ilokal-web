@@ -16,7 +16,10 @@
 -- Pass a wide radius (e.g. radius=300000) to /api/mobile/businesses/nearby to see them all.
 --
 -- Run as service role. session_replication_role bypasses auth.users FK for the seed owner.
--- Storage URL base: http://127.0.0.1:54321/storage/v1/object/public
+-- Storage: logo_url / interior_images hold RAW in-bucket paths (e.g. '<business_id>/logo.jpg'),
+-- matching real registrations. resolveStorageUrl() resolves them against the active
+-- NEXT_PUBLIC_SUPABASE_URL, so the same seed works for both local and cloud. Upload the
+-- matching objects with `make seed-storage` (shop-logos / interior-images buckets).
 
 SET session_replication_role = replica;
 
@@ -32,11 +35,11 @@ VALUES
     'The Artisan Roastery',
     'Specialty coffee roasted in-house daily using single-origin beans from Benguet and Sagada.',
     '{"province":"Iloilo","city":"Iloilo City","barangay":"Kauswagan","street_address":"Iznart St.","zip_code":"5000","latitude":10.6969,"longitude":122.5732,"geometry":"lat:10.6969,lng:122.5732"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111101/logo.jpg',
+    '11111111-1111-1111-1111-111111111101/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111101/hero.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111101/gallery1.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111101/gallery2.jpg'
+      '11111111-1111-1111-1111-111111111101/hero.jpg',
+      '11111111-1111-1111-1111-111111111101/gallery1.jpg',
+      '11111111-1111-1111-1111-111111111101/gallery2.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Café' LIMIT 1)
@@ -47,10 +50,10 @@ VALUES
     'Flora & Flour Bakery',
     'Artisanal Filipino breads and pastries baked fresh every morning.',
     '{"province":"Iloilo","city":"Iloilo City","barangay":"Tabuc Suba, Jaro","street_address":"Rizal St.","zip_code":"5000","latitude":10.7300,"longitude":122.5660,"geometry":"lat:10.73,lng:122.566"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111102/logo.jpg',
+    '11111111-1111-1111-1111-111111111102/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111102/hero.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111102/gallery1.jpg'
+      '11111111-1111-1111-1111-111111111102/hero.jpg',
+      '11111111-1111-1111-1111-111111111102/gallery1.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Bakery / Pastry Shop' LIMIT 1)
@@ -61,9 +64,9 @@ VALUES
     'The Handy Corner',
     'Your trusted neighborhood hardware and home improvement store.',
     '{"province":"Iloilo","city":"Iloilo City","barangay":"San Rafael, Mandurriao","street_address":"Benigno Aquino Ave.","zip_code":"5000","latitude":10.7150,"longitude":122.5450,"geometry":"lat:10.715,lng:122.545"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111103/logo.jpg',
+    '11111111-1111-1111-1111-111111111103/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111103/hero.jpg'
+      '11111111-1111-1111-1111-111111111103/hero.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Specialty Shop' LIMIT 1)
@@ -74,11 +77,11 @@ VALUES
     'Aura Hair Studio',
     'Premium hair styling, coloring, and treatments by certified and experienced stylists.',
     '{"province":"Iloilo","city":"Iloilo City","barangay":"San Antonio, Molo","street_address":"Yulo St.","zip_code":"5000","latitude":10.6847,"longitude":122.5572,"geometry":"lat:10.6847,lng:122.5572"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111104/logo.jpg',
+    '11111111-1111-1111-1111-111111111104/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111104/hero.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111104/gallery1.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111104/gallery2.jpg'
+      '11111111-1111-1111-1111-111111111104/hero.jpg',
+      '11111111-1111-1111-1111-111111111104/gallery1.jpg',
+      '11111111-1111-1111-1111-111111111104/gallery2.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Salon / Barbershop' LIMIT 1)
@@ -89,11 +92,11 @@ VALUES
     'Luna & Leaf Bistro',
     'Farm-to-table bistro serving organic coffee and healthy Filipino-inspired bowls.',
     '{"province":"Iloilo","city":"Iloilo City","barangay":"Burgos-Mabini-Plaza, La Paz","street_address":"Jalandoni St.","zip_code":"5000","latitude":10.7200,"longitude":122.5566,"geometry":"lat:10.72,lng:122.5566"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111105/logo.jpg',
+    '11111111-1111-1111-1111-111111111105/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111105/hero.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111105/gallery1.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111105/gallery2.jpg'
+      '11111111-1111-1111-1111-111111111105/hero.jpg',
+      '11111111-1111-1111-1111-111111111105/gallery1.jpg',
+      '11111111-1111-1111-1111-111111111105/gallery2.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Restaurant' LIMIT 1)
@@ -104,10 +107,10 @@ VALUES
     'El Tapas & Brew',
     'Craft beer taproom with rotating local brews and Spanish-inspired pulutan to share.',
     '{"province":"Iloilo","city":"Oton","barangay":"Poblacion South","street_address":"Real St.","zip_code":"5020","latitude":10.6931,"longitude":122.4736,"geometry":"lat:10.6931,lng:122.4736"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111106/logo.jpg',
+    '11111111-1111-1111-1111-111111111106/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111106/hero.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111106/gallery1.jpg'
+      '11111111-1111-1111-1111-111111111106/hero.jpg',
+      '11111111-1111-1111-1111-111111111106/gallery1.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Bar / Pub' LIMIT 1)
@@ -118,9 +121,9 @@ VALUES
     'Iloilo Street Eats',
     'Authentic Ilonggo street food — isaw, BBQ skewers, fish balls, and steaming batchoy cups.',
     '{"province":"Iloilo","city":"Pavia","barangay":"Ungka II","street_address":"Pavia–Sta. Barbara Rd.","zip_code":"5001","latitude":10.7757,"longitude":122.5446,"geometry":"lat:10.7757,lng:122.5446"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111107/logo.jpg',
+    '11111111-1111-1111-1111-111111111107/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111107/hero.jpg'
+      '11111111-1111-1111-1111-111111111107/hero.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Street Food Vendor' LIMIT 1)
@@ -131,10 +134,10 @@ VALUES
     'Sari-Sari ni Nena',
     'Your friendly neighborhood convenience store stocked with daily essentials, fresh eggs, and local snacks.',
     '{"province":"Iloilo","city":"Santa Barbara","barangay":"Cubay","street_address":"Plaza St.","zip_code":"5002","latitude":10.8211,"longitude":122.5347,"geometry":"lat:10.8211,lng:122.5347"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111108/logo.jpg',
+    '11111111-1111-1111-1111-111111111108/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111108/hero.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111108/gallery1.jpg'
+      '11111111-1111-1111-1111-111111111108/hero.jpg',
+      '11111111-1111-1111-1111-111111111108/gallery1.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Local Grocery / Convenience Store' LIMIT 1)
@@ -145,11 +148,11 @@ VALUES
     'Hablon & Hue Boutique',
     'Contemporary fashion celebrating Iloilo''s weaving heritage — handcrafted hablon pieces and modern Filipino wear.',
     '{"province":"Iloilo","city":"Leganes","barangay":"Poblacion","street_address":"Rizal St.","zip_code":"5003","latitude":10.7836,"longitude":122.5872,"geometry":"lat:10.7836,lng:122.5872"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111109/logo.jpg',
+    '11111111-1111-1111-1111-111111111109/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111109/hero.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111109/gallery1.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111109/gallery2.jpg'
+      '11111111-1111-1111-1111-111111111109/hero.jpg',
+      '11111111-1111-1111-1111-111111111109/gallery1.jpg',
+      '11111111-1111-1111-1111-111111111109/gallery2.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Clothing & Apparel' LIMIT 1)
@@ -160,10 +163,10 @@ VALUES
     'PageTurner Books',
     'Independent bookshop spotlighting Filipino literature, local authors, and premium stationery.',
     '{"province":"Iloilo","city":"San Miguel","barangay":"Poblacion","street_address":"Bonifacio St.","zip_code":"5025","latitude":10.7794,"longitude":122.4744,"geometry":"lat:10.7794,lng:122.4744"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111110/logo.jpg',
+    '11111111-1111-1111-1111-111111111110/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111110/hero.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111110/gallery1.jpg'
+      '11111111-1111-1111-1111-111111111110/hero.jpg',
+      '11111111-1111-1111-1111-111111111110/gallery1.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Bookstore / Stationery' LIMIT 1)
@@ -174,11 +177,11 @@ VALUES
     'Serenity Spa Iloilo',
     'Full-service wellness sanctuary offering traditional hilot, Swedish massage, facials, and hot stone therapy.',
     '{"province":"Iloilo","city":"Cabatuan","barangay":"Poblacion","street_address":"Simon Ledesma St.","zip_code":"5031","latitude":10.8801,"longitude":122.4906,"geometry":"lat:10.8801,lng:122.4906"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111111/logo.jpg',
+    '11111111-1111-1111-1111-111111111111/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111111/hero.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111111/gallery1.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111111/gallery2.jpg'
+      '11111111-1111-1111-1111-111111111111/hero.jpg',
+      '11111111-1111-1111-1111-111111111111/gallery1.jpg',
+      '11111111-1111-1111-1111-111111111111/gallery2.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Spa / Wellness Center' LIMIT 1)
@@ -189,10 +192,10 @@ VALUES
     'IronForge Fitness',
     'Modern gym with top-tier equipment, certified personal trainers, and lively group classes.',
     '{"province":"Iloilo","city":"Tigbauan","barangay":"Poblacion (Senror)","street_address":"Tigbauan–Guimbal Rd.","zip_code":"5021","latitude":10.6772,"longitude":122.3756,"geometry":"lat:10.6772,lng:122.3756"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111112/logo.jpg',
+    '11111111-1111-1111-1111-111111111112/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111112/hero.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111112/gallery1.jpg'
+      '11111111-1111-1111-1111-111111111112/hero.jpg',
+      '11111111-1111-1111-1111-111111111112/gallery1.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Fitness Studio / Gym' LIMIT 1)
@@ -203,9 +206,9 @@ VALUES
     'FixRight Repair Hub',
     'Trusted one-stop repair shop for smartphones, laptops, appliances, and clothing alterations.',
     '{"province":"Iloilo","city":"Guimbal","barangay":"Poblacion","street_address":"Del Pilar St.","zip_code":"5022","latitude":10.6646,"longitude":122.3197,"geometry":"lat:10.6646,lng:122.3197"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111113/logo.jpg',
+    '11111111-1111-1111-1111-111111111113/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111113/hero.jpg'
+      '11111111-1111-1111-1111-111111111113/hero.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Repair Services' LIMIT 1)
@@ -216,11 +219,11 @@ VALUES
     'Casa Ilongga B&B',
     'Charming heritage guesthouse in the heart of Iloilo offering warm Filipino hospitality and home-cooked breakfast.',
     '{"province":"Iloilo","city":"Miagao","barangay":"Poblacion (Ubos Ilawod)","street_address":"Noble St.","zip_code":"5023","latitude":10.6433,"longitude":122.2351,"geometry":"lat:10.6433,lng:122.2351"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111114/logo.jpg',
+    '11111111-1111-1111-1111-111111111114/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111114/hero.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111114/gallery1.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111114/gallery2.jpg'
+      '11111111-1111-1111-1111-111111111114/hero.jpg',
+      '11111111-1111-1111-1111-111111111114/gallery1.jpg',
+      '11111111-1111-1111-1111-111111111114/gallery2.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Bed & Breakfast / Guesthouse' LIMIT 1)
@@ -231,10 +234,10 @@ VALUES
     'Ilonggo Craft Workshop',
     'Hands-on cultural classes in hablon weaving, native pottery, Dinagyang dance, and traditional Ilonggo cooking.',
     '{"province":"Iloilo","city":"Dumangas","barangay":"Lopez Jaena - Burgos (Poblacion)","street_address":"Burgos St.","zip_code":"5006","latitude":10.8281,"longitude":122.7081,"geometry":"lat:10.8281,lng:122.7081"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111115/logo.jpg',
+    '11111111-1111-1111-1111-111111111115/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111115/hero.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111115/gallery1.jpg'
+      '11111111-1111-1111-1111-111111111115/hero.jpg',
+      '11111111-1111-1111-1111-111111111115/gallery1.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Cultural Experience Provider' LIMIT 1)
@@ -245,11 +248,11 @@ VALUES
     'The Lampara Live Music Bar',
     'Iloilo''s premier live-music venue — original bands, acoustic nights, craft cocktails, and private karaoke rooms.',
     '{"province":"Iloilo","city":"Pototan","barangay":"Poblacion","street_address":"Mabini St.","zip_code":"5008","latitude":10.9519,"longitude":122.6361,"geometry":"lat:10.9519,lng:122.6361"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111116/logo.jpg',
+    '11111111-1111-1111-1111-111111111116/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111116/hero.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111116/gallery1.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111116/gallery2.jpg'
+      '11111111-1111-1111-1111-111111111116/hero.jpg',
+      '11111111-1111-1111-1111-111111111116/gallery1.jpg',
+      '11111111-1111-1111-1111-111111111116/gallery2.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Entertainment Venue' LIMIT 1)
@@ -390,10 +393,10 @@ VALUES
     'Pitstop Mango Café',
     'Island café famous for Guimaras sweet-mango pizza, mango shakes, and slow brunches by the wharf.',
     '{"province":"Guimaras","city":"Jordan","barangay":"Rizal","street_address":"San Miguel St.","zip_code":"5045","latitude":10.6585,"longitude":122.5921,"geometry":"lat:10.6585,lng:122.5921"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111117/logo.jpg',
+    '11111111-1111-1111-1111-111111111117/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111117/hero.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111117/gallery1.jpg'
+      '11111111-1111-1111-1111-111111111117/hero.jpg',
+      '11111111-1111-1111-1111-111111111117/gallery1.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Café' LIMIT 1)
@@ -404,10 +407,10 @@ VALUES
     'Antique Seafood Grill',
     'Fresh-off-the-boat grilled seafood and Antiqueño specialties along the Sulu Sea coast.',
     '{"province":"Antique","city":"San Jose de Buenavista","barangay":"Atabay","street_address":"T.A. Fornier St.","zip_code":"5700","latitude":10.7402,"longitude":121.9398,"geometry":"lat:10.7402,lng:121.9398"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111118/logo.jpg',
+    '11111111-1111-1111-1111-111111111118/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111118/hero.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111118/gallery1.jpg'
+      '11111111-1111-1111-1111-111111111118/hero.jpg',
+      '11111111-1111-1111-1111-111111111118/gallery1.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Restaurant' LIMIT 1)
@@ -418,10 +421,10 @@ VALUES
     'Roxas Bay Brews',
     'Seafood-capital taproom pouring local craft beer with fresh oysters and diwal clams.',
     '{"province":"Capiz","city":"Roxas City","barangay":"Baybay","street_address":"Roxas Ave.","zip_code":"5800","latitude":11.5853,"longitude":122.7511,"geometry":"lat:11.5853,lng:122.7511"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111119/logo.jpg',
+    '11111111-1111-1111-1111-111111111119/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111119/hero.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111119/gallery1.jpg'
+      '11111111-1111-1111-1111-111111111119/hero.jpg',
+      '11111111-1111-1111-1111-111111111119/gallery1.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Bar / Pub' LIMIT 1)
@@ -432,10 +435,10 @@ VALUES
     'Kalibo Heritage Bakeshop',
     'Aklanon bakeshop for fresh pan de sila, inumol, and Ati-Atihan festival pastries.',
     '{"province":"Aklan","city":"Kalibo","barangay":"Poblacion","street_address":"Martyrs St.","zip_code":"5600","latitude":11.7086,"longitude":122.3654,"geometry":"lat:11.7086,lng:122.3654"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111120/logo.jpg',
+    '11111111-1111-1111-1111-111111111120/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111120/hero.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111120/gallery1.jpg'
+      '11111111-1111-1111-1111-111111111120/hero.jpg',
+      '11111111-1111-1111-1111-111111111120/gallery1.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Bakery / Pastry Shop' LIMIT 1)
@@ -446,10 +449,10 @@ VALUES
     'Bacolod Wellness Retreat',
     'City-of-Smiles wellness spa offering traditional hilot, aromatherapy, and hot-stone massage.',
     '{"province":"Negros Occidental","city":"Bacolod City","barangay":"Mandalagan","street_address":"Lacson St.","zip_code":"6100","latitude":10.6765,"longitude":122.9509,"geometry":"lat:10.6765,lng:122.9509"}'::jsonb,
-    'http://127.0.0.1:54321/storage/v1/object/public/shop-logos/11111111-1111-1111-1111-111111111121/logo.jpg',
+    '11111111-1111-1111-1111-111111111121/logo.jpg',
     ARRAY[
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111121/hero.jpg',
-      'http://127.0.0.1:54321/storage/v1/object/public/interior-images/11111111-1111-1111-1111-111111111121/gallery1.jpg'
+      '11111111-1111-1111-1111-111111111121/hero.jpg',
+      '11111111-1111-1111-1111-111111111121/gallery1.jpg'
     ],
     'verified',
     (SELECT id FROM public.business_categories WHERE name = 'Spa / Wellness Center' LIMIT 1)

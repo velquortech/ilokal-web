@@ -1,10 +1,15 @@
 -- Dev seed: loginable accounts for admin dashboard, business dashboard, and mobile testing
--- Password for all accounts: ilokal@dev (local dev only — never use in production)
+-- Password for all accounts: ilokal@dev (dev/preview only — never reuse a real secret)
 --
--- Accounts created:
+-- Sanctioned login accounts (the ONLY accounts that may sign in on cloud):
 --   admin@ilokal.dev       → role: admin       (access admin dashboard)
 --   owner@ilokal.dev       → role: business_owner (owns all 5 seed businesses)
 --   testuser@ilokal.dev    → role: user        (mobile app test account)
+--
+-- The 60 bulk @test.local accounts below (password: sample123) exist only to make the
+-- admin/business dashboards look populated. They stay loginable LOCALLY, but on cloud
+-- `make seed-cloud` runs supabase/seeds/cloud-lockdown.sql, which bans + clears the
+-- password on every @test.local (and follower) account so only the 3 above can log in.
 
 SET session_replication_role = replica;
 
@@ -99,7 +104,7 @@ VALUES
     'admin@ilokal.dev',
     'Seed Admin',
     '+63 9120000001',
-    'http://127.0.0.1:54321/storage/v1/object/public/avatars/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/avatar.png',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/avatar.png',
     'admin',
     'active'
   ),
@@ -108,7 +113,7 @@ VALUES
     'owner@ilokal.dev',
     'Seed Business Owner',
     '+63 9120000002',
-    'http://127.0.0.1:54321/storage/v1/object/public/avatars/00000000-0000-0000-0000-000000000001/avatar.png',
+    '00000000-0000-0000-0000-000000000001/avatar.png',
     'business_owner',
     'active'
   ),
@@ -117,7 +122,7 @@ VALUES
     'testuser@ilokal.dev',
     'Test User',
     '+63 9120000003',
-    'http://127.0.0.1:54321/storage/v1/object/public/avatars/ffffffff-ffff-ffff-ffff-ffffffffffff/avatar.png',
+    'ffffffff-ffff-ffff-ffff-ffffffffffff/avatar.png',
     'app_user',
     'active'
   )

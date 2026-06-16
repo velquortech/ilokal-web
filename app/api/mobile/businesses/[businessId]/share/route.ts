@@ -5,11 +5,12 @@ import {
   successResponse,
 } from '@/app/api/helpers/response';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
+import { resolveAppBaseUrl } from '@/app/api/helpers/request-url';
 import { NextRequest } from 'next/server';
 
 type Params = { params: Promise<{ businessId: string }> };
 
-export async function GET(_req: NextRequest, { params }: Params) {
+export async function GET(req: NextRequest, { params }: Params) {
   try {
     const { businessId } = await params;
     const supabase = createBearerClient();
@@ -26,9 +27,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
       return notFoundResponse({ message: 'Business not found' });
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
     // Public, OG-tagged landing page (app/s/[businessId]) — NOT the owner
     // dashboard at /business/[businessId], which would dead-end a social visitor.
+    // Base URL is derived from the request when NEXT_PUBLIC_APP_URL is unset or
+    // localhost, so the APK preview build (cloud API) emits a reachable link.
+    const appUrl = resolveAppBaseUrl(req);
     const shareUrl = `${appUrl}/s/${businessId}`;
 
     return successResponse({

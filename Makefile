@@ -106,8 +106,10 @@ seed: seed-storage seed-db
 #   SUPABASE_DB_URL              postgres connection string (must be percent-encoded)
 #   NEXT_PUBLIC_SUPABASE_URL     https://<ref>.supabase.co        (seed-cloud only)
 #   SUPABASE_SERVICE_ROLE_KEY    service-role key (storage upload) (seed-cloud only)
-# Optional:
-#   SEED_DEV_PASSWORD            rotate the 3 dev accounts off the in-git default password
+#
+# The 3 dev accounts (admin@/owner@/testuser@ilokal.dev) always keep the in-git
+# `ilokal@dev` password across re-seeds (set by users.sql). To use a secret password
+# for a real preview, change it by hand in the dashboard AFTER seeding.
 
 deploy-cloud: migrate-cloud seed-cloud
 
@@ -145,8 +147,7 @@ seed-cloud:
 		psql "$$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -q -f supabase/seeds/$$f.sql || exit 1; \
 	done
 	@echo "  applying login lockdown (only admin@/owner@/testuser@ilokal.dev can sign in)..."
-	@PWARG=""; [ -n "$$SEED_DEV_PASSWORD" ] && PWARG="-v dev_password=$$SEED_DEV_PASSWORD"; \
-		psql "$$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 $$PWARG -f supabase/seeds/cloud-lockdown.sql || exit 1
+	@psql "$$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/seeds/cloud-lockdown.sql || exit 1
 	@echo "  uploading storage objects to cloud buckets..."
 	@bash supabase/seeds/seed-storage.sh
 	@echo "Cloud seed complete."

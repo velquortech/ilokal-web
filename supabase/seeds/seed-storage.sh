@@ -18,8 +18,17 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 SUPABASE_URL="${NEXT_PUBLIC_SUPABASE_URL:-http://127.0.0.1:54321}"
 BASE="$SUPABASE_URL/storage/v1"
-# Default local dev service-role JWT (same for every local Supabase instance)
-SERVICE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU"
+# Service-role key. Falls back to the well-known local dev JWT (identical for every
+# local Supabase instance) so `make seed-storage` works out of the box locally.
+# For a CLOUD target, set both NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
+# to the cloud project's values before running — uploads then go to the cloud buckets.
+LOCAL_DEV_SERVICE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU"
+SERVICE_KEY="${SUPABASE_SERVICE_ROLE_KEY:-$LOCAL_DEV_SERVICE_KEY}"
+if [[ "$SUPABASE_URL" != *"127.0.0.1"* && "$SUPABASE_URL" != *"localhost"* && "$SERVICE_KEY" == "$LOCAL_DEV_SERVICE_KEY" ]]; then
+  echo "Refusing to seed a non-local target ($SUPABASE_URL) with the local dev service key." >&2
+  echo "Set SUPABASE_SERVICE_ROLE_KEY to the cloud project's service-role key first." >&2
+  exit 1
+fi
 TMP=$(mktemp -d)
 
 # ---------------------------------------------------------------------------

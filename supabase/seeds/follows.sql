@@ -45,7 +45,10 @@ BEGIN
       uid, '00000000-0000-0000-0000-000000000000',
       'authenticated', 'authenticated',
       'follower' || i || '@ilokal.dev',
-      crypt('ilokal@dev', gen_salt('bf')), NOW(),
+      -- No password: these are follower fixtures, not test logins. NULL
+      -- encrypted_password makes password sign-in impossible (matches the
+      -- "login disabled" note above). cloud-lockdown.sql also bans them.
+      NULL, NOW(),
       '{"provider":"email","providers":["email"]}', '{}',
       NOW(), NOW(), false, false,
       '', '', '', '', '', ''

@@ -1,5 +1,43 @@
 # Changelog
 
+## 2026-06-16 — Cloud-portable seeds + APK-preview deploy flow (mvp)
+
+> No schema migration. Edits are to seed SQL, the storage seed script, and the
+> Makefile. The **cloud login lockdown is a security control** — review before
+> first cloud seed.
+
+- **Cloud-portable image URLs:** the seed SQL (`users.sql`, `businesses.sql`,
+  `products.sql`) stored hardcoded `http://127.0.0.1:54321/...` storage URLs, which
+  `resolveStorageUrl()` returns verbatim → broken images in the APK against a cloud
+  DB. Converted all 156 to **raw in-bucket paths** (e.g. `<id>/logo.jpg`), matching how
+  real registrations store data, so the same seed resolves correctly local **and** cloud.
+  Verified each column's bucket matches its read-route resolver (avatars / shop-logos /
+  interior-images / product-images).
+- **Storage seed → cloud:** `seed-storage.sh` now reads `SUPABASE_SERVICE_ROLE_KEY`
+  (falls back to the well-known local dev JWT) and **refuses to upload to a non-local URL
+  with the local key**.
+- **Login lockdown (`supabase/seeds/cloud-lockdown.sql`, new):** the seeds ship ~150
+  sample auth accounts (60 `@test.local` / `sample123`, 90 `follower%@ilokal.dev`) with
+  passwords baked into git. On cloud only **admin@ / owner@ / testuser@ilokal.dev** may
+  sign in — the rest get `banned_until = 2999` **and** `encrypted_password = NULL` (rows
+  kept for FK integrity). Real sign-ups created after seeding are untouched. Optional
+  `-v dev_password=…` rotates the 3 dev accounts off the in-git password. Idempotent;
+  verified live in a rolled-back tx (150 locked, 3 kept loginable).
+- **follows.sql fixture fix:** the 90 follower accounts claimed "login disabled" but
+  actually had the `ilokal@dev` password → now created with `NULL` password, genuinely
+  un-loginable everywhere (local too).
+- **subscription_plans.sql idempotency:** was a plain `INSERT` with no `ON CONFLICT`;
+  `name` has no UNIQUE constraint and `id` is random, so every re-run added 4 DUPLICATE
+  plans (breaking plan selection + the promo-boost deals feed). Rewrote as
+  `INSERT … SELECT … WHERE NOT EXISTS (… by name)` with an explicit `::plan_interval`
+  cast. Now the only non-`ON CONFLICT` seed besides `view_counts.sql` (deterministic
+  `UPDATE`s) — so the whole `seed-cloud` run is safe to repeat. Verified live: 0→4 on a
+  fresh DB, 0 inserts on re-run.
+- **Makefile cloud targets:** `migrate-cloud` (`supabase db push --db-url … --include-all
+  --yes`), `seed-cloud` (seeds + lockdown + storage), and `deploy-cloud` (= migrate then
+  seed). All guard required env vars and **refuse to run against a local URL**. Local
+  `make seed` is unchanged — the 60 test logins stay usable locally for dashboard testing.
+
 ## 2026-06-10 — Coupon-redemption notifications (feat/business-document-page)
 
 > **HIGH-risk schema migration** `20260610000000_coupon_redeemed_notification.sql`

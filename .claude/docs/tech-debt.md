@@ -37,6 +37,7 @@ planned work. Supersedes the old `roadmap.md` (merged in below).
 | TD-014 | 🟠  | UI/UX        | No `loading.tsx` / streaming states              | 🔲 Open |
 | TD-015 | 🟢  | UI/UX        | Client-heavy bundle (64% `'use client'`)         | 🔲 Open |
 | TD-016 | 🟢  | UI/UX        | Uneven accessibility coverage                    | 🔲 Open |
+| TD-017 | 🔴  | Architecture | Web billing/subscription routes query non-existent `subscriptions` table | 🔲 Open |
 
 ---
 
@@ -241,6 +242,46 @@ Request-scoped auth deduplication. `assertAuthorized()` re-runs
 the profile SELECT disappears; a request-scoped cache (`AsyncLocalStorage` /
 `WeakMap` on `NextRequest`) would collapse repeat calls to one auth round-trip. Low
 priority until profiling shows a bottleneck.
+
+---
+
+## Audit log — 2026-06-16 (cloud-deploy readiness review, mvp→main merge)
+
+### Architecture
+
+#### TD-017 · 🔴 · Web billing/subscription routes query a non-existent `subscriptions` table
+
+[lib/api/subscriptions/subscriptionQuery.ts](../../lib/api/subscriptions/subscriptionQuery.ts)
+and [subscriptionService.ts](../../lib/api/subscriptions/subscriptionService.ts) call
+`.from('subscriptions')` in 12 places, selecting/filtering **billing** columns
+(`status`, `archived_at`, `plan_id`, `current_period_*`). No table with that shape
+exists:
+
+- `public.subscriptions` was only ever the **social follow** table
+  (`20260217034537_interactions.sql`: `id, user_id, business_id, created_at`,
+  `UNIQUE(user_id, business_id)` — "prevent duplicate follows"). It never had
+  `status`/`archived_at`.
+- It was renamed to **`follows`** in `20260605000000_rename_subscriptions_to_follows.sql`,
+  so `.from('subscriptions')` now resolves to **no relation at all**.
+- The actual billing table is **`business_subscriptions`**
+  (`business_id, plan_id, status, current_period_start/end, cancel_at_period_end`) —
+  and even it has **no `archived_at`** column.
+
+- **Not a regression from the rename or the cloud-seed work.** The service was
+  written against the wrong table from the start (commit `5cc3342` "implement
+  subscription service with CRUD operations and payment methods"); the rename only
+  changed the failure from *"column status does not exist"* to *"relation
+  subscriptions does not exist."* These routes have never functioned.
+- **Blast radius (all currently broken at runtime):** `/api/web/subscriptions/*`
+  (route, plans, upgrade, downgrade) and `/api/web/billing/*` (invoices, usage,
+  payment-method), plus the business dashboard's billing/subscription actions.
+  Mobile/APK is **unaffected** — it reads `follows` via the protected mobile routes,
+  not this code.
+- **Fix:** repoint `lib/api/subscriptions/*` at `business_subscriptions`, drop/replace
+  the `archived_at` filter (add the column via migration if soft-delete is wanted),
+  and reconcile the `Subscription` type in [lib/types/subscription.ts](../../lib/types/subscription.ts)
+  with the real schema. Add an integration test that hits the live table. Related:
+  TD-011 (migration drift — code vs un-applied schema).
 
 ---
 

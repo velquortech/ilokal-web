@@ -17,9 +17,10 @@
 --
 -- Idempotent: only ever (re)locks the same seed-pattern rows.
 --
--- Optional password rotation: pass `-v dev_password='...'` (seed-cloud forwards
--- $SEED_DEV_PASSWORD when set) to replace the in-git `ilokal@dev` password on the
--- three sanctioned accounts with a strong secret of your choosing.
+-- The three sanctioned accounts keep the in-git `ilokal@dev` password (set/reset
+-- by users.sql's upsert) so they stay predictably loginable across re-seeds — this
+-- file never rotates them. If you need a secret password for a real preview, change
+-- it by hand in the dashboard AFTER seeding, not via the seeder.
 
 -- 1. Lock out every sample account: ban (GoTrue rejects login while banned_until is
 --    in the future) AND null the password (defence-in-depth — even if un-banned, the
@@ -38,14 +39,6 @@ AND email NOT IN ('admin@ilokal.dev', 'owner@ilokal.dev', 'testuser@ilokal.dev')
 UPDATE auth.users
 SET banned_until = NULL
 WHERE email IN ('admin@ilokal.dev', 'owner@ilokal.dev', 'testuser@ilokal.dev');
-
--- 3. Optional: rotate the sanctioned accounts' password away from the in-git default.
-\if :{?dev_password}
-  UPDATE auth.users
-  SET encrypted_password = crypt(:'dev_password', gen_salt('bf'))
-  WHERE email IN ('admin@ilokal.dev', 'owner@ilokal.dev', 'testuser@ilokal.dev');
-  \echo 'cloud-lockdown: rotated password for the 3 sanctioned dev accounts'
-\endif
 
 -- Report what the gate looks like now.
 \echo 'cloud-lockdown: login-enabled accounts after lockdown ->'

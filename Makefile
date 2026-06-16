@@ -90,7 +90,7 @@ seed-storage:
 	@bash supabase/seeds/seed-storage.sh
 
 seed-db:
-	@for f in supabase/seeds/users.sql supabase/seeds/subscription_plans.sql supabase/seeds/business_categories.sql supabase/seeds/businesses.sql supabase/seeds/products.sql supabase/seeds/coupons.sql supabase/seeds/ratings.sql supabase/seeds/business_subscriptions.sql supabase/seeds/follows.sql supabase/seeds/view_counts.sql; do \
+	@for f in supabase/seeds/users.sql supabase/seeds/subscription_plans.sql supabase/seeds/business_categories.sql supabase/seeds/businesses.sql supabase/seeds/products.sql supabase/seeds/coupons.sql supabase/seeds/ratings.sql supabase/seeds/business_subscriptions.sql supabase/seeds/business_posts.sql supabase/seeds/follows.sql supabase/seeds/bulk_seed.sql supabase/seeds/view_counts.sql; do \
 		echo "  seeding $$f..."; \
 		docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < $$f; \
 	done
@@ -106,8 +106,10 @@ seed: seed-storage seed-db
 #   SUPABASE_DB_URL              postgres connection string (must be percent-encoded)
 #   NEXT_PUBLIC_SUPABASE_URL     https://<ref>.supabase.co        (seed-cloud only)
 #   SUPABASE_SERVICE_ROLE_KEY    service-role key (storage upload) (seed-cloud only)
-# Optional:
-#   SEED_DEV_PASSWORD            rotate the 3 dev accounts off the in-git default password
+#
+# The 3 dev accounts (admin@/owner@/testuser@ilokal.dev) always keep the in-git
+# `ilokal@dev` password across re-seeds (set by users.sql). To use a secret password
+# for a real preview, change it by hand in the dashboard AFTER seeding.
 
 deploy-cloud: migrate-cloud seed-cloud
 
@@ -128,7 +130,8 @@ migrate-cloud:
 # uploads storage objects to the cloud buckets. Run `make migrate-cloud` first.
 # Re-runnable: seeds use ON CONFLICT and the lockdown is idempotent.
 CLOUD_SEED_FILES = users subscription_plans business_categories businesses products \
-                   coupons ratings business_subscriptions business_posts follows view_counts
+                   coupons ratings business_subscriptions business_posts follows \
+                   bulk_seed view_counts
 
 seed-cloud:
 	@if [ -z "$$SUPABASE_DB_URL" ] || [ -z "$$NEXT_PUBLIC_SUPABASE_URL" ] || [ -z "$$SUPABASE_SERVICE_ROLE_KEY" ]; then \
@@ -144,8 +147,7 @@ seed-cloud:
 		psql "$$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -q -f supabase/seeds/$$f.sql || exit 1; \
 	done
 	@echo "  applying login lockdown (only admin@/owner@/testuser@ilokal.dev can sign in)..."
-	@PWARG=""; [ -n "$$SEED_DEV_PASSWORD" ] && PWARG="-v dev_password=$$SEED_DEV_PASSWORD"; \
-		psql "$$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 $$PWARG -f supabase/seeds/cloud-lockdown.sql || exit 1
+	@psql "$$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/seeds/cloud-lockdown.sql || exit 1
 	@echo "  uploading storage objects to cloud buckets..."
 	@bash supabase/seeds/seed-storage.sh
 	@echo "Cloud seed complete."

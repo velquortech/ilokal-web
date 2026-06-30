@@ -1,6 +1,12 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
+import {
+  uploadWebP,
+  ImageProcessingError,
+  toWebPFilename,
+  IMAGE_PRESETS,
+} from '@/lib/api/helpers/image';
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -35,20 +41,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const fileName = `${Date.now()}-${file.name}`;
+    const fileName = `${Date.now()}-${toWebPFilename(file.name)}`;
     const filePath = `${targetUserId}/${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: true,
-      });
-
-    if (uploadError) {
-      console.error('Storage upload error:', uploadError);
-      return NextResponse.json({ error: uploadError.message }, { status: 400 });
-    }
+    await uploadWebP(supabase, 'avatars', filePath, file, {
+      maxDimension: IMAGE_PRESETS.avatar,
+      upsert: true,
+    });
 
     const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
 
@@ -57,6 +56,9 @@ export async function POST(request: NextRequest) {
       { status: 200 },
     );
   } catch (error) {
+    if (error instanceof ImageProcessingError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error('Avatar upload error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

@@ -79,6 +79,14 @@ export async function GET(req: NextRequest) {
       50,
       Math.max(1, Number.isFinite(rawPerPage) ? rawPerPage : 10),
     );
+    // Oldest-first sort + single-type filter. Applied to the full merged set
+    // (≤ FEED_SCAN × 3 rows) before slicing, so paging stays correct.
+    const sort = searchParams.get('sort') === 'oldest' ? 'oldest' : 'newest';
+    const rawType = searchParams.get('type');
+    const type =
+      rawType === 'post' || rawType === 'promo' || rawType === 'product'
+        ? rawType
+        : 'all';
 
     // Scope the feed to the businesses this user follows.
     const { data: follows, error: followsError } = await supabase
@@ -166,9 +174,14 @@ export async function GET(req: NextRequest) {
       business: toBusiness(supabase, pr.businesses),
     }));
 
-    const merged = [...posts, ...promos, ...products].sort(
-      (a, b) => Date.parse(b.published_at) - Date.parse(a.published_at),
-    );
+    // Newest-first is b−a; oldest-first negates it.
+    const dir = sort === 'oldest' ? -1 : 1;
+    const merged = [...posts, ...promos, ...products]
+      .filter((u) => type === 'all' || u.type === type)
+      .sort(
+        (a, b) =>
+          dir * (Date.parse(b.published_at) - Date.parse(a.published_at)),
+      );
 
     const offset = (page - 1) * per_page;
     return successResponse({

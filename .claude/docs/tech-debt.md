@@ -38,6 +38,7 @@ planned work. Supersedes the old `roadmap.md` (merged in below).
 | TD-015 | 🟢  | UI/UX        | Client-heavy bundle (64% `'use client'`)         | 🔲 Open |
 | TD-016 | 🟢  | UI/UX        | Uneven accessibility coverage                    | 🔲 Open |
 | TD-017 | 🔴  | Architecture | Web billing/subscription routes query non-existent `subscriptions` table | 🔲 Open |
+| TD-018 | 🟠  | Security     | Mobile protected routes not status-gated (deactivate/archive enforced app-side only) | 🔲 Open |
 
 ---
 
@@ -282,6 +283,30 @@ exists:
   and reconcile the `Subscription` type in [lib/types/subscription.ts](../../lib/types/subscription.ts)
   with the real schema. Add an integration test that hits the live table. Related:
   TD-011 (migration drift — code vs un-applied schema).
+
+#### TD-018 · 🟠 · Mobile protected routes are not status-gated server-side
+
+The self-service account endpoints
+([app/api/protected/mobile/me/route.ts](../../app/api/protected/mobile/me/route.ts)
+`DELETE`, `me/deactivate`, `me/reactivate`) flip `profiles.status` /
+`archived_at`, but nothing on the mobile surface actually **blocks** a
+deactivated or archived user:
+
+- `proxy.ts` gates `/api/protected/mobile/**` on **JWT validity only** (`getUser()`),
+  not status — unlike the page-route branch, which redirects any `status !== 'active'`
+  user. So a deactivated user keeps full API access until their access token expires.
+- Mobile login uses the **Supabase SDK directly** (`signInWithPassword`), bypassing
+  `/api/auth/login` and its `archived_at` / `status` 403 gate (web-only).
+- Today enforcement is **app-side**: the client signs out after a 200, and on
+  re-login reads `status`/`archived_at` from `GET /me` to block or offer reactivation.
+  A crafted client with a still-valid token can ignore that.
+- **Fix options:** (a) gate `getMobileUser()` (or the proxy `/api/protected` branch)
+  on `app_metadata.status` — it's already synced into the JWT by the
+  `sync_role_to_jwt` trigger (`20260527000000`), so it's a free check, no extra
+  query — while **exempting** `me/reactivate` so a deactivated user can still
+  self-reactivate; and/or (b) revoke sessions server-side on delete via the admin
+  client (`auth.admin` — ban or sign-out). Deferred from the initial account-management
+  endpoint PR to keep that change non-cross-cutting.
 
 ---
 

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Mock } from 'vitest';
+import sharp from 'sharp';
 import type { ApiResponse, Product, Category } from '@/lib/types';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import * as productQuery from '@/lib/api/products/productQuery';
@@ -42,6 +43,23 @@ function mockUnauthorized() {
   vi.mocked(verifyBusinessOwner).mockResolvedValue(
     unauthorized as unknown as Awaited<ReturnType<typeof verifyBusinessOwner>>,
   );
+}
+
+// A real, decodable PNG — the upload action now runs files through sharp
+// (convertToWebP), so a fake `new File(['data'])` would be rejected as an
+// ImageProcessingError before the storage mock is ever reached.
+async function makeImageFile(name = 'img.png', type = 'image/png') {
+  const buf = await sharp({
+    create: {
+      width: 64,
+      height: 64,
+      channels: 3,
+      background: { r: 9, g: 9, b: 9 },
+    },
+  })
+    .png()
+    .toBuffer();
+  return new File([buf], name, { type });
 }
 
 describe('createProductAction', () => {
@@ -241,7 +259,7 @@ describe('uploadProductImageAction', () => {
     );
 
     const fd = new FormData();
-    fd.append('file', new File(['data'], 'img.png', { type: 'image/png' }));
+    fd.append('file', await makeImageFile());
     const res = await uploadProductImageAction(fd);
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('UPLOAD_ERROR');
@@ -251,7 +269,9 @@ describe('uploadProductImageAction', () => {
     const mockSupabase = {
       storage: {
         from: vi.fn(() => ({
-          upload: vi.fn().mockResolvedValue({ error: null }),
+          upload: vi
+            .fn()
+            .mockResolvedValue({ data: { path: 'img.webp' }, error: null }),
           getPublicUrl: vi.fn().mockReturnValue({
             data: { publicUrl: 'https://storage.example.com/img.png' },
           }),
@@ -263,7 +283,7 @@ describe('uploadProductImageAction', () => {
     );
 
     const fd = new FormData();
-    fd.append('file', new File(['data'], 'img.png', { type: 'image/png' }));
+    fd.append('file', await makeImageFile());
     const res = await uploadProductImageAction(fd);
     expect(res.success).toBe(true);
     expect((res as ApiResponse<{ url: string }>).data?.url).toBe(

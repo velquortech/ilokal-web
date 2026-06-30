@@ -1,6 +1,12 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
+import {
+  uploadWebP,
+  ImageProcessingError,
+  toWebPFilename,
+  IMAGE_PRESETS,
+} from '@/lib/api/helpers/image';
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -89,22 +95,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const fileName = `${Date.now()}-${file.name}`;
+    const fileName = `${Date.now()}-${toWebPFilename(file.name)}`;
     const filePath = `${businessId}/${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('business-logos')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
-
-    if (uploadError) {
-      return NextResponse.json(
-        { success: false, error: uploadError.message },
-        { status: 400 },
-      );
-    }
+    await uploadWebP(supabase, 'business-logos', filePath, file, {
+      maxDimension: IMAGE_PRESETS.logo,
+    });
 
     // Get public URL
     const {
@@ -123,10 +119,19 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
   } catch (error) {
+    if (error instanceof ImageProcessingError) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 400 },
+      );
+    }
+    // Storage/unexpected failure — log server-side, return a generic message so
+    // raw driver errors (table/policy names) don't leak to the client.
+    console.error('[upload/business-logo]', error);
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Upload failed',
+        error: 'Upload failed',
       },
       { status: 500 },
     );

@@ -22,6 +22,12 @@ import {
 } from '@/lib/validation/products';
 import * as productQuery from '@/lib/api/products/productQuery';
 import * as productService from '@/lib/api/products/productService';
+import {
+  uploadWebP,
+  ImageProcessingError,
+  toWebPFilename,
+  IMAGE_PRESETS,
+} from '@/lib/api/helpers/image';
 
 // ===== Business Owner Product Actions =====
 
@@ -399,18 +405,26 @@ export async function uploadProductImageAction(
 
     const supabase = await createServerSupabaseClient();
     const businessId = verify.business!.id;
-    const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+    const fileName = `${Date.now()}-${toWebPFilename(file.name.replace(/\s+/g, '-'))}`;
     const filePath = `${businessId}/${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('product-images')
-      .upload(filePath, file, { cacheControl: '3600', upsert: false });
-
-    if (uploadError) {
-      console.error('[uploadProductImageAction] Upload error:', uploadError);
+    try {
+      await uploadWebP(supabase, 'product-images', filePath, file, {
+        maxDimension: IMAGE_PRESETS.product,
+      });
+    } catch (err) {
+      if (err instanceof ImageProcessingError) {
+        return {
+          success: false,
+          error: { code: 'VALIDATION_ERROR', message: err.message },
+        };
+      }
+      // Storage error — log server-side, return a generic message (don't leak
+      // the raw driver error to the owner-facing client).
+      console.error('[uploadProductImageAction] Upload error:', err);
       return {
         success: false,
-        error: { code: 'UPLOAD_ERROR', message: uploadError.message },
+        error: { code: 'UPLOAD_ERROR', message: 'Failed to upload image' },
       };
     }
 

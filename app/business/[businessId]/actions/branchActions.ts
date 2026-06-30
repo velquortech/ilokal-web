@@ -19,6 +19,12 @@ import {
 } from '@/lib/validation/branches';
 import * as branchService from '@/lib/api/branches/branchService';
 import * as branchQuery from '@/lib/api/branches/branchQuery';
+import {
+  uploadWebP,
+  ImageProcessingError,
+  toWebPFilename,
+  IMAGE_PRESETS,
+} from '@/lib/api/helpers/image';
 
 const ALLOWED_DOC_TYPES = [
   'application/pdf',
@@ -144,17 +150,24 @@ export async function uploadBranchImageAction(
 
     const supabase = await createServerSupabaseClient();
     const businessId = verify.business!.id;
-    const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+    const fileName = `${Date.now()}-${toWebPFilename(file.name.replace(/\s+/g, '-'))}`;
     const filePath = `${businessId}/${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('branch-images')
-      .upload(filePath, file, { cacheControl: '3600', upsert: false });
-
-    if (uploadError) {
+    try {
+      await uploadWebP(supabase, 'branch-images', filePath, file, {
+        maxDimension: IMAGE_PRESETS.hero,
+      });
+    } catch (err) {
+      if (err instanceof ImageProcessingError) {
+        return {
+          success: false,
+          error: { code: 'VALIDATION_ERROR', message: err.message },
+        };
+      }
+      console.error('[uploadBranchImageAction] Upload error:', err);
       return {
         success: false,
-        error: { code: 'UPLOAD_ERROR', message: uploadError.message },
+        error: { code: 'UPLOAD_ERROR', message: 'Failed to upload image' },
       };
     }
 

@@ -19,7 +19,11 @@ export async function GET(req: NextRequest) {
       .select(
         `
         id, created_at,
-        businesses(id, shop_name, description, logo_url, status)
+        businesses(
+          id, shop_name, description, logo_url, status,
+          business_category,
+          business_categories!category_id(name, business_types!business_type_id(name))
+        )
       `,
       )
       .eq('user_id', auth.user.id)
@@ -27,7 +31,50 @@ export async function GET(req: NextRequest) {
 
     if (error) return loggedServerError('protected/mobile/follows', error);
 
-    return successResponse({ follows: data });
+    // Flatten the joined category the same way the business-detail endpoint does:
+    // prefer the relational business_categories row, fall back to the legacy
+    // business_category jsonb. Mobile uses { name, business_type } to drive the
+    // followed-businesses type/category filter.
+    type CategoryRow = {
+      name: string;
+      business_types: { name: string } | null;
+    } | null;
+    type JsonbCategory = { type?: string; name: string } | null;
+
+    const follows = (data ?? []).map((row) => {
+      const biz = row.businesses as unknown as {
+        id: string;
+        shop_name: string;
+        description: string | null;
+        logo_url: string | null;
+        status: string;
+        business_category: unknown;
+        business_categories: CategoryRow;
+      } | null;
+      if (!biz)
+        return { id: row.id, created_at: row.created_at, businesses: null };
+
+      const categoryRow = biz.business_categories;
+      const jsonbCategory = biz.business_category as JsonbCategory;
+      const category = categoryRow
+        ? {
+            name: categoryRow.name,
+            business_type: categoryRow.business_types?.name ?? null,
+          }
+        : jsonbCategory?.name
+          ? { name: jsonbCategory.name, business_type: null }
+          : null;
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { business_categories, business_category, ...rest } = biz;
+      return {
+        id: row.id,
+        created_at: row.created_at,
+        businesses: { ...rest, category },
+      };
+    });
+
+    return successResponse({ follows });
   } catch {
     return generalErrorResponse();
   }

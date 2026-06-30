@@ -2,6 +2,7 @@
 
 import { BusinessShop } from '@/providers/BusinessProvider';
 import { createServerSupabaseClient } from '@/supabase/server';
+import { uploadWebP, IMAGE_PRESETS } from '@/lib/api/helpers/image';
 
 export async function createBusiness(payload: FormData) {
   const supabase = await createServerSupabaseClient();
@@ -56,6 +57,17 @@ export async function createBusiness(payload: FormData) {
     return data.path;
   };
 
+  // Display images are downscaled + re-encoded to WebP at write time (the free
+  // Supabase plan has no on-the-fly transform) via the shared uploadWebP helper.
+  // Docs (license/tax PDFs) keep the raw `uploadFile` path — converting them
+  // would corrupt non-image bytes.
+  const uploadImage = (
+    bucket: string,
+    file: File,
+    path: string,
+    maxDimension: number,
+  ) => uploadWebP(supabase, bucket, path, file, { maxDimension, upsert: true });
+
   let logoPath: string;
   let bannerPath: string;
   let licensePath: string;
@@ -64,15 +76,17 @@ export async function createBusiness(payload: FormData) {
 
   try {
     const ts = Date.now();
-    logoPath = await uploadFile(
+    logoPath = await uploadImage(
       'shop-logos',
       shop_logo,
-      `${business.id}/logo-${ts}.png`,
+      `${business.id}/logo-${ts}.webp`,
+      IMAGE_PRESETS.logo,
     );
-    bannerPath = await uploadFile(
+    bannerPath = await uploadImage(
       'shop-banners',
       shop_banner,
-      `${business.id}/banner-${ts}.png`,
+      `${business.id}/banner-${ts}.webp`,
+      IMAGE_PRESETS.hero,
     );
     licensePath = await uploadFile(
       'business-docs',
@@ -86,10 +100,11 @@ export async function createBusiness(payload: FormData) {
     );
     interiorPaths = await Promise.all(
       interior_images.map((file, idx) =>
-        uploadFile(
+        uploadImage(
           'interior-images',
           file,
-          `${business.id}/interior-${ts}-${idx}.${file.name.split('.').pop() ?? 'jpg'}`,
+          `${business.id}/interior-${ts}-${idx}.webp`,
+          IMAGE_PRESETS.hero,
         ),
       ),
     );

@@ -1,7 +1,12 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
-import { convertToWebP, toWebPFilename } from '@/lib/api/helpers/image';
+import {
+  uploadWebP,
+  ImageProcessingError,
+  toWebPFilename,
+  IMAGE_PRESETS,
+} from '@/lib/api/helpers/image';
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -58,24 +63,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const webpBuffer = await convertToWebP(file);
     const fileName = `${Date.now()}-${toWebPFilename(file.name)}`;
     const filePath = `${businessId}/${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('product-images')
-      .upload(filePath, webpBuffer, {
-        contentType: 'image/webp',
-        cacheControl: '3600',
-        upsert: false,
-      });
-
-    if (uploadError) {
-      return NextResponse.json(
-        { success: false, error: uploadError.message },
-        { status: 400 },
-      );
-    }
+    await uploadWebP(supabase, 'product-images', filePath, file, {
+      maxDimension: IMAGE_PRESETS.product,
+    });
 
     const {
       data: { publicUrl },
@@ -86,10 +79,17 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
   } catch (error) {
+    if (error instanceof ImageProcessingError) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 400 },
+      );
+    }
+    console.error('[upload/product-image]', error);
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Upload failed',
+        error: 'Upload failed',
       },
       { status: 500 },
     );

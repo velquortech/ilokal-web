@@ -1,5 +1,47 @@
 # Changelog
 
+## 2026-07-01 — Media & feed scaling: WebP pipeline, deals RPC, notification outbox (feat/account-management)
+
+> **Two HIGH-risk schema migrations** (`20260630000000_mobile_deals_rpc.sql`,
+> `20260630000001_notification_outbox.sql`) — applied locally; need `make migrate-up`
+> + human approval before merge. Full writeup in `.claude/docs/media-and-feed-scaling.md`.
+
+- **Image pipeline (write-time WebP):** new `lib/api/helpers/image.ts` —
+  `convertToWebP` (sharp decode → downscale `fit:'inside'`, never enlarge →
+  re-encode WebP q80, keeps animation frames), `uploadWebP` (convert →
+  `contentType:'image/webp'` → upload primitive), `IMAGE_PRESETS`
+  (logo/avatar 512, product 1200, hero 1600), `toWebPFilename`, and
+  `ImageProcessingError` (callers map to 4xx; storage errors propagate raw for
+  generic-message logging). Free Supabase plan has no on-the-fly transforms, so
+  every display image is sized at write time. Converted all call sites: web
+  uploads (`business-logo`/`business-interior`/`avatar`/`product-image`), mobile
+  `me/avatar`, `productActions`/`branchActions`, and registration
+  (`lib/api/business/business.ts`). Docs buckets (`verification-docs`,
+  `branch-documents`) intentionally left raw.
+- **Deals feed (DB-side classification):** `mobile_deals(p_category, p_search,
+  p_page, p_per_page)` SECURITY DEFINER RPC computes featured pick / flash-explore
+  split / category filter / subscribed-first sort / pagination in SQL and returns
+  one JSONB matching the existing response shape. `app/api/mobile/deals/route.ts`
+  shrank from a 500-row scan + in-Node pipeline to an RPC call + `resolveStorageUrl`
+  on the raw paths. Deterministic paging (id tiebreaker), bounded counts, index
+  `idx_coupons_live_feed`. Contract unchanged — no mobile change.
+- **Notification fan-out (adaptive inline/async):** `notify_followers` probes the
+  audience (`EXISTS … OFFSET 500`) — ≤ 500 followers fan out inline (unchanged),
+  larger audiences enqueue one `notification_outbox` row. A pg_cron worker
+  (`process_notification_outbox`, every minute) expands it into
+  `business_notifications` in fair, keyset-cursored, `SKIP LOCKED` batches with
+  poison isolation (park as `failed` after 5 attempts); `prune_notification_outbox`
+  (daily) trims `done`/`failed` > 7 days. `notification_outbox` is deny-all RLS;
+  all three functions REVOKE'd from PUBLIC/anon/authenticated.
+- **Tests:** `lib/api/helpers/__tests__/image.test.ts` (sharp fixtures: re-encode,
+  downscale cap, no-enlarge, no-passthrough, corrupt rejection, `uploadWebP`
+  content-type/upsert/error mapping). SQL test
+  `supabase/tests/mobile_deals_and_outbox.test.sql` (deals shape/paging/featured,
+  outbox exactly-once/fairness/prune — non-destructive, rolled-back tx). Updated
+  `productActions` upload tests to feed a real sharp PNG (the action now decodes
+  through sharp). Verified: lint + **1288** tests + build + the SQL test
+  (`mobile_deals` + outbox, against the local stack) all green.
+
 ## 2026-06-24 — Mobile self-service account management endpoints (feat/account-management)
 
 > No schema migration — reuses `profiles.status` (`active|inactive|suspended`) and

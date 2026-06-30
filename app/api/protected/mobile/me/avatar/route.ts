@@ -6,6 +6,12 @@ import {
   unauthorizedResponse,
   loggedServerError,
 } from '@/app/api/helpers/response';
+import {
+  uploadWebP,
+  ImageProcessingError,
+  toWebPFilename,
+  IMAGE_PRESETS,
+} from '@/lib/api/helpers/image';
 import { NextRequest } from 'next/server';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -38,15 +44,22 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const safeName = toWebPFilename(file.name.replace(/[^a-zA-Z0-9._-]/g, '_'));
     const filePath = `${auth.user.id}/${Date.now()}-${safeName}`;
 
-    const { error: uploadError } = await auth.supabase.storage
-      .from('avatars')
-      .upload(filePath, file, { cacheControl: '3600', upsert: true });
-
-    if (uploadError) {
-      return loggedServerError('protected/mobile/me/avatar', uploadError);
+    try {
+      await uploadWebP(auth.supabase, 'avatars', filePath, file, {
+        maxDimension: IMAGE_PRESETS.avatar,
+        upsert: true,
+      });
+    } catch (err) {
+      if (err instanceof ImageProcessingError) {
+        return badRequestResponse({ message: err.message });
+      }
+      return loggedServerError(
+        'protected/mobile/me/avatar',
+        err instanceof Error ? err : new Error('avatar upload failed'),
+      );
     }
 
     const { data } = auth.supabase.storage

@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-06-24 — Mobile self-service account management endpoints (feat/account-management)
+
+> No schema migration — reuses `profiles.status` (`active|inactive|suspended`) and
+> the existing `archived_at` column. **Auth-surface change — review before merge.**
+
+- **New protected mobile endpoints** (all via `getMobileUser`, RLS-scoped client):
+  - `POST /api/protected/mobile/me/deactivate` — reversible `active → inactive`.
+  - `POST /api/protected/mobile/me/reactivate` — `inactive → active`.
+  - `DELETE /api/protected/mobile/me` — **archive-only** soft delete
+    (`archived_at = now()` + `status = 'inactive'`); auth user and row kept, hard
+    delete stays admin-only. Idempotent.
+- **Guards:** all three refuse to touch an admin-`suspended` or archived account, so
+  a user can't self-clear an admin action or un-delete. `GET /me` now also returns
+  `archived_at` so the app can distinguish *deactivated* from *deleted*.
+- **Not done server-side:** email/password change (mobile calls the Supabase SDK
+  directly). **Known limitation:** mobile protected routes aren't status-gated yet —
+  enforcement is app-side on sign-out/re-login. See **TD-018**.
+- Tests: `app/api/protected/mobile/me/__tests__/account.integration.test.ts` (7).
+
 ## 2026-06-16 — Dev accounts pinned to `ilokal@dev` across re-seeds (mvp)
 
 > No schema migration. Seed/script/docs only. **Security note:** the 3 sanctioned

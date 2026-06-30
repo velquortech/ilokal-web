@@ -265,6 +265,43 @@ Combines active redemptions + followed businesses for the in-app trip planner.
 
 **Response 200:** `{ "active_redemptions": [...], "followed_businesses": [...] }`
 
+### `GET` / `PATCH` / `DELETE /api/protected/mobile/me`
+
+Current user's profile. `GET` returns `{ profile }` including `status` and `archived_at`
+(so the app can tell a deactivated account from a deleted one). `PATCH` updates
+`full_name` / `phone_number` / `avatar_url` only.
+
+`DELETE` = **self-service account deletion, archive only** (soft delete). Marks the
+profile `archived_at = now()` + `status = 'inactive'`; the row and the auth user are
+kept (a hard delete stays admin-only — `DELETE /api/admin/profiles/[id]/delete`).
+`status` has no `'archived'` value (CHECK is `active|inactive|suspended`), so
+`archived_at` is the archive marker — matching the web login gate, which 403s any
+profile with `archived_at` set. Idempotent (repeat calls preserve the first
+timestamp). **Response 200:** `{ "profile": { "id", "status", "archived_at" }, "archived": true }`
+
+### `POST /api/protected/mobile/me/deactivate`
+
+Reversible self-service deactivation: `active → inactive`. **403** if the account is
+archived or admin-`suspended`; already-`inactive` is a no-op 200. Reverse via
+`/me/reactivate`. **Response 200:** `{ "profile": { "id", "status", "archived_at" } }`
+
+### `POST /api/protected/mobile/me/reactivate`
+
+Reverses a deactivation: `inactive → active`. Reachable while deactivated (mobile
+protected routes gate on JWT validity, not status). **403** if archived or
+`suspended` — users can't self-clear an admin action or un-delete. **Response 200:**
+`{ "profile": { "id", "status", "archived_at" } }`
+
+> **Enforcement note:** mobile sign-in uses the Supabase SDK directly and the proxy
+> does **not** status-gate `/api/protected/mobile/**` (JWT-validity only), so these
+> flags are enforced app-side (client signs out on success; re-login checks
+> `status`/`archived_at` from `GET /me`). A still-valid access token keeps working
+> until it expires — see `tech-debt.md` for the server-side gating follow-up.
+
+> **Email / password changes** are not API routes — the mobile app calls the
+> Supabase SDK directly (`supabase.auth.updateUser({ email })` with OTP/`verifyOtp`,
+> and `updateUser({ password, currentPassword })`).
+
 ---
 
 ## Adding a new mobile route

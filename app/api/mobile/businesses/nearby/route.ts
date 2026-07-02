@@ -102,7 +102,12 @@ export async function GET(req: NextRequest) {
     } else if (limit != null) {
       // Cap result rows when a `limit` is given (e.g. Home's nearest-few
       // preview) so we never transfer every business just to show a handful.
-      query = query.order('distance_meters', { ascending: true }).limit(limit);
+      // Order by is_featured first — matches nearby_businesses' own intended
+      // order (promoted shops surface before the distance cutoff trims rows).
+      query = query
+        .order('is_featured', { ascending: false })
+        .order('distance_meters', { ascending: true })
+        .limit(limit);
     }
 
     const { data, error, count } = await query;

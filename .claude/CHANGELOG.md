@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-07-16 — Fix production 413 on business registration (main)
+
+> **API-surface change (auth-adjacent) — review before merge.** No schema migration.
+
+- **Root cause:** registration POSTed one multipart request with logo + banner +
+  4+ interior images + license + tax cert (each ≤ 2 MB → up to ~16 MB total).
+  Vercel functions reject bodies > 4.5 MB with a platform 413 before the handler
+  runs. Worked locally (no limit), failed in production.
+- **Fix — split the upload into per-request phases:**
+  - `POST /api/web/businesses` now takes **JSON metadata only** (Zod-validated:
+    `shop_name`/`description`/`business_category`/`category_id` (z.guid)/`location`),
+    creates the business row + branch via new `createBusinessDraft()` and returns it.
+    Errors return generic messages (no raw Supabase leak).
+  - New `POST /api/web/businesses/[id]/files` — multipart with `kind`
+    (`shop_logo|shop_banner|interior_image|business_license|tax_certificate`) +
+    `file` (+ `index` for interiors), one file per request. 4 MB server cap (413),
+    guid-validated id, `Unauthorized` → 401, wrong-owner/archived → 404. Backed by
+    `uploadBusinessRegistrationFile()` (ownership check, WebP pipeline for images,
+    raw upload for docs, per-kind row update; interiors append sequentially).
+  - Old all-in-one `createBusiness(FormData)` removed (rollback-by-delete gone —
+    a failed upload now leaves a resumable draft instead of deleting the row).
+- **Client (`shop-registration-content.tsx`):** creates the draft once (id cached
+  in ref + `ilokal-registration-business-id` localStorage), then uploads files
+  sequentially, skipping already-uploaded ones on retry — a mid-flow failure
+  resumes instead of duplicating the business.
+- **Tests (+11):** `app/api/web/businesses/__tests__/registration-split.test.ts`
+  (draft 201/400/no-leak; files 200, index passthrough, bad id/kind/missing file,
+  413 oversize, 401/404 mapping). Verified: lint + **1299** tests + build green.
+
 ## 2026-07-01 — Media & feed scaling: WebP pipeline, deals RPC, notification outbox (feat/account-management)
 
 > **Two HIGH-risk schema migrations** (`20260630000000_mobile_deals_rpc.sql`,

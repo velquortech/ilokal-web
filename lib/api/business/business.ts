@@ -4,7 +4,28 @@ import { BusinessShop } from '@/providers/BusinessProvider';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { uploadWebP, IMAGE_PRESETS } from '@/lib/api/helpers/image';
 
-export async function createBusiness(payload: FormData) {
+// Registration is split into two phases so no single request exceeds Vercel's
+// 4.5 MB function body limit (a one-shot multipart POST with logo + banner +
+// 4+ interior images + 2 docs reached ~16 MB and 413'd in production):
+//   1. createBusinessDraft(meta)         — JSON metadata only, creates row + branch
+//   2. uploadBusinessRegistrationFile(…) — one file per request (each ≤ 2 MB)
+
+export type RegistrationFileKind =
+  | 'shop_logo'
+  | 'shop_banner'
+  | 'interior_image'
+  | 'business_license'
+  | 'tax_certificate';
+
+export interface BusinessDraftMeta {
+  shop_name: string;
+  description: string;
+  business_category: Record<string, unknown>;
+  category_id: string | null;
+  location: Record<string, unknown>;
+}
+
+export async function createBusinessDraft(meta: BusinessDraftMeta) {
   const supabase = await createServerSupabaseClient();
 
   const {
@@ -12,23 +33,12 @@ export async function createBusiness(payload: FormData) {
   } = await supabase.auth.getUser();
   if (!user) throw new Error('Unauthorized');
 
-  const shop_logo = payload.get('shop_logo') as File;
-  const shop_banner = payload.get('shop_banner') as File;
-  const interior_images = payload.getAll('interior_images') as File[];
-  const business_license = payload.get('business_license') as File;
-  const tax_certificate = payload.get('tax_certificate') as File;
+  const { shop_name, description, business_category, category_id, location } =
+    meta;
 
-  const shop_name = payload.get('shop_name') as string;
-  const description = payload.get('description') as string;
-  const business_category = JSON.parse(
-    payload.get('business_category') as string,
-  );
-  const location = JSON.parse(payload.get('location') as string);
-  const category_id = (payload.get('category_id') as string) || null;
-
-  // 3. Insert the business row first so storage RLS policies can verify
-  // that the uploading user owns the business matching the folder name.
-  // File URL columns are nullable — they get filled in step 5.
+  // Insert the business row first so storage RLS policies can verify that the
+  // uploading user owns the business matching the folder name. File URL
+  // columns are nullable — they get filled by the per-file upload requests.
   const { data: business, error: insertError } = await supabase
     .from('businesses')
     .insert([
@@ -45,95 +55,7 @@ export async function createBusiness(payload: FormData) {
     .single();
   if (insertError) throw insertError;
 
-  // 4. Upload files. Paths use business.id as the folder so the RLS policy:
-  //    "WHERE businesses.id = folder AND businesses.owner_id = auth.uid()"
-  //    resolves correctly now that the row exists.
-  const uploadFile = async (bucket: string, file: File, path: string) => {
-    const arrayBuffer = await file.arrayBuffer();
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(path, arrayBuffer, { contentType: file.type, upsert: true });
-    if (error) throw new Error(`Upload to ${bucket} failed: ${error.message}`);
-    return data.path;
-  };
-
-  // Display images are downscaled + re-encoded to WebP at write time (the free
-  // Supabase plan has no on-the-fly transform) via the shared uploadWebP helper.
-  // Docs (license/tax PDFs) keep the raw `uploadFile` path — converting them
-  // would corrupt non-image bytes.
-  const uploadImage = (
-    bucket: string,
-    file: File,
-    path: string,
-    maxDimension: number,
-  ) => uploadWebP(supabase, bucket, path, file, { maxDimension, upsert: true });
-
-  let logoPath: string;
-  let bannerPath: string;
-  let licensePath: string;
-  let taxPath: string;
-  let interiorPaths: string[];
-
-  try {
-    const ts = Date.now();
-    logoPath = await uploadImage(
-      'shop-logos',
-      shop_logo,
-      `${business.id}/logo-${ts}.webp`,
-      IMAGE_PRESETS.logo,
-    );
-    bannerPath = await uploadImage(
-      'shop-banners',
-      shop_banner,
-      `${business.id}/banner-${ts}.webp`,
-      IMAGE_PRESETS.hero,
-    );
-    licensePath = await uploadFile(
-      'business-docs',
-      business_license,
-      `${business.id}/license-${ts}.pdf`,
-    );
-    taxPath = await uploadFile(
-      'business-docs',
-      tax_certificate,
-      `${business.id}/tax-cert-${ts}.pdf`,
-    );
-    interiorPaths = await Promise.all(
-      interior_images.map((file, idx) =>
-        uploadImage(
-          'interior-images',
-          file,
-          `${business.id}/interior-${ts}-${idx}.webp`,
-          IMAGE_PRESETS.hero,
-        ),
-      ),
-    );
-  } catch (uploadError) {
-    // Roll back the business row so the user can retry cleanly
-    await supabase.from('businesses').delete().eq('id', business.id);
-    throw uploadError;
-  }
-
-  const { data, error: updateError } = await supabase
-    .from('businesses')
-    .update({
-      logo_url: logoPath,
-      banner_url: bannerPath,
-      interior_images: interiorPaths,
-      verification_documents: {
-        business_license: licensePath,
-        tax_certificate: taxPath,
-      },
-    })
-    .eq('id', business.id)
-    .select()
-    .single();
-  if (updateError) {
-    await supabase.from('businesses').delete().eq('id', business.id);
-    throw updateError;
-  }
-
-  // 6. Create a branch so the business appears in nearby searches.
+  // Create a branch so the business appears in nearby searches.
   // The nearby_businesses SQL function JOINs on branches.location (PostGIS GEOGRAPHY),
   // but registration only stores a JSON address — no branch row means the business
   // is invisible to the mobile app regardless of verification status.
@@ -154,7 +76,7 @@ export async function createBusiness(payload: FormData) {
     .join(', ');
 
   const branchPayload: Record<string, unknown> = {
-    business_id: data.id,
+    business_id: business.id,
     name: shop_name,
     address: formattedAddress,
   };
@@ -163,6 +85,119 @@ export async function createBusiness(payload: FormData) {
   }
 
   await supabase.from('branches').insert(branchPayload);
+
+  return business;
+}
+
+export async function uploadBusinessRegistrationFile(
+  businessId: string,
+  kind: RegistrationFileKind,
+  file: File,
+  index = 0,
+) {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Unauthorized');
+
+  // Ownership check — the RLS-scoped client also enforces this, but failing
+  // early gives the caller a clean error instead of a silent no-op update.
+  const { data: business, error: fetchError } = await supabase
+    .from('businesses')
+    .select('id, interior_images, verification_documents')
+    .eq('id', businessId)
+    .eq('owner_id', user.id)
+    .is('archived_at', null)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!business) throw new Error('Business not found');
+
+  const uploadRaw = async (bucket: string, path: string) => {
+    const arrayBuffer = await file.arrayBuffer();
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(path, arrayBuffer, { contentType: file.type, upsert: true });
+    if (error) throw new Error(`Upload to ${bucket} failed: ${error.message}`);
+    return data.path;
+  };
+
+  // Display images are downscaled + re-encoded to WebP at write time (the free
+  // Supabase plan has no on-the-fly transform) via the shared uploadWebP helper.
+  // Docs (license/tax PDFs) keep the raw upload path — converting them would
+  // corrupt non-image bytes.
+  const uploadImage = (bucket: string, path: string, maxDimension: number) =>
+    uploadWebP(supabase, bucket, path, file, { maxDimension, upsert: true });
+
+  const ts = Date.now();
+  let update: Record<string, unknown>;
+
+  switch (kind) {
+    case 'shop_logo': {
+      const path = await uploadImage(
+        'shop-logos',
+        `${businessId}/logo-${ts}.webp`,
+        IMAGE_PRESETS.logo,
+      );
+      update = { logo_url: path };
+      break;
+    }
+    case 'shop_banner': {
+      const path = await uploadImage(
+        'shop-banners',
+        `${businessId}/banner-${ts}.webp`,
+        IMAGE_PRESETS.hero,
+      );
+      update = { banner_url: path };
+      break;
+    }
+    case 'interior_image': {
+      const path = await uploadImage(
+        'interior-images',
+        `${businessId}/interior-${ts}-${index}.webp`,
+        IMAGE_PRESETS.hero,
+      );
+      // Client uploads sequentially, so read-modify-write is race-free here.
+      const existing: string[] = business.interior_images ?? [];
+      update = { interior_images: [...existing, path] };
+      break;
+    }
+    case 'business_license': {
+      const path = await uploadRaw(
+        'business-docs',
+        `${businessId}/license-${ts}.pdf`,
+      );
+      update = {
+        verification_documents: {
+          ...(business.verification_documents ?? {}),
+          business_license: path,
+        },
+      };
+      break;
+    }
+    case 'tax_certificate': {
+      const path = await uploadRaw(
+        'business-docs',
+        `${businessId}/tax-cert-${ts}.pdf`,
+      );
+      update = {
+        verification_documents: {
+          ...(business.verification_documents ?? {}),
+          tax_certificate: path,
+        },
+      };
+      break;
+    }
+  }
+
+  const { data, error: updateError } = await supabase
+    .from('businesses')
+    .update(update)
+    .eq('id', businessId)
+    .select()
+    .single();
+  if (updateError) throw updateError;
 
   return data;
 }

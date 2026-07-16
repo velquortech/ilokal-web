@@ -7,11 +7,16 @@ import { BusinessProps } from '../validator/business-registration-form-schema';
 import { STEPS } from '../data/steps';
 import { StepProgress } from './step-progress';
 import { RegistrationNav } from './register-nav';
-import { registerBusiness } from '../api/register-business';
+import {
+  registerBusiness,
+  uploadRegistrationFile,
+} from '../api/register-business';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { AxiosError } from 'axios';
 import { cn } from '@/lib/utils';
+
+const BUSINESS_ID_KEY = 'ilokal-registration-business-id';
 
 export function ShopRegistrationContent() {
   const { step, form, clearFormCache } = useMultiStepForm();
@@ -19,6 +24,11 @@ export function ShopRegistrationContent() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const submittingRef = useRef(false);
+  // Resume markers: if creation succeeded but a file upload failed, a retry
+  // must reuse the created business (no duplicate row) and skip files that
+  // already went through. The id survives a reload via localStorage.
+  const businessIdRef = useRef<string | null>(null);
+  const uploadedRef = useRef<Set<string>>(new Set());
 
   const { component: stepComponent, title, description } = STEPS[step - 1];
 
@@ -29,40 +39,83 @@ export function ShopRegistrationContent() {
     setSubmitError(null);
 
     try {
-      const formData = new FormData();
+      // Phase 1 — create the business row from JSON metadata (small payload).
+      let businessId =
+        businessIdRef.current ??
+        (typeof window !== 'undefined'
+          ? localStorage.getItem(BUSINESS_ID_KEY)
+          : null);
 
-      if (data.shop_logo) formData.append('shop_logo', data.shop_logo);
-      if (data.shop_banner) formData.append('shop_banner', data.shop_banner);
-      if (data.business_license)
-        formData.append('business_license', data.business_license);
-      if (data.tax_certificate)
-        formData.append('tax_certificate', data.tax_certificate);
+      if (!businessId) {
+        const business = await registerBusiness({
+          shop_name: data.shop_name,
+          description: data.description,
+          business_category: data.business_category,
+          category_id:
+            data.business_category.type === 'predefined'
+              ? (data.business_category.id ?? null)
+              : null,
+          location: data.location,
+        });
+        businessId = business.id;
+        businessIdRef.current = businessId;
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(BUSINESS_ID_KEY, businessId);
+        }
+      }
 
-      if (data.interior_images && data.interior_images.length > 0) {
-        data.interior_images.forEach((file: File) => {
-          formData.append('interior_images', file);
+      // Phase 2 — upload files one request at a time so each stays under
+      // Vercel's 4.5 MB body limit (all-in-one multipart 413'd in prod).
+      // Sequential on purpose: interior_images appends server-side.
+      const bid = businessId;
+      const uploads: { key: string; run: () => Promise<unknown> }[] = [];
+      if (data.shop_logo) {
+        const file = data.shop_logo;
+        uploads.push({
+          key: 'shop_logo',
+          run: () => uploadRegistrationFile(bid, 'shop_logo', file),
         });
       }
-
-      formData.append(
-        'business_category',
-        JSON.stringify(data.business_category),
-      );
-      if (
-        data.business_category.type === 'predefined' &&
-        data.business_category.id
-      ) {
-        formData.append('category_id', data.business_category.id);
+      if (data.shop_banner) {
+        const file = data.shop_banner;
+        uploads.push({
+          key: 'shop_banner',
+          run: () => uploadRegistrationFile(bid, 'shop_banner', file),
+        });
       }
-      formData.append('location', JSON.stringify(data.location));
-      formData.append('shop_name', data.shop_name);
-      formData.append('description', data.description);
+      if (data.business_license) {
+        const file = data.business_license;
+        uploads.push({
+          key: 'business_license',
+          run: () => uploadRegistrationFile(bid, 'business_license', file),
+        });
+      }
+      if (data.tax_certificate) {
+        const file = data.tax_certificate;
+        uploads.push({
+          key: 'tax_certificate',
+          run: () => uploadRegistrationFile(bid, 'tax_certificate', file),
+        });
+      }
+      (data.interior_images ?? []).forEach((file: File, idx: number) => {
+        uploads.push({
+          key: `interior_image_${idx}`,
+          run: () => uploadRegistrationFile(bid, 'interior_image', file, idx),
+        });
+      });
 
-      await registerBusiness(formData);
+      for (const upload of uploads) {
+        if (uploadedRef.current.has(upload.key)) continue;
+        await upload.run();
+        uploadedRef.current.add(upload.key);
+      }
 
       clearFormCache();
+      businessIdRef.current = null;
+      uploadedRef.current = new Set();
       if (typeof window !== 'undefined') {
         localStorage.removeItem('ilokal-registration-step');
+        localStorage.removeItem(BUSINESS_ID_KEY);
       }
 
       setShowSuccessDialog(true);
@@ -72,6 +125,8 @@ export function ShopRegistrationContent() {
           error?.response?.data?.message ||
           'Failed to submit application. Please try again.';
         setSubmitError(message);
+      } else {
+        setSubmitError('Failed to submit application. Please try again.');
       }
     } finally {
       setIsSubmitting(false);

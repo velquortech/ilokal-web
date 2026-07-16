@@ -32,102 +32,140 @@ export function ShopRegistrationContent() {
 
   const { component: stepComponent, title, description } = STEPS[step - 1];
 
+  const resetResumeMarkers = () => {
+    businessIdRef.current = null;
+    uploadedRef.current = new Set();
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(BUSINESS_ID_KEY);
+    }
+  };
+
+  const performSubmission = async (data: BusinessProps) => {
+    // Phase 1 — create the business row from JSON metadata (small payload).
+    let businessId =
+      businessIdRef.current ??
+      (typeof window !== 'undefined'
+        ? localStorage.getItem(BUSINESS_ID_KEY)
+        : null);
+
+    if (!businessId) {
+      const business = await registerBusiness({
+        shop_name: data.shop_name,
+        description: data.description,
+        business_category: data.business_category,
+        category_id:
+          data.business_category.type === 'predefined'
+            ? (data.business_category.id ?? null)
+            : null,
+        location: data.location,
+      });
+      businessId = business.id;
+      businessIdRef.current = businessId;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(BUSINESS_ID_KEY, businessId);
+      }
+    }
+
+    // Phase 2 — upload files one request at a time so each stays under
+    // Vercel's 4.5 MB body limit (all-in-one multipart 413'd in prod).
+    // Sequential on purpose: interior_images appends server-side.
+    const bid = businessId;
+    const uploads: { key: string; run: () => Promise<unknown> }[] = [];
+    if (data.shop_logo) {
+      const file = data.shop_logo;
+      uploads.push({
+        key: 'shop_logo',
+        run: () => uploadRegistrationFile(bid, 'shop_logo', file),
+      });
+    }
+    if (data.shop_banner) {
+      const file = data.shop_banner;
+      uploads.push({
+        key: 'shop_banner',
+        run: () => uploadRegistrationFile(bid, 'shop_banner', file),
+      });
+    }
+    if (data.business_license) {
+      const file = data.business_license;
+      uploads.push({
+        key: 'business_license',
+        run: () => uploadRegistrationFile(bid, 'business_license', file),
+      });
+    }
+    if (data.tax_certificate) {
+      const file = data.tax_certificate;
+      uploads.push({
+        key: 'tax_certificate',
+        run: () => uploadRegistrationFile(bid, 'tax_certificate', file),
+      });
+    }
+    (data.interior_images ?? []).forEach((file: File, idx: number) => {
+      uploads.push({
+        key: `interior_image_${idx}`,
+        run: () => uploadRegistrationFile(bid, 'interior_image', file, idx),
+      });
+    });
+
+    for (const upload of uploads) {
+      if (uploadedRef.current.has(upload.key)) continue;
+      await upload.run();
+      uploadedRef.current.add(upload.key);
+    }
+  };
+
   const handleSubmitForm = async (data: BusinessProps) => {
     if (submittingRef.current) return;
+
+    // The step schemas mark files `.optional()` (multi-step navigation), so an
+    // application with missing files could otherwise submit and reach admin
+    // review unapprovable. Guard the full set here.
+    const missing: string[] = [];
+    if (!data.shop_logo) missing.push('shop logo');
+    if (!data.shop_banner) missing.push('shop banner');
+    if (!data.interior_images || data.interior_images.length < 4)
+      missing.push('at least 4 interior photos');
+    if (!data.business_license) missing.push('business license');
+    if (!data.tax_certificate) missing.push('tax certificate');
+    if (missing.length > 0) {
+      setSubmitError(
+        `Missing required files: ${missing.join(', ')}. Please go back and re-attach them.`,
+      );
+      return;
+    }
+
     submittingRef.current = true;
     setIsSubmitting(true);
     setSubmitError(null);
 
     try {
-      // Phase 1 — create the business row from JSON metadata (small payload).
-      let businessId =
-        businessIdRef.current ??
-        (typeof window !== 'undefined'
-          ? localStorage.getItem(BUSINESS_ID_KEY)
-          : null);
-
-      if (!businessId) {
-        const business = await registerBusiness({
-          shop_name: data.shop_name,
-          description: data.description,
-          business_category: data.business_category,
-          category_id:
-            data.business_category.type === 'predefined'
-              ? (data.business_category.id ?? null)
-              : null,
-          location: data.location,
-        });
-        businessId = business.id;
-        businessIdRef.current = businessId;
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(BUSINESS_ID_KEY, businessId);
-        }
-      }
-
-      // Phase 2 — upload files one request at a time so each stays under
-      // Vercel's 4.5 MB body limit (all-in-one multipart 413'd in prod).
-      // Sequential on purpose: interior_images appends server-side.
-      const bid = businessId;
-      const uploads: { key: string; run: () => Promise<unknown> }[] = [];
-      if (data.shop_logo) {
-        const file = data.shop_logo;
-        uploads.push({
-          key: 'shop_logo',
-          run: () => uploadRegistrationFile(bid, 'shop_logo', file),
-        });
-      }
-      if (data.shop_banner) {
-        const file = data.shop_banner;
-        uploads.push({
-          key: 'shop_banner',
-          run: () => uploadRegistrationFile(bid, 'shop_banner', file),
-        });
-      }
-      if (data.business_license) {
-        const file = data.business_license;
-        uploads.push({
-          key: 'business_license',
-          run: () => uploadRegistrationFile(bid, 'business_license', file),
-        });
-      }
-      if (data.tax_certificate) {
-        const file = data.tax_certificate;
-        uploads.push({
-          key: 'tax_certificate',
-          run: () => uploadRegistrationFile(bid, 'tax_certificate', file),
-        });
-      }
-      (data.interior_images ?? []).forEach((file: File, idx: number) => {
-        uploads.push({
-          key: `interior_image_${idx}`,
-          run: () => uploadRegistrationFile(bid, 'interior_image', file, idx),
-        });
-      });
-
-      for (const upload of uploads) {
-        if (uploadedRef.current.has(upload.key)) continue;
-        await upload.run();
-        uploadedRef.current.add(upload.key);
+      try {
+        await performSubmission(data);
+      } catch (error: unknown) {
+        // 404 = the cached draft id belongs to another account (user switched
+        // logins mid-flow) or the draft is gone. Drop the stale markers and
+        // redo the whole submission once under the current account.
+        const status = (error as { status?: number })?.status;
+        if (status !== 404) throw error;
+        resetResumeMarkers();
+        await performSubmission(data);
       }
 
       clearFormCache();
-      businessIdRef.current = null;
-      uploadedRef.current = new Set();
+      resetResumeMarkers();
       if (typeof window !== 'undefined') {
         localStorage.removeItem('ilokal-registration-step');
-        localStorage.removeItem(BUSINESS_ID_KEY);
       }
 
       setShowSuccessDialog(true);
     } catch (error: unknown) {
-      if (error instanceof AxiosError) {
-        const message =
-          error?.response?.data?.message ||
-          'Failed to submit application. Please try again.';
-        setSubmitError(message);
-      } else {
-        setSubmitError('Failed to submit application. Please try again.');
-      }
+      const message =
+        error instanceof AxiosError
+          ? error?.response?.data?.message ||
+            'Failed to submit application. Please try again.'
+          : error instanceof Error && error.message
+            ? error.message
+            : 'Failed to submit application. Please try again.';
+      setSubmitError(message);
     } finally {
       setIsSubmitting(false);
       submittingRef.current = false;

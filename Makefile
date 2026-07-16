@@ -42,6 +42,14 @@ setup-supabase: init-log
 	@echo "[$(TIMESTAMP)] Temporary output file cleaned up" | tee -a $(LOG_FILE)
 
 run-dev:
+	@conflict=$$(docker ps --format '{{.Names}}\t{{.Ports}}' 2>/dev/null | grep ':54322->' | grep -v 'supabase_db_ilokal-web' | cut -f1 | head -1); \
+	if [ -n "$$conflict" ]; then \
+		project=$${conflict#supabase_db_}; \
+		echo "Error: port 54322 is held by another Supabase stack ($$conflict)."; \
+		echo "       Stop it first, then re-run 'make run-dev':"; \
+		echo "         yarn supabase stop --project-id $$project"; \
+		exit 1; \
+	fi
 	yarn supabase start --ignore-health-check
 	yarn dev
 	@echo "running dev with supabase"

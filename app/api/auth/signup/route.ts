@@ -157,10 +157,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       profileData.avatar_url = avatar_url.trim();
     }
 
-    // Create profile
+    // Create profile — the on_auth_user_created trigger fires first and inserts
+    // a minimal row, so a plain .insert() collides on the id PK. Upsert merges
+    // in the user's actual name, role, and extras. (Mirrors signupAction.)
     const { error: profileError } = await supabase
       .from('profiles')
-      .insert(profileData);
+      .upsert(profileData, { onConflict: 'id' });
 
     if (profileError) {
       console.error(

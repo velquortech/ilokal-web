@@ -1,0 +1,76 @@
+/*
+ * iLokal landing utilities — 1:1 port of the export's global CSS, every rule
+ * scoped under [data-ilokal-root] so the generic class names (.wrap, .navlinks,
+ * …) never leak into the rest of the app. Hover states that the export declared
+ * via `style-hover` attributes are reproduced here as `.il-*` helper classes.
+ */
+
+/* the scrolling element is <html>, not the wrapper — scope via :has() */
+html:has([data-ilokal-root]) { scroll-behavior: smooth; }
+[data-ilokal-root] a { color: var(--brand); text-decoration: none; }
+[data-ilokal-root] a:hover { color: var(--brandhover); }
+[data-ilokal-root] button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+@keyframes il-fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes il-floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+
+[data-ilokal-root] .wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+[data-ilokal-root] .navlinks { display: flex; gap: 26px; align-items: center; }
+[data-ilokal-root] .navactions { display: flex; gap: 14px; align-items: center; }
+[data-ilokal-root] .hamb { display: none; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; }
+[data-ilokal-root] .herogrid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 56px; align-items: center; }
+[data-ilokal-root] .herotext { order: 1; }
+[data-ilokal-root] .herophone { order: 2; display: flex; justify-content: center; }
+[data-ilokal-root] .statsrow { display: flex; gap: 18px; }
+[data-ilokal-root] .featgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+[data-ilokal-root] .bizgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+[data-ilokal-root] .howgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; }
+[data-ilokal-root] .stepsrow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+[data-ilokal-root] .catrow { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+[data-ilokal-root] .dealsgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+[data-ilokal-root] .testigrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+[data-ilokal-root] .footgrid { display: grid; grid-template-columns: 2.2fr 1fr 1fr 1fr; gap: 40px; }
+[data-ilokal-root] .dashshell { display: grid; grid-template-columns: 210px 1fr; }
+[data-ilokal-root] .dashstats { display: grid; grid-template-columns: repeat(4, 1fr); }
+[data-ilokal-root] .dashsplit { display: grid; grid-template-columns: 1.5fr 1fr; }
+
+/* hover helpers (reproducing `style-hover`) */
+[data-ilokal-root] .il-btn-primary { transition: background .18s ease; }
+[data-ilokal-root] .il-btn-primary:hover { background: var(--brandhover) !important; }
+[data-ilokal-root] .il-btn-outline { transition: border-color .18s ease; }
+[data-ilokal-root] .il-btn-outline:hover { border-color: var(--brand) !important; }
+[data-ilokal-root] .il-card { transition: transform .2s, box-shadow .2s; }
+[data-ilokal-root] .il-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(16, 24, 40, .1); }
+[data-ilokal-root] .il-cta-light:hover { background: #F0FDF4 !important; }
+[data-ilokal-root] .il-cta-ghost:hover { border-color: #fff !important; background: rgba(255, 255, 255, .1) !important; }
+[data-ilokal-root] .il-floaty { animation: il-floaty 6s ease-in-out infinite; }
+
+@media (max-width: 960px) {
+  [data-ilokal-root] .navlinks,
+  [data-ilokal-root] .navactions { display: none; }
+  [data-ilokal-root] .hamb { display: flex; }
+  [data-ilokal-root] .herogrid { grid-template-columns: 1fr; gap: 40px; }
+  [data-ilokal-root] .herotext { order: 2; text-align: center; }
+  [data-ilokal-root] .herophone { order: 1; }
+  [data-ilokal-root] .bizgrid { grid-template-columns: 1fr; gap: 32px; }
+  [data-ilokal-root] .howgrid { grid-template-columns: 1fr; gap: 30px; }
+  [data-ilokal-root] .featgrid { grid-template-columns: repeat(2, 1fr); }
+  [data-ilokal-root] .footgrid { grid-template-columns: 1fr 1fr; gap: 30px; }
+  [data-ilokal-root] .dashstats { grid-template-columns: repeat(2, 1fr); }
+  [data-ilokal-root] .dashsplit { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  [data-ilokal-root] .dashshell { grid-template-columns: 1fr; }
+  [data-ilokal-root] .featgrid,
+  [data-ilokal-root] .dealsgrid,
+  [data-ilokal-root] .testigrid,
+  [data-ilokal-root] .stepsrow,
+  [data-ilokal-root] .footgrid { grid-template-columns: 1fr; }
+  [data-ilokal-root] .statsrow { flex-direction: column; }
+}

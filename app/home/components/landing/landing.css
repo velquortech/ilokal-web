@@ -57,6 +57,7 @@ html:has([data-ilokal-root]) { scroll-behavior: smooth; }
   [data-ilokal-root] .hamb { display: flex; }
   [data-ilokal-root] .herogrid { grid-template-columns: 1fr; gap: 40px; }
   [data-ilokal-root] .herotext { order: 2; text-align: center; }
+  [data-ilokal-root] .trustrow { justify-content: center; }
   [data-ilokal-root] .herophone { order: 1; }
   [data-ilokal-root] .bizgrid { grid-template-columns: 1fr; gap: 32px; }
   [data-ilokal-root] .howgrid { grid-template-columns: 1fr; gap: 30px; }

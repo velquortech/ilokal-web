@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { motion } from 'motion/react';
 import { styleFromString as s } from '@/lib/utils/cssStyle';
+import { ROUTES } from '@/config/routeConfig';
 import './landing.css';
 import { rootStyle } from './tokens';
 import { LandingNav } from './LandingNav';
@@ -100,13 +102,7 @@ export function LandingPage() {
                 'display:flex;flex-wrap:wrap;gap:14px;margin-bottom:28px;',
               )}
             >
-              <a
-                href="#"
-                className="il-btn-primary"
-                style={s(
-                  'display:inline-flex;align-items:center;gap:9px;background:var(--brand);color:#fff;font-size:16px;font-weight:600;padding:15px 26px;border-radius:12px;box-shadow:0 4px 14px rgba(101,163,13,.3);',
-                )}
-              >
+              <a href="#" className="il-btn-primary" style={s(primaryCta)}>
                 Get the App
               </a>
               <a
@@ -120,9 +116,8 @@ export function LandingPage() {
               </a>
             </div>
             <div
-              style={s(
-                'display:flex;align-items:center;gap:12px;justify-content:inherit;',
-              )}
+              className="trustrow"
+              style={s('display:flex;align-items:center;gap:12px;')}
             >
               <div style={s('display:flex;')}>
                 {avatarStack.map((a, i) => (
@@ -587,9 +582,13 @@ export function LandingPage() {
                 </div>
               ))}
             </div>
-            <a href="#" className="il-btn-primary" style={s(primaryCta)}>
+            <Link
+              href={ROUTES.BUSINESS.registration}
+              className="il-btn-primary"
+              style={s(primaryCta)}
+            >
               List Your Business — it&apos;s free to start
-            </a>
+            </Link>
           </motion.div>
         </div>
       </section>
@@ -1177,15 +1176,15 @@ export function LandingPage() {
               >
                 Download the App
               </a>
-              <a
-                href="#businesses"
+              <Link
+                href={ROUTES.BUSINESS.registration}
                 className="il-cta-ghost"
                 style={s(
                   'background:transparent;color:#fff;font-size:16px;font-weight:700;padding:15px 28px;border-radius:12px;border:1.5px solid rgba(255,255,255,.6);',
                 )}
               >
                 Register Your Business
-              </a>
+              </Link>
             </div>
             <div
               style={s(

@@ -139,8 +139,8 @@ BEGIN
     (u[20], 'demo.user20@ilokal.dev', 'Tita Ocampo',     'app_user')
   ON CONFLICT (id) DO NOTHING;
 
-  -- ── 4. Subscriptions — spread across 6 months ────────────────
-  INSERT INTO public.subscriptions (user_id, business_id, created_at)
+  -- ── 4. Follows — spread across 6 months ────────────────
+  INSERT INTO public.follows (user_id, business_id, created_at)
   VALUES
     (u[1],  v_business_id, NOW() - INTERVAL '5 months 12 days'),
     (u[2],  v_business_id, NOW() - INTERVAL '5 months 3 days'),

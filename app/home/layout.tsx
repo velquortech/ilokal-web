@@ -1,38 +1,21 @@
 import type { Metadata } from 'next';
-import { Manrope } from 'next/font/google';
-import { Navigation } from '@/components/custom/Navigation';
-import { Footer } from '@/components/custom/Footer';
-
-const manrope = Manrope({
-  variable: '--font-manrope',
-  display: 'swap',
-  subsets: ['latin'],
-});
 
 export const metadata: Metadata = {
-  title: 'Ilokal web application',
+  title: 'iLokal — Discover Iloilo’s best local shops and deals',
   description:
-    'Ilokal will help local business to gain more customers through their own products',
+    'Find verified local cafés, restaurants, and stores near you in Iloilo City. Claim exclusive coupons, follow your favorites, and support Ilonggo businesses.',
 };
 
+/**
+ * Pass-through layout. The landing (`LandingPage`) ships its own sticky nav,
+ * footer, and self-contained theme, so this route no longer injects the generic
+ * Navigation/Footer chrome. `<html>`/`<body>`, fonts, and ThemeProvider come from
+ * the root `app/layout.tsx`.
+ */
 export default function HomeLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${manrope.variable} antialiased`}
-        suppressHydrationWarning
-      >
-        <main className="container mx-auto py-8">
-          <Navigation />
-          {children}
-        </main>
-
-        <Footer />
-      </body>
-    </html>
-  );
+  return <>{children}</>;
 }

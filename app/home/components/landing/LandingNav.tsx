@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { styleFromString as s } from '@/lib/utils/cssStyle';
+import { ROUTES } from '@/config/routeConfig';
 import { navLinks } from './data';
 import { CloseIcon, MenuIcon, MoonIcon, SunIcon } from './icons';
 
@@ -19,6 +21,16 @@ export type LandingNavProps = {
  */
 export function LandingNav({ dark, onToggleDark }: LandingNavProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Lock body scroll while the mobile-menu overlay is open.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [menuOpen]);
 
   return (
     <>
@@ -71,28 +83,29 @@ export function LandingNav({ dark, onToggleDark }: LandingNavProps) {
             >
               {dark ? <SunIcon /> : <MoonIcon />}
             </button>
-            <a
-              href="#"
+            <Link
+              href={ROUTES.AUTH.BUSINESS_LOGIN}
               style={s(
                 'color:var(--text);font-size:15px;font-weight:600;padding:9px 8px;',
               )}
             >
               Log In
-            </a>
-            <a
-              href="#businesses"
+            </Link>
+            <Link
+              href={ROUTES.BUSINESS.registration}
               className="il-btn-primary"
               style={s(
                 'background:var(--brand);color:#fff;font-size:15px;font-weight:600;padding:11px 18px;border-radius:10px;box-shadow:0 2px 8px rgba(101,163,13,.28);',
               )}
             >
               List Your Business
-            </a>
+            </Link>
           </div>
           <button
             className="hamb"
             onClick={() => setMenuOpen((v) => !v)}
             aria-label="Menu"
+            aria-expanded={menuOpen}
             style={s('border:1px solid var(--border);color:var(--text);')}
           >
             {menuOpen ? <CloseIcon /> : <MenuIcon />}
@@ -118,15 +131,15 @@ export function LandingNav({ dark, onToggleDark }: LandingNavProps) {
               {l.label}
             </a>
           ))}
-          <a
-            href="#businesses"
+          <Link
+            href={ROUTES.BUSINESS.registration}
             onClick={() => setMenuOpen(false)}
             style={s(
               'margin-top:16px;text-align:center;background:var(--brand);color:#fff;font-size:17px;font-weight:600;padding:15px;border-radius:12px;',
             )}
           >
             List Your Business
-          </a>
+          </Link>
         </div>
       )}
     </>

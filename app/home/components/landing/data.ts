@@ -37,10 +37,6 @@ export type Testimonial = {
   color: string;
 };
 
-export type DashNavItem = { label: string; active?: boolean };
-export type DashStat = { label: string; value: string; delta: string };
-export type DashCoupon = { text: string; expiry: string; count: string };
-
 export type NavLink = { href: string; label: string };
 export type FooterColumn = { title: string; links: NavLink[] };
 
@@ -278,40 +274,6 @@ export const testimonials: Testimonial[] = [
     role: 'Owner · Kultura Crafts',
     initials: 'GD',
     color: '#22C55E',
-  },
-];
-
-export const dashNav: DashNavItem[] = [
-  { label: 'Overview', active: true },
-  { label: 'My Shops' },
-  { label: 'Products & Menu' },
-  { label: 'Coupons & Deals' },
-  { label: 'Analytics' },
-  { label: 'Verification' },
-];
-
-export const dashStats: DashStat[] = [
-  { label: 'Redemptions', value: '248', delta: '▲ 18%' },
-  { label: 'New followers', value: '+63', delta: '▲ 9%' },
-  { label: 'Active deals', value: '5', delta: '2 ending soon' },
-  { label: 'Shop views', value: '1.9k', delta: '▲ 24%' },
-];
-
-export const dashCoupons: DashCoupon[] = [
-  {
-    text: '20% off any specialty drink',
-    expiry: 'Ends in 5 days',
-    count: '142 used',
-  },
-  {
-    text: 'Free upsize on iced coffee',
-    expiry: 'Ends in 2 days',
-    count: '68 used',
-  },
-  {
-    text: '₱99 pastry + coffee combo',
-    expiry: 'Ends in 9 days',
-    count: '38 used',
   },
 ];
 

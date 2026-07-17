@@ -83,9 +83,10 @@ export async function uploadBranchDocumentAction(
       .upload(filePath, file, { cacheControl: '3600', upsert: false });
 
     if (uploadError) {
+      console.error('[business/branchActions] upload error:', uploadError);
       return {
         success: false,
-        error: { code: 'UPLOAD_ERROR', message: uploadError.message },
+        error: { code: 'UPLOAD_ERROR', message: 'Failed to upload file' },
       };
     }
 

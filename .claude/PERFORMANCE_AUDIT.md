@@ -339,13 +339,24 @@ mobile surface) keyed on IP + email for login/signup/reset. Note the in-memory
 limiter is per-instance — fine as a baseline, swap for Upstash/KV for a real
 distributed quota.
 
-### SEC-6 — Audit service-role callers for a pre-check (S6).
-Enumerate every `createServerAdminClient`/`createAnalyticsSupabaseClient` caller
-and confirm an ownership/role gate runs *before* the RLS-bypassing query.
-Analytics routes verify via `getUserBusiness` ✓. Explicitly re-verify
-`lib/api/coupons/couponQuery.ts` (lines 466/611), `settingsActions.ts:303`, and
-`businessReviewActions.ts:79`. Where no cross-row aggregate is needed, downgrade
-to the RLS-scoped `createServerSupabaseClient`.
+### SEC-6 — Audit service-role callers for a pre-check (S6). **STATUS: DONE — all gated.**
+Enumerated every `createServerAdminClient`/`createAnalyticsSupabaseClient` caller;
+each runs an ownership/role gate *before* the RLS-bypassing query, and the
+business/coupon id passed in is **server-derived, not client-supplied**:
+- Analytics routes → `getUserBusiness` + `business_id` match ✓.
+- `couponQuery` (466/611) → callers `getRedeemedCouponsAction` /
+  `getRedemptionSummaryStatsAction` gate `verifyBusinessOwner()` then pass
+  `verify.business!.id` (own business) ✓.
+- `getRedemptionStats(id)` route → `verifyBusinessOwner()` + explicit
+  `coupon.business_id === verify.business!.id` 403 check before the call ✓.
+- `settingsActions.ts` self-delete → `verifyBusinessOwner()` + password re-auth,
+  deletes only `verify.user!.id` ✓.
+- `businessReviewActions.ts` → `verifyCurrentUserIsAdmin()` before the client ✓.
+No unguarded service-role path found. **Bonus:** this pass caught + fixed raw
+driver-error leaks in the *server actions* (settingsActions, admin/business
+branchActions, subscriptionPlanActions) that the earlier `app/api`-only SEC-5
+sweep missed — GoTrue auth messages (password/email/MFA) intentionally kept
+(user-facing, no DB-schema leak).
 
 ### SEC-7 — Path-traversal hardening on storage delete (S7).
 In `upload/[bucket]/[id]`, assert the decoded first path segment matches a UUID

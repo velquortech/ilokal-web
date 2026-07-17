@@ -33,7 +33,7 @@ async function callPlanApi(
       success: false,
       error: {
         code: 'ACTION_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Something went wrong. Please try again.',
       },
     };
   }

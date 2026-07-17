@@ -21,10 +21,26 @@
 > - ✅ **P7 done:** `getBusinessDashboard` + `getBusinessRevenue` independent reads
 >   parallelized with `Promise.all`. **P11 resolved N/A** (PostgREST HTTP, no direct
 >   `pg` — not a pooler problem).
-> - ⬜ **Remaining P3:** `getRetentionData`/`getMonthlyTrend`/`getFollowerFunnel`/
->   `getCustomerSegments` still fetch-all-then-reduce (monthly/RFM windows; lower row
->   counts, less urgent) — move to SQL RPCs next. `getBusinessRevenue`'s monthly
->   bucket is still JS-side (small 6-month window; fine for now).
+> - ✅ **P3 COMPLETE (2026-07-17):** migration `20260717072717_analytics_engagement_rpcs.sql`
+>   adds `analytics_retention_months` / `analytics_monthly_trend` /
+>   `analytics_follower_funnel` / `analytics_customer_segments` /
+>   `analytics_rating_summary` (all SECURITY DEFINER, pinned search_path,
+>   service_role-only). `getRetentionData`/`getMonthlyTrend`/`getFollowerFunnel`/
+>   `getCustomerSegments` rewired to RPCs; `getBusinessHealthIndicators` now uses
+>   the trend + rating-summary RPCs instead of fetch-all follows/ratings (and its
+>   active-deals count gained `head:true`). Applied + smoke-tested on local DB.
+>   Only remaining JS aggregation: `getBusinessRevenue`'s monthly bucket (small
+>   6-month window; fine) and `getProductPerformance` (blocked on schema decision).
+> - ✅ **SEC-7 done (2026-07-17):** `upload/[bucket]/[id]` DELETE rejects
+>   traversal-shaped / non-UUID-rooted paths (400) before any storage call.
+>   Bonus authz fix found during it: the `avatars` bucket had NO ownership check —
+>   any authenticated user could delete anyone's avatar by path; now owner-or-admin
+>   only. Tests: `app/api/web/upload/__tests__/delete-path-guards.test.ts` (+6).
+> - ✅ **Migrations applied + verified locally (2026-07-17):** `make migrate-up` +
+>   `make generate-types` run; `pg_policies` shows 0 bare `auth.uid()`/`auth.role()`
+>   (P1); SEC-1 red-teamed in SQL (non-admin self-`role='admin'`/`status` update is
+>   a no-op, `full_name` update still works); perf indexes + analytics RPCs present;
+>   only PostGIS internals lack pinned `search_path` (S4 confirmed clean).
 > - ⚠️ **P3 (page_views index) dropped** — that table doesn't exist; the real
 >   `view_events` is already indexed. No index needed once `getTrafficMetrics`
 >   fix (done) lands.
@@ -39,12 +55,9 @@
 >   per-policy exception-isolated. **Not verifiable in this env** (no docker /
 >   Supabase CLI) — apply with `make migrate-up`, then confirm with
 >   `get_advisors` (0 `auth_rls_initplan` warnings) + spot-check `pg_policies`.
-> - ⬜ **Not started:** P3 analytics RPCs,
->   P7/P9/P10 (orchestration, count(), caching), P11 (pooler verify), P12/P13;
->   SEC-3/SEC-4 (review-abuse gate), SEC-5 remaining ~15 routes, SEC-5→SEC-8
->   (auth-route rate limiting), SEC-6 (service-role caller re-audit), SEC-7.
-> - Migrations are **not yet applied** (local stack was down) — run
->   `make migrate-up` + `make generate-types`, then a SQL/red-team test for SEC-1.
+> - ⬜ **Still open:** P9 (`count:'exact'` audit — 69 uses), P13 (trigram check on
+>   non-shop_name search columns), SEC-4 (review-abuse gate — HIGH-risk write-path
+>   change, needs human approval), `getProductPerformance` schema decision.
 
 ## TL;DR — why requests are slow
 
@@ -367,10 +380,14 @@ branchActions, subscriptionPlanActions) that the earlier `app/api`-only SEC-5
 sweep missed — GoTrue auth messages (password/email/MFA) intentionally kept
 (user-facing, no DB-schema leak).
 
-### SEC-7 — Path-traversal hardening on storage delete (S7).
-In `upload/[bucket]/[id]`, assert the decoded first path segment matches a UUID
-regex before `verifyBusinessOwner`, and return a generic error on storage
-failure. Cheap, closes a malformed-path edge.
+### SEC-7 — Path-traversal hardening on storage delete (S7). **STATUS: DONE.**
+Implemented: the decoded path is rejected (400) if any segment is empty/`.`/`..`
+or the first segment isn't a UUID, before any ownership/storage call. Storage
+failures already returned a generic message (SEC-3). **Bonus fix:** the
+`avatars` bucket had no ownership check at all — any authenticated user could
+delete anyone's avatar; now the first path segment must equal the caller's user
+id (or caller is admin). Covered by
+`app/api/web/upload/__tests__/delete-path-guards.test.ts`.
 
 ---
 

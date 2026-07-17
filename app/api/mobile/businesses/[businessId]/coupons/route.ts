@@ -8,6 +8,10 @@ import { NextRequest } from 'next/server';
 
 type Params = { params: Promise<{ businessId: string }> };
 
+// Public coupon list — cache per businessId, short 60s window so newly published
+// or expired coupons surface quickly while cutting repeat PostgREST reads. (P10)
+export const revalidate = 60;
+
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { businessId } = await params;

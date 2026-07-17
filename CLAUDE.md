@@ -68,14 +68,24 @@ Key facts about the current normalized schema (as of 2026-06-08):
 - **Deals promotion** — the explore feed (`/api/mobile/deals`) sizes bento cards by `subscription_plans.features_promo_boost` (boolean, `20260530000002`), NOT by `price`. The anon feed reads promoted subs via the public SELECT policy in `20260530000003` (active subs on promo-boost plans only). Set the flag on new promoted plans, or they silently won't get boosted.
 - **Coupon access invariant** — every route that fetches a coupon for display or redemption must filter `.eq('status', 'published').is('archived_at', null).lte('start_date', now)`. Omitting any of the three allows draft, archived, or not-yet-active coupons to be acted on.
 - **`increment_coupon_redemptions(p_coupon_id uuid)`** — SECURITY DEFINER RPC (`20260527000001`). Call via `supabase.rpc('increment_coupon_redemptions', { p_coupon_id })` after inserting into `user_redemptions`. Returns `true` if incremented, `false` if global cap already hit. Must be SECURITY DEFINER — authenticated users have no UPDATE policy on `coupons`. Only the **global** cap is race-safe via this RPC; the per-user cap in the redeem route is a non-atomic count-then-insert (TOCTOU) — concurrent redeems by one user can slip past it.
-- **Pending migrations (need `make migrate-up`):**
-  - `20260527000000_sync_role_to_jwt.sql` — syncs `profiles.role`/`status` into JWT `app_metadata` via trigger; proxy reads from JWT with profiles SELECT fallback.
-  - `20260527000001_coupon_atomic_increment.sql` — creates `increment_coupon_redemptions` RPC.
-  - `20260528000000_ratings_unique_user_product.sql` — UNIQUE(user_id, product_id) on `ratings`; backs the product-rating upsert. `ADD CONSTRAINT` fails if duplicate pairs exist — dedupe before applying to a populated DB.
-  - `20260530000000_restore_user_redemptions_coupon_fk.sql` — restores the `user_redemptions.coupon_id` → `coupons(id)` FK.
-  - `20260530000001_coupons_requires_subscription.sql` — adds `coupons.requires_subscription` (later renamed to `requires_follow` in `20260605000004`).
-  - `20260530000002_subscription_plans_promo_boost.sql` — adds `subscription_plans.features_promo_boost`.
-  - `20260530000003_public_read_promoted_subscriptions.sql` — public SELECT policy for active subs on promo-boost plans (anon deals feed).
+- **Migration state (2026-07-17):** local and cloud (`ilokal-database`) are fully in
+  sync through `20260717082537` — no pending migrations. Notable recent DB facts:
+  `sync_role_to_jwt` trigger (role/status → JWT `app_metadata`),
+  `increment_coupon_redemptions` RPC, `UNIQUE ratings(user_id, product_id)`,
+  the `20260717*` hardening set (see "API security & performance standards"
+  below), and pg_cron jobs `process-notification-outbox` (every minute) +
+  `prune-notification-outbox` (daily).
+- **`ratings`/`business_ratings` INSERT gate (SEC-4, `20260717080351`)** — a
+  non-admin can only create a rating for a business they have redeemed a coupon
+  from (RESTRICTIVE RLS policy via `has_redeemed_from_business()`). Rating
+  routes map the 42501 denial to a friendly 403 — new rating write paths must do
+  the same. Editing own rating (UPDATE), admin, and service-role paths are
+  ungated.
+- **`profiles` privileged columns (SEC-1, `20260717000001`)** — a BEFORE UPDATE
+  trigger silently reverts non-admin self-changes to `role` (always),
+  `status` (only active↔inactive allowed; never leaves `suspended`), and
+  `archived_at` (settable, never clearable). Don't rely on route guards alone —
+  the DB enforces this against direct PostgREST calls.
 - **Mobile response envelope** — `successResponse(data)` returns data flat (e.g. `{ businesses: [...] }`), NOT wrapped in `ApiResponse<T>`. The `success/error` wrapper applies to web routes only.
 - **Migration timestamps must be unique** — `supabase_migrations.schema_migrations` uses version as PK. Two files sharing a timestamp will fail on the second insert.
 - **Seed triggers under replica mode** — seed files set `session_replication_role = replica` to bypass the `auth.users` FK, which **skips normal (`O`-enabled) triggers**. A `BEFORE INSERT` trigger that must populate a `NOT NULL` column during seeding needs `ENABLE ALWAYS` (e.g. `trg_set_redemption_code`), or `migrate-reset` fails on the seed insert.
@@ -85,6 +95,66 @@ Key facts about the current normalized schema (as of 2026-06-08):
 - **Storage URLs:** any stored image field a mobile route returns must pass through `resolveStorageUrl(supabase, bucket, pathOrUrl)` (`app/api/helpers/storage.ts`). Seeds store full public URLs; real registrations store raw paths — returning the raw value yields a broken image.
 - **Pagination:** PostgREST is capped at `max_rows = 1000` (`supabase/config.toml`). Fetch-all-then-paginate-in-memory silently truncates past 1000 rows — push filters and `.range()` into the query.
 - **Soft deletes:** `business_types` and `business_categories` have `deleted_at`; filter `.is('deleted_at', null)` (top-level and on embedded relations) so deleted rows don't leak.
+
+## API security & performance standards
+
+Standards established by the 2026-07-17 perf/security audit (branch
+`perf/security-hardening`, full log in `.claude/PERFORMANCE_AUDIT.md`). All new
+code must follow these:
+
+- **RLS policies: always wrap auth functions** — write `(select auth.uid())` /
+  `(select auth.role())`, never bare `auth.uid()`. Bare calls re-evaluate per
+  row scanned (Supabase's #1 RLS perf killer). Migration `20260717000002`
+  wrapped the entire live policy set; don't reintroduce bare calls. Verify with
+  the Supabase performance advisor (`auth_rls_initplan` must stay 0).
+- **Aggregations belong in SQL, not Node** — never fetch-all-then-reduce with
+  `Map`/`Set`: PostgREST caps at 1000 rows (`max_rows`), so JS aggregates
+  silently return WRONG numbers past that. Write a SECURITY DEFINER RPC
+  returning the finished aggregate (precedent: `analytics_*`, `mobile_deals`,
+  `get_follower_counts`). Analytics RPCs are `GRANT EXECUTE TO service_role`
+  only, and the caller must verify business ownership BEFORE the RLS-bypassing
+  call.
+- **SECURITY DEFINER functions** — always `SET search_path = public, pg_temp`
+  and explicit `REVOKE ... FROM PUBLIC, anon, authenticated` + targeted
+  `GRANT`. Trigger helpers get a pinned search_path too (advisor lint).
+- **Counts** — count-only reads use `select('id', { count: 'exact', head:
+  true })` (no row payload). Paginated lists keep `count: 'exact'` piggybacked
+  on the data query. Never attach `count` to a `sum()`/aggregate read.
+- **Indexes** — Postgres does NOT auto-index FKs: any new FK or hot filter
+  column used by queries needs an explicit index in the same migration. Any
+  *global* (not business-scoped) leading-wildcard `ilike` search column needs a
+  `gin_trgm_ops` index (`shop_name`, `coupons.description`,
+  `profiles.full_name`/`email` already have one).
+- **Verify schema before writing queries** — the audit found four whole modules
+  querying tables/columns that never existed (`reviews`, `subscriptions`,
+  `payment_methods`, `page_views`, `products.is_active`, …) — every call
+  errored and returned empty for months. Check `lib/types/database.ts` (or the
+  live DB) for every table/column a new query touches; don't scaffold against
+  an imagined schema. Deleted dead surfaces: `/api/web/{search,trending,
+  reviews,subscriptions,billing}`, `/api/web/ratings/[id]`,
+  `/api/web/analytics/products`. `getUserBusiness` lives in
+  `lib/api/getUserBusiness.ts`.
+- **Auth-route rate limiting** — any new `/api/auth/*` route must call
+  `checkAuthRateLimit` (`app/api/helpers/auth-rate-limit.ts`): per-IP 30/60s +
+  per-account 8/300s, 429 + Retry-After.
+- **Storage delete paths** — `upload/[bucket]/[id]` rejects traversal-shaped /
+  non-UUID-rooted paths (400) and enforces ownership per bucket (business
+  buckets → `verifyBusinessOwner`; `avatars` → first segment must equal the
+  caller's user id unless admin). Keep this pattern for new storage routes.
+- **Caching (public mobile reads)** — cacheable public GETs use `unstable_cache`
+  (error-safe: throw on DB error so failures aren't cached) or route-level
+  `revalidate` (`business-types` 5min, business detail 120s, coupons 60s).
+  Routes using the cookie client, `searchParams`-heavy routes, and
+  header-reading routes stay dynamic. Tag invalidation not wired (Next 16
+  `revalidateTag` profile-arg conflict) — keep windows short instead.
+- **Cloud migrations via Supabase MCP** — `apply_migration` records its OWN
+  timestamp as the version; after applying, UPDATE
+  `supabase_migrations.schema_migrations` to the local file's version or the
+  next `db push` re-applies everything.
+- **One `<Toaster>` only** — sonner renders every toast in every mounted
+  Toaster; the single instance lives in `app/layout.tsx` (top-right). Never
+  mount another. Pending-action toasts use a stable id
+  (`toast.loading(msg, { id })`) and dismiss on settle.
 
 ## Workflow
 

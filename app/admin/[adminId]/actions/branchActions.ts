@@ -27,9 +27,10 @@ export async function getPendingBranchesAction(): Promise<
       .order('created_at', { ascending: false });
 
     if (dbError) {
+      console.error('[admin/branchActions] DB error:', dbError);
       return {
         success: false,
-        error: { code: 'INTERNAL_ERROR', message: dbError.message },
+        error: { code: 'INTERNAL_ERROR', message: 'Operation failed' },
       };
     }
 
@@ -76,9 +77,10 @@ export async function approveBranchAction(
       .eq('id', branchId);
 
     if (dbError) {
+      console.error('[admin/branchActions] DB error:', dbError);
       return {
         success: false,
-        error: { code: 'INTERNAL_ERROR', message: dbError.message },
+        error: { code: 'INTERNAL_ERROR', message: 'Operation failed' },
       };
     }
 
@@ -117,9 +119,10 @@ export async function rejectBranchAction(
       .eq('id', branchId);
 
     if (dbError) {
+      console.error('[admin/branchActions] DB error:', dbError);
       return {
         success: false,
-        error: { code: 'INTERNAL_ERROR', message: dbError.message },
+        error: { code: 'INTERNAL_ERROR', message: 'Operation failed' },
       };
     }
 
@@ -155,9 +158,10 @@ export async function getBranchDocumentsAction(
       .eq('branch_id', branchId);
 
     if (dbError) {
+      console.error('[admin/branchActions] DB error:', dbError);
       return {
         success: false,
-        error: { code: 'INTERNAL_ERROR', message: dbError.message },
+        error: { code: 'INTERNAL_ERROR', message: 'Operation failed' },
       };
     }
 

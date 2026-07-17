@@ -22,10 +22,15 @@ describe('analyticsQuery', () => {
 
   describe('getPlatformOverview', () => {
     it('should return overall platform metrics', async () => {
+      const eqResult = {
+        count: 50,
+        error: null,
+        is: vi.fn().mockReturnValue({ count: 50, error: null }),
+      };
       const selectResult = {
         count: 100,
         error: null,
-        eq: vi.fn().mockReturnValue({ count: 50, error: null }),
+        eq: vi.fn().mockReturnValue(eqResult),
         gte: vi.fn().mockReturnValue({ count: 30, error: null }),
       };
 
@@ -48,11 +53,17 @@ describe('analyticsQuery', () => {
     });
 
     it('should return zero values when no data exists', async () => {
+      const eqResult = {
+        count: null,
+        error: null,
+        data: null,
+        is: vi.fn().mockReturnValue({ count: null, error: null, data: null }),
+      };
       const selectResult = {
         count: null,
         error: null,
         data: null,
-        eq: vi.fn().mockReturnValue({ count: null, error: null, data: null }),
+        eq: vi.fn().mockReturnValue(eqResult),
         gte: vi.fn().mockReturnValue({ count: null, error: null, data: null }),
       };
 
@@ -75,11 +86,17 @@ describe('analyticsQuery', () => {
     });
 
     it('should handle missing revenue sum data', async () => {
+      const eqResult = {
+        count: 50,
+        error: null,
+        data: [],
+        is: vi.fn().mockReturnValue({ count: 50, error: null, data: [] }),
+      };
       const selectResult = {
         count: 100,
         error: null,
         data: [],
-        eq: vi.fn().mockReturnValue({ count: 50, error: null, data: [] }),
+        eq: vi.fn().mockReturnValue(eqResult),
         gte: vi.fn().mockReturnValue({ count: 30, error: null, data: [] }),
       };
 

@@ -1,5 +1,50 @@
 # Changelog
 
+## 2026-07-17 — Perf + security hardening, phase 3: P9 + P13 (perf/security-hardening)
+
+> One LOW-risk schema migration (`20260717075244_profiles_search_trgm.sql`,
+> index-only) — applied locally. **Major discovery below needs product/schema
+> decisions.**
+
+- **P9 — `count:'exact'` audit (69 sites).** Fixed the wasteful ones:
+  - `lib/api/admin/analyticsQuery.ts` — count-only reads now `head:true` (no row
+    payload), reads parallelized with `Promise.all`, and the pointless
+    `count:'exact'` dropped from `sum()` aggregate reads.
+  - **P8-class correctness fix in the same file:** `businesses.is_active` /
+    `is_suspended` columns don't exist — the admin dashboard's active/suspended
+    business counts always returned 0. Repointed to the real state:
+    `status='verified' AND archived_at IS NULL` / `status='suspended'`.
+  - Admin `plans/[planId]` DELETE active-subscriptions guard: `select('*')` →
+    head-only `select('id', { head: true })`.
+  - Deliberately kept exact counts on paginated lists (count piggybacks on the
+    data query; owner/user-scoped or admin-small sets — planned/estimated would
+    break pagination totals), update/delete row-count checks, and the nearby
+    RPC's `has_more` (planner stats don't apply to function scans).
+- **P13 — trigram audit of every leading-wildcard `ilike`.** Only *global*
+  unindexed search was the admin user search (`profiles.full_name`/`email` via
+  `userQuery` + `/api/admin/profiles`). New migration adds `gin_trgm_ops` on
+  both. Everything else: business-scoped behind an indexed equality (tiny sets),
+  filters the `nearby_businesses` RPC output (function scan — index can't
+  apply), or already indexed (`businesses.shop_name`, `coupons.description`).
+- **🔴 MAJOR discovery — three query modules target schema that doesn't exist**
+  (every function errors and returns empty; same class as the `page_views` bug).
+  Flagged NON-FUNCTIONAL in file headers, behavior unchanged:
+  - `lib/api/search/searchQuery.ts` — `profiles` with `role='business'` (CHECK
+    forbids it) + phantom columns, and nonexistent `featured_deals`. Dead:
+    `/api/web/search`, `/api/web/trending`, `searchActions`.
+  - `lib/api/reviews/reviewQuery.ts` — nonexistent `reviews` table (real:
+    `ratings`/`business_ratings`). Dead: `/api/web/reviews/*`.
+  - `lib/api/subscriptions/subscriptionQuery.ts` — nonexistent `subscriptions`
+    (renamed to `follows`), `payment_methods`, `billing_invoices`,
+    `profiles.business_id`. Dead: `/api/web/billing/*`,
+    `/api/web/subscriptions/*`, `billingActions`. Only `subscription_plans`
+    reads work.
+  - Decision needed: rewrite against real schema or delete the surfaces.
+- Tests: admin analytics mocks updated for the new `.eq().is()` chain +
+  parallel reads. Verified: `yarn lint` + **1308** tests + `yarn build` green.
+- **Still open:** SEC-4 (review-abuse gate, needs approval),
+  `getProductPerformance` schema decision, the three NON-FUNCTIONAL modules.
+
 ## 2026-07-17 — Perf + security hardening, phase 2 (perf/security-hardening)
 
 > **One new HIGH-risk schema migration** (`20260717072717_analytics_engagement_rpcs.sql`)

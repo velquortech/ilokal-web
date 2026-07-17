@@ -1,6 +1,16 @@
 /**
  * Search query layer - Database read operations
  * All search and discovery related queries
+ *
+ * ⚠️ NON-FUNCTIONAL: every query here targets schema that does not exist —
+ * `profiles` has no `name`/`description`/`category`/`average_rating`/
+ * `review_count` columns and no `role='business'` rows (the CHECK only allows
+ * 'business_owner'|'admin'), and there is no `featured_deals` table. Every
+ * function errors at runtime and returns empty results, so `/api/web/search`,
+ * `/api/web/trending`, and `searchActions` are all dead (see
+ * .claude/PERFORMANCE_AUDIT.md, P13 note). Fixing this is a rewrite against
+ * the real schema (`businesses`, `products`, `coupons`), not a query tweak —
+ * left intact to preserve the response contract until that decision is made.
  */
 
 import { createServerSupabaseClient } from '@/supabase/server';

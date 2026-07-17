@@ -1,6 +1,17 @@
 /**
  * Subscription query layer - Database read operations
  * All subscription, plan, and billing-related queries
+ *
+ * ⚠️ MOSTLY NON-FUNCTIONAL: most queries here target schema that does not
+ * exist — there is no `subscriptions` table (renamed to `follows` for the
+ * social graph in 20260605000000; billing lives in `business_subscriptions`),
+ * no `payment_methods` or `billing_invoices` tables, and `profiles` has no
+ * `business_id` column. Those functions error at runtime and return empty
+ * results, so `/api/web/billing/*`, `/api/web/subscriptions/*`, and
+ * `billingActions` are dead (see .claude/PERFORMANCE_AUDIT.md, P13 note).
+ * Only the `subscription_plans` reads work. Fixing this is a rewrite against
+ * `business_subscriptions`/`payments` — left intact to preserve the response
+ * contract until that decision is made.
  */
 
 import { createServerSupabaseClient } from '@/supabase/server';

@@ -166,10 +166,11 @@ export async function DELETE(
 
     const supabase = await createServerSupabaseClient();
 
-    // Check if any active subscriptions use this plan
+    // Check if any active subscriptions use this plan (head-only count — no
+    // row payload needed)
     const { count } = await supabase
       .from('business_subscriptions')
-      .select('*', { count: 'exact' })
+      .select('id', { count: 'exact', head: true })
       .eq('plan_id', planId)
       .eq('status', 'active');
 

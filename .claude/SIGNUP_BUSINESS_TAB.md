@@ -37,8 +37,11 @@ role must be assigned by a privileged path, never by client-session update.
 
 ## ACTION ITEMS (ordered)
 
-### SB-A — Migration: role-aware `handle_new_user` (fixes SB1). HIGH-risk, needs approval.
-`make migrate-new name=handle_new_user_role_from_metadata`:
+### SB-A — Migration: role-aware `handle_new_user` (fixes SB1). **STATUS: DONE (2026-07-17).**
+Shipped as `20260717093122_handle_new_user_role_from_metadata.sql` — applied to
+local AND cloud (ledger reconciled). Red-teamed on local: metadata
+`business_owner` honored, forged `admin` → `app_user`, no metadata →
+`app_user`. Original spec:
 
 ```sql
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -77,11 +80,13 @@ JWT gets the right role immediately.
 with forged `role: 'admin'` metadata → `app_user`. SEC-1 red-team still passes.
 **Rollback:** re-apply the `20260508000006` function body.
 
-### SB-B — Action cleanup (SB2, SB5, SB6, SB7). Ships with SB-A.
-- `signupAction`: pass `options: { data: { full_name, role } }` to
-  `auth.signUp`; drop `role` from the profile upsert payload; delete the
-  email precheck; drop or fix the dead `auth.admin.deleteUser` branch; remove
-  PII `console.info`s.
+### SB-B — Action cleanup (SB2, SB5, SB6, SB7). **STATUS: DONE (2026-07-17).**
+- `signupAction`: passes `options: { data: { full_name, role } }` to
+  `auth.signUp`; `role`/`status` dropped from the profile upsert (trigger-owned);
+  email precheck deleted; dead `auth.admin.deleteUser` branch removed (extras
+  upsert failure is now non-fatal — account + roled profile already exist);
+  all PII logs removed, including a `console.log(data)` found on disk that
+  logged the RAW PASSWORD on every signup attempt.
 
 ### SB-C — De-`useEffect` the form (SB3). **STATUS: DONE (2026-07-17).**
 Replaced `useActionState` + 4 `useEffect`s with a single `handleSubmit`

@@ -88,8 +88,15 @@ function SignupFormContent() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
+    // Stable id so the loading toast is dismissed as soon as the action
+    // settles — success and error toasts then show on their own instead of
+    // stacking under a stale "Creating your account...".
     if (isPending) {
-      toast.loading('Creating your account...');
+      toast.loading('Creating your account...', { id: 'signup-pending' });
+      // New attempt — allow the same error message to toast again if it recurs.
+      setLastErrorShown(null);
+    } else {
+      toast.dismiss('signup-pending');
     }
   }, [isPending]);
 

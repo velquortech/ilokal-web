@@ -1,7 +1,6 @@
 'use client';
 
 import Image from 'next/image';
-import { Toaster } from 'sonner';
 import { ThemeToggle } from '@/components/custom/ThemeTogge';
 import { AuthHeader } from './component/header';
 
@@ -12,7 +11,8 @@ export default function AuthLayout({
 }) {
   return (
     <div className="flex min-h-screen">
-      <Toaster position="top-center" />
+      {/* Toasts render via the root layout's top-right <Toaster> — mounting a
+          second one here duplicated every toast. */}
 
       {/* Left panel — form */}
       <div className="flex w-full flex-col lg:w-1/2">

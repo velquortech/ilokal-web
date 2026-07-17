@@ -18,9 +18,13 @@
 > - ⚠️ **`getProductPerformance` is NON-FUNCTIONAL** — selects `payments.product_id`
 >   which doesn't exist (payments aren't product-linked); always returns []. Needs a
 >   schema decision, flagged in code. Not an RPC-able fix.
+> - ✅ **P7 done:** `getBusinessDashboard` + `getBusinessRevenue` independent reads
+>   parallelized with `Promise.all`. **P11 resolved N/A** (PostgREST HTTP, no direct
+>   `pg` — not a pooler problem).
 > - ⬜ **Remaining P3:** `getRetentionData`/`getMonthlyTrend`/`getFollowerFunnel`/
->   `getCustomerSegments`/`getBusinessRevenue` still fetch-all-then-reduce (monthly/
->   RFM windows; lower row counts, less urgent) — move to SQL RPCs next.
+>   `getCustomerSegments` still fetch-all-then-reduce (monthly/RFM windows; lower row
+>   counts, less urgent) — move to SQL RPCs next. `getBusinessRevenue`'s monthly
+>   bucket is still JS-side (small 6-month window; fine for now).
 > - ⚠️ **P3 (page_views index) dropped** — that table doesn't exist; the real
 >   `view_events` is already indexed. No index needed once `getTrafficMetrics`
 >   fix (done) lands.
@@ -82,7 +86,7 @@ Four compounding root causes, roughly in impact order:
 | P8 | `getBusinessDashboard` correctness | filters `.eq('is_active', true)` — column does not exist on `products` (`status`/`is_available` only); `active_products` is always 0 and query is wasted | filter `.eq('status','active')`, or fold into RPC | LOW | S |
 | P9 | `count: 'exact'` | 69 uses; exact count = full scan | `head: true` + `count: 'planned'`/`'estimated'` on large tables; keep exact only where small/needed | MED | M |
 | P10 | Route caching | 30 `force-dynamic`, only 6 search routes cached | `revalidate`/`unstable_cache`/Next 16 `use cache` on read-heavy analytics + public reads | MED | M |
-| P11 | Connection pooling | verify Vercel serverless uses Supabase **transaction pooler** (port 6543), not direct 5432 | pooled `SUPABASE_DB_URL` / pooler for all serverless DB access | HIGH | S |
+| P11 | Connection pooling | ~~verify transaction pooler~~ **RESOLVED — N/A.** All runtime clients use `@supabase/ssr` → the PostgREST HTTP API, not direct Postgres. Zero `pg`/`SUPABASE_DB_URL` use at runtime (only migrations/seeds). PostgREST owns its own server-side pool | no change needed | — | — |
 | P12 | Nested-await `.in()` | `getCouponStats` awaits coupon-ids inside `.in()` (serial) | fold both into one RPC or parallel-fetch | LOW | S |
 | P13 | Trigram search | `ilike('%..%')` on `shop_name` (trgm gin index exists ✓); confirm products/other search columns have gin_trgm too | every leading-wildcard `ilike` backed by `gin_trgm_ops` | LOW | S |
 
@@ -183,12 +187,21 @@ no client-side `Map`/`Set` reduction remains. **Risk:** HIGH (new SQL surface).
   analytics and public read routes. Dashboard tolerates 30–60s staleness. Tag +
   `revalidateTag` on the corresponding mutations.
 
-### Phase 6 — Infra: connection pooling (verify first).
-- **P11:** Vercel serverless opens a fresh connection per invocation. Confirm
-  `SUPABASE_DB_URL` / the SSR client path uses the **Supabase transaction pooler
-  (port 6543 / `...pooler.supabase.com`)**, not direct `5432`. Direct connections
-  exhaust the Postgres connection limit under load and add handshake latency to
-  every request. This alone can explain "every request slow" under concurrency.
+### Phase 6 — Infra: connection pooling. **RESOLVED — not the problem.**
+- **P11:** Investigated `supabase/server.ts` + grepped the codebase. Every runtime
+  Supabase client (session, analytics service-role, admin) is built with
+  `@supabase/ssr` `createServerClient(NEXT_PUBLIC_SUPABASE_URL, key)` — it talks to
+  Supabase over the **PostgREST HTTP API**, not a direct Postgres socket. There are
+  **zero** `pg`/`postgres()`/`SUPABASE_DB_URL` uses at runtime (only migrations +
+  seeds open a direct connection). PostgREST manages its own DB pool server-side, so
+  there is no per-invocation Postgres handshake to pool away. **No change needed.**
+- **What actually makes "every request slow"** (now that P11 is ruled out), in order:
+  (1) the RLS per-row `auth.uid()` re-eval — **fixed (P1)**; (2) missing indexes on
+  the analytics tables — **fixed (P2/P4/P5)**; (3) fetch-all-then-reduce shipping big
+  rowsets — **partly fixed (P3)**; (4) the analytics *page* fans out to 5 separate
+  HTTP endpoints (coupons/dashboard/products/revenue/traffic), each doing several
+  PostgREST round trips — the remaining lever is **fewer round trips** (consolidate
+  into RPCs / one endpoint) + **caching (P10)**, not connection pooling.
 
 ---
 

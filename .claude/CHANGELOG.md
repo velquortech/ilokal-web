@@ -72,6 +72,15 @@
   []. Marked NON-FUNCTIONAL in code; left intact to preserve the response contract.
 - Updated the analytics query tests to mock the RPCs (coupon-stats + traffic now
   assert `.rpc(...)` calls incl. `p_branch_id` passthrough).
+- **P7 — parallelized serialized analytics round trips.** `getBusinessDashboard`
+  ran 4 independent queries sequentially → `Promise.all` (counts use `head:true`;
+  dropped the unused `count:'exact'` on the two `sum()` reads). `getBusinessRevenue`
+  ran its total + 6-month-window reads sequentially → `Promise.all`.
+- **P11 — RESOLVED as N/A (not a pooler problem).** Investigated `supabase/server.ts`
+  + grepped: every runtime client is `@supabase/ssr` over the PostgREST HTTP API;
+  zero direct `pg`/`SUPABASE_DB_URL` use at runtime. No per-invocation Postgres
+  handshake to pool. The real slowness levers are P1/P2/P3 (done) + round-trip
+  fan-out/caching. Corrected the audit doc so nobody chases the pooler.
 - Verified: `yarn lint --fix` + **1305** tests + `yarn build` all green.
 - **Not yet done** (see audit): remaining P3 analytics
   aggregation RPCs, P9/P10 count()+caching, P11 pooler verify, SEC-4 review-abuse

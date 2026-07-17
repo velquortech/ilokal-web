@@ -1,7 +1,6 @@
 import { createAnalyticsSupabaseClient } from '@/supabase/server';
 import type {
   BusinessDashboard,
-  ProductPerformance,
   CouponStats,
   TrafficMetrics,
   BusinessRevenue,
@@ -75,48 +74,6 @@ export async function getBusinessDashboard(
     total_revenue: Number(totalRevenue) || 0,
     revenue_last_30_days: Number(revenueLast30) || 0,
   };
-}
-
-export async function getProductPerformance(
-  businessId: string,
-  limit = 10,
-): Promise<ProductPerformance[]> {
-  const supabase = await createAnalyticsSupabaseClient();
-  // ⚠️ NON-FUNCTIONAL: `payments` has no `product_id` column (payments are
-  // subscription/business-level, not per-product — see .claude/PERFORMANCE_AUDIT.md
-  // P3 note). This select errors on the missing column, so `data` is null and the
-  // function always returns []. Fixing it needs a schema decision (link payments to
-  // products, or derive product revenue from a different source) — not a query
-  // rewrite. Left intact to avoid changing the response contract until then.
-  const { data } = await supabase
-    .from('payments')
-    .select('product_id, amount')
-    .eq('business_id', businessId)
-    .eq('status', 'succeeded');
-
-  if (!Array.isArray(data)) return [];
-
-  const map = new Map<string, { units: number; revenue: number }>();
-  data.forEach((row: unknown) => {
-    const r = row as Record<string, unknown>;
-    const pid = String(r.product_id ?? '');
-    if (!pid) return;
-    const amt = Number(r.amount ?? 0);
-    const cur = map.get(pid) ?? { units: 0, revenue: 0 };
-    cur.units += 1;
-    cur.revenue += amt;
-    map.set(pid, cur);
-  });
-
-  const arr: ProductPerformance[] = Array.from(map.entries()).map(
-    ([product_id, v]) => ({
-      product_id,
-      units_sold: v.units,
-      revenue: v.revenue,
-    }),
-  );
-  arr.sort((a, b) => b.revenue - a.revenue);
-  return arr.slice(0, limit);
 }
 
 export async function getCouponStats(

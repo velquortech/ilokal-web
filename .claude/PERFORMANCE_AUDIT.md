@@ -90,10 +90,32 @@
 >     `payment_methods`, `billing_invoices`, and `profiles.business_id`. Kills
 >     `/api/web/billing/*`, `/api/web/subscriptions/*`, `billingActions`. Only
 >     the `subscription_plans` reads work.
-> - ⬜ **Still open:** SEC-4 (review-abuse gate — HIGH-risk write-path change,
->   needs human approval), `getProductPerformance` schema decision, and the three
->   NON-FUNCTIONAL modules above (rewrite against real schema or delete the
->   surfaces — product decision).
+> - ✅ **SEC-4 done (2026-07-17):** migration
+>   `20260717080351_sec4_rating_interaction_gate.sql` — SECURITY DEFINER
+>   `has_redeemed_from_business(p_user, p_business)` + RESTRICTIVE INSERT
+>   policies on `ratings` and `business_ratings`: a non-admin can only create a
+>   rating for a business they have redeemed a coupon from. Existing permissive
+>   policies untouched (AND semantics); UPDATE (edit own review), admin
+>   (`is_admin()`), and service-role paths unaffected. Red-teamed in SQL both
+>   ways (non-redeemer blocked with 42501, redeemer + upsert path works). The
+>   two mobile rating routes and web ratings POST map 42501 → friendly 403.
+> - ✅ **Phantom-surface resolution (2026-07-17): DELETED.** All three
+>   NON-FUNCTIONAL modules and every consumer had zero UI callers and errored on
+>   every call, so the dead surfaces were removed instead of rewritten:
+>   `lib/api/search`, `lib/api/reviews`, `lib/api/subscriptions`,
+>   `/api/web/search/*`, `/api/web/trending`, `/api/web/reviews/*`,
+>   `/api/web/ratings/[id]`, `/api/web/subscriptions/*`, `/api/web/billing/*`,
+>   `/api/web/analytics/products`, the `lib/services`
+>   search/review/subscription wrappers, `searchActions`/`reviewActions`/
+>   `billingActions`/`subscriptionActions` (+ unused actions barrel), and the
+>   orphaned validation files/tests. `getProductPerformance` deleted with its
+>   route (schema decision resolved by removal — re-add if payments ever become
+>   product-linked). **Kept:** `getUserBusiness` (the one real, live-called
+>   function) extracted to `lib/api/getUserBusiness.ts`; `/api/web/ratings`
+>   (list/POST — real table); admin plans routes (self-contained). Rollback:
+>   `git revert` the commit.
+> - ⬜ **Nothing left open from this audit.** Cloud still needs
+>   `make migrate-cloud` + `get_advisors` verification after merge approval.
 
 ## TL;DR — why requests are slow
 

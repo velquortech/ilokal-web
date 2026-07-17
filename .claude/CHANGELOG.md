@@ -1,5 +1,83 @@
 # Changelog
 
+## 2026-07-17 — Perf + security hardening, phase 1 (perf/security-hardening)
+
+> Full audit + remaining phases in `.claude/PERFORMANCE_AUDIT.md`. **Two schema
+> migrations — HIGH-risk, applied to NEITHER local nor cloud yet; need
+> `make migrate-up` + human approval before merge.** Local Supabase stack was
+> down during implementation, so migrations are verified by review only; the code
+> changes are covered by the unit suite (1299 green) + build.
+
+- **SEC-1 (CRITICAL) — closed profiles privilege-escalation.** The self-update
+  RLS policy (`USING/CHECK auth.uid()=id`) had no column guard: a normal user
+  could `PATCH /rest/v1/profiles {"role":"admin"}` via PostgREST with the anon
+  key + own JWT, then get an admin JWT on next refresh (via the sync_role_to_jwt
+  trigger). New migration `20260717000001_fix_profiles_privilege_escalation.sql`
+  adds a BEFORE UPDATE trigger that, for a non-admin editing their own row:
+  reverts any `role` change; allows `status` only active↔inactive (never leaves
+  `suspended`); allows setting `archived_at` but never clearing it. Mirrors the
+  mobile `/me` route guards at the DB layer so direct PostgREST can't bypass
+  them; admin/service-role paths unaffected. **Needs a SQL/red-team test.**
+- **Perf indexes** — `20260717000000_perf_indexes.sql` adds indexes on the
+  unindexed hot FK/filter columns the analytics layer full-scans:
+  `payments(business_id,status,created_at)`,
+  `user_redemptions(coupon_id,redeemed_at)` / `(branch_id)` / `(user_id)`,
+  `business_ratings(business_id)`. (Postgres doesn't auto-index FKs.)
+- **Correctness bugs found + fixed in `businessAnalyticsQuery.ts`:**
+  - `getBusinessDashboard` filtered `.eq('is_active', true)` — no such column on
+    `products` (it's `status`/`is_available`); `active_products` was always 0.
+    Now `.eq('status','active')` + `head:true`.
+  - `getTrafficMetrics` queried a **non-existent `page_views` table** with
+    non-existent `visitor_id`/`created_at` columns → always returned 0. Repointed
+    to the real `view_events` table (`user_id`/`viewed_at`; already indexed).
+    (Unique-visitor dedupe still client-side — flagged for the Phase 3 RPC.)
+- **SEC-5 — stopped raw driver-error leakage** on `business-types` (GET/POST +
+  `[id]` PATCH/DELETE), `business-categories` (POST + `[id]`), and `ratings`
+  POST: raw Supabase `error.message` (leaks table/column/constraint names) →
+  generic client message + `console.error` server-side. Also removed a
+  `{ error: err }` that dumped the whole error object.
+- **P1 — wrapped `auth.uid()`/`auth.role()` for the RLS initPlan optimization.**
+  New migration `20260717000002_wrap_rls_auth_initplan.sql`: a catalog-driven
+  `DO` block over `pg_policies` (`public` + `storage`) that rewrites every bare
+  `auth.uid()` (106) / `auth.role()` (20) to `(select …)` via `ALTER POLICY`,
+  so the planner evaluates them once per query (initPlan) instead of once per
+  row. Rewrites the LIVE policy set (last-writer-wins), not historical files;
+  idempotent (skips already-wrapped); each `ALTER` is subtransaction-isolated so
+  a managed-platform storage-ownership failure logs + continues. Not applied in
+  this env (no docker/CLI) — verify post-`migrate-up` via `get_advisors`.
+- **SEC-8 — rate-limited the auth surface.** The proxy rate-limits mobile but its
+  matcher never covered `/api/auth`, so login/signup/reset were unthrottled
+  (credential stuffing / reset spam). New `app/api/helpers/auth-rate-limit.ts`
+  (`checkAuthRateLimit`) wraps the existing limiter with two budgets — per-IP
+  (30/60s, flood guard) and per-account/email (8/300s, targets one account),
+  env-tunable, 429 + Retry-After. Wired into `login`, `signup`, and
+  `reset-password` (account-keyed on the email branch). Also generic-ized the
+  signup `authError.message` leak (SEC-5). Tests: +6
+  (`auth-rate-limit.test.ts` — IP + account budgets, scope isolation, case
+  normalization).
+- **P3 (partial) — moved truncation-prone analytics aggregation into SQL RPCs.**
+  New migration `20260717000003_analytics_aggregation_rpcs.sql`:
+  `analytics_coupon_redemption_stats(p_business_id, p_branch_id)` (per-coupon count
+  + avg days-to-redeem) and `analytics_traffic_metrics(p_business_id, p_since)`
+  (count + count DISTINCT user_id). Both SECURITY DEFINER + pinned search_path,
+  REVOKE'd from public/anon/authenticated, GRANT'd to service_role only (called by
+  the ownership-checked analytics service-role client). Rewired `getCouponStats`,
+  `getCouponPerformance`, and `getTrafficMetrics` to the RPCs — they previously
+  fetched whole tables and reduced with Map/Set, which SILENTLY TRUNCATED at the
+  PostgREST 1000-row cap (wrong numbers) besides being slow. Added the two funcs
+  to `lib/types/database.ts` (pending `make generate-types`).
+- **Found + flagged (not fixed — needs schema decision):** `getProductPerformance`
+  selects `payments.product_id`, but `payments` has no such column (payments are
+  subscription/business-level) → the query errors and the function always returns
+  []. Marked NON-FUNCTIONAL in code; left intact to preserve the response contract.
+- Updated the analytics query tests to mock the RPCs (coupon-stats + traffic now
+  assert `.rpc(...)` calls incl. `p_branch_id` passthrough).
+- Verified: `yarn lint --fix` + **1305** tests + `yarn build` all green.
+- **Not yet done** (see audit): remaining P3 analytics
+  aggregation RPCs, P9/P10 count()+caching, P11 pooler verify, SEC-4 review-abuse
+  gate, SEC-5 remaining routes, SEC-5 auth-route rate limiting, SEC-6 service-role
+  caller re-audit.
+
 ## 2026-07-16 — Fix production 413 on business registration (main)
 
 > **API-surface change (auth-adjacent) — review before merge.** No schema migration.

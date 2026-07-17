@@ -6,8 +6,13 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   const { data, error } = await businessService.getBusinessTypes();
 
-  if (error)
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[GET /api/web/business-types]', error.message);
+    return NextResponse.json(
+      { error: 'Failed to fetch business types' },
+      { status: 500 },
+    );
+  }
   return NextResponse.json(data);
 }
 
@@ -20,10 +25,16 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { data, error } = await businessService.createBusinessType(body);
 
-    if (error)
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error) {
+      console.error('[POST /api/web/business-types]', error.message);
+      return NextResponse.json(
+        { error: 'Failed to create business type' },
+        { status: 400 },
+      );
+    }
     return NextResponse.json(data, { status: 201 });
   } catch (err) {
-    return NextResponse.json({ error: err }, { status: 400 });
+    console.error('[POST /api/web/business-types]', err);
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 }

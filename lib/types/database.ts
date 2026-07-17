@@ -1349,6 +1349,21 @@ export type Database = {
       }
     }
     Functions: {
+      analytics_coupon_redemption_stats: {
+        Args: { p_business_id: string; p_branch_id?: string | null }
+        Returns: {
+          coupon_id: string
+          redeemed: number
+          avg_days_to_redeem: number | null
+        }[]
+      }
+      analytics_traffic_metrics: {
+        Args: { p_business_id: string; p_since: string }
+        Returns: {
+          page_views: number
+          unique_visitors: number
+        }[]
+      }
       _postgis_deprecate: {
         Args: { newname: string; oldname: string; version: string }
         Returns: undefined

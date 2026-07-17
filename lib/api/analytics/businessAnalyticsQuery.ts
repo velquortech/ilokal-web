@@ -26,9 +26,9 @@ export async function getBusinessDashboard(
 
   const { count: activeProducts } = await supabase
     .from('products')
-    .select('id', { count: 'exact' })
+    .select('id', { count: 'exact', head: true })
     .eq('business_id', businessId)
-    .eq('is_active', true);
+    .eq('status', 'active');
 
   const { data: revenueData } = await supabase
     .from('payments')
@@ -74,7 +74,12 @@ export async function getProductPerformance(
   limit = 10,
 ): Promise<ProductPerformance[]> {
   const supabase = await createAnalyticsSupabaseClient();
-  // Fetch payments for the business and aggregate in JS to avoid DB-specific group syntax
+  // ⚠️ NON-FUNCTIONAL: `payments` has no `product_id` column (payments are
+  // subscription/business-level, not per-product — see .claude/PERFORMANCE_AUDIT.md
+  // P3 note). This select errors on the missing column, so `data` is null and the
+  // function always returns []. Fixing it needs a schema decision (link payments to
+  // products, or derive product revenue from a different source) — not a query
+  // rewrite. Left intact to avoid changing the response contract until then.
   const { data } = await supabase
     .from('payments')
     .select('product_id, amount')
@@ -110,33 +115,20 @@ export async function getCouponStats(
   businessId: string,
 ): Promise<CouponStats[]> {
   const supabase = await createAnalyticsSupabaseClient();
-  const { data } = await supabase
-    .from('user_redemptions')
-    .select('coupon_id')
-    .in(
-      'coupon_id',
-      (
-        await supabase
-          .from('coupons')
-          .select('id')
-          .eq('business_id', businessId)
-      ).data?.map((c: { id: string }) => c.id) ?? [],
-    );
+  // Aggregated in SQL (analytics_coupon_redemption_stats) so it can't truncate at
+  // the PostgREST 1000-row cap the way the old fetch-all-then-count did.
+  const { data } = await supabase.rpc('analytics_coupon_redemption_stats', {
+    p_business_id: businessId,
+  });
 
   if (!Array.isArray(data)) return [];
 
-  const map = new Map<string, number>();
-  data.forEach((row: unknown) => {
-    const r = row as Record<string, unknown>;
-    const cid = String(r.coupon_id ?? '');
-    if (!cid) return;
-    map.set(cid, (map.get(cid) ?? 0) + 1);
-  });
-
-  return Array.from(map.entries()).map(([coupon_id, times]) => ({
-    coupon_id,
-    times_redeemed: times,
-  }));
+  return (data as Array<{ coupon_id: string; redeemed: number }>).map(
+    (row) => ({
+      coupon_id: row.coupon_id,
+      times_redeemed: Number(row.redeemed ?? 0),
+    }),
+  );
 }
 
 export async function getTrafficMetrics(
@@ -147,29 +139,23 @@ export async function getTrafficMetrics(
     Date.now() - 1000 * 60 * 60 * 24 * 30,
   ).toISOString();
 
-  const { count: pv } = await supabase
-    .from('page_views')
-    .select('id', { count: 'exact' })
-    .eq('business_id', businessId)
-    .gte('created_at', thirtyDaysAgo);
+  // Views live in `view_events` (there is no `page_views` table). Aggregated in
+  // SQL (analytics_traffic_metrics: count + count(DISTINCT user_id)) so the
+  // unique-visitor figure can't truncate at the PostgREST 1000-row cap.
+  const { data } = await supabase.rpc('analytics_traffic_metrics', {
+    p_business_id: businessId,
+    p_since: thirtyDaysAgo,
+  });
 
-  const { data: uvData } = await supabase
-    .from('page_views')
-    .select('visitor_id')
-    .eq('business_id', businessId)
-    .gte('created_at', thirtyDaysAgo);
-  const uv = Array.isArray(uvData)
-    ? new Set(
-        uvData.map((r: unknown) =>
-          String((r as Record<string, unknown>).visitor_id),
-        ),
-      ).size
-    : 0;
+  const row =
+    Array.isArray(data) && data.length
+      ? (data[0] as { page_views: number; unique_visitors: number })
+      : null;
 
   return {
     business_id: businessId,
-    page_views_last_30_days: Number(pv ?? 0) || 0,
-    unique_visitors_last_30_days: Number(uv ?? 0) || 0,
+    page_views_last_30_days: Number(row?.page_views ?? 0) || 0,
+    unique_visitors_last_30_days: Number(row?.unique_visitors ?? 0) || 0,
   };
 }
 
@@ -491,28 +477,35 @@ export async function getCouponPerformance(
 
   if (!Array.isArray(couponsData) || couponsData.length === 0) return [];
 
-  const couponIds = couponsData.map((c: { id: string }) => c.id);
+  // Per-coupon redemption count + avg days-to-redeem, aggregated in SQL (can't
+  // truncate at the PostgREST 1000-row cap). The RPC returns rows for the whole
+  // business; scope to branch when requested and index by coupon_id.
+  const { data: statsData } = await supabase.rpc(
+    'analytics_coupon_redemption_stats',
+    { p_business_id: businessId, p_branch_id: branchId ?? null },
+  );
 
-  let redQuery = supabase
-    .from('user_redemptions')
-    .select('coupon_id, redeemed_at')
-    .in('coupon_id', couponIds);
-  if (branchId) redQuery = redQuery.eq('branch_id', branchId);
-  const { data: redData } = await redQuery;
-
-  const redemptions: Array<{ coupon_id: string; redeemed_at: string }> =
-    Array.isArray(redData)
-      ? (redData as Array<{ coupon_id: string; redeemed_at: string }>)
-      : [];
-
-  // Group redemptions by coupon_id
-  const redemptionMap = new Map<string, { count: number; dates: number[] }>();
-  redemptions.forEach(({ coupon_id, redeemed_at }) => {
-    const existing = redemptionMap.get(coupon_id) ?? { count: 0, dates: [] };
-    existing.count += 1;
-    existing.dates.push(new Date(redeemed_at).getTime());
-    redemptionMap.set(coupon_id, existing);
-  });
+  const redemptionMap = new Map<
+    string,
+    { redeemed: number; avgDays: number | null }
+  >();
+  if (Array.isArray(statsData)) {
+    (
+      statsData as Array<{
+        coupon_id: string;
+        redeemed: number;
+        avg_days_to_redeem: number | null;
+      }>
+    ).forEach((s) => {
+      redemptionMap.set(s.coupon_id, {
+        redeemed: Number(s.redeemed ?? 0),
+        avgDays:
+          s.avg_days_to_redeem !== null && s.avg_days_to_redeem !== undefined
+            ? Math.round(Number(s.avg_days_to_redeem))
+            : null,
+      });
+    });
+  }
 
   type CouponRow = {
     id: string;
@@ -525,20 +518,14 @@ export async function getCouponPerformance(
 
   const result: CouponPerformanceItem[] = couponsData.map(
     (coupon: CouponRow) => {
-      const stats = redemptionMap.get(coupon.id) ?? { count: 0, dates: [] };
-      const redeemed = stats.count;
+      const stats = redemptionMap.get(coupon.id) ?? {
+        redeemed: 0,
+        avgDays: null,
+      };
+      const redeemed = stats.redeemed;
       const max = coupon.max_redemptions_global ?? null;
       const rate = max !== null ? Math.round((redeemed / max) * 100) : null;
-
-      let avg_days_to_redeem: number | null = null;
-      if (stats.dates.length > 0) {
-        const startMs = new Date(coupon.start_date).getTime();
-        const totalDays = stats.dates.reduce(
-          (sum, ts) => sum + (ts - startMs) / (1000 * 60 * 60 * 24),
-          0,
-        );
-        avg_days_to_redeem = Math.round(totalDays / stats.dates.length);
-      }
+      const avg_days_to_redeem = stats.avgDays;
 
       return {
         coupon_id: coupon.id,

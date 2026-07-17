@@ -83,27 +83,18 @@ describe('authActions', () => {
       archived_at: null,
     };
 
-    // Track how many times `from('profiles')` is called to return
-    // different chainable responses for check/select/insert sequences.
+    // Track how many times `from('profiles')` is called: the action now does
+    // (1) extras upsert, (2) fetch created profile — the email precheck was
+    // removed (dead under RLS; the role comes from signUp metadata via the
+    // handle_new_user trigger).
     let fromCall = 0;
     const profilesHandler = () => {
       fromCall += 1;
-      // First call: check for existing email -> return no rows (PGRST116)
+      // First call: extras upsert -> success
       if (fromCall === 1) {
-        return {
-          select: () => ({
-            eq: () => ({
-              single: () =>
-                Promise.resolve({ data: null, error: { code: 'PGRST116' } }),
-            }),
-          }),
-        };
-      }
-      // Second call: upsert -> return success
-      if (fromCall === 2) {
         return { upsert: () => Promise.resolve({ error: null }) };
       }
-      // Third call: fetch created profile
+      // Second call: fetch created profile
       return {
         select: () => ({
           eq: () => ({
@@ -114,17 +105,15 @@ describe('authActions', () => {
       };
     };
 
+    const signUp = vi
+      .fn()
+      .mockResolvedValue({ data: { user: { id: 'u2' } }, error: null });
     const supabaseClient = {
       from: vi.fn((table: string) => {
         if (table === 'profiles') return profilesHandler();
         return { select: () => ({}) };
       }),
-      auth: {
-        signUp: vi
-          .fn()
-          .mockResolvedValue({ data: { user: { id: 'u2' } }, error: null }),
-        admin: { deleteUser: vi.fn() },
-      },
+      auth: { signUp },
     } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
 
     (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
@@ -139,6 +128,13 @@ describe('authActions', () => {
     } as never);
     expect(res.user.id).toBe('u2');
     expect(res.user.email).toBe('new@user.com');
+    // The chosen role must travel via signUp metadata — the handle_new_user
+    // trigger (not a client-session write) assigns the profile role.
+    expect(signUp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: { data: { full_name: 'New', role: 'app_user' } },
+      }),
+    );
   });
 
   it('verifySessionAction returns null when unauthenticated', async () => {

@@ -36,6 +36,23 @@ export async function DELETE(
     // Decode the ID (it's URL encoded)
     const filePath = decodeURIComponent(id);
 
+    // Reject malformed/traversal-shaped paths before any ownership logic —
+    // every legitimate object key here is `<uuid>/<filename>` with no empty,
+    // '.' or '..' segments.
+    const segments = filePath.split('/');
+    const UUID_RE =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (
+      filePath.length === 0 ||
+      segments.some((s) => s === '' || s === '.' || s === '..') ||
+      !UUID_RE.test(segments[0])
+    ) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid file path' },
+        { status: 400 },
+      );
+    }
+
     // For business-scoped buckets, verify the caller owns the business whose
     // UUID is the first path segment. Admins bypass ownership check.
     const businessScopedBuckets = [
@@ -49,10 +66,11 @@ export async function DELETE(
       'business-docs',
     ];
 
+    const isAdmin = auth.profile.role === 'admin';
+
     if (businessScopedBuckets.includes(bucket)) {
-      const isAdmin = auth.profile.role === 'admin';
       if (!isAdmin) {
-        const businessId = filePath.split('/')[0];
+        const businessId = segments[0];
         const ownership = await verifyBusinessOwner(businessId);
         if (!ownership.authorized) {
           return NextResponse.json(
@@ -60,6 +78,16 @@ export async function DELETE(
             { status: 403 },
           );
         }
+      }
+    } else if (bucket === 'avatars') {
+      // Avatars are keyed `<userId>/<file>` — only the owner (or an admin) may
+      // delete. Without this, any authenticated user could delete anyone's
+      // avatar by path.
+      if (!isAdmin && segments[0] !== auth.user.id) {
+        return NextResponse.json(
+          { success: false, error: 'Forbidden' },
+          { status: 403 },
+        );
       }
     }
 

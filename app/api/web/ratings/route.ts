@@ -65,9 +65,27 @@ export async function POST(
           { status: 409 },
         );
       }
+      if (error.code === '42501') {
+        // SEC-4 gate: rating requires having redeemed a coupon from the
+        // business (RESTRICTIVE RLS policy)
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'FORBIDDEN',
+              message:
+                'You can only rate a business you have redeemed a deal from',
+            },
+          },
+          { status: 403 },
+        );
+      }
       console.error('[POST /api/ratings] DB error:', error);
       return NextResponse.json(
-        { success: false, error: { code: 'DB_ERROR', message: error.message } },
+        {
+          success: false,
+          error: { code: 'DB_ERROR', message: 'Failed to save rating' },
+        },
         { status: 500 },
       );
     }
@@ -122,7 +140,10 @@ export async function GET(
     if (error) {
       console.error('[GET /api/ratings] DB error:', error);
       return NextResponse.json(
-        { success: false, error: { code: 'DB_ERROR', message: error.message } },
+        {
+          success: false,
+          error: { code: 'DB_ERROR', message: 'Failed to fetch ratings' },
+        },
         { status: 500 },
       );
     }

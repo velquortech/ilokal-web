@@ -55,8 +55,7 @@ export async function POST(
     console.error('[API] POST /api/admin/businesses/[id]/verify:', error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : 'Failed to verify business',
+        error: 'Failed to verify business',
       },
       { status: 500 },
     );

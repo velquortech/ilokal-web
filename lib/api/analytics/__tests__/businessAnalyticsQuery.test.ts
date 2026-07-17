@@ -5,7 +5,6 @@
 import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
 import {
   getBusinessDashboard,
-  getProductPerformance,
   getCouponStats,
   getTrafficMetrics,
   getBusinessRevenue,
@@ -53,17 +52,6 @@ function makeChain(result: {
 
 function daysAgo(n: number): string {
   return new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
-}
-
-// Calendar-anchored helpers — safe regardless of which day of the month tests run.
-function currentMonthDate(day = 10): string {
-  const n = new Date();
-  return new Date(n.getFullYear(), n.getMonth(), day).toISOString();
-}
-
-function lastMonthDate(day = 10): string {
-  const n = new Date();
-  return new Date(n.getFullYear(), n.getMonth() - 1, day).toISOString();
 }
 
 vi.mock('@/supabase/server', () => ({
@@ -202,87 +190,19 @@ describe('businessAnalyticsQuery', () => {
     });
   });
 
-  describe('getProductPerformance', () => {
-    it('should return product sales rankings sorted by performance', async () => {
-      const eq2 = vi.fn().mockReturnValue({
-        data: [
-          { product_id: 'prod-1', amount: 145 },
-          { product_id: 'prod-2', amount: 87 },
-        ],
-        error: null,
-      });
-      const eq1 = vi.fn().mockReturnValue({ data: [], error: null, eq: eq2 });
-      const select = vi
-        .fn()
-        .mockReturnValue({ data: [], error: null, eq: eq1 });
-
-      const supabaseClient = {
-        from: vi.fn().mockReturnValue({ select }),
-      } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
-
-      (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
-        supabaseClient,
-      );
-
-      const result = await getProductPerformance('biz-1', 10);
-
-      expect(Array.isArray(result)).toBe(true);
-      if (result.length > 0) {
-        expect(result[0]).toHaveProperty('product_id');
-        expect(result[0]).toHaveProperty('units_sold');
-        expect(result[0]).toHaveProperty('revenue');
-      }
-    });
-
-    it('should filter products by time period', async () => {
-      const eq2 = vi.fn().mockReturnValue({ data: [], error: null });
-      const eq1 = vi.fn().mockReturnValue({ data: [], error: null, eq: eq2 });
-      const select = vi
-        .fn()
-        .mockReturnValue({ data: [], error: null, eq: eq1 });
-
-      const supabaseClient = {
-        from: vi.fn().mockReturnValue({ select }),
-      } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
-
-      (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
-        supabaseClient,
-      );
-
-      const result = await getProductPerformance('biz-1', 10);
-
-      expect(Array.isArray(result)).toBe(true);
-    });
-  });
-
   describe('getCouponStats', () => {
-    it('should return coupon redemption statistics', async () => {
-      // Evaluation order inside getCouponStats:
-      // 1. supabase.from('user_redemptions').select('coupon_id') — outer chain starts
-      // 2. supabase.from('coupons').select('id').eq(...) — inner await for IDs
-      // 3. .in(ids) — outer chain completes
-      const couponEq = vi.fn().mockResolvedValue({
-        data: [{ id: 'c-1' }, { id: 'c-2' }],
-        error: null,
-      });
-      const couponSelect = vi.fn().mockReturnValue({ eq: couponEq });
-
-      const redemptionIn = vi.fn().mockResolvedValue({
+    it('should return coupon redemption statistics from the aggregate RPC', async () => {
+      const rpc = vi.fn().mockResolvedValue({
         data: [
-          { coupon_id: 'c-1' },
-          { coupon_id: 'c-1' },
-          { coupon_id: 'c-2' },
+          { coupon_id: 'c-1', redeemed: 2, avg_days_to_redeem: 3 },
+          { coupon_id: 'c-2', redeemed: 1, avg_days_to_redeem: 5 },
         ],
         error: null,
       });
-      const redemptionSelect = vi.fn().mockReturnValue({ in: redemptionIn });
 
-      const supabaseClient = {
-        from: vi
-          .fn()
-          .mockImplementationOnce(() => ({ select: redemptionSelect })) // user_redemptions (first)
-          .mockImplementationOnce(() => ({ select: couponSelect })), // coupons (second)
-      } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
+      const supabaseClient = { rpc } as unknown as Awaited<
+        ReturnType<typeof createAnalyticsSupabaseClient>
+      >;
 
       (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
         supabaseClient,
@@ -290,25 +210,18 @@ describe('businessAnalyticsQuery', () => {
 
       const result = await getCouponStats('biz-1');
 
-      expect(Array.isArray(result)).toBe(true);
+      expect(rpc).toHaveBeenCalledWith('analytics_coupon_redemption_stats', {
+        p_business_id: 'biz-1',
+      });
       expect(result).toHaveLength(2);
-      expect(result[0]).toHaveProperty('coupon_id');
-      expect(result[0]).toHaveProperty('times_redeemed');
+      expect(result[0]).toEqual({ coupon_id: 'c-1', times_redeemed: 2 });
     });
 
-    it('should return empty array when no coupons found', async () => {
-      const couponEq = vi.fn().mockResolvedValue({ data: [], error: null });
-      const couponSelect = vi.fn().mockReturnValue({ eq: couponEq });
-
-      const redemptionIn = vi.fn().mockResolvedValue({ data: [], error: null });
-      const redemptionSelect = vi.fn().mockReturnValue({ in: redemptionIn });
-
-      const supabaseClient = {
-        from: vi
-          .fn()
-          .mockImplementationOnce(() => ({ select: redemptionSelect })) // user_redemptions (first)
-          .mockImplementationOnce(() => ({ select: couponSelect })), // coupons (second)
-      } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
+    it('should return empty array when the RPC returns none', async () => {
+      const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
+      const supabaseClient = { rpc } as unknown as Awaited<
+        ReturnType<typeof createAnalyticsSupabaseClient>
+      >;
 
       (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
         supabaseClient,
@@ -322,42 +235,14 @@ describe('businessAnalyticsQuery', () => {
   });
 
   describe('getTrafficMetrics', () => {
-    it('should return traffic analytics with visitor and conversion data', async () => {
-      // Query 1: count page views
-      const q1gte = vi
-        .fn()
-        .mockReturnValue({ count: 1524, error: null, data: [] });
-      const q1eq = vi
-        .fn()
-        .mockReturnValue({ data: [], error: null, gte: q1gte });
-      const q1select = vi
-        .fn()
-        .mockReturnValue({ count: 1524, error: null, eq: q1eq });
-
-      // Query 2: get unique visitor IDs
-      const q2gte = vi.fn().mockReturnValue({
-        data: [
-          { visitor_id: 'v1' },
-          { visitor_id: 'v2' },
-          { visitor_id: 'v1' },
-        ],
+    it('should return traffic analytics from the aggregate RPC', async () => {
+      const rpc = vi.fn().mockResolvedValue({
+        data: [{ page_views: 1524, unique_visitors: 812 }],
         error: null,
       });
-      const q2eq = vi
-        .fn()
-        .mockReturnValue({ data: [], error: null, gte: q2gte });
-      const q2select = vi
-        .fn()
-        .mockReturnValue({ data: [], error: null, eq: q2eq });
-
-      const fromMock = vi
-        .fn()
-        .mockReturnValueOnce({ select: q1select })
-        .mockReturnValueOnce({ select: q2select });
-
-      const supabaseClient = {
-        from: fromMock,
-      } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
+      const supabaseClient = { rpc } as unknown as Awaited<
+        ReturnType<typeof createAnalyticsSupabaseClient>
+      >;
 
       (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
         supabaseClient,
@@ -365,38 +250,19 @@ describe('businessAnalyticsQuery', () => {
 
       const result = await getTrafficMetrics('biz-1');
 
-      expect(result).toHaveProperty('business_id');
-      expect(result).toHaveProperty('page_views_last_30_days');
-      expect(result).toHaveProperty('unique_visitors_last_30_days');
+      expect(rpc).toHaveBeenCalledWith(
+        'analytics_traffic_metrics',
+        expect.objectContaining({ p_business_id: 'biz-1' }),
+      );
+      expect(result.page_views_last_30_days).toBe(1524);
+      expect(result.unique_visitors_last_30_days).toBe(812);
     });
 
-    it('should return zero metrics when no data', async () => {
-      const q1gte = vi
-        .fn()
-        .mockReturnValue({ count: 0, error: null, data: [] });
-      const q1eq = vi
-        .fn()
-        .mockReturnValue({ data: [], error: null, gte: q1gte });
-      const q1select = vi
-        .fn()
-        .mockReturnValue({ count: 0, error: null, eq: q1eq });
-
-      const q2gte = vi.fn().mockReturnValue({ data: [], error: null });
-      const q2eq = vi
-        .fn()
-        .mockReturnValue({ data: [], error: null, gte: q2gte });
-      const q2select = vi
-        .fn()
-        .mockReturnValue({ data: [], error: null, eq: q2eq });
-
-      const fromMock = vi
-        .fn()
-        .mockReturnValueOnce({ select: q1select })
-        .mockReturnValueOnce({ select: q2select });
-
-      const supabaseClient = {
-        from: fromMock,
-      } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
+    it('should return zero metrics when the RPC returns none', async () => {
+      const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
+      const supabaseClient = { rpc } as unknown as Awaited<
+        ReturnType<typeof createAnalyticsSupabaseClient>
+      >;
 
       (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
         supabaseClient,
@@ -422,17 +288,23 @@ describe('businessAnalyticsQuery', () => {
         .fn()
         .mockReturnValue({ data: [], error: null, eq: q1eq1 });
 
-      // Query 2: monthly breakdown
-      const q2eq = vi.fn().mockReturnValue({
+      // Query 2: monthly breakdown — select().eq('status').eq('business_id').gte()
+      const q2gte = vi.fn().mockReturnValue({
         data: [
           { created_at: '2026-03-01T00:00:00Z', amount: 100000 },
           { created_at: '2026-02-01T00:00:00Z', amount: 80000 },
         ],
         error: null,
       });
+      const q2eq2 = vi
+        .fn()
+        .mockReturnValue({ data: [], error: null, gte: q2gte });
+      const q2eq1 = vi
+        .fn()
+        .mockReturnValue({ data: [], error: null, eq: q2eq2 });
       const q2select = vi
         .fn()
-        .mockReturnValue({ data: [], error: null, eq: q2eq });
+        .mockReturnValue({ data: [], error: null, eq: q2eq1 });
 
       const fromMock = vi
         .fn()
@@ -463,10 +335,16 @@ describe('businessAnalyticsQuery', () => {
         .fn()
         .mockReturnValue({ data: [], error: null, eq: q1eq1 });
 
-      const q2eq = vi.fn().mockReturnValue({ data: [], error: null });
+      const q2gte = vi.fn().mockReturnValue({ data: [], error: null });
+      const q2eq2 = vi
+        .fn()
+        .mockReturnValue({ data: [], error: null, gte: q2gte });
+      const q2eq1 = vi
+        .fn()
+        .mockReturnValue({ data: [], error: null, eq: q2eq2 });
       const q2select = vi
         .fn()
-        .mockReturnValue({ data: [], error: null, eq: q2eq });
+        .mockReturnValue({ data: [], error: null, eq: q2eq1 });
 
       const fromMock = vi
         .fn()
@@ -497,14 +375,58 @@ describe('getRetentionData', () => {
     vi.clearAllMocks();
   });
 
-  it('returns 6 zero months when business has no coupons', async () => {
-    const supabaseClient = {
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'coupons') return makeChain({ data: [], error: null });
-        return makeChain({ data: [], error: null });
-      }),
-    } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
+  it('calls the retention RPC and maps oldest-first rows onto month labels', async () => {
+    const rows = Array.from({ length: 6 }, (_, i) => ({
+      month_start: `2026-0${i + 1}-01`,
+      new_customers: i,
+      returning_customers: i * 2,
+      churned_customers: i * 3,
+    }));
+    const rpc = vi.fn().mockResolvedValue({ data: rows, error: null });
+    const supabaseClient = { rpc } as unknown as Awaited<
+      ReturnType<typeof createAnalyticsSupabaseClient>
+    >;
+    (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+      supabaseClient,
+    );
 
+    const result = await getRetentionData('biz-1');
+
+    expect(rpc).toHaveBeenCalledWith('analytics_retention_months', {
+      p_business_id: 'biz-1',
+      p_branch_id: null,
+    });
+    expect(result).toHaveLength(6);
+    expect(result[5]).toMatchObject({
+      new_customers: 5,
+      returning_customers: 10,
+      churned_customers: 15,
+    });
+    expect(typeof result[0].month).toBe('string');
+  });
+
+  it('passes the branch id through to the RPC', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
+    const supabaseClient = { rpc } as unknown as Awaited<
+      ReturnType<typeof createAnalyticsSupabaseClient>
+    >;
+    (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+      supabaseClient,
+    );
+
+    await getRetentionData('biz-1', 'branch-9');
+
+    expect(rpc).toHaveBeenCalledWith('analytics_retention_months', {
+      p_business_id: 'biz-1',
+      p_branch_id: 'branch-9',
+    });
+  });
+
+  it('returns 6 zero months when the RPC returns no rows', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: null });
+    const supabaseClient = { rpc } as unknown as Awaited<
+      ReturnType<typeof createAnalyticsSupabaseClient>
+    >;
     (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
       supabaseClient,
     );
@@ -518,66 +440,6 @@ describe('getRetentionData', () => {
       expect(r.churned_customers).toBe(0);
     });
   });
-
-  it('classifies users as returning when they redeemed in consecutive months', async () => {
-    const supabaseClient = {
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'coupons')
-          return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'user_redemptions')
-          return makeChain({
-            data: [
-              { user_id: 'user-1', redeemed_at: daysAgo(5) },
-              { user_id: 'user-1', redeemed_at: daysAgo(35) },
-            ],
-            error: null,
-          });
-        return makeChain({ data: [], error: null });
-      }),
-    } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
-
-    (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
-      supabaseClient,
-    );
-
-    const result = await getRetentionData('biz-1');
-
-    expect(result).toHaveLength(6);
-    const totalReturning = result.reduce(
-      (sum, r) => sum + r.returning_customers,
-      0,
-    );
-    expect(totalReturning).toBeGreaterThan(0);
-  });
-
-  it('counts churned customers from previous month', async () => {
-    const supabaseClient = {
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'coupons')
-          return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'user_redemptions')
-          return makeChain({
-            // User redeemed in last calendar month only — churned in current month.
-            // lastMonthDate() is always in the previous calendar month regardless of
-            // which day of the month the tests run.
-            data: [{ user_id: 'user-churn', redeemed_at: lastMonthDate() }],
-            error: null,
-          });
-        return makeChain({ data: [], error: null });
-      }),
-    } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
-
-    (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
-      supabaseClient,
-    );
-
-    const result = await getRetentionData('biz-1');
-
-    expect(result).toHaveLength(6);
-    // The most recent entry should record the churn
-    const lastEntry = result[result.length - 1];
-    expect(lastEntry.churned_customers).toBeGreaterThan(0);
-  });
 });
 
 describe('getMonthlyTrend', () => {
@@ -585,15 +447,11 @@ describe('getMonthlyTrend', () => {
     vi.clearAllMocks();
   });
 
-  it('returns 6 months with zero counts when no followers or redemptions exist', async () => {
-    const supabaseClient = {
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'follows') return makeChain({ data: [], error: null });
-        if (table === 'coupons') return makeChain({ data: [], error: null });
-        return makeChain({ data: [], error: null });
-      }),
-    } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
-
+  it('returns 6 months with zero counts when the RPC returns no rows', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
+    const supabaseClient = { rpc } as unknown as Awaited<
+      ReturnType<typeof createAnalyticsSupabaseClient>
+    >;
     (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
       supabaseClient,
     );
@@ -607,33 +465,26 @@ describe('getMonthlyTrend', () => {
     });
   });
 
-  it('counts followers and redemptions in the correct month bucket', async () => {
-    const supabaseClient = {
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'follows')
-          return makeChain({
-            // currentMonthDate() is always in the current calendar month so
-            // it maps to the last (most-recent) bucket in getMonthlyTrend.
-            data: [{ created_at: currentMonthDate() }],
-            error: null,
-          });
-        if (table === 'coupons')
-          return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'user_redemptions')
-          return makeChain({
-            data: [{ redeemed_at: currentMonthDate() }],
-            error: null,
-          });
-        return makeChain({ data: [], error: null });
-      }),
-    } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
-
+  it('calls the trend RPC and maps oldest-first rows onto month labels', async () => {
+    const rows = Array.from({ length: 6 }, (_, i) => ({
+      month_start: `2026-0${i + 1}-01`,
+      followers: i === 5 ? 1 : 0,
+      redemptions: i === 5 ? 1 : 0,
+    }));
+    const rpc = vi.fn().mockResolvedValue({ data: rows, error: null });
+    const supabaseClient = { rpc } as unknown as Awaited<
+      ReturnType<typeof createAnalyticsSupabaseClient>
+    >;
     (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
       supabaseClient,
     );
 
     const result = await getMonthlyTrend('biz-1');
 
+    expect(rpc).toHaveBeenCalledWith('analytics_monthly_trend', {
+      p_business_id: 'biz-1',
+      p_branch_id: null,
+    });
     expect(result).toHaveLength(6);
     // The last (most recent) month should have the counts
     const lastPoint = result[result.length - 1];
@@ -641,36 +492,21 @@ describe('getMonthlyTrend', () => {
     expect(lastPoint.redemptions).toBe(1);
   });
 
-  it('returns 6 data points regardless of data volume', async () => {
-    const supabaseClient = {
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'follows')
-          return makeChain({
-            data: Array.from({ length: 20 }, (_, i) => ({
-              created_at: daysAgo(i * 3),
-            })),
-            error: null,
-          });
-        if (table === 'coupons')
-          return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'user_redemptions')
-          return makeChain({
-            data: Array.from({ length: 20 }, (_, i) => ({
-              redeemed_at: daysAgo(i * 3),
-            })),
-            error: null,
-          });
-        return makeChain({ data: [], error: null });
-      }),
-    } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
-
+  it('passes the branch id through to the RPC', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
+    const supabaseClient = { rpc } as unknown as Awaited<
+      ReturnType<typeof createAnalyticsSupabaseClient>
+    >;
     (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
       supabaseClient,
     );
 
-    const result = await getMonthlyTrend('biz-1');
+    await getMonthlyTrend('biz-1', 'branch-9');
 
-    expect(result.length).toBe(6);
+    expect(rpc).toHaveBeenCalledWith('analytics_monthly_trend', {
+      p_business_id: 'biz-1',
+      p_branch_id: 'branch-9',
+    });
   });
 });
 
@@ -679,15 +515,11 @@ describe('getFollowerFunnel', () => {
     vi.clearAllMocks();
   });
 
-  it('returns all zeros when no followers exist', async () => {
-    const supabaseClient = {
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'follows') return makeChain({ data: [], error: null });
-        if (table === 'coupons') return makeChain({ data: [], error: null });
-        return makeChain({ data: [], error: null });
-      }),
-    } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
-
+  it('returns all zeros when the RPC returns no row', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
+    const supabaseClient = { rpc } as unknown as Awaited<
+      ReturnType<typeof createAnalyticsSupabaseClient>
+    >;
     (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
       supabaseClient,
     );
@@ -700,89 +532,47 @@ describe('getFollowerFunnel', () => {
     expect(result.loyal).toBe(0);
   });
 
-  it('counts total followers correctly', async () => {
-    const supabaseClient = {
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'follows')
-          return makeChain({
-            data: [{ user_id: 'u1' }, { user_id: 'u2' }, { user_id: 'u3' }],
-            error: null,
-          });
-        if (table === 'coupons') return makeChain({ data: [], error: null });
-        return makeChain({ data: [], error: null });
-      }),
-    } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
-
+  it('calls the funnel RPC and maps the single aggregate row', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{ total_followers: 3, ever_redeemed: 2, active_30d: 1, loyal: 1 }],
+      error: null,
+    });
+    const supabaseClient = { rpc } as unknown as Awaited<
+      ReturnType<typeof createAnalyticsSupabaseClient>
+    >;
     (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
       supabaseClient,
     );
 
     const result = await getFollowerFunnel('biz-1');
 
-    expect(result.total_followers).toBe(3);
+    expect(rpc).toHaveBeenCalledWith('analytics_follower_funnel', {
+      p_business_id: 'biz-1',
+      p_branch_id: null,
+    });
+    expect(result).toEqual({
+      total_followers: 3,
+      ever_redeemed: 2,
+      active_30d: 1,
+      loyal: 1,
+    });
   });
 
-  it('marks users who redeemed within 30 days as active', async () => {
-    const supabaseClient = {
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'follows')
-          return makeChain({
-            data: [{ user_id: 'u1' }],
-            error: null,
-          });
-        if (table === 'coupons')
-          return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'user_redemptions')
-          return makeChain({
-            data: [{ user_id: 'u1', redeemed_at: daysAgo(10) }],
-            error: null,
-          });
-        return makeChain({ data: [], error: null });
-      }),
-    } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
-
+  it('passes the branch id through to the RPC', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
+    const supabaseClient = { rpc } as unknown as Awaited<
+      ReturnType<typeof createAnalyticsSupabaseClient>
+    >;
     (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
       supabaseClient,
     );
 
-    const result = await getFollowerFunnel('biz-1');
+    await getFollowerFunnel('biz-1', 'branch-9');
 
-    expect(result.active_30d).toBe(1);
-  });
-
-  it('marks users as loyal when they redeemed in 2+ distinct months', async () => {
-    // Two redemptions in different calendar months
-    const thisMonthDate = daysAgo(5);
-    const lastMonthDate = daysAgo(35);
-
-    const supabaseClient = {
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'follows')
-          return makeChain({
-            data: [{ user_id: 'u1' }],
-            error: null,
-          });
-        if (table === 'coupons')
-          return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'user_redemptions')
-          return makeChain({
-            data: [
-              { user_id: 'u1', redeemed_at: thisMonthDate },
-              { user_id: 'u1', redeemed_at: lastMonthDate },
-            ],
-            error: null,
-          });
-        return makeChain({ data: [], error: null });
-      }),
-    } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
-
-    (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
-      supabaseClient,
-    );
-
-    const result = await getFollowerFunnel('biz-1');
-
-    expect(result.loyal).toBe(1);
+    expect(rpc).toHaveBeenCalledWith('analytics_follower_funnel', {
+      p_business_id: 'biz-1',
+      p_branch_id: 'branch-9',
+    });
   });
 });
 
@@ -809,11 +599,6 @@ describe('getCouponPerformance', () => {
   });
 
   it('calculates rate as percentage of max_redemptions_global', async () => {
-    const redemptions = Array.from({ length: 25 }, () => ({
-      coupon_id: 'c1',
-      redeemed_at: daysAgo(10),
-    }));
-
     const supabaseClient = {
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'coupons')
@@ -830,9 +615,12 @@ describe('getCouponPerformance', () => {
             ],
             error: null,
           });
-        if (table === 'user_redemptions')
-          return makeChain({ data: redemptions, error: null });
         return makeChain({ data: [], error: null });
+      }),
+      // Redemption counts now come from the aggregate RPC.
+      rpc: vi.fn().mockResolvedValue({
+        data: [{ coupon_id: 'c1', redeemed: 25, avg_days_to_redeem: 10 }],
+        error: null,
       }),
     } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
 
@@ -872,22 +660,14 @@ describe('getCouponPerformance', () => {
             ],
             error: null,
           });
-        if (table === 'user_redemptions')
-          return makeChain({
-            data: [
-              // cA → 5 redemptions, cB → 10 redemptions
-              ...Array.from({ length: 5 }, () => ({
-                coupon_id: 'cA',
-                redeemed_at: daysAgo(10),
-              })),
-              ...Array.from({ length: 10 }, () => ({
-                coupon_id: 'cB',
-                redeemed_at: daysAgo(5),
-              })),
-            ],
-            error: null,
-          });
         return makeChain({ data: [], error: null });
+      }),
+      rpc: vi.fn().mockResolvedValue({
+        data: [
+          { coupon_id: 'cA', redeemed: 5, avg_days_to_redeem: 10 },
+          { coupon_id: 'cB', redeemed: 10, avg_days_to_redeem: 5 },
+        ],
+        error: null,
       }),
     } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
 
@@ -918,13 +698,13 @@ describe('getCouponPerformance', () => {
       ],
       error: null,
     });
-    const redemptionChain = makeChain({ data: [], error: null });
 
     const supabaseClient = {
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'coupons') return couponChain;
-        return redemptionChain;
+        return makeChain({ data: [], error: null });
       }),
+      rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
     } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
     (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
       supabaseClient,
@@ -935,7 +715,7 @@ describe('getCouponPerformance', () => {
     expect(couponChain.eq).toHaveBeenCalledWith('branch_id', 'branch-99');
   });
 
-  it('also filters redemptions by branch_id when branchId is provided', async () => {
+  it('passes branch_id to the redemption-stats RPC when branchId is provided', async () => {
     const couponChain = makeChain({
       data: [
         {
@@ -949,16 +729,17 @@ describe('getCouponPerformance', () => {
       ],
       error: null,
     });
-    const redemptionChain = makeChain({
-      data: [{ coupon_id: 'c1', redeemed_at: daysAgo(5) }],
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{ coupon_id: 'c1', redeemed: 1, avg_days_to_redeem: 5 }],
       error: null,
     });
 
     const supabaseClient = {
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'coupons') return couponChain;
-        return redemptionChain;
+        return makeChain({ data: [], error: null });
       }),
+      rpc,
     } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
     (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
       supabaseClient,
@@ -966,7 +747,10 @@ describe('getCouponPerformance', () => {
 
     await getCouponPerformance('biz-1', 'branch-99');
 
-    expect(redemptionChain.eq).toHaveBeenCalledWith('branch_id', 'branch-99');
+    expect(rpc).toHaveBeenCalledWith('analytics_coupon_redemption_stats', {
+      p_business_id: 'biz-1',
+      p_branch_id: 'branch-99',
+    });
   });
 
   it('does not apply branch filter when branchId is omitted', async () => {
@@ -974,6 +758,7 @@ describe('getCouponPerformance', () => {
 
     const supabaseClient = {
       from: vi.fn().mockReturnValue(couponChain),
+      rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
     } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
     (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
       supabaseClient,
@@ -993,14 +778,11 @@ describe('getCustomerSegments', () => {
     vi.clearAllMocks();
   });
 
-  it('returns all-zero counts when no coupons exist', async () => {
-    const supabaseClient = {
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'coupons') return makeChain({ data: [], error: null });
-        return makeChain({ data: [], error: null });
-      }),
-    } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
-
+  it('returns all-zero counts when the RPC returns no row', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
+    const supabaseClient = { rpc } as unknown as Awaited<
+      ReturnType<typeof createAnalyticsSupabaseClient>
+    >;
     (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
       supabaseClient,
     );
@@ -1014,102 +796,48 @@ describe('getCustomerSegments', () => {
     expect(result.new_customer).toBe(0);
   });
 
-  it('classifies users with 4+ redemptions in last 30 days as champion', async () => {
-    const supabaseClient = {
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'coupons')
-          return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'user_redemptions')
-          return makeChain({
-            data: Array.from({ length: 4 }, () => ({
-              user_id: 'user-champion',
-              redeemed_at: daysAgo(5),
-            })),
-            error: null,
-          });
-        return makeChain({ data: [], error: null });
-      }),
-    } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
-
+  it('calls the segments RPC and maps the single aggregate row', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{ champion: 1, loyal: 2, at_risk: 3, lost: 4, new_customer: 5 }],
+      error: null,
+    });
+    const supabaseClient = { rpc } as unknown as Awaited<
+      ReturnType<typeof createAnalyticsSupabaseClient>
+    >;
     (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
       supabaseClient,
     );
 
     const result = await getCustomerSegments('biz-1');
 
-    expect(result.champion).toBe(1);
+    expect(rpc).toHaveBeenCalledWith('analytics_customer_segments', {
+      p_business_id: 'biz-1',
+      p_branch_id: null,
+    });
+    expect(result).toEqual({
+      champion: 1,
+      loyal: 2,
+      at_risk: 3,
+      lost: 4,
+      new_customer: 5,
+    });
   });
 
-  it('classifies users with 2 redemptions in last 60 days (not champion) as loyal', async () => {
-    const supabaseClient = {
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'coupons')
-          return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'user_redemptions')
-          return makeChain({
-            data: [
-              { user_id: 'user-loyal', redeemed_at: daysAgo(40) },
-              { user_id: 'user-loyal', redeemed_at: daysAgo(45) },
-            ],
-            error: null,
-          });
-        return makeChain({ data: [], error: null });
-      }),
-    } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
-
+  it('passes the branch id through to the RPC', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
+    const supabaseClient = { rpc } as unknown as Awaited<
+      ReturnType<typeof createAnalyticsSupabaseClient>
+    >;
     (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
       supabaseClient,
     );
 
-    const result = await getCustomerSegments('biz-1');
+    await getCustomerSegments('biz-1', 'branch-9');
 
-    expect(result.loyal).toBe(1);
-  });
-
-  it('classifies users with 1 redemption in last 14 days as new_customer', async () => {
-    const supabaseClient = {
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'coupons')
-          return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'user_redemptions')
-          return makeChain({
-            data: [{ user_id: 'user-new', redeemed_at: daysAgo(7) }],
-            error: null,
-          });
-        return makeChain({ data: [], error: null });
-      }),
-    } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
-
-    (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
-      supabaseClient,
-    );
-
-    const result = await getCustomerSegments('biz-1');
-
-    expect(result.new_customer).toBe(1);
-  });
-
-  it('classifies users with last redemption 91+ days ago as lost', async () => {
-    const supabaseClient = {
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'coupons')
-          return makeChain({ data: [{ id: 'c1' }], error: null });
-        if (table === 'user_redemptions')
-          return makeChain({
-            data: [{ user_id: 'user-lost', redeemed_at: daysAgo(100) }],
-            error: null,
-          });
-        return makeChain({ data: [], error: null });
-      }),
-    } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
-
-    (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
-      supabaseClient,
-    );
-
-    const result = await getCustomerSegments('biz-1');
-
-    expect(result.lost).toBe(1);
+    expect(rpc).toHaveBeenCalledWith('analytics_customer_segments', {
+      p_business_id: 'biz-1',
+      p_branch_id: 'branch-9',
+    });
   });
 });
 

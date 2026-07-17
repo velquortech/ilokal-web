@@ -46,8 +46,7 @@ export async function DELETE(
     console.error('[API] DELETE /api/admin/businesses/[id]/delete:', error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : 'Failed to delete business',
+        error: 'Failed to delete business',
       },
       { status: 500 },
     );

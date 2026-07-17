@@ -15,8 +15,13 @@ export async function PATCH(request: Request, { params }: Context) {
   const { id } = await params;
   const { data, error } = await businessService.updateBusinessType(id, body);
 
-  if (error)
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) {
+    console.error('[PATCH /api/web/business-types/[id]]', error.message);
+    return NextResponse.json(
+      { error: 'Failed to update business type' },
+      { status: 400 },
+    );
+  }
   return NextResponse.json(data);
 }
 
@@ -28,7 +33,12 @@ export async function DELETE(_: Request, { params }: Context) {
   const { id } = await params;
   const { error } = await businessService.softDeleteBusinessType(id);
 
-  if (error)
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) {
+    console.error('[DELETE /api/web/business-types/[id]]', error.message);
+    return NextResponse.json(
+      { error: 'Failed to delete business type' },
+      { status: 400 },
+    );
+  }
   return NextResponse.json({ message: 'Deleted successfully' });
 }

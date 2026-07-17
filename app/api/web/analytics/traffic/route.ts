@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { ApiResponse } from '@/lib/types';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
-import * as subscriptionQuery from '@/lib/api/subscriptions/subscriptionQuery';
+import * as subscriptionQuery from '@/lib/api/getUserBusiness';
 import * as service from '@/lib/api/analytics/businessAnalyticsService';
 
 export async function GET(request: NextRequest) {

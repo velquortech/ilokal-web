@@ -55,9 +55,45 @@
 >   per-policy exception-isolated. **Not verifiable in this env** (no docker /
 >   Supabase CLI) — apply with `make migrate-up`, then confirm with
 >   `get_advisors` (0 `auth_rls_initplan` warnings) + spot-check `pg_policies`.
-> - ⬜ **Still open:** P9 (`count:'exact'` audit — 69 uses), P13 (trigram check on
->   non-shop_name search columns), SEC-4 (review-abuse gate — HIGH-risk write-path
->   change, needs human approval), `getProductPerformance` schema decision.
+> - ✅ **P9 done (2026-07-17):** audited all 69 `count:'exact'` sites. Fixed the
+>   wasteful ones: `lib/api/admin/analyticsQuery.ts` count-only reads now
+>   `head:true` + parallelized (`Promise.all`), dropped pointless `count:'exact'`
+>   from its `sum()` reads, and admin `plans/[planId]` DELETE's active-subs check
+>   is head-only. **Also fixed P8-class phantom columns there:**
+>   `businesses.is_active`/`is_suspended` don't exist — active/suspended business
+>   counts always returned 0; now `status='verified' AND archived_at IS NULL` /
+>   `status='suspended'`. Kept `count:'exact'` (deliberately) on: paginated lists
+>   (count piggybacks on the data query; sets are owner/user-scoped or
+>   admin-small, and planned/estimated would break pagination totals),
+>   update/delete row-count checks, and `has_more` on the nearby RPC (planned
+>   stats don't apply to function scans).
+> - ✅ **P13 done (2026-07-17):** migration `20260717075244_profiles_search_trgm.sql`
+>   adds `gin_trgm_ops` on `profiles.full_name` + `profiles.email` — the admin
+>   user search was the only remaining *global* leading-wildcard `ilike` without
+>   an index. All other `ilike` sites are business-scoped behind an indexed
+>   equality (tiny sets), filter the `nearby_businesses` RPC output (function
+>   scan — table index can't apply), or already indexed (`shop_name`,
+>   `coupons.description`).
+> - 🔴 **MAJOR discovery (found during P9/P13, needs product/schema decisions):
+>   three whole query modules target schema that doesn't exist** — every function
+>   errors at runtime and returns empty results (same class as the `page_views`
+>   bug). All flagged NON-FUNCTIONAL in code headers, left intact to preserve
+>   response contracts:
+>   - `lib/api/search/searchQuery.ts` — queries `profiles` with `role='business'`
+>     (0 rows possible) + phantom columns (`name`/`category`/`average_rating`/…)
+>     and a nonexistent `featured_deals` table. Kills `/api/web/search`,
+>     `/api/web/trending`, `searchActions`.
+>   - `lib/api/reviews/reviewQuery.ts` — queries a nonexistent `reviews` table
+>     (real: `ratings`/`business_ratings`). Kills `/api/web/reviews/*`.
+>   - `lib/api/subscriptions/subscriptionQuery.ts` — queries nonexistent
+>     `subscriptions` (renamed to `follows`; billing = `business_subscriptions`),
+>     `payment_methods`, `billing_invoices`, and `profiles.business_id`. Kills
+>     `/api/web/billing/*`, `/api/web/subscriptions/*`, `billingActions`. Only
+>     the `subscription_plans` reads work.
+> - ⬜ **Still open:** SEC-4 (review-abuse gate — HIGH-risk write-path change,
+>   needs human approval), `getProductPerformance` schema decision, and the three
+>   NON-FUNCTIONAL modules above (rewrite against real schema or delete the
+>   surfaces — product decision).
 
 ## TL;DR — why requests are slow
 

@@ -1,3 +1,13 @@
+/**
+ * ⚠️ NON-FUNCTIONAL: every query here reads a `reviews` table that does not
+ * exist — the live schema stores reviews in `ratings` (product-level) and
+ * `business_ratings`, served by `/api/web/ratings` and the mobile rating
+ * routes. Every function errors at runtime and returns empty results, so the
+ * `/api/web/reviews/*` routes are dead (see .claude/PERFORMANCE_AUDIT.md, P13
+ * note). Fixing this means repointing to the real tables (or deleting the
+ * surface) — left intact to preserve the response contract until then.
+ */
+
 import { createServerSupabaseClient } from '@/supabase/server';
 import type { PaginatedReviewsResponse, Review } from '@/lib/types';
 

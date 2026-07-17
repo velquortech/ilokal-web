@@ -310,12 +310,16 @@ function/table the definer calls and run code as the definer. One migration,
 `CREATE OR REPLACE ... SET search_path = public, pg_temp`. Low risk (behaviour
 identical), high value.
 
-### SEC-3 — Stop leaking raw driver errors (S5, S7).
-Route the ~20 offending 500 paths through `loggedServerError(context, error)`
-(already exists per CLAUDE.md, just unused here). Raw `error.message` from
-Supabase exposes table/column/constraint names — recon for an attacker. Start
-with the public-reachable ones: `business-categories`, `business-types`,
-`ratings`, `upload/*`. No schema change.
+### SEC-3 — Stop leaking raw driver errors (S5, S7). **STATUS: DONE.**
+Genericized every response that forwarded a Supabase/driver `error.message` and
+added `console.error` server-side logging: `business-types`, `business-categories`,
+`ratings` (both GET+POST), `signup`, `upload/[bucket]/[id]` (delete + catch),
+`upload/verification-docs`, `admin/profiles`, `admin/subscriptions/plans` (GET+POST),
+and the admin `businesses` catch-block family (list, `[id]` GET/PUT/DELETE, verify,
+suspend, delete, reject). **Intentionally left** (verified safe): `ImageProcessingError`
+messages (hand-thrown, user-facing 4xx in the upload routes + mobile avatar) and the
+Zod validation branch in `admin/businesses/[id]` PUT (`Invalid input: …`). Raw
+`error.message` in a client response now returns 0 outside those safe cases.
 
 ### SEC-4 — Review/redemption abuse gate (S3).
 `ratings`/`business_ratings` accept inserts from any authenticated user for any

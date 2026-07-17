@@ -57,10 +57,7 @@ export async function GET(
   } catch (error) {
     console.error('[API] GET /api/admin/businesses/[id]:', error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : 'Failed to fetch business',
-      },
+      { error: 'Failed to fetch business' },
       { status: 500 },
     );
   }
@@ -125,10 +122,7 @@ export async function PUT(
     }
 
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : 'Failed to update business',
-      },
+      { error: 'Failed to update business' },
       { status: 500 },
     );
   }
@@ -167,10 +161,7 @@ export async function DELETE(
   } catch (error) {
     console.error('[API] DELETE /api/admin/businesses/[id]:', error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : 'Failed to archive business',
-      },
+      { error: 'Failed to archive business' },
       { status: 500 },
     );
   }

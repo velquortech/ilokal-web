@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
     if (countResult.error) {
       console.error('Count query error:', countResult.error);
       return NextResponse.json(
-        { message: countResult.error.message },
+        { message: 'Failed to fetch profiles' },
         { status: 400 },
       );
     }
@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
     if (dataResult.error) {
       console.error('Data query error:', dataResult.error);
       return NextResponse.json(
-        { message: dataResult.error.message },
+        { message: 'Failed to fetch profiles' },
         { status: 400 },
       );
     }

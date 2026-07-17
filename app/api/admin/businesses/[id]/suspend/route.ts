@@ -67,8 +67,7 @@ export async function POST(
     console.error('[API] POST /api/admin/businesses/[id]/suspend:', error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : 'Failed to suspend business',
+        error: 'Failed to suspend business',
       },
       { status: 500 },
     );

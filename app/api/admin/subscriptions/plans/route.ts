@@ -47,7 +47,10 @@ export async function GET(
     if (error) {
       console.error('[GET /api/admin/subscriptions/plans] DB error:', error);
       return NextResponse.json(
-        { success: false, error: { code: 'DB_ERROR', message: error.message } },
+        {
+          success: false,
+          error: { code: 'DB_ERROR', message: 'Failed to fetch plans' },
+        },
         { status: 500 },
       );
     }
@@ -138,7 +141,10 @@ export async function POST(
     if (error) {
       console.error('[POST /api/admin/subscriptions/plans] DB error:', error);
       return NextResponse.json(
-        { success: false, error: { code: 'DB_ERROR', message: error.message } },
+        {
+          success: false,
+          error: { code: 'DB_ERROR', message: 'Failed to create plan' },
+        },
         { status: 500 },
       );
     }

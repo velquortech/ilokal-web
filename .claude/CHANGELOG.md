@@ -1,5 +1,50 @@
 # Changelog
 
+## 2026-07-17 — Perf + security hardening, phase 2 (perf/security-hardening)
+
+> **One new HIGH-risk schema migration** (`20260717072717_analytics_engagement_rpcs.sql`)
+> — applied + smoke-tested locally; needs human approval before merge. All five
+> phase-1 migrations (`20260717000000`–`000003`) are now **applied to local** and
+> verified.
+
+- **Migrations applied + verified (was the phase-1 blocker):** `make migrate-up` +
+  `make generate-types` run against the local stack. Verified in SQL:
+  `pg_policies` shows **0** bare `auth.uid()`/`auth.role()` in `public`+`storage`
+  (P1 wrapper worked); the perf indexes and both phase-1 analytics RPCs exist;
+  only PostGIS internals lack a pinned `search_path` (S4 clean). **SEC-1
+  red-teamed:** impersonating a non-admin via `request.jwt.claims` +
+  `SET ROLE authenticated`, `UPDATE profiles SET role='admin', status='suspended'`
+  is silently reverted by the trigger while a `full_name` self-update still lands.
+- **P3 COMPLETE — remaining analytics moved to SQL RPCs.** New migration adds
+  `analytics_retention_months`, `analytics_monthly_trend`,
+  `analytics_follower_funnel`, `analytics_customer_segments`, and
+  `analytics_rating_summary` (SECURITY DEFINER, pinned search_path, EXECUTE
+  revoked from PUBLIC/anon/authenticated, granted to service_role only — same
+  contract as `20260717000003`). Rewired `getRetentionData`/`getMonthlyTrend`/
+  `getFollowerFunnel`/`getCustomerSegments` to the RPCs — they fetched whole
+  `user_redemptions`/`follows` rowsets and reduced with Map/Set, silently
+  truncating at the PostgREST 1000-row cap. `getBusinessHealthIndicators` now
+  derives follower growth from the trend RPC and ratings from the rating-summary
+  RPC (its fetch-all follows/ratings reads had the same truncation bug); its
+  active-deals count gained `head: true`. Deleted the now-unused
+  `getBusinessCouponIds` helper. Month labels stay JS-side (RPC rows are
+  oldest-first, mapped by index). Remaining JS aggregation: `getBusinessRevenue`
+  monthly bucket (bounded 6-month window) and `getProductPerformance`
+  (NON-FUNCTIONAL, blocked on schema decision).
+- **SEC-7 — storage-delete path hardening + avatars authz fix.**
+  `DELETE /api/web/upload/[bucket]/[id]` now 400s any decoded path with an
+  empty/`.`/`..` segment or a non-UUID first segment, before ownership checks or
+  storage calls. **Found + fixed a real authz gap:** the `avatars` bucket had no
+  ownership check — any authenticated user could delete anyone's avatar; now the
+  first path segment must equal the caller's user id unless admin. (No client
+  currently calls this DELETE route, so no breakage.)
+- **Tests:** analytics query tests rewritten to mock the new RPCs (call args incl.
+  `p_branch_id` passthrough, row→label mapping, empty-data zeros); +6 route tests
+  in `app/api/web/upload/__tests__/delete-path-guards.test.ts`. Verified:
+  `yarn lint` + **1308** tests + `yarn build` all green.
+- **Still open (see audit):** P9 `count:'exact'` audit, P13 trigram check, SEC-4
+  review-abuse gate (needs approval), `getProductPerformance` schema decision.
+
 ## 2026-07-17 — Perf + security hardening, phase 1 (perf/security-hardening)
 
 > Full audit + remaining phases in `.claude/PERFORMANCE_AUDIT.md`. **Two schema

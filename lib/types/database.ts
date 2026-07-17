@@ -757,6 +757,48 @@ export type Database = {
           },
         ]
       }
+      notification_outbox: {
+        Row: {
+          attempts: number
+          body: string | null
+          business_id: string
+          created_at: string
+          data: Json | null
+          id: string
+          last_user_id: string | null
+          processed_at: string | null
+          status: string
+          title: string
+          type: string
+        }
+        Insert: {
+          attempts?: number
+          body?: string | null
+          business_id: string
+          created_at?: string
+          data?: Json | null
+          id?: string
+          last_user_id?: string | null
+          processed_at?: string | null
+          status?: string
+          title: string
+          type: string
+        }
+        Update: {
+          attempts?: number
+          body?: string | null
+          business_id?: string
+          created_at?: string
+          data?: Json | null
+          id?: string
+          last_user_id?: string | null
+          processed_at?: string | null
+          status?: string
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
       notification_preferences: {
         Row: {
           digest: string
@@ -1349,21 +1391,6 @@ export type Database = {
       }
     }
     Functions: {
-      analytics_coupon_redemption_stats: {
-        Args: { p_business_id: string; p_branch_id?: string | null }
-        Returns: {
-          coupon_id: string
-          redeemed: number
-          avg_days_to_redeem: number | null
-        }[]
-      }
-      analytics_traffic_metrics: {
-        Args: { p_business_id: string; p_since: string }
-        Returns: {
-          page_views: number
-          unique_visitors: number
-        }[]
-      }
       _postgis_deprecate: {
         Args: { newname: string; oldname: string; version: string }
         Returns: undefined
@@ -1491,6 +1518,68 @@ export type Database = {
             }
             Returns: string
           }
+      analytics_coupon_redemption_stats: {
+        Args: { p_branch_id?: string; p_business_id: string }
+        Returns: {
+          avg_days_to_redeem: number
+          coupon_id: string
+          redeemed: number
+        }[]
+      }
+      analytics_customer_segments: {
+        Args: { p_branch_id?: string; p_business_id: string }
+        Returns: {
+          at_risk: number
+          champion: number
+          lost: number
+          loyal: number
+          new_customer: number
+        }[]
+      }
+      analytics_follower_funnel: {
+        Args: { p_branch_id?: string; p_business_id: string }
+        Returns: {
+          active_30d: number
+          ever_redeemed: number
+          loyal: number
+          total_followers: number
+        }[]
+      }
+      analytics_monthly_trend: {
+        Args: { p_branch_id?: string; p_business_id: string }
+        Returns: {
+          followers: number
+          month_start: string
+          redemptions: number
+        }[]
+      }
+      analytics_rating_summary: {
+        Args: { p_business_id: string }
+        Returns: {
+          avg_rating: number
+          last_month_avg: number
+          last_month_count: number
+          ratings_count: number
+          this_month_avg: number
+          this_month_count: number
+        }[]
+      }
+      analytics_retention_months: {
+        Args: { p_branch_id?: string; p_business_id: string }
+        Returns: {
+          churned_customers: number
+          month_start: string
+          new_customers: number
+          returning_customers: number
+        }[]
+      }
+      analytics_traffic_metrics: {
+        Args: { p_business_id: string; p_since: string }
+        Returns: {
+          page_views: number
+          unique_visitors: number
+        }[]
+      }
       business_branches: {
         Args: { p_business_id: string }
         Returns: {
@@ -1686,6 +1775,15 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      mobile_deals: {
+        Args: {
+          p_category?: string
+          p_page?: number
+          p_per_page?: number
+          p_search?: string
+        }
+        Returns: Json
+      }
       nearby_businesses: {
         Args: { lat: number; lng: number; radius_meters?: number }
         Returns: {
@@ -1763,6 +1861,15 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      process_notification_outbox: {
+        Args: {
+          p_batch?: number
+          p_max_rows?: number
+          p_max_rows_per_event?: number
+        }
+        Returns: number
+      }
+      prune_notification_outbox: { Args: never; Returns: number }
       record_view: {
         Args: { p_business_id?: string; p_product_id?: string }
         Returns: undefined

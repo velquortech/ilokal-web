@@ -67,7 +67,10 @@ export async function POST(
       }
       console.error('[POST /api/ratings] DB error:', error);
       return NextResponse.json(
-        { success: false, error: { code: 'DB_ERROR', message: error.message } },
+        {
+          success: false,
+          error: { code: 'DB_ERROR', message: 'Failed to save rating' },
+        },
         { status: 500 },
       );
     }

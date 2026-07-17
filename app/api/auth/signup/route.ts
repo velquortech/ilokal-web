@@ -36,6 +36,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { signupSchema } from '@/lib/validation/auth';
+import { checkAuthRateLimit } from '@/app/api/helpers/auth-rate-limit';
 import type { User } from '@/lib/types';
 
 type ApiResponse<T = unknown> = {
@@ -71,6 +72,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const { email, password, name, role, phone_number, avatar_url } =
       validation.data;
+
+    // Throttle mass-signup abuse before touching auth/DB.
+    const limited = checkAuthRateLimit(request, 'signup', email);
+    if (limited) return limited;
 
     // Create Supabase client
     const supabase = await createServerSupabaseClient();
@@ -129,7 +134,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           success: false,
           error: {
             code: 'INTERNAL_ERROR',
-            message: authError?.message || 'Failed to create account',
+            message: 'Failed to create account',
           },
         },
         { status: 500 },

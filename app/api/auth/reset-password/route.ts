@@ -36,6 +36,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/supabase/server';
+import { checkAuthRateLimit } from '@/app/api/helpers/auth-rate-limit';
 import { z } from 'zod';
 
 type ApiResponse<T = unknown> = {
@@ -61,6 +62,15 @@ const resetConfirmSchema = z.object({
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
+
+    // Throttle reset abuse (email enumeration / reset-mail spam). IP-keyed
+    // always; account-keyed on the request branch where an email is present.
+    const limited = checkAuthRateLimit(
+      request,
+      'reset',
+      typeof body?.email === 'string' ? body.email : null,
+    );
+    if (limited) return limited;
 
     // Check if this is a reset request or confirmation
     if (body.token) {

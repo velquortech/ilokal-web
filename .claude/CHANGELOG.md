@@ -1,5 +1,50 @@
 # Changelog
 
+## 2026-07-17 — Perf + security hardening, phase 4: SEC-4 + dead-surface removal (perf/security-hardening)
+
+> **One HIGH-risk schema migration** (`20260717080351_sec4_rating_interaction_gate.sql`,
+> RLS write-path change) — applied + red-teamed locally; needs human approval before
+> merge. **Also a large API-surface deletion** (all endpoints removed were
+> non-functional with zero callers — see below). Cloud still needs
+> `make migrate-cloud` after approval.
+
+- **SEC-4 — review-abuse gate.** New SECURITY DEFINER
+  `has_redeemed_from_business(p_user, p_business)` + RESTRICTIVE INSERT policies
+  on `ratings` and `business_ratings`: a non-admin may only create a rating for
+  a business they have actually redeemed a coupon from. RESTRICTIVE = ANDs onto
+  the existing self-insert policies; UPDATE (editing own review), admin
+  (`is_admin()`), and service-role paths untouched. Red-teamed in SQL:
+  non-redeemer insert fails with 42501, redeemer insert + upsert path works.
+  Mobile business/product rating routes and web ratings POST now map 42501 to a
+  friendly 403 ("rate only after redeeming") instead of a logged 500. Tests:
+  `app/api/protected/mobile/ratings/__tests__/sec4-interaction-gate.test.ts` (+4).
+- **Dead-surface removal (the three phantom modules + product-performance).**
+  Every deleted endpoint queried nonexistent tables/columns, errored on every
+  call since the schema normalization, and had **zero** UI/service callers:
+  - Search: `lib/api/search/*`, `/api/web/search/*`, `/api/web/trending`,
+    `lib/services/searchService`, `searchActions`, `lib/validation/search.ts`.
+  - Reviews: `lib/api/reviews/*`, `/api/web/reviews/*`, `/api/web/ratings/[id]`
+    (phantom-backed), `lib/services/reviewService`, `reviewActions`,
+    `lib/validation/reviews.ts`. (The real review surface — `/api/web/ratings`
+    list/POST + mobile rating routes on `ratings`/`business_ratings` — kept.)
+  - Billing: `lib/api/subscriptions/*`, `/api/web/subscriptions/*`,
+    `/api/web/billing/*`, `lib/services/subscriptionService`,
+    `billingActions`/`subscriptionActions` + the unused actions barrel,
+    `lib/validation/subscriptions.ts`. (Admin plans routes are self-contained
+    and kept.)
+  - `getProductPerformance` + `/api/web/analytics/products` — `payments` has no
+    `product_id`; resolved-by-removal (re-add if payments become product-linked).
+  - **Kept + extracted:** `getUserBusiness` (only real, live-called function in
+    the deleted module) moved to `lib/api/getUserBusiness.ts`; the four
+    analytics routes + server-side `productService` repointed.
+  - Orphaned tests removed with their modules (~240 tests covered phantom code).
+  - Rollback: `git revert` (no data change; deleted endpoints returned errors).
+- Verified: `yarn lint` + **1068** tests + `yarn build` green; local DB fully
+  migrated (`20260717080351` applied) + `make generate-types` run
+  (`has_redeemed_from_business` in `database.ts`).
+- **Audit fully closed.** Remaining ops step: cloud `make migrate-cloud` +
+  `get_advisors` after human approval of the 7 branch migrations.
+
 ## 2026-07-17 — Perf + security hardening, phase 3: P9 + P13 (perf/security-hardening)
 
 > One LOW-risk schema migration (`20260717075244_profiles_search_trgm.sql`,

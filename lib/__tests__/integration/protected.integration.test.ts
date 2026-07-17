@@ -2,16 +2,11 @@ import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
 import type { NextRequest } from 'next/server';
 
 import { GET as getRevenue } from '@/app/api/admin/analytics/revenue/route';
-import { POST as postUpgrade } from '@/app/api/web/subscriptions/upgrade/route';
 import { PUT as putNotification } from '@/app/api/web/notifications/[id]/route';
 import { createServerSupabaseClient } from '@/supabase/server';
 
 vi.mock('@/supabase/server', () => ({
   createServerSupabaseClient: vi.fn(),
-}));
-
-vi.mock('@/lib/api/subscriptions/subscriptionQuery', () => ({
-  getUserBusiness: vi.fn(),
 }));
 
 describe('integration - protected routes (representative)', () => {
@@ -62,19 +57,6 @@ describe('integration - protected routes (representative)', () => {
 
     const res = await getRevenue(mockReq as NextRequest);
     expect(res.status).toBe(403);
-  });
-
-  it('POST /api/subscriptions/upgrade returns 401 when unauthenticated', async () => {
-    const supabaseClient = {
-      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
-    } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
-
-    (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
-      supabaseClient,
-    );
-
-    const res = await postUpgrade({} as unknown as NextRequest);
-    expect(res.status).toBe(401);
   });
 
   it('PUT /api/notifications/:id returns 401 when unauthenticated', async () => {

@@ -5,7 +5,6 @@
 import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
 import {
   getBusinessDashboard,
-  getProductPerformance,
   getCouponStats,
   getTrafficMetrics,
   getBusinessRevenue,
@@ -188,59 +187,6 @@ describe('businessAnalyticsQuery', () => {
       expect(result.active_products).toBe(0);
       expect(result.total_revenue).toBe(0);
       expect(result.revenue_last_30_days).toBe(0);
-    });
-  });
-
-  describe('getProductPerformance', () => {
-    it('should return product sales rankings sorted by performance', async () => {
-      const eq2 = vi.fn().mockReturnValue({
-        data: [
-          { product_id: 'prod-1', amount: 145 },
-          { product_id: 'prod-2', amount: 87 },
-        ],
-        error: null,
-      });
-      const eq1 = vi.fn().mockReturnValue({ data: [], error: null, eq: eq2 });
-      const select = vi
-        .fn()
-        .mockReturnValue({ data: [], error: null, eq: eq1 });
-
-      const supabaseClient = {
-        from: vi.fn().mockReturnValue({ select }),
-      } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
-
-      (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
-        supabaseClient,
-      );
-
-      const result = await getProductPerformance('biz-1', 10);
-
-      expect(Array.isArray(result)).toBe(true);
-      if (result.length > 0) {
-        expect(result[0]).toHaveProperty('product_id');
-        expect(result[0]).toHaveProperty('units_sold');
-        expect(result[0]).toHaveProperty('revenue');
-      }
-    });
-
-    it('should filter products by time period', async () => {
-      const eq2 = vi.fn().mockReturnValue({ data: [], error: null });
-      const eq1 = vi.fn().mockReturnValue({ data: [], error: null, eq: eq2 });
-      const select = vi
-        .fn()
-        .mockReturnValue({ data: [], error: null, eq: eq1 });
-
-      const supabaseClient = {
-        from: vi.fn().mockReturnValue({ select }),
-      } as unknown as Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>;
-
-      (createAnalyticsSupabaseClient as unknown as Mock).mockResolvedValueOnce(
-        supabaseClient,
-      );
-
-      const result = await getProductPerformance('biz-1', 10);
-
-      expect(Array.isArray(result)).toBe(true);
     });
   });
 

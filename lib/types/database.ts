@@ -1769,6 +1769,10 @@ export type Database = {
         }[]
       }
       gettransactionid: { Args: never; Returns: unknown }
+      has_redeemed_from_business: {
+        Args: { p_business: string; p_user: string }
+        Returns: boolean
+      }
       increment_coupon_redemptions: {
         Args: { p_coupon_id: string }
         Returns: boolean

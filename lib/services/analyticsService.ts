@@ -21,12 +21,6 @@ export async function dashboard(params?: Record<string, string | number>) {
   return browserGet(`/analytics/dashboard${qs}`);
 }
 
-export async function products(params?: Record<string, string | number>) {
-  // Server-side products analytics requires auth/secrets, so only use HTTP fallback
-  const qs = await buildQs(params);
-  return browserGet(`/analytics/products${qs}`);
-}
-
 export async function revenue(params?: Record<string, string | number>) {
   // Server-side revenue analytics requires auth/secrets, so only use HTTP fallback
   const qs = await buildQs(params);
@@ -42,7 +36,6 @@ export async function traffic(params?: Record<string, string | number>) {
 export default {
   coupons,
   dashboard,
-  products,
   revenue,
   traffic,
 };

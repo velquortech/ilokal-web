@@ -650,14 +650,16 @@ export function LandingPage() {
                   dashboard.ilokal.ph/overview
                 </div>
               </div>
-              {/* Real dashboard screenshot (seeded local data) — replaces the
-                  hand-built mock so the section always matches the product. */}
+              {/* Real dashboard capture (animated walkthrough) — replaces the
+                  hand-built mock so the section always matches the product.
+                  `unoptimized` keeps the GIF animated (the image optimizer
+                  would serve a single frame). */}
               <Image
-                src="/images/landing-dashboard-overview.webp"
-                alt="iLokal business dashboard showing retention rate, new followers, active deals, average rating, a 6-month follower and redemption trend, and customer segments"
-                width={2000}
-                height={1250}
-                sizes="(max-width: 1080px) 100vw, 1040px"
+                src="/images/dashboard-preview.gif"
+                alt="iLokal business dashboard walkthrough showing retention rate, new followers, active deals, average rating, a 6-month follower and redemption trend, and customer segments"
+                width={1903}
+                height={906}
+                unoptimized
                 style={s('display:block;width:100%;height:auto;')}
               />
             </div>

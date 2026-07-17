@@ -19,22 +19,40 @@ export async function getBusinessDashboard(
 ): Promise<BusinessDashboard> {
   const supabase = await createAnalyticsSupabaseClient();
 
-  const { count: productCount } = await supabase
-    .from('products')
-    .select('id', { count: 'exact' })
-    .eq('business_id', businessId);
+  const thirtyDaysAgo = new Date(
+    Date.now() - 1000 * 60 * 60 * 24 * 30,
+  ).toISOString();
 
-  const { count: activeProducts } = await supabase
-    .from('products')
-    .select('id', { count: 'exact', head: true })
-    .eq('business_id', businessId)
-    .eq('status', 'active');
-
-  const { data: revenueData } = await supabase
-    .from('payments')
-    .select('sum:sum(amount)', { count: 'exact' })
-    .eq('status', 'succeeded')
-    .eq('business_id', businessId);
+  // All four reads are independent — run them in parallel instead of serially
+  // (was 4 sequential round trips). Counts use head:true (no row payload); the
+  // revenue reads are sum() aggregates so they don't need an exact row count.
+  const [
+    { count: productCount },
+    { count: activeProducts },
+    { data: revenueData },
+    { data: recentData },
+  ] = await Promise.all([
+    supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .eq('business_id', businessId),
+    supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .eq('business_id', businessId)
+      .eq('status', 'active'),
+    supabase
+      .from('payments')
+      .select('sum:sum(amount)')
+      .eq('status', 'succeeded')
+      .eq('business_id', businessId),
+    supabase
+      .from('payments')
+      .select('sum:sum(amount)')
+      .eq('status', 'succeeded')
+      .eq('business_id', businessId)
+      .gte('created_at', thirtyDaysAgo),
+  ]);
 
   const totalRevenue =
     Array.isArray(revenueData) && revenueData.length
@@ -42,16 +60,6 @@ export async function getBusinessDashboard(
           (revenueData[0] as unknown as Record<string, unknown>)['sum'] ?? 0,
         )
       : 0;
-
-  const thirtyDaysAgo = new Date(
-    Date.now() - 1000 * 60 * 60 * 24 * 30,
-  ).toISOString();
-  const { data: recentData } = await supabase
-    .from('payments')
-    .select('sum:sum(amount)', { count: 'exact' })
-    .eq('status', 'succeeded')
-    .eq('business_id', businessId)
-    .gte('created_at', thirtyDaysAgo);
 
   const revenueLast30 =
     Array.isArray(recentData) && recentData.length
@@ -164,18 +172,7 @@ export async function getBusinessRevenue(
 ): Promise<BusinessRevenue> {
   const supabase = await createAnalyticsSupabaseClient();
 
-  const { data: totalData } = await supabase
-    .from('payments')
-    .select('sum:sum(amount)', { count: 'exact' })
-    .eq('status', 'succeeded')
-    .eq('business_id', businessId);
-
-  const totalRevenue =
-    Array.isArray(totalData) && totalData.length
-      ? Number((totalData[0] as unknown as Record<string, unknown>)['sum'] ?? 0)
-      : 0;
-
-  // Simple monthly breakdown last 6 months
+  // Monthly window bounds
   const now = new Date();
   const months: Record<string, number> = {};
   for (let i = 0; i < 6; i++) {
@@ -183,21 +180,35 @@ export async function getBusinessRevenue(
     const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     months[label] = 0;
   }
+  const earliest = new Date();
+  earliest.setMonth(earliest.getMonth() - 5);
+  earliest.setDate(1);
+  const earliestIso = earliest.toISOString();
 
-  // We'll attempt to query payments grouped by month; fallback to empty months if unsupported
-  // Fetch payments for the last 6 months and aggregate in JS to avoid DB-specific group syntax
-  try {
-    const earliest = new Date();
-    earliest.setMonth(earliest.getMonth() - 5);
-    earliest.setDate(1);
-    const earliestIso = earliest.toISOString();
-    const { data } = await supabase
+  // Total and the 6-month window are independent — fetch in parallel.
+  const [{ data: totalData }, monthly] = await Promise.all([
+    supabase
+      .from('payments')
+      .select('sum:sum(amount)')
+      .eq('status', 'succeeded')
+      .eq('business_id', businessId),
+    supabase
       .from('payments')
       .select('created_at, amount')
       .eq('status', 'succeeded')
       .eq('business_id', businessId)
-      .gte('created_at', earliestIso);
+      .gte('created_at', earliestIso),
+  ]);
 
+  const totalRevenue =
+    Array.isArray(totalData) && totalData.length
+      ? Number((totalData[0] as unknown as Record<string, unknown>)['sum'] ?? 0)
+      : 0;
+
+  // Bucket the window rows into month labels (aggregated in JS to avoid
+  // DB-specific group syntax; the 6-month window keeps the row count small).
+  try {
+    const { data } = monthly;
     if (Array.isArray(data)) {
       data.forEach((r: unknown) => {
         const row = r as Record<string, unknown>;

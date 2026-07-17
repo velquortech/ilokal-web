@@ -353,17 +353,23 @@ describe('businessAnalyticsQuery', () => {
         .fn()
         .mockReturnValue({ data: [], error: null, eq: q1eq1 });
 
-      // Query 2: monthly breakdown
-      const q2eq = vi.fn().mockReturnValue({
+      // Query 2: monthly breakdown — select().eq('status').eq('business_id').gte()
+      const q2gte = vi.fn().mockReturnValue({
         data: [
           { created_at: '2026-03-01T00:00:00Z', amount: 100000 },
           { created_at: '2026-02-01T00:00:00Z', amount: 80000 },
         ],
         error: null,
       });
+      const q2eq2 = vi
+        .fn()
+        .mockReturnValue({ data: [], error: null, gte: q2gte });
+      const q2eq1 = vi
+        .fn()
+        .mockReturnValue({ data: [], error: null, eq: q2eq2 });
       const q2select = vi
         .fn()
-        .mockReturnValue({ data: [], error: null, eq: q2eq });
+        .mockReturnValue({ data: [], error: null, eq: q2eq1 });
 
       const fromMock = vi
         .fn()
@@ -394,10 +400,16 @@ describe('businessAnalyticsQuery', () => {
         .fn()
         .mockReturnValue({ data: [], error: null, eq: q1eq1 });
 
-      const q2eq = vi.fn().mockReturnValue({ data: [], error: null });
+      const q2gte = vi.fn().mockReturnValue({ data: [], error: null });
+      const q2eq2 = vi
+        .fn()
+        .mockReturnValue({ data: [], error: null, gte: q2gte });
+      const q2eq1 = vi
+        .fn()
+        .mockReturnValue({ data: [], error: null, eq: q2eq2 });
       const q2select = vi
         .fn()
-        .mockReturnValue({ data: [], error: null, eq: q2eq });
+        .mockReturnValue({ data: [], error: null, eq: q2eq1 });
 
       const fromMock = vi
         .fn()

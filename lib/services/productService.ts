@@ -48,7 +48,7 @@ const productService = {
       const [svcClient, userMod, subQ] = await Promise.all([
         useServerClient(),
         import('@/lib/api/getCurrentUser'),
-        import('@/lib/api/subscriptions/subscriptionQuery'),
+        import('@/lib/api/getUserBusiness'),
       ]);
 
       const user = await userMod.getCurrentUser();

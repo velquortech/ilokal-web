@@ -5,6 +5,7 @@ import {
   notFoundResponse,
   successResponse,
   unauthorizedResponse,
+  forbiddenResponse,
   loggedServerError,
 } from '@/app/api/helpers/response';
 import { NextRequest } from 'next/server';
@@ -53,11 +54,19 @@ export async function POST(req: NextRequest, { params }: Params) {
       .select('id, rating, comment, created_at, updated_at')
       .single();
 
-    if (error)
+    if (error) {
+      // SEC-4 gate: inserting a first rating requires having redeemed a coupon
+      // from this business (RESTRICTIVE RLS policy) — surface as 403, not 500.
+      if (error.code === '42501') {
+        return forbiddenResponse({
+          message: 'You can only rate a business you have redeemed a deal from',
+        });
+      }
       return loggedServerError(
         'protected/mobile/ratings/businesses/[businessId]',
         error,
       );
+    }
 
     return successResponse({ rating: data });
   } catch {

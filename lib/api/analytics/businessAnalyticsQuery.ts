@@ -1,7 +1,6 @@
 import { createAnalyticsSupabaseClient } from '@/supabase/server';
 import type {
   BusinessDashboard,
-  ProductPerformance,
   CouponStats,
   TrafficMetrics,
   BusinessRevenue,
@@ -19,22 +18,40 @@ export async function getBusinessDashboard(
 ): Promise<BusinessDashboard> {
   const supabase = await createAnalyticsSupabaseClient();
 
-  const { count: productCount } = await supabase
-    .from('products')
-    .select('id', { count: 'exact' })
-    .eq('business_id', businessId);
+  const thirtyDaysAgo = new Date(
+    Date.now() - 1000 * 60 * 60 * 24 * 30,
+  ).toISOString();
 
-  const { count: activeProducts } = await supabase
-    .from('products')
-    .select('id', { count: 'exact' })
-    .eq('business_id', businessId)
-    .eq('is_active', true);
-
-  const { data: revenueData } = await supabase
-    .from('payments')
-    .select('sum:sum(amount)', { count: 'exact' })
-    .eq('status', 'succeeded')
-    .eq('business_id', businessId);
+  // All four reads are independent — run them in parallel instead of serially
+  // (was 4 sequential round trips). Counts use head:true (no row payload); the
+  // revenue reads are sum() aggregates so they don't need an exact row count.
+  const [
+    { count: productCount },
+    { count: activeProducts },
+    { data: revenueData },
+    { data: recentData },
+  ] = await Promise.all([
+    supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .eq('business_id', businessId),
+    supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .eq('business_id', businessId)
+      .eq('status', 'active'),
+    supabase
+      .from('payments')
+      .select('sum:sum(amount)')
+      .eq('status', 'succeeded')
+      .eq('business_id', businessId),
+    supabase
+      .from('payments')
+      .select('sum:sum(amount)')
+      .eq('status', 'succeeded')
+      .eq('business_id', businessId)
+      .gte('created_at', thirtyDaysAgo),
+  ]);
 
   const totalRevenue =
     Array.isArray(revenueData) && revenueData.length
@@ -42,16 +59,6 @@ export async function getBusinessDashboard(
           (revenueData[0] as unknown as Record<string, unknown>)['sum'] ?? 0,
         )
       : 0;
-
-  const thirtyDaysAgo = new Date(
-    Date.now() - 1000 * 60 * 60 * 24 * 30,
-  ).toISOString();
-  const { data: recentData } = await supabase
-    .from('payments')
-    .select('sum:sum(amount)', { count: 'exact' })
-    .eq('status', 'succeeded')
-    .eq('business_id', businessId)
-    .gte('created_at', thirtyDaysAgo);
 
   const revenueLast30 =
     Array.isArray(recentData) && recentData.length
@@ -69,74 +76,24 @@ export async function getBusinessDashboard(
   };
 }
 
-export async function getProductPerformance(
-  businessId: string,
-  limit = 10,
-): Promise<ProductPerformance[]> {
-  const supabase = await createAnalyticsSupabaseClient();
-  // Fetch payments for the business and aggregate in JS to avoid DB-specific group syntax
-  const { data } = await supabase
-    .from('payments')
-    .select('product_id, amount')
-    .eq('business_id', businessId)
-    .eq('status', 'succeeded');
-
-  if (!Array.isArray(data)) return [];
-
-  const map = new Map<string, { units: number; revenue: number }>();
-  data.forEach((row: unknown) => {
-    const r = row as Record<string, unknown>;
-    const pid = String(r.product_id ?? '');
-    if (!pid) return;
-    const amt = Number(r.amount ?? 0);
-    const cur = map.get(pid) ?? { units: 0, revenue: 0 };
-    cur.units += 1;
-    cur.revenue += amt;
-    map.set(pid, cur);
-  });
-
-  const arr: ProductPerformance[] = Array.from(map.entries()).map(
-    ([product_id, v]) => ({
-      product_id,
-      units_sold: v.units,
-      revenue: v.revenue,
-    }),
-  );
-  arr.sort((a, b) => b.revenue - a.revenue);
-  return arr.slice(0, limit);
-}
-
 export async function getCouponStats(
   businessId: string,
 ): Promise<CouponStats[]> {
   const supabase = await createAnalyticsSupabaseClient();
-  const { data } = await supabase
-    .from('user_redemptions')
-    .select('coupon_id')
-    .in(
-      'coupon_id',
-      (
-        await supabase
-          .from('coupons')
-          .select('id')
-          .eq('business_id', businessId)
-      ).data?.map((c: { id: string }) => c.id) ?? [],
-    );
+  // Aggregated in SQL (analytics_coupon_redemption_stats) so it can't truncate at
+  // the PostgREST 1000-row cap the way the old fetch-all-then-count did.
+  const { data } = await supabase.rpc('analytics_coupon_redemption_stats', {
+    p_business_id: businessId,
+  });
 
   if (!Array.isArray(data)) return [];
 
-  const map = new Map<string, number>();
-  data.forEach((row: unknown) => {
-    const r = row as Record<string, unknown>;
-    const cid = String(r.coupon_id ?? '');
-    if (!cid) return;
-    map.set(cid, (map.get(cid) ?? 0) + 1);
-  });
-
-  return Array.from(map.entries()).map(([coupon_id, times]) => ({
-    coupon_id,
-    times_redeemed: times,
-  }));
+  return (data as Array<{ coupon_id: string; redeemed: number }>).map(
+    (row) => ({
+      coupon_id: row.coupon_id,
+      times_redeemed: Number(row.redeemed ?? 0),
+    }),
+  );
 }
 
 export async function getTrafficMetrics(
@@ -147,29 +104,23 @@ export async function getTrafficMetrics(
     Date.now() - 1000 * 60 * 60 * 24 * 30,
   ).toISOString();
 
-  const { count: pv } = await supabase
-    .from('page_views')
-    .select('id', { count: 'exact' })
-    .eq('business_id', businessId)
-    .gte('created_at', thirtyDaysAgo);
+  // Views live in `view_events` (there is no `page_views` table). Aggregated in
+  // SQL (analytics_traffic_metrics: count + count(DISTINCT user_id)) so the
+  // unique-visitor figure can't truncate at the PostgREST 1000-row cap.
+  const { data } = await supabase.rpc('analytics_traffic_metrics', {
+    p_business_id: businessId,
+    p_since: thirtyDaysAgo,
+  });
 
-  const { data: uvData } = await supabase
-    .from('page_views')
-    .select('visitor_id')
-    .eq('business_id', businessId)
-    .gte('created_at', thirtyDaysAgo);
-  const uv = Array.isArray(uvData)
-    ? new Set(
-        uvData.map((r: unknown) =>
-          String((r as Record<string, unknown>).visitor_id),
-        ),
-      ).size
-    : 0;
+  const row =
+    Array.isArray(data) && data.length
+      ? (data[0] as { page_views: number; unique_visitors: number })
+      : null;
 
   return {
     business_id: businessId,
-    page_views_last_30_days: Number(pv ?? 0) || 0,
-    unique_visitors_last_30_days: Number(uv ?? 0) || 0,
+    page_views_last_30_days: Number(row?.page_views ?? 0) || 0,
+    unique_visitors_last_30_days: Number(row?.unique_visitors ?? 0) || 0,
   };
 }
 
@@ -178,18 +129,7 @@ export async function getBusinessRevenue(
 ): Promise<BusinessRevenue> {
   const supabase = await createAnalyticsSupabaseClient();
 
-  const { data: totalData } = await supabase
-    .from('payments')
-    .select('sum:sum(amount)', { count: 'exact' })
-    .eq('status', 'succeeded')
-    .eq('business_id', businessId);
-
-  const totalRevenue =
-    Array.isArray(totalData) && totalData.length
-      ? Number((totalData[0] as unknown as Record<string, unknown>)['sum'] ?? 0)
-      : 0;
-
-  // Simple monthly breakdown last 6 months
+  // Monthly window bounds
   const now = new Date();
   const months: Record<string, number> = {};
   for (let i = 0; i < 6; i++) {
@@ -197,21 +137,35 @@ export async function getBusinessRevenue(
     const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     months[label] = 0;
   }
+  const earliest = new Date();
+  earliest.setMonth(earliest.getMonth() - 5);
+  earliest.setDate(1);
+  const earliestIso = earliest.toISOString();
 
-  // We'll attempt to query payments grouped by month; fallback to empty months if unsupported
-  // Fetch payments for the last 6 months and aggregate in JS to avoid DB-specific group syntax
-  try {
-    const earliest = new Date();
-    earliest.setMonth(earliest.getMonth() - 5);
-    earliest.setDate(1);
-    const earliestIso = earliest.toISOString();
-    const { data } = await supabase
+  // Total and the 6-month window are independent — fetch in parallel.
+  const [{ data: totalData }, monthly] = await Promise.all([
+    supabase
+      .from('payments')
+      .select('sum:sum(amount)')
+      .eq('status', 'succeeded')
+      .eq('business_id', businessId),
+    supabase
       .from('payments')
       .select('created_at, amount')
       .eq('status', 'succeeded')
       .eq('business_id', businessId)
-      .gte('created_at', earliestIso);
+      .gte('created_at', earliestIso),
+  ]);
 
+  const totalRevenue =
+    Array.isArray(totalData) && totalData.length
+      ? Number((totalData[0] as unknown as Record<string, unknown>)['sum'] ?? 0)
+      : 0;
+
+  // Bucket the window rows into month labels (aggregated in JS to avoid
+  // DB-specific group syntax; the 6-month window keeps the row count small).
+  try {
+    const { data } = monthly;
     if (Array.isArray(data)) {
       data.forEach((r: unknown) => {
         const row = r as Record<string, unknown>;
@@ -229,23 +183,6 @@ export async function getBusinessRevenue(
     total_revenue: Number(totalRevenue) || 0,
     revenue_by_month: months,
   };
-}
-
-// ----------------------------------------------------------------
-// Helper: get coupon IDs for a business (non-archived)
-// ----------------------------------------------------------------
-async function getBusinessCouponIds(
-  supabase: Awaited<ReturnType<typeof createAnalyticsSupabaseClient>>,
-  businessId: string,
-): Promise<string[]> {
-  const { data } = await supabase
-    .from('coupons')
-    .select('id')
-    .eq('business_id', businessId)
-    .is('archived_at', null);
-
-  if (!Array.isArray(data)) return [];
-  return data.map((r: { id: string }) => r.id);
 }
 
 // ----------------------------------------------------------------
@@ -277,75 +214,28 @@ export async function getRetentionData(
   branchId?: string,
 ): Promise<RetentionMonth[]> {
   const supabase = await createAnalyticsSupabaseClient();
-  const couponIds = await getBusinessCouponIds(supabase, businessId);
-
-  if (couponIds.length === 0) {
-    return buildSixMonthLabels().map(({ label }) => ({
-      month: label,
-      new_customers: 0,
-      returning_customers: 0,
-      churned_customers: 0,
-    }));
-  }
-
-  let redemptionsQuery = supabase
-    .from('user_redemptions')
-    .select('user_id, redeemed_at')
-    .in('coupon_id', couponIds);
-
-  if (branchId) redemptionsQuery = redemptionsQuery.eq('branch_id', branchId);
-
-  const { data: rawRedemptions } = await redemptionsQuery;
-
-  const redemptions: Array<{ user_id: string; redeemed_at: string }> =
-    Array.isArray(rawRedemptions)
-      ? (rawRedemptions as Array<{ user_id: string; redeemed_at: string }>)
-      : [];
-
-  const months = buildSixMonthLabels();
-
-  // For each month, track which users redeemed
-  const monthUserSets: Set<string>[] = months.map(() => new Set<string>());
-
-  redemptions.forEach(({ user_id, redeemed_at }) => {
-    const d = new Date(redeemed_at);
-    months.forEach(({ year, month }, idx) => {
-      if (d.getFullYear() === year && d.getMonth() === month) {
-        monthUserSets[idx].add(user_id);
-      }
-    });
+  // Aggregated in SQL (analytics_retention_months) so the per-month user sets
+  // can't truncate at the PostgREST 1000-row cap. Rows come back oldest-first,
+  // one per month of the trailing 6-month window — same order as the labels.
+  const { data } = await supabase.rpc('analytics_retention_months', {
+    p_business_id: businessId,
+    p_branch_id: branchId ?? null,
   });
 
-  return months.map(({ label }, idx) => {
-    const currentSet = monthUserSets[idx];
-    const prevSet = idx > 0 ? monthUserSets[idx - 1] : new Set<string>();
+  const rows = Array.isArray(data)
+    ? (data as Array<{
+        new_customers: number;
+        returning_customers: number;
+        churned_customers: number;
+      }>)
+    : [];
 
-    let new_customers = 0;
-    let returning_customers = 0;
-
-    currentSet.forEach((uid) => {
-      if (prevSet.has(uid)) {
-        returning_customers += 1;
-      } else {
-        new_customers += 1;
-      }
-    });
-
-    // Churned = were active last month but not this month
-    let churned_customers = 0;
-    prevSet.forEach((uid) => {
-      if (!currentSet.has(uid)) {
-        churned_customers += 1;
-      }
-    });
-
-    return {
-      month: label,
-      new_customers,
-      returning_customers,
-      churned_customers,
-    };
-  });
+  return buildSixMonthLabels().map(({ label }, idx) => ({
+    month: label,
+    new_customers: Number(rows[idx]?.new_customers ?? 0),
+    returning_customers: Number(rows[idx]?.returning_customers ?? 0),
+    churned_customers: Number(rows[idx]?.churned_customers ?? 0),
+  }));
 }
 
 // ----------------------------------------------------------------
@@ -356,46 +246,23 @@ export async function getMonthlyTrend(
   branchId?: string,
 ): Promise<MonthlyTrendPoint[]> {
   const supabase = await createAnalyticsSupabaseClient();
+  // Aggregated in SQL (analytics_monthly_trend) — the old fetch-all follows +
+  // redemptions reads truncated at the PostgREST 1000-row cap. Rows come back
+  // oldest-first, one per month, matching the label order.
+  const { data } = await supabase.rpc('analytics_monthly_trend', {
+    p_business_id: businessId,
+    p_branch_id: branchId ?? null,
+  });
 
-  const [subResult, couponIds] = await Promise.all([
-    supabase.from('follows').select('created_at').eq('business_id', businessId),
-    getBusinessCouponIds(supabase, businessId),
-  ]);
-
-  const subscriptions: Array<{ created_at: string }> = Array.isArray(
-    subResult.data,
-  )
-    ? (subResult.data as Array<{ created_at: string }>)
+  const rows = Array.isArray(data)
+    ? (data as Array<{ followers: number; redemptions: number }>)
     : [];
 
-  let redemptions: Array<{ redeemed_at: string }> = [];
-  if (couponIds.length > 0) {
-    let redQuery = supabase
-      .from('user_redemptions')
-      .select('redeemed_at')
-      .in('coupon_id', couponIds);
-    if (branchId) redQuery = redQuery.eq('branch_id', branchId);
-    const { data: redData } = await redQuery;
-    redemptions = Array.isArray(redData)
-      ? (redData as Array<{ redeemed_at: string }>)
-      : [];
-  }
-
-  const months = buildSixMonthLabels();
-
-  return months.map(({ year, month, label }) => {
-    const followers = subscriptions.filter(({ created_at }) => {
-      const d = new Date(created_at);
-      return d.getFullYear() === year && d.getMonth() === month;
-    }).length;
-
-    const redemptionCount = redemptions.filter(({ redeemed_at }) => {
-      const d = new Date(redeemed_at);
-      return d.getFullYear() === year && d.getMonth() === month;
-    }).length;
-
-    return { month: label, followers, redemptions: redemptionCount };
-  });
+  return buildSixMonthLabels().map(({ label }, idx) => ({
+    month: label,
+    followers: Number(rows[idx]?.followers ?? 0),
+    redemptions: Number(rows[idx]?.redemptions ?? 0),
+  }));
 }
 
 // ----------------------------------------------------------------
@@ -406,64 +273,29 @@ export async function getFollowerFunnel(
   branchId?: string,
 ): Promise<FollowerFunnelData> {
   const supabase = await createAnalyticsSupabaseClient();
-
-  const [subResult, couponIds] = await Promise.all([
-    supabase.from('follows').select('user_id').eq('business_id', businessId),
-    getBusinessCouponIds(supabase, businessId),
-  ]);
-
-  const total_followers = Array.isArray(subResult.data)
-    ? subResult.data.length
-    : 0;
-
-  if (couponIds.length === 0) {
-    return { total_followers, ever_redeemed: 0, active_30d: 0, loyal: 0 };
-  }
-
-  let redQuery = supabase
-    .from('user_redemptions')
-    .select('user_id, redeemed_at')
-    .in('coupon_id', couponIds);
-  if (branchId) redQuery = redQuery.eq('branch_id', branchId);
-  const { data: redData } = await redQuery;
-
-  const redemptions: Array<{ user_id: string; redeemed_at: string }> =
-    Array.isArray(redData)
-      ? (redData as Array<{ user_id: string; redeemed_at: string }>)
-      : [];
-
-  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-
-  const everRedeemedSet = new Set<string>();
-  const active30dSet = new Set<string>();
-  // Track months per user for loyalty check
-  const userMonths = new Map<string, Set<string>>();
-
-  redemptions.forEach(({ user_id, redeemed_at }) => {
-    everRedeemedSet.add(user_id);
-
-    const ts = new Date(redeemed_at).getTime();
-    if (ts >= thirtyDaysAgo) {
-      active30dSet.add(user_id);
-    }
-
-    // Track calendar months redeemed (YYYY-MM)
-    const d = new Date(redeemed_at);
-    const key = `${d.getFullYear()}-${d.getMonth()}`;
-    if (!userMonths.has(user_id)) userMonths.set(user_id, new Set());
-    userMonths.get(user_id)!.add(key);
+  // Aggregated in SQL (analytics_follower_funnel) — count(DISTINCT ...) over
+  // the full redemption/follow history instead of Set-deduping a rowset capped
+  // at 1000 by PostgREST.
+  const { data } = await supabase.rpc('analytics_follower_funnel', {
+    p_business_id: businessId,
+    p_branch_id: branchId ?? null,
   });
 
-  let loyal = 0;
-  userMonths.forEach((months) => {
-    if (months.size >= 2) loyal += 1;
-  });
+  const row =
+    Array.isArray(data) && data.length
+      ? (data[0] as {
+          total_followers: number;
+          ever_redeemed: number;
+          active_30d: number;
+          loyal: number;
+        })
+      : null;
 
   return {
-    total_followers,
-    ever_redeemed: everRedeemedSet.size,
-    active_30d: active30dSet.size,
-    loyal,
+    total_followers: Number(row?.total_followers ?? 0),
+    ever_redeemed: Number(row?.ever_redeemed ?? 0),
+    active_30d: Number(row?.active_30d ?? 0),
+    loyal: Number(row?.loyal ?? 0),
   };
 }
 
@@ -491,28 +323,35 @@ export async function getCouponPerformance(
 
   if (!Array.isArray(couponsData) || couponsData.length === 0) return [];
 
-  const couponIds = couponsData.map((c: { id: string }) => c.id);
+  // Per-coupon redemption count + avg days-to-redeem, aggregated in SQL (can't
+  // truncate at the PostgREST 1000-row cap). The RPC returns rows for the whole
+  // business; scope to branch when requested and index by coupon_id.
+  const { data: statsData } = await supabase.rpc(
+    'analytics_coupon_redemption_stats',
+    { p_business_id: businessId, p_branch_id: branchId ?? null },
+  );
 
-  let redQuery = supabase
-    .from('user_redemptions')
-    .select('coupon_id, redeemed_at')
-    .in('coupon_id', couponIds);
-  if (branchId) redQuery = redQuery.eq('branch_id', branchId);
-  const { data: redData } = await redQuery;
-
-  const redemptions: Array<{ coupon_id: string; redeemed_at: string }> =
-    Array.isArray(redData)
-      ? (redData as Array<{ coupon_id: string; redeemed_at: string }>)
-      : [];
-
-  // Group redemptions by coupon_id
-  const redemptionMap = new Map<string, { count: number; dates: number[] }>();
-  redemptions.forEach(({ coupon_id, redeemed_at }) => {
-    const existing = redemptionMap.get(coupon_id) ?? { count: 0, dates: [] };
-    existing.count += 1;
-    existing.dates.push(new Date(redeemed_at).getTime());
-    redemptionMap.set(coupon_id, existing);
-  });
+  const redemptionMap = new Map<
+    string,
+    { redeemed: number; avgDays: number | null }
+  >();
+  if (Array.isArray(statsData)) {
+    (
+      statsData as Array<{
+        coupon_id: string;
+        redeemed: number;
+        avg_days_to_redeem: number | null;
+      }>
+    ).forEach((s) => {
+      redemptionMap.set(s.coupon_id, {
+        redeemed: Number(s.redeemed ?? 0),
+        avgDays:
+          s.avg_days_to_redeem !== null && s.avg_days_to_redeem !== undefined
+            ? Math.round(Number(s.avg_days_to_redeem))
+            : null,
+      });
+    });
+  }
 
   type CouponRow = {
     id: string;
@@ -525,20 +364,14 @@ export async function getCouponPerformance(
 
   const result: CouponPerformanceItem[] = couponsData.map(
     (coupon: CouponRow) => {
-      const stats = redemptionMap.get(coupon.id) ?? { count: 0, dates: [] };
-      const redeemed = stats.count;
+      const stats = redemptionMap.get(coupon.id) ?? {
+        redeemed: 0,
+        avgDays: null,
+      };
+      const redeemed = stats.redeemed;
       const max = coupon.max_redemptions_global ?? null;
       const rate = max !== null ? Math.round((redeemed / max) * 100) : null;
-
-      let avg_days_to_redeem: number | null = null;
-      if (stats.dates.length > 0) {
-        const startMs = new Date(coupon.start_date).getTime();
-        const totalDays = stats.dates.reduce(
-          (sum, ts) => sum + (ts - startMs) / (1000 * 60 * 60 * 24),
-          0,
-        );
-        avg_days_to_redeem = Math.round(totalDays / stats.dates.length);
-      }
+      const avg_days_to_redeem = stats.avgDays;
 
       return {
         coupon_id: coupon.id,
@@ -565,58 +398,32 @@ export async function getCustomerSegments(
   branchId?: string,
 ): Promise<CustomerSegmentCounts> {
   const supabase = await createAnalyticsSupabaseClient();
-  const couponIds = await getBusinessCouponIds(supabase, businessId);
-
-  const counts: CustomerSegmentCounts = {
-    champion: 0,
-    loyal: 0,
-    at_risk: 0,
-    lost: 0,
-    new_customer: 0,
-  };
-
-  if (couponIds.length === 0) return counts;
-
-  let redQuery = supabase
-    .from('user_redemptions')
-    .select('user_id, redeemed_at')
-    .in('coupon_id', couponIds);
-  if (branchId) redQuery = redQuery.eq('branch_id', branchId);
-  const { data: redData } = await redQuery;
-
-  if (!Array.isArray(redData) || redData.length === 0) return counts;
-
-  const userMap = new Map<string, { count: number; maxRedeemedAt: number }>();
-
-  (redData as Array<{ user_id: string; redeemed_at: string }>).forEach(
-    ({ user_id, redeemed_at }) => {
-      const ts = new Date(redeemed_at).getTime();
-      const existing = userMap.get(user_id) ?? { count: 0, maxRedeemedAt: 0 };
-      existing.count += 1;
-      if (ts > existing.maxRedeemedAt) existing.maxRedeemedAt = ts;
-      userMap.set(user_id, existing);
-    },
-  );
-
-  const now = Date.now();
-
-  userMap.forEach(({ count, maxRedeemedAt }) => {
-    const daysSince = (now - maxRedeemedAt) / (1000 * 60 * 60 * 24);
-
-    if (count >= 4 && daysSince <= 30) {
-      counts.champion += 1;
-    } else if (count >= 2 && daysSince <= 60) {
-      counts.loyal += 1;
-    } else if (count === 1 && daysSince <= 14) {
-      counts.new_customer += 1;
-    } else if (daysSince <= 90) {
-      counts.at_risk += 1;
-    } else {
-      counts.lost += 1;
-    }
+  // RFM bucketing in SQL (analytics_customer_segments) — the per-user
+  // count/recency aggregation truncated at the PostgREST 1000-row cap when done
+  // over a fetched rowset. The RPC's CASE cascades like the old if/else chain.
+  const { data } = await supabase.rpc('analytics_customer_segments', {
+    p_business_id: businessId,
+    p_branch_id: branchId ?? null,
   });
 
-  return counts;
+  const row =
+    Array.isArray(data) && data.length
+      ? (data[0] as {
+          champion: number;
+          loyal: number;
+          at_risk: number;
+          lost: number;
+          new_customer: number;
+        })
+      : null;
+
+  return {
+    champion: Number(row?.champion ?? 0),
+    loyal: Number(row?.loyal ?? 0),
+    at_risk: Number(row?.at_risk ?? 0),
+    lost: Number(row?.lost ?? 0),
+    new_customer: Number(row?.new_customer ?? 0),
+  };
 }
 
 // ----------------------------------------------------------------
@@ -628,24 +435,21 @@ export async function getBusinessHealthIndicators(
 ): Promise<BusinessHealthData> {
   const supabase = await createAnalyticsSupabaseClient();
 
-  const [retention, subResult, activeDealsResult, ratingsResult] =
+  // Follower growth comes from the monthly-trend RPC (last two buckets) and
+  // ratings from the rating-summary RPC — the old fetch-all follows/ratings
+  // reads truncated at the PostgREST 1000-row cap.
+  const [retention, trend, activeDealsResult, ratingSummaryResult] =
     await Promise.all([
       getRetentionData(businessId, branchId),
-      supabase
-        .from('follows')
-        .select('created_at')
-        .eq('business_id', businessId),
+      getMonthlyTrend(businessId, branchId),
       supabase
         .from('coupons')
-        .select('id', { count: 'exact' })
+        .select('id', { count: 'exact', head: true })
         .eq('business_id', businessId)
         .eq('status', 'published')
         .is('archived_at', null)
         .gt('expiry_date', new Date().toISOString()),
-      supabase
-        .from('business_ratings')
-        .select('rating, created_at')
-        .eq('business_id', businessId),
+      supabase.rpc('analytics_rating_summary', { p_business_id: businessId }),
     ]);
 
   // Retention rate from last month (index 4) and this month (index 5)
@@ -671,35 +475,10 @@ export async function getBusinessHealthIndicators(
     else if (currentRate < prevRate) retention_trend = 'down';
   }
 
-  // Follower growth
-  const subscriptions: Array<{ created_at: string }> = Array.isArray(
-    subResult.data,
-  )
-    ? (subResult.data as Array<{ created_at: string }>)
-    : [];
-
-  const now = new Date();
-  const thisMonth = { year: now.getFullYear(), month: now.getMonth() };
-  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const lastMonthBucket = {
-    year: lastMonthDate.getFullYear(),
-    month: lastMonthDate.getMonth(),
-  };
-
-  const thisMonthFollowers = subscriptions.filter(({ created_at }) => {
-    const d = new Date(created_at);
-    return (
-      d.getFullYear() === thisMonth.year && d.getMonth() === thisMonth.month
-    );
-  }).length;
-
-  const lastMonthFollowers = subscriptions.filter(({ created_at }) => {
-    const d = new Date(created_at);
-    return (
-      d.getFullYear() === lastMonthBucket.year &&
-      d.getMonth() === lastMonthBucket.month
-    );
-  }).length;
+  // Follower growth — trend rows are oldest-first, so [5] = this month,
+  // [4] = last month.
+  const thisMonthFollowers = Number(trend[5]?.followers ?? 0);
+  const lastMonthFollowers = Number(trend[4]?.followers ?? 0);
 
   let follower_growth_trend: 'up' | 'down' | 'flat' = 'flat';
   if (thisMonthFollowers > lastMonthFollowers) follower_growth_trend = 'up';
@@ -710,41 +489,31 @@ export async function getBusinessHealthIndicators(
   const active_deals = Number(activeDealsResult.count ?? 0);
 
   // Avg rating
-  const ratings: Array<{ rating: number; created_at: string }> = Array.isArray(
-    ratingsResult.data,
-  )
-    ? (ratingsResult.data as Array<{ rating: number; created_at: string }>)
-    : [];
+  const ratingSummary =
+    Array.isArray(ratingSummaryResult.data) && ratingSummaryResult.data.length
+      ? (ratingSummaryResult.data[0] as {
+          avg_rating: number | null;
+          ratings_count: number;
+          this_month_avg: number | null;
+          this_month_count: number;
+          last_month_avg: number | null;
+          last_month_count: number;
+        })
+      : null;
 
   let avg_rating: number | null = null;
   let rating_trend: 'up' | 'down' | 'flat' = 'flat';
 
-  if (ratings.length > 0) {
-    const total = ratings.reduce((sum, r) => sum + r.rating, 0);
-    avg_rating = Math.round((total / ratings.length) * 10) / 10;
+  if (ratingSummary && Number(ratingSummary.ratings_count) > 0) {
+    avg_rating = Math.round(Number(ratingSummary.avg_rating) * 10) / 10;
 
     // Compare this month vs last month ratings
-    const thisMonthRatings = ratings.filter(({ created_at }) => {
-      const d = new Date(created_at);
-      return (
-        d.getFullYear() === thisMonth.year && d.getMonth() === thisMonth.month
-      );
-    });
-    const lastMonthRatings = ratings.filter(({ created_at }) => {
-      const d = new Date(created_at);
-      return (
-        d.getFullYear() === lastMonthBucket.year &&
-        d.getMonth() === lastMonthBucket.month
-      );
-    });
-
-    if (thisMonthRatings.length > 0 && lastMonthRatings.length > 0) {
-      const thisAvg =
-        thisMonthRatings.reduce((s, r) => s + r.rating, 0) /
-        thisMonthRatings.length;
-      const lastAvg =
-        lastMonthRatings.reduce((s, r) => s + r.rating, 0) /
-        lastMonthRatings.length;
+    if (
+      Number(ratingSummary.this_month_count) > 0 &&
+      Number(ratingSummary.last_month_count) > 0
+    ) {
+      const thisAvg = Number(ratingSummary.this_month_avg);
+      const lastAvg = Number(ratingSummary.last_month_avg);
       if (thisAvg > lastAvg) rating_trend = 'up';
       else if (thisAvg < lastAvg) rating_trend = 'down';
     }

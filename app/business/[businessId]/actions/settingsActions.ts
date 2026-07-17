@@ -172,9 +172,11 @@ export async function upsertBusinessSettingsAction(
     revalidatePath(businessSettingsPath(businessId));
     return { success: true, data: result };
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : 'Failed to save settings';
-    return { success: false, error: { code: 'DB_ERROR', message } };
+    console.error('[upsertBusinessSettingsAction] error:', err);
+    return {
+      success: false,
+      error: { code: 'DB_ERROR', message: 'Failed to save settings' },
+    };
   }
 }
 
@@ -204,9 +206,11 @@ export async function updateNotificationPreferencesAction(
     );
     return { success: true, data: result };
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : 'Failed to save preferences';
-    return { success: false, error: { code: 'DB_ERROR', message } };
+    console.error('[updateNotificationPreferencesAction] error:', err);
+    return {
+      success: false,
+      error: { code: 'DB_ERROR', message: 'Failed to save preferences' },
+    };
   }
 }
 
@@ -236,9 +240,10 @@ export async function deactivateBusinessAction(
     .eq('id', businessId);
 
   if (error) {
+    console.error('[deactivateBusinessAction] DB error:', error);
     return {
       success: false,
-      error: { code: 'DB_ERROR', message: error.message },
+      error: { code: 'DB_ERROR', message: 'Failed to deactivate business' },
     };
   }
 
@@ -293,9 +298,13 @@ export async function deleteAccountAction(
     .eq('id', verify.user!.id);
 
   if (profileError) {
+    console.error(
+      '[deleteBusinessAccount] profile archive error:',
+      profileError,
+    );
     return {
       success: false,
-      error: { code: 'DB_ERROR', message: profileError.message },
+      error: { code: 'DB_ERROR', message: 'Failed to archive account' },
     };
   }
 
@@ -305,9 +314,10 @@ export async function deleteAccountAction(
     verify.user!.id,
   );
   if (deleteError) {
+    console.error('[deleteBusinessAccount] auth delete error:', deleteError);
     return {
       success: false,
-      error: { code: 'DELETE_FAILED', message: deleteError.message },
+      error: { code: 'DELETE_FAILED', message: 'Failed to delete account' },
     };
   }
 

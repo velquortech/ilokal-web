@@ -1,5 +1,250 @@
 # Changelog
 
+## 2026-07-17 — Cloud deploy: all pending migrations applied to remote (perf/security-hardening)
+
+- **Applied 10 migrations to the cloud project `ilokal-database`
+  (skvgasimllpyhyudpycu)** via the Supabase MCP (no cloud `SUPABASE_DB_URL` in
+  this env): the two June-30 ones that were never pushed (`mobile_deals_rpc`,
+  `notification_outbox`) + the seven audit migrations + a new
+  `20260717082537_harden_function_search_path.sql` (pins `search_path` on
+  `gen_redemption_code`/`handle_updated_at`/`set_redemption_code`/
+  `sync_product_availability` — clears the advisor's
+  `function_search_path_mutable`; applied locally too).
+- **Ledger reconciled:** MCP records its own timestamp versions — rewrote each
+  `supabase_migrations.schema_migrations` row to the local file's version, so
+  cloud + local ledgers are identical and a future `supabase db push` won't
+  re-apply anything.
+- **Verified on cloud:** 0 bare `auth.uid()`/`auth.role()` policies (P1), SEC-1
+  trigger present, both SEC-4 RESTRICTIVE policies present, all 6 new
+  functions + 6 new indexes present, both pg_cron jobs scheduled
+  (outbox drain + prune), `mobile_deals()` executes and returns the JSONB
+  shape. Advisors: 0 `auth_rls_initplan`; remaining flags are pre-existing
+  noise (`multiple_permissive_policies` ×271 — policy proliferation, backlog
+  item; `unused_index` — fresh indexes; public-bucket listing — display
+  assets, intentional per S10).
+
+## 2026-07-17 — Perf + security hardening, phase 4: SEC-4 + dead-surface removal (perf/security-hardening)
+
+> **One HIGH-risk schema migration** (`20260717080351_sec4_rating_interaction_gate.sql`,
+> RLS write-path change) — applied + red-teamed locally; needs human approval before
+> merge. **Also a large API-surface deletion** (all endpoints removed were
+> non-functional with zero callers — see below). Cloud still needs
+> `make migrate-cloud` after approval.
+
+- **SEC-4 — review-abuse gate.** New SECURITY DEFINER
+  `has_redeemed_from_business(p_user, p_business)` + RESTRICTIVE INSERT policies
+  on `ratings` and `business_ratings`: a non-admin may only create a rating for
+  a business they have actually redeemed a coupon from. RESTRICTIVE = ANDs onto
+  the existing self-insert policies; UPDATE (editing own review), admin
+  (`is_admin()`), and service-role paths untouched. Red-teamed in SQL:
+  non-redeemer insert fails with 42501, redeemer insert + upsert path works.
+  Mobile business/product rating routes and web ratings POST now map 42501 to a
+  friendly 403 ("rate only after redeeming") instead of a logged 500. Tests:
+  `app/api/protected/mobile/ratings/__tests__/sec4-interaction-gate.test.ts` (+4).
+- **Dead-surface removal (the three phantom modules + product-performance).**
+  Every deleted endpoint queried nonexistent tables/columns, errored on every
+  call since the schema normalization, and had **zero** UI/service callers:
+  - Search: `lib/api/search/*`, `/api/web/search/*`, `/api/web/trending`,
+    `lib/services/searchService`, `searchActions`, `lib/validation/search.ts`.
+  - Reviews: `lib/api/reviews/*`, `/api/web/reviews/*`, `/api/web/ratings/[id]`
+    (phantom-backed), `lib/services/reviewService`, `reviewActions`,
+    `lib/validation/reviews.ts`. (The real review surface — `/api/web/ratings`
+    list/POST + mobile rating routes on `ratings`/`business_ratings` — kept.)
+  - Billing: `lib/api/subscriptions/*`, `/api/web/subscriptions/*`,
+    `/api/web/billing/*`, `lib/services/subscriptionService`,
+    `billingActions`/`subscriptionActions` + the unused actions barrel,
+    `lib/validation/subscriptions.ts`. (Admin plans routes are self-contained
+    and kept.)
+  - `getProductPerformance` + `/api/web/analytics/products` — `payments` has no
+    `product_id`; resolved-by-removal (re-add if payments become product-linked).
+  - **Kept + extracted:** `getUserBusiness` (only real, live-called function in
+    the deleted module) moved to `lib/api/getUserBusiness.ts`; the four
+    analytics routes + server-side `productService` repointed.
+  - Orphaned tests removed with their modules (~240 tests covered phantom code).
+  - Rollback: `git revert` (no data change; deleted endpoints returned errors).
+- Verified: `yarn lint` + **1068** tests + `yarn build` green; local DB fully
+  migrated (`20260717080351` applied) + `make generate-types` run
+  (`has_redeemed_from_business` in `database.ts`).
+- **Audit fully closed.** Remaining ops step: cloud `make migrate-cloud` +
+  `get_advisors` after human approval of the 7 branch migrations.
+
+## 2026-07-17 — Perf + security hardening, phase 3: P9 + P13 (perf/security-hardening)
+
+> One LOW-risk schema migration (`20260717075244_profiles_search_trgm.sql`,
+> index-only) — applied locally. **Major discovery below needs product/schema
+> decisions.**
+
+- **P9 — `count:'exact'` audit (69 sites).** Fixed the wasteful ones:
+  - `lib/api/admin/analyticsQuery.ts` — count-only reads now `head:true` (no row
+    payload), reads parallelized with `Promise.all`, and the pointless
+    `count:'exact'` dropped from `sum()` aggregate reads.
+  - **P8-class correctness fix in the same file:** `businesses.is_active` /
+    `is_suspended` columns don't exist — the admin dashboard's active/suspended
+    business counts always returned 0. Repointed to the real state:
+    `status='verified' AND archived_at IS NULL` / `status='suspended'`.
+  - Admin `plans/[planId]` DELETE active-subscriptions guard: `select('*')` →
+    head-only `select('id', { head: true })`.
+  - Deliberately kept exact counts on paginated lists (count piggybacks on the
+    data query; owner/user-scoped or admin-small sets — planned/estimated would
+    break pagination totals), update/delete row-count checks, and the nearby
+    RPC's `has_more` (planner stats don't apply to function scans).
+- **P13 — trigram audit of every leading-wildcard `ilike`.** Only *global*
+  unindexed search was the admin user search (`profiles.full_name`/`email` via
+  `userQuery` + `/api/admin/profiles`). New migration adds `gin_trgm_ops` on
+  both. Everything else: business-scoped behind an indexed equality (tiny sets),
+  filters the `nearby_businesses` RPC output (function scan — index can't
+  apply), or already indexed (`businesses.shop_name`, `coupons.description`).
+- **🔴 MAJOR discovery — three query modules target schema that doesn't exist**
+  (every function errors and returns empty; same class as the `page_views` bug).
+  Flagged NON-FUNCTIONAL in file headers, behavior unchanged:
+  - `lib/api/search/searchQuery.ts` — `profiles` with `role='business'` (CHECK
+    forbids it) + phantom columns, and nonexistent `featured_deals`. Dead:
+    `/api/web/search`, `/api/web/trending`, `searchActions`.
+  - `lib/api/reviews/reviewQuery.ts` — nonexistent `reviews` table (real:
+    `ratings`/`business_ratings`). Dead: `/api/web/reviews/*`.
+  - `lib/api/subscriptions/subscriptionQuery.ts` — nonexistent `subscriptions`
+    (renamed to `follows`), `payment_methods`, `billing_invoices`,
+    `profiles.business_id`. Dead: `/api/web/billing/*`,
+    `/api/web/subscriptions/*`, `billingActions`. Only `subscription_plans`
+    reads work.
+  - Decision needed: rewrite against real schema or delete the surfaces.
+- Tests: admin analytics mocks updated for the new `.eq().is()` chain +
+  parallel reads. Verified: `yarn lint` + **1308** tests + `yarn build` green.
+- **Still open:** SEC-4 (review-abuse gate, needs approval),
+  `getProductPerformance` schema decision, the three NON-FUNCTIONAL modules.
+
+## 2026-07-17 — Perf + security hardening, phase 2 (perf/security-hardening)
+
+> **One new HIGH-risk schema migration** (`20260717072717_analytics_engagement_rpcs.sql`)
+> — applied + smoke-tested locally; needs human approval before merge. All five
+> phase-1 migrations (`20260717000000`–`000003`) are now **applied to local** and
+> verified.
+
+- **Migrations applied + verified (was the phase-1 blocker):** `make migrate-up` +
+  `make generate-types` run against the local stack. Verified in SQL:
+  `pg_policies` shows **0** bare `auth.uid()`/`auth.role()` in `public`+`storage`
+  (P1 wrapper worked); the perf indexes and both phase-1 analytics RPCs exist;
+  only PostGIS internals lack a pinned `search_path` (S4 clean). **SEC-1
+  red-teamed:** impersonating a non-admin via `request.jwt.claims` +
+  `SET ROLE authenticated`, `UPDATE profiles SET role='admin', status='suspended'`
+  is silently reverted by the trigger while a `full_name` self-update still lands.
+- **P3 COMPLETE — remaining analytics moved to SQL RPCs.** New migration adds
+  `analytics_retention_months`, `analytics_monthly_trend`,
+  `analytics_follower_funnel`, `analytics_customer_segments`, and
+  `analytics_rating_summary` (SECURITY DEFINER, pinned search_path, EXECUTE
+  revoked from PUBLIC/anon/authenticated, granted to service_role only — same
+  contract as `20260717000003`). Rewired `getRetentionData`/`getMonthlyTrend`/
+  `getFollowerFunnel`/`getCustomerSegments` to the RPCs — they fetched whole
+  `user_redemptions`/`follows` rowsets and reduced with Map/Set, silently
+  truncating at the PostgREST 1000-row cap. `getBusinessHealthIndicators` now
+  derives follower growth from the trend RPC and ratings from the rating-summary
+  RPC (its fetch-all follows/ratings reads had the same truncation bug); its
+  active-deals count gained `head: true`. Deleted the now-unused
+  `getBusinessCouponIds` helper. Month labels stay JS-side (RPC rows are
+  oldest-first, mapped by index). Remaining JS aggregation: `getBusinessRevenue`
+  monthly bucket (bounded 6-month window) and `getProductPerformance`
+  (NON-FUNCTIONAL, blocked on schema decision).
+- **SEC-7 — storage-delete path hardening + avatars authz fix.**
+  `DELETE /api/web/upload/[bucket]/[id]` now 400s any decoded path with an
+  empty/`.`/`..` segment or a non-UUID first segment, before ownership checks or
+  storage calls. **Found + fixed a real authz gap:** the `avatars` bucket had no
+  ownership check — any authenticated user could delete anyone's avatar; now the
+  first path segment must equal the caller's user id unless admin. (No client
+  currently calls this DELETE route, so no breakage.)
+- **Tests:** analytics query tests rewritten to mock the new RPCs (call args incl.
+  `p_branch_id` passthrough, row→label mapping, empty-data zeros); +6 route tests
+  in `app/api/web/upload/__tests__/delete-path-guards.test.ts`. Verified:
+  `yarn lint` + **1308** tests + `yarn build` all green.
+- **Still open (see audit):** P9 `count:'exact'` audit, P13 trigram check, SEC-4
+  review-abuse gate (needs approval), `getProductPerformance` schema decision.
+
+## 2026-07-17 — Perf + security hardening, phase 1 (perf/security-hardening)
+
+> Full audit + remaining phases in `.claude/PERFORMANCE_AUDIT.md`. **Two schema
+> migrations — HIGH-risk, applied to NEITHER local nor cloud yet; need
+> `make migrate-up` + human approval before merge.** Local Supabase stack was
+> down during implementation, so migrations are verified by review only; the code
+> changes are covered by the unit suite (1299 green) + build.
+
+- **SEC-1 (CRITICAL) — closed profiles privilege-escalation.** The self-update
+  RLS policy (`USING/CHECK auth.uid()=id`) had no column guard: a normal user
+  could `PATCH /rest/v1/profiles {"role":"admin"}` via PostgREST with the anon
+  key + own JWT, then get an admin JWT on next refresh (via the sync_role_to_jwt
+  trigger). New migration `20260717000001_fix_profiles_privilege_escalation.sql`
+  adds a BEFORE UPDATE trigger that, for a non-admin editing their own row:
+  reverts any `role` change; allows `status` only active↔inactive (never leaves
+  `suspended`); allows setting `archived_at` but never clearing it. Mirrors the
+  mobile `/me` route guards at the DB layer so direct PostgREST can't bypass
+  them; admin/service-role paths unaffected. **Needs a SQL/red-team test.**
+- **Perf indexes** — `20260717000000_perf_indexes.sql` adds indexes on the
+  unindexed hot FK/filter columns the analytics layer full-scans:
+  `payments(business_id,status,created_at)`,
+  `user_redemptions(coupon_id,redeemed_at)` / `(branch_id)` / `(user_id)`,
+  `business_ratings(business_id)`. (Postgres doesn't auto-index FKs.)
+- **Correctness bugs found + fixed in `businessAnalyticsQuery.ts`:**
+  - `getBusinessDashboard` filtered `.eq('is_active', true)` — no such column on
+    `products` (it's `status`/`is_available`); `active_products` was always 0.
+    Now `.eq('status','active')` + `head:true`.
+  - `getTrafficMetrics` queried a **non-existent `page_views` table** with
+    non-existent `visitor_id`/`created_at` columns → always returned 0. Repointed
+    to the real `view_events` table (`user_id`/`viewed_at`; already indexed).
+    (Unique-visitor dedupe still client-side — flagged for the Phase 3 RPC.)
+- **SEC-5 — stopped raw driver-error leakage** on `business-types` (GET/POST +
+  `[id]` PATCH/DELETE), `business-categories` (POST + `[id]`), and `ratings`
+  POST: raw Supabase `error.message` (leaks table/column/constraint names) →
+  generic client message + `console.error` server-side. Also removed a
+  `{ error: err }` that dumped the whole error object.
+- **P1 — wrapped `auth.uid()`/`auth.role()` for the RLS initPlan optimization.**
+  New migration `20260717000002_wrap_rls_auth_initplan.sql`: a catalog-driven
+  `DO` block over `pg_policies` (`public` + `storage`) that rewrites every bare
+  `auth.uid()` (106) / `auth.role()` (20) to `(select …)` via `ALTER POLICY`,
+  so the planner evaluates them once per query (initPlan) instead of once per
+  row. Rewrites the LIVE policy set (last-writer-wins), not historical files;
+  idempotent (skips already-wrapped); each `ALTER` is subtransaction-isolated so
+  a managed-platform storage-ownership failure logs + continues. Not applied in
+  this env (no docker/CLI) — verify post-`migrate-up` via `get_advisors`.
+- **SEC-8 — rate-limited the auth surface.** The proxy rate-limits mobile but its
+  matcher never covered `/api/auth`, so login/signup/reset were unthrottled
+  (credential stuffing / reset spam). New `app/api/helpers/auth-rate-limit.ts`
+  (`checkAuthRateLimit`) wraps the existing limiter with two budgets — per-IP
+  (30/60s, flood guard) and per-account/email (8/300s, targets one account),
+  env-tunable, 429 + Retry-After. Wired into `login`, `signup`, and
+  `reset-password` (account-keyed on the email branch). Also generic-ized the
+  signup `authError.message` leak (SEC-5). Tests: +6
+  (`auth-rate-limit.test.ts` — IP + account budgets, scope isolation, case
+  normalization).
+- **P3 (partial) — moved truncation-prone analytics aggregation into SQL RPCs.**
+  New migration `20260717000003_analytics_aggregation_rpcs.sql`:
+  `analytics_coupon_redemption_stats(p_business_id, p_branch_id)` (per-coupon count
+  + avg days-to-redeem) and `analytics_traffic_metrics(p_business_id, p_since)`
+  (count + count DISTINCT user_id). Both SECURITY DEFINER + pinned search_path,
+  REVOKE'd from public/anon/authenticated, GRANT'd to service_role only (called by
+  the ownership-checked analytics service-role client). Rewired `getCouponStats`,
+  `getCouponPerformance`, and `getTrafficMetrics` to the RPCs — they previously
+  fetched whole tables and reduced with Map/Set, which SILENTLY TRUNCATED at the
+  PostgREST 1000-row cap (wrong numbers) besides being slow. Added the two funcs
+  to `lib/types/database.ts` (pending `make generate-types`).
+- **Found + flagged (not fixed — needs schema decision):** `getProductPerformance`
+  selects `payments.product_id`, but `payments` has no such column (payments are
+  subscription/business-level) → the query errors and the function always returns
+  []. Marked NON-FUNCTIONAL in code; left intact to preserve the response contract.
+- Updated the analytics query tests to mock the RPCs (coupon-stats + traffic now
+  assert `.rpc(...)` calls incl. `p_branch_id` passthrough).
+- **P7 — parallelized serialized analytics round trips.** `getBusinessDashboard`
+  ran 4 independent queries sequentially → `Promise.all` (counts use `head:true`;
+  dropped the unused `count:'exact'` on the two `sum()` reads). `getBusinessRevenue`
+  ran its total + 6-month-window reads sequentially → `Promise.all`.
+- **P11 — RESOLVED as N/A (not a pooler problem).** Investigated `supabase/server.ts`
+  + grepped: every runtime client is `@supabase/ssr` over the PostgREST HTTP API;
+  zero direct `pg`/`SUPABASE_DB_URL` use at runtime. No per-invocation Postgres
+  handshake to pool. The real slowness levers are P1/P2/P3 (done) + round-trip
+  fan-out/caching. Corrected the audit doc so nobody chases the pooler.
+- Verified: `yarn lint --fix` + **1305** tests + `yarn build` all green.
+- **Not yet done** (see audit): remaining P3 analytics
+  aggregation RPCs, P9/P10 count()+caching, P11 pooler verify, SEC-4 review-abuse
+  gate, SEC-5 remaining routes, SEC-5 auth-route rate limiting, SEC-6 service-role
+  caller re-audit.
+
 ## 2026-07-16 — Fix production 413 on business registration (main)
 
 > **API-surface change (auth-adjacent) — review before merge.** No schema migration.

@@ -55,8 +55,7 @@ export async function POST(
     console.error('[API] POST /api/admin/businesses/[id]/reject:', error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : 'Failed to reject business',
+        error: 'Failed to reject business',
       },
       { status: 500 },
     );

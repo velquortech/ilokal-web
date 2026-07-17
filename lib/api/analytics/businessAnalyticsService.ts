@@ -1,7 +1,6 @@
 import type { ApiResponse } from '@/lib/types';
 import type {
   BusinessDashboard,
-  ProductPerformance,
   CouponStats,
   TrafficMetrics,
   BusinessRevenue,
@@ -27,25 +26,6 @@ export async function getBusinessDashboard(
       error: {
         code: 'INTERNAL_ERROR',
         message: 'Failed to fetch business dashboard',
-      },
-    };
-  }
-}
-
-export async function getProductPerformance(
-  businessId: string,
-  limit = 10,
-): Promise<ApiResponse<ProductPerformance[]>> {
-  try {
-    const data = await query.getProductPerformance(businessId, limit);
-    return { success: true, data };
-  } catch (error) {
-    console.error('[getProductPerformance]', error);
-    return {
-      success: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Failed to fetch product performance',
       },
     };
   }

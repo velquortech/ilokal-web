@@ -28,15 +28,6 @@ describe('business analytics service', () => {
     expect(res.data?.business_id).toBe('b1');
   });
 
-  it('product performance returns array', async () => {
-    vi.mocked(query.getProductPerformance).mockResolvedValueOnce([
-      { product_id: 'p1', units_sold: 10, revenue: 200 },
-    ]);
-    const res = await service.getProductPerformance('b1');
-    expect(res.success).toBe(true);
-    expect(Array.isArray(res.data)).toBe(true);
-  });
-
   it('coupon stats returns array', async () => {
     vi.mocked(query.getCouponStats).mockResolvedValueOnce([
       { coupon_id: 'c1', times_redeemed: 3, total_discount_amount: 150 },

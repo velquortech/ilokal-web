@@ -31,6 +31,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { loginSchema } from '@/lib/validation/auth';
+import { checkAuthRateLimit } from '@/app/api/helpers/auth-rate-limit';
 import type { User } from '@/lib/types';
 
 type ApiResponse<T = unknown> = {
@@ -65,6 +66,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const { email, password } = validation.data;
+
+    // Throttle credential stuffing / password guessing before touching auth.
+    const limited = checkAuthRateLimit(request, 'login', email);
+    if (limited) return limited;
 
     // Create Supabase client
     const supabase = await createServerSupabaseClient();

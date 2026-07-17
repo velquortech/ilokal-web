@@ -150,11 +150,9 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
   } catch (error) {
+    console.error('[POST /api/web/upload/verification-docs]', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Upload failed',
-      },
+      { success: false, error: 'Upload failed' },
       { status: 500 },
     );
   }

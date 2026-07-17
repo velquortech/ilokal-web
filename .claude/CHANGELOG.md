@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-07-17 — Cloud deploy: all pending migrations applied to remote (perf/security-hardening)
+
+- **Applied 10 migrations to the cloud project `ilokal-database`
+  (skvgasimllpyhyudpycu)** via the Supabase MCP (no cloud `SUPABASE_DB_URL` in
+  this env): the two June-30 ones that were never pushed (`mobile_deals_rpc`,
+  `notification_outbox`) + the seven audit migrations + a new
+  `20260717082537_harden_function_search_path.sql` (pins `search_path` on
+  `gen_redemption_code`/`handle_updated_at`/`set_redemption_code`/
+  `sync_product_availability` — clears the advisor's
+  `function_search_path_mutable`; applied locally too).
+- **Ledger reconciled:** MCP records its own timestamp versions — rewrote each
+  `supabase_migrations.schema_migrations` row to the local file's version, so
+  cloud + local ledgers are identical and a future `supabase db push` won't
+  re-apply anything.
+- **Verified on cloud:** 0 bare `auth.uid()`/`auth.role()` policies (P1), SEC-1
+  trigger present, both SEC-4 RESTRICTIVE policies present, all 6 new
+  functions + 6 new indexes present, both pg_cron jobs scheduled
+  (outbox drain + prune), `mobile_deals()` executes and returns the JSONB
+  shape. Advisors: 0 `auth_rls_initplan`; remaining flags are pre-existing
+  noise (`multiple_permissive_policies` ×271 — policy proliferation, backlog
+  item; `unused_index` — fresh indexes; public-bucket listing — display
+  assets, intentional per S10).
+
 ## 2026-07-17 — Perf + security hardening, phase 4: SEC-4 + dead-surface removal (perf/security-hardening)
 
 > **One HIGH-risk schema migration** (`20260717080351_sec4_rating_interaction_gate.sql`,

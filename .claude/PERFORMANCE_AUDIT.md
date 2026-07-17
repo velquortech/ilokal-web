@@ -85,7 +85,7 @@ Four compounding root causes, roughly in impact order:
 | P7 | Dashboard orchestration | 5 sequential awaits; per-fn client build | one RPC or `Promise.all`; reuse one client | MED | M |
 | P8 | `getBusinessDashboard` correctness | filters `.eq('is_active', true)` — column does not exist on `products` (`status`/`is_available` only); `active_products` is always 0 and query is wasted | filter `.eq('status','active')`, or fold into RPC | LOW | S |
 | P9 | `count: 'exact'` | 69 uses; exact count = full scan | `head: true` + `count: 'planned'`/`'estimated'` on large tables; keep exact only where small/needed | MED | M |
-| P10 | Route caching | 30 `force-dynamic`, only 6 search routes cached | `revalidate`/`unstable_cache`/Next 16 `use cache` on read-heavy analytics + public reads | MED | M |
+| P10 | Route caching | **DONE (public mobile reads).** `mobile/business-types` → `unstable_cache` 5min (error-safe); `mobile/businesses/[businessId]` → `revalidate` 120s; `.../coupons` → `revalidate` 60s. Skipped (correctly): web routes (cookie client forces dynamic), `searchParams` routes (categories/products/nearby/deals — dynamic, low hit rate), `share` (reads headers) | done | ✅ | — |
 | P11 | Connection pooling | ~~verify transaction pooler~~ **RESOLVED — N/A.** All runtime clients use `@supabase/ssr` → the PostgREST HTTP API, not direct Postgres. Zero `pg`/`SUPABASE_DB_URL` use at runtime (only migrations/seeds). PostgREST owns its own server-side pool | no change needed | — | — |
 | P12 | Nested-await `.in()` | `getCouponStats` awaits coupon-ids inside `.in()` (serial) | fold both into one RPC or parallel-fetch | LOW | S |
 | P13 | Trigram search | `ilike('%..%')` on `shop_name` (trgm gin index exists ✓); confirm products/other search columns have gin_trgm too | every leading-wildcard `ilike` backed by `gin_trgm_ops` | LOW | S |
@@ -183,9 +183,18 @@ no client-side `Map`/`Set` reduction remains. **Risk:** HIGH (new SQL surface).
   `{ count: 'planned' }` or `{ count: 'estimated' }`; add `head: true` when only
   the count is needed (skips row payload). Keep exact only on small/owner-scoped
   sets.
-- **P10:** add `revalidate` (or Next 16 `use cache` + `cacheLife`) to read-heavy
-  analytics and public read routes. Dashboard tolerates 30–60s staleness. Tag +
-  `revalidateTag` on the corresponding mutations.
+- **P10: DONE for public mobile reads.** `mobile/business-types` wrapped in
+  `unstable_cache` (5 min, throws-on-error so a transient DB failure is never
+  cached); `mobile/businesses/[businessId]` (120s) and `.../coupons` (60s) use a
+  route-level `revalidate` (on-demand ISR — dynamic segment, so no build-time
+  prerender). **Not cached:** any route using the cookie-based
+  `createServerSupabaseClient` (`cookies()` forces dynamic), `searchParams`-driven
+  routes (categories/products/nearby/deals — dynamic + low cache-hit rate), and
+  `share` (reads request headers via `resolveAppBaseUrl`). **Tag invalidation not
+  wired** — Next 16's `revalidateTag(tag, profile)` requires a Cache-Components
+  profile arg incompatible with the legacy `unstable_cache` tag flow; the short
+  time-based windows make admin edits appear within ≤5 min without it. Analytics
+  dashboard caching left for later (owner-scoped; needs per-business keying).
 
 ### Phase 6 — Infra: connection pooling. **RESOLVED — not the problem.**
 - **P11:** Investigated `supabase/server.ts` + grepped the codebase. Every runtime

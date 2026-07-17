@@ -9,6 +9,10 @@ import { NextRequest } from 'next/server';
 
 type Params = { params: Promise<{ businessId: string }> };
 
+// Public business detail — semi-static. On-demand ISR: cache per businessId and
+// revalidate every 2 min so repeat opens don't re-query PostgREST. (P10)
+export const revalidate = 120;
+
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { businessId } = await params;

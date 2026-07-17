@@ -68,8 +68,9 @@ export async function DELETE(
       .remove([filePath]);
 
     if (deleteError) {
+      console.error('[DELETE /api/web/upload/[bucket]/[id]]', deleteError);
       return NextResponse.json(
-        { success: false, error: deleteError.message },
+        { success: false, error: 'Failed to delete file' },
         { status: 400 },
       );
     }
@@ -82,11 +83,9 @@ export async function DELETE(
       { status: 200 },
     );
   } catch (error) {
+    console.error('[DELETE /api/web/upload/[bucket]/[id]]', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Delete failed',
-      },
+      { success: false, error: 'Delete failed' },
       { status: 500 },
     );
   }

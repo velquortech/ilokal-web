@@ -125,7 +125,10 @@ export async function GET(
     if (error) {
       console.error('[GET /api/ratings] DB error:', error);
       return NextResponse.json(
-        { success: false, error: { code: 'DB_ERROR', message: error.message } },
+        {
+          success: false,
+          error: { code: 'DB_ERROR', message: 'Failed to fetch ratings' },
+        },
         { status: 500 },
       );
     }

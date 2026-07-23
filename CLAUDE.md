@@ -43,6 +43,15 @@ Soft test step: `yarn lint --fix && yarn build` (or `make review` to include tes
 
 Next.js 16.2.7 (App Router; latest stable — open proxy-bypass advisories have no stable fix yet, compensated in the Proxy bullet) · React 19 · TypeScript strict · Supabase SSR + PostGIS · Zod 4 · shadcn-ui + Radix UI · Tailwind CSS v4 · Vitest
 
+**Stack is frozen — no new dependencies without explicit approval.** Do not
+`yarn add` any package (runtime or dev) unless the user explicitly asks for it
+or approves it first. Solve problems with what's already installed: React/Next
+built-ins, `react-dom/server` for static component tests, existing shadcn/Radix
+components, sharp, motion, axios, sonner, etc. If a task genuinely needs a new
+package, stop and propose it (name, why existing deps can't do it, size/risk) —
+don't install speculatively. Same rule for new external services, CDNs, fonts,
+or APIs.
+
 ## Architecture
 
 - **Routing:** App Router only. Server Actions for internal mutations, API routes for external/mobile integrations.

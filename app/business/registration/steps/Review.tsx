@@ -9,10 +9,12 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import Image from 'next/image';
 import { FileText, HandCoins } from 'lucide-react';
-import { useWatch } from 'react-hook-form';
+import { Controller, useWatch } from 'react-hook-form';
 import { BusinessProps } from '../validator/business-registration-form-schema';
+import { LegalDialog } from '../components/legal-dialog';
 
 export function ShopReview() {
   const { form } = useMultiStepForm();
@@ -191,6 +193,72 @@ export function ShopReview() {
               <p className="text-muted-foreground">No file uploaded</p>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Terms & Privacy acceptance */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Terms &amp; Privacy</CardTitle>
+          <CardDescription>
+            Please review and accept before submitting your registration
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Controller
+            control={form.control}
+            name="accepted_terms"
+            render={({ field, fieldState }) => (
+              <div className="space-y-2">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="accepted_terms"
+                    checked={field.value === true}
+                    onCheckedChange={(checked) =>
+                      field.onChange(checked === true)
+                    }
+                    aria-invalid={!!fieldState.error}
+                    className="mt-0.5"
+                  />
+                  <Label
+                    htmlFor="accepted_terms"
+                    className="inline-block text-sm leading-relaxed font-normal"
+                  >
+                    I have read and agree to the{' '}
+                    <LegalDialog
+                      type="terms"
+                      trigger={
+                        <button
+                          type="button"
+                          className="text-primary font-medium underline underline-offset-4"
+                        >
+                          Terms and Conditions
+                        </button>
+                      }
+                    />{' '}
+                    and the{' '}
+                    <LegalDialog
+                      type="privacy"
+                      trigger={
+                        <button
+                          type="button"
+                          className="text-primary font-medium underline underline-offset-4"
+                        >
+                          Privacy Policy
+                        </button>
+                      }
+                    />
+                    .
+                  </Label>
+                </div>
+                {fieldState.error && (
+                  <p className="text-destructive text-sm">
+                    {fieldState.error.message}
+                  </p>
+                )}
+              </div>
+            )}
+          />
         </CardContent>
       </Card>
     </div>

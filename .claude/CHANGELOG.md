@@ -1,5 +1,44 @@
 # Changelog
 
+## 2026-07-23 — Registration gating flags + terms acceptance (feat/landing-real-dashboard)
+
+> **One HIGH-risk schema migration** (`20260723000000_app_settings_registration_gating.sql`)
+> — applied + red-teamed locally; needs human approval before merge, then cloud
+> apply (Supabase MCP ledger rule). Plan in `.claude/REGISTRATION_GATING.md`.
+
+- **Terms & Privacy acceptance (registration):** new required `accepted_terms`
+  checkbox on the Review step with in-flow Terms and Conditions + Privacy Policy
+  dialogs (`components/legal-dialog.tsx`, placeholder legal copy — needs lawyer
+  review). Submit disabled until checked; not persisted in the form cache
+  (re-accept after reload).
+- **Admin registration flippers (`app_settings`):** new key/value table (RLS:
+  authenticated read, admin write) with two flags —
+  `require_business_documents` (seeded **false**) gates the Documents step +
+  license/tax requirement in registration; `auto_verify_businesses` (seeded
+  **true**) makes new businesses go live as `verified` immediately. Admin UI:
+  `/admin/[adminId]/settings` ("Platform Settings" sidebar entry) with
+  optimistic switches + stable-id toasts, backed by admin-guarded
+  `settingsActions.ts` (key allowlist, `updated_by` audit).
+- **DB enforcement:** `set_business_initial_status()` BEFORE INSERT trigger on
+  `businesses` forces status from the flag for non-admin inserts — also closes
+  the pre-existing gap where the owner-scoped FOR ALL policy let a non-admin
+  self-insert `status='verified'` via PostgREST. Red-teamed in SQL: flag ON +
+  client-passed `pending` → `verified`; flag OFF + attacker-passed `verified`
+  → `pending`. Normal (O-enabled) trigger so replica-mode seeds keep explicit
+  statuses. `get_app_setting_bool()` helper — both SECURITY DEFINER, pinned
+  search_path, REVOKE'd from PUBLIC/anon/authenticated.
+- **Dynamic registration steps:** `getSteps(requireDocuments)` +
+  `getStepFieldGroups()` replace the static 5-step array; provider takes
+  `requireDocuments` from the server layout (via `getRegistrationSettings()`,
+  strict fallbacks = legacy behavior), clamps the cached step, and exposes
+  `steps` via context. Documents step/card, missing-file guard, and doc uploads
+  all skip when the flag is off. Business-home onboarding cards
+  (`RegistrationSteps`/`OnboardingCard`/`TourDialog`) show the same gated list.
+- **Tests (+13):** steps/field-group gating, settings action (admin guard,
+  allowlist, upsert payload, generic error), `getRegistrationSettings`
+  fallbacks. Verified: lint + **1081** tests + build green; migration applied
+  locally + `make generate-types` run.
+
 ## 2026-07-17 — Cloud deploy: all pending migrations applied to remote (perf/security-hardening)
 
 - **Applied 10 migrations to the cloud project `ilokal-database`

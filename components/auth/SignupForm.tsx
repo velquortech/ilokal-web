@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense } from 'react';
-import { useActionState, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
@@ -71,7 +71,7 @@ function SignupFormContent() {
   const {
     control,
     register,
-    trigger,
+    handleSubmit,
     formState: { errors },
     watch,
   } = useForm<SignupInput>({
@@ -80,64 +80,66 @@ function SignupFormContent() {
     mode: 'onBlur',
   });
   const selectedRole = watch('role');
-  const [state, formAction, isPending] = useActionState(signupFormAction, {});
+  const [isPending, setIsPending] = useState(false);
+  const [state, setState] = useState<
+    Awaited<ReturnType<typeof signupFormAction>>
+  >({});
   const [step, setStep] = useState<'role' | 'details'>('role');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [lastErrorShown, setLastErrorShown] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  useEffect(() => {
-    // Stable id so the loading toast is dismissed as soon as the action
-    // settles — success and error toasts then show on their own instead of
-    // stacking under a stale "Creating your account...".
-    if (isPending) {
-      toast.loading('Creating your account...', { id: 'signup-pending' });
-      // New attempt — allow the same error message to toast again if it recurs.
-      setLastErrorShown(null);
-    } else {
-      toast.dismiss('signup-pending');
-    }
-  }, [isPending]);
+  // One sequential flow instead of useEffects reacting to action state: the
+  // same toast id is updated in place (loading → error/success), so a stale
+  // "Creating your account..." can never outlive the request.
+  const onSubmit = handleSubmit(async (values) => {
+    const toastId = 'signup-pending';
+    setIsPending(true);
+    toast.loading('Creating your account...', { id: toastId });
+    try {
+      const formData = new FormData();
+      formData.set('name', values.name);
+      formData.set('email', values.email);
+      formData.set('password', values.password);
+      formData.set('confirmPassword', values.confirmPassword);
+      formData.set('role', values.role);
 
-  useEffect(() => {
-    if (state.error && state.error !== lastErrorShown) {
-      toast.error(state.error);
-      setLastErrorShown(state.error);
-    }
-  }, [state.error, lastErrorShown]);
+      const result = await signupFormAction(undefined, formData);
+      setState(result);
 
-  useEffect(() => {
-    if (state.fieldErrors && Object.keys(state.fieldErrors).length > 0) {
-      const firstError = Object.values(state.fieldErrors)[0];
-      if (firstError && firstError !== lastErrorShown) {
-        toast.error(firstError);
-        setLastErrorShown(firstError);
+      const fieldError = result.fieldErrors
+        ? Object.values(result.fieldErrors)[0]
+        : undefined;
+      if (result.error || fieldError) {
+        toast.error(result.error ?? fieldError, { id: toastId });
+        return;
       }
-    }
-  }, [state.fieldErrors, lastErrorShown]);
 
-  useEffect(() => {
-    if (!state.success) return;
-    if (isMobile) {
-      // For mobile app signups, show modal instead of redirecting
-      toast.dismiss();
-      setShowSuccessModal(true);
-    } else {
-      // For web signups, redirect after showing toast
-      const message =
-        state.role === 'business_owner'
+      if (!result.success) {
+        toast.error('Failed to sign up. Please try again.', { id: toastId });
+        return;
+      }
+
+      if (isMobile) {
+        // Mobile app signups get a modal instead of a redirect.
+        toast.dismiss(toastId);
+        setShowSuccessModal(true);
+        return;
+      }
+
+      toast.success(
+        result.role === 'business_owner'
           ? 'Welcome! Your business account is ready.'
-          : 'Welcome! Your account is ready.';
-      toast.dismiss();
-      toast.success(message);
-      const t = setTimeout(
-        () => router.push(getRouteForRole(state.role)),
-        2000,
+          : 'Welcome! Your account is ready.',
+        { id: toastId },
       );
-      return () => clearTimeout(t);
+      setTimeout(() => router.push(getRouteForRole(result.role)), 2000);
+    } catch {
+      toast.error('Failed to sign up. Please try again.', { id: toastId });
+    } finally {
+      setIsPending(false);
     }
-  }, [state.success, state.role, router, isMobile]);
+  });
 
   return (
     <div className="w-full max-w-md space-y-6">
@@ -256,21 +258,7 @@ function SignupFormContent() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form
-              action={formAction}
-              onSubmit={async (e) => {
-                const valid = await trigger([
-                  'name',
-                  'email',
-                  'password',
-                  'confirmPassword',
-                ]);
-                if (!valid) e.preventDefault();
-              }}
-              className="space-y-4"
-            >
-              <input type="hidden" name="role" value={selectedRole} />
-
+            <form onSubmit={onSubmit} className="space-y-4">
               <Field data-invalid={!!errors.name || !!state.fieldErrors?.name}>
                 <FieldLabel htmlFor="name">Full Name</FieldLabel>
                 <Input

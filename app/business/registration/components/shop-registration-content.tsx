@@ -4,7 +4,6 @@ import { useRef, useState } from 'react';
 import { ThemeToggle } from '@/components/custom/ThemeTogge';
 import { useMultiStepForm } from '../provider/registration-form-provider';
 import { BusinessProps } from '../validator/business-registration-form-schema';
-import { STEPS } from '../data/steps';
 import { StepProgress } from './step-progress';
 import { RegistrationNav } from './register-nav';
 import {
@@ -19,7 +18,8 @@ import { cn } from '@/lib/utils';
 const BUSINESS_ID_KEY = 'ilokal-registration-business-id';
 
 export function ShopRegistrationContent() {
-  const { step, form, clearFormCache } = useMultiStepForm();
+  const { step, steps, requireDocuments, form, clearFormCache } =
+    useMultiStepForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
@@ -30,7 +30,7 @@ export function ShopRegistrationContent() {
   const businessIdRef = useRef<string | null>(null);
   const uploadedRef = useRef<Set<string>>(new Set());
 
-  const { component: stepComponent, title, description } = STEPS[step - 1];
+  const { component: stepComponent, title, description } = steps[step - 1];
 
   const resetResumeMarkers = () => {
     businessIdRef.current = null;
@@ -85,14 +85,14 @@ export function ShopRegistrationContent() {
         run: () => uploadRegistrationFile(bid, 'shop_banner', file),
       });
     }
-    if (data.business_license) {
+    if (requireDocuments && data.business_license) {
       const file = data.business_license;
       uploads.push({
         key: 'business_license',
         run: () => uploadRegistrationFile(bid, 'business_license', file),
       });
     }
-    if (data.tax_certificate) {
+    if (requireDocuments && data.tax_certificate) {
       const file = data.tax_certificate;
       uploads.push({
         key: 'tax_certificate',
@@ -124,8 +124,10 @@ export function ShopRegistrationContent() {
     if (!data.shop_banner) missing.push('shop banner');
     if (!data.interior_images || data.interior_images.length < 4)
       missing.push('at least 4 interior photos');
-    if (!data.business_license) missing.push('business license');
-    if (!data.tax_certificate) missing.push('tax certificate');
+    if (requireDocuments) {
+      if (!data.business_license) missing.push('business license');
+      if (!data.tax_certificate) missing.push('tax certificate');
+    }
     if (missing.length > 0) {
       setSubmitError(
         `Missing required files: ${missing.join(', ')}. Please go back and re-attach them.`,
@@ -182,10 +184,10 @@ export function ShopRegistrationContent() {
         <div className="flex flex-1 flex-col overflow-y-auto px-4 pb-5 sm:px-6 lg:px-10">
           <div className="mb-4 flex items-center justify-between md:hidden">
             <span className="text-muted-foreground text-xs">
-              Step {step} of {STEPS.length}
+              Step {step} of {steps.length}
             </span>
             <div className="flex gap-1.5">
-              {STEPS.map((_, idx) => (
+              {steps.map((_, idx) => (
                 <div
                   key={idx}
                   className={cn(

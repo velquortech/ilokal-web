@@ -1,7 +1,14 @@
 import { cn } from '@/lib/utils';
-import { STEPS } from '@/app/business/registration/data/steps';
+import { getSteps } from '@/app/business/registration/data/steps';
 
-export function RegistrationSteps({ currentStep = 1 }) {
+export function RegistrationSteps({
+  currentStep = 1,
+  requireDocuments = true,
+}: {
+  currentStep?: number;
+  requireDocuments?: boolean;
+}) {
+  const steps = getSteps(requireDocuments);
   return (
     <div className="flex h-full flex-1">
       <div className="bg-card w-full space-y-6 rounded-xl border p-6 shadow-sm">
@@ -10,7 +17,7 @@ export function RegistrationSteps({ currentStep = 1 }) {
             Registration Progress
           </p>
           <span className="text-muted-foreground text-xs font-medium">
-            Step {currentStep} of {STEPS.length}
+            Step {currentStep} of {steps.length}
           </span>
         </div>
 
@@ -21,7 +28,7 @@ export function RegistrationSteps({ currentStep = 1 }) {
             aria-hidden="true"
           />
 
-          {STEPS.map((step, index) => {
+          {steps.map((step, index) => {
             const stepNumber = index + 1;
             return (
               <div

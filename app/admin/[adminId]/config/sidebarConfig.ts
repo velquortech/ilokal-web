@@ -1,4 +1,11 @@
-import { LayoutDashboard, Users, Lock, MapPin, FileCheck } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Users,
+  Lock,
+  MapPin,
+  FileCheck,
+  Settings,
+} from 'lucide-react';
 import { NavItem } from '@/components/custom/Nav';
 
 /**
@@ -38,6 +45,11 @@ export const administrationNavigation: NavItem[] = [
     title: 'Account Status',
     href: '/admin/account-status',
     icon: Lock,
+  },
+  {
+    title: 'Platform Settings',
+    href: '/admin/settings',
+    icon: Settings,
   },
 ];
 

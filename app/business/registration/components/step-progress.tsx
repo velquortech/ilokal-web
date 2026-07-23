@@ -1,10 +1,9 @@
 import { Check, CheckCircle2, Clock, DollarSign, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { STEPS } from '../data/steps';
 import { useMultiStepForm } from '../provider/registration-form-provider';
 
 export function StepProgress() {
-  const { step } = useMultiStepForm();
+  const { step, steps } = useMultiStepForm();
 
   return (
     <div className="bg-chart-1 border-primary relative hidden h-full shrink-0 flex-col space-y-6 overflow-hidden rounded-lg border p-6 text-white md:flex md:w-52 lg:w-64 lg:space-y-10 lg:p-8 xl:w-80 2xl:w-96">
@@ -34,7 +33,7 @@ export function StepProgress() {
         </div>
       </div>
       <div className="mt-4 flex flex-col">
-        {STEPS.map((data, idx) => (
+        {steps.map((data, idx) => (
           <div
             key={idx}
             className={cn(

@@ -141,27 +141,24 @@ export async function signupAction(
     // Create server-side Supabase client
     const supabase = await createServerSupabaseClient();
 
-    // Check if email already exists (before auth signup to prevent issues)
-    const { data: existingUser, error: checkError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', data.email.trim())
-      .single();
+    // No profiles-by-email precheck: the anon/cookie client can't see other
+    // users' rows under RLS (the check was dead code and a user-enumeration
+    // surface). auth.signUp reports duplicate emails itself.
 
-    if (!checkError && existingUser) {
-      throw new Error('Email already registered');
-    }
-
-    if (checkError && checkError.code !== 'PGRST116') {
-      // PGRST116 = no rows returned (expected)
-      console.error('[signupAction] Check error:', checkError.message);
-      throw new Error('Failed to validate email availability');
-    }
-
-    // Sign up with Supabase Auth
+    // Sign up with Supabase Auth. The chosen role travels in user metadata:
+    // the on_auth_user_created trigger (handle_new_user) reads it through an
+    // allowlist ('app_user' | 'business_owner' — never 'admin') and inserts
+    // the profile with the correct role in a privileged path. A client-session
+    // role write would be reverted by the SEC-1 privilege trigger.
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: data.email.trim(),
       password: data.password.trim(),
+      options: {
+        data: {
+          full_name: data.name.trim(),
+          role: data.role,
+        },
+      },
     });
 
     if (authError || !authData.user) {
@@ -171,18 +168,16 @@ export async function signupAction(
 
     const userId = authData.user.id;
 
-    // Prepare profile data - set initial status to active
+    // The trigger already created the profile with the right role. Merge in
+    // the extras the trigger doesn't handle (phone/avatar). role/status are
+    // intentionally NOT written here — privileged columns, trigger-owned.
     const profileData: Record<string, unknown> = {
       id: userId,
       email: data.email.trim(),
       full_name: data.name.trim(),
-      role: data.role,
-      status: 'active',
-      created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    // Add optional fields if provided
     const phoneNumber = data.phone_number?.trim();
     if (phoneNumber && /\d/.test(phoneNumber)) {
       profileData.phone_number = phoneNumber;
@@ -192,22 +187,18 @@ export async function signupAction(
       profileData.avatar_url = data.avatar_url.trim();
     }
 
-    // Upsert profile — the on_auth_user_created trigger fires first and inserts
-    // a minimal row; upsert merges in the user's actual name, role, and extras.
     const { error: profileError } = await supabase
       .from('profiles')
       .upsert(profileData, { onConflict: 'id' });
 
     if (profileError) {
+      // Non-fatal: the account + correctly-roled profile already exist; only
+      // the optional extras failed to merge. Failing the whole signup here
+      // would strand a live account behind an error message.
       console.error(
-        '[signupAction] Profile creation error:',
+        '[signupAction] Profile extras update error:',
         profileError.message,
       );
-      // Attempt to clean up auth user on profile creation failure
-      await supabase.auth.admin.deleteUser(userId).catch(() => {
-        // Ignore cleanup errors
-      });
-      throw new Error('Failed to create user profile');
     }
 
     // Fetch the created profile
@@ -363,19 +354,11 @@ export async function signupFormAction(
       avatar_url: (formData.get('avatar_url') as string) || '',
     };
 
-    console.info('[signupFormAction] Received form data:', {
-      name: data.name,
-      email: data.email,
-      role: data.role,
-    });
+    // No PII logging here — the submitted object contains the raw password.
 
     // Client-side validation with Zod
     const result = signupSchema.safeParse(data);
     if (!result.success) {
-      console.info(
-        '[signupFormAction] Validation failed:',
-        result.error.issues,
-      );
       const fieldErrors: Record<string, string> = {};
       for (const issue of result.error.issues) {
         const field = String(issue.path[0] ?? 'root');
@@ -384,17 +367,8 @@ export async function signupFormAction(
       return { fieldErrors };
     }
 
-    console.info(
-      '[signupFormAction] Validation passed, calling signupAction...',
-    );
-
     // Call the signup server action
     const response = await signupAction(result.data);
-
-    console.info(
-      '[signupFormAction] Signup successful for user:',
-      response.user.id,
-    );
 
     return {
       success: true,

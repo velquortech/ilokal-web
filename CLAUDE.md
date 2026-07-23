@@ -5,6 +5,12 @@
 > [`.claude/ADMIN_REWORK.md`](.claude/ADMIN_REWORK.md) for parities, phased action
 > items, and the testing plan. Delete that file and this note when finished.
 
+<!-- TEMP: remove when registration gating is merged -->
+> **Active work:** Registration gating flags (`app_settings`: docs on/off +
+> auto-verify) — see [`.claude/REGISTRATION_GATING.md`](.claude/REGISTRATION_GATING.md).
+> Migration `20260723000000` pending human approval + cloud apply. Delete that
+> file and this note when finished.
+
 ## Commands
 
 ```bash

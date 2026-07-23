@@ -16,7 +16,11 @@ import WhyRegisterCard from './components/WhyRegisterSection';
 import LockedAnalyticsCard from './components/AlmosstThereSection';
 import { RegistrationSteps } from './components/RegistrationSteps';
 
-export default function BusinessHome() {
+export default function BusinessHome({
+  requireDocuments = true,
+}: {
+  requireDocuments?: boolean;
+}) {
   const router = useRouter();
 
   const { business } = useBusinessShop();
@@ -41,7 +45,7 @@ export default function BusinessHome() {
         <>
           <OnboardingSection onStartTour={openTour} />
           <div className="grid h-max grid-cols-2 gap-6">
-            <RegistrationSteps />
+            <RegistrationSteps requireDocuments={requireDocuments} />
             <WhyRegisterCard />
           </div>
           <LockedAnalyticsCard />
@@ -77,6 +81,7 @@ export default function BusinessHome() {
         title="Welcome to iLokal Business!"
         description="Transform your local business with our powerful e-commerce platform. Register your shop to get started."
         features={TOUR_FEATURES}
+        requireDocuments={requireDocuments}
       />
     </div>
   );

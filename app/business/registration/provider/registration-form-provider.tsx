@@ -15,16 +15,17 @@ import {
   fullSchema,
 } from '../validator/business-registration-form-schema';
 import { useFormCache } from '../hooks/useFormCache';
+import { getSteps, type RegistrationStep } from '../data/steps';
 import {
   type BusinessType,
   type RawBusinessType,
   transformBusinessTypes,
 } from '../api/fetchCategories';
 
-type Step = 1 | 2 | 3 | 4 | 5; // 5 = Review/Submit
-
 type ContextType = {
-  step: Step;
+  step: number; // 1-based index into `steps`
+  steps: RegistrationStep[];
+  requireDocuments: boolean;
   nextStep: () => Promise<void>;
   prevStep: () => void;
   canProceed: boolean;
@@ -44,38 +45,65 @@ export const useMultiStepForm = () => {
   return ctx;
 };
 
-const stepFields: Record<Step, FieldPath<BusinessProps>[]> = {
-  1: ['business_category'],
-  2: [
-    'shop_name',
-    'description',
-    'location.province',
-    'location.city',
-    'location.barangay',
-    'location.street_address',
-    'location.zip_code',
-    'location.latitude',
-    'location.longitude',
-    'location.geometry',
-  ],
-  3: ['shop_logo', 'interior_images', 'shop_banner'],
-  4: ['business_license', 'tax_certificate'],
-  5: ['accepted_terms'], // Review step: terms + privacy acceptance
-};
+const CATEGORY_FIELDS: FieldPath<BusinessProps>[] = ['business_category'];
+const INFORMATION_FIELDS: FieldPath<BusinessProps>[] = [
+  'shop_name',
+  'description',
+  'location.province',
+  'location.city',
+  'location.barangay',
+  'location.street_address',
+  'location.zip_code',
+  'location.latitude',
+  'location.longitude',
+  'location.geometry',
+];
+const GALLERY_FIELDS: FieldPath<BusinessProps>[] = [
+  'shop_logo',
+  'interior_images',
+  'shop_banner',
+];
+const DOCUMENT_FIELDS: FieldPath<BusinessProps>[] = [
+  'business_license',
+  'tax_certificate',
+];
+const REVIEW_FIELDS: FieldPath<BusinessProps>[] = ['accepted_terms'];
+
+// Mirrors getSteps(): one field group per step, Documents gated by the flag.
+export function getStepFieldGroups(
+  requireDocuments: boolean,
+): FieldPath<BusinessProps>[][] {
+  return requireDocuments
+    ? [
+        CATEGORY_FIELDS,
+        INFORMATION_FIELDS,
+        GALLERY_FIELDS,
+        DOCUMENT_FIELDS,
+        REVIEW_FIELDS,
+      ]
+    : [CATEGORY_FIELDS, INFORMATION_FIELDS, GALLERY_FIELDS, REVIEW_FIELDS];
+}
 
 export function MultiStepFormProvider({
   children,
   rawBusinessTypes = [],
+  requireDocuments = true,
 }: {
   children: React.ReactNode;
   rawBusinessTypes?: RawBusinessType[];
+  requireDocuments?: boolean;
 }) {
   const businessTypes = useMemo(
     () => transformBusinessTypes(rawBusinessTypes),
     [rawBusinessTypes],
   );
+  const steps = useMemo(() => getSteps(requireDocuments), [requireDocuments]);
+  const stepFieldGroups = useMemo(
+    () => getStepFieldGroups(requireDocuments),
+    [requireDocuments],
+  );
 
-  const [step, setStep] = useState<Step>(1);
+  const [step, setStep] = useState(1);
   const [canProceed, setCanProceed] = useState(false);
 
   const form = useForm<BusinessProps>({
@@ -116,17 +144,19 @@ export function MultiStepFormProvider({
     isHydrated,
   } = useFormCache(form);
 
-  // Restore step from cache on mount (synchronously before paint)
+  // Restore step from cache on mount (synchronously before paint). Clamp to
+  // the current step count — a cached step 5 from the docs-required flow must
+  // not overshoot when the flag turns documents off (4 steps).
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
     const savedStep = localStorage.getItem('ilokal-registration-step');
     if (savedStep) {
       const stepNum = parseInt(savedStep, 10);
-      if ([1, 2, 3, 4, 5].includes(stepNum)) {
-        setStep(stepNum as Step);
+      if (Number.isInteger(stepNum) && stepNum >= 1) {
+        setStep(Math.min(stepNum, steps.length));
       }
     }
-  }, []);
+  }, [steps.length]);
 
   // Persist step to cache
   useEffect(() => {
@@ -138,18 +168,20 @@ export function MultiStepFormProvider({
   useEffect(() => {
     if (!isHydrated) return;
 
+    const fields = stepFieldGroups[step - 1] ?? [];
+
     const subscription = form.watch(() => {
-      form.trigger(stepFields[step]).then(setCanProceed);
+      form.trigger(fields).then(setCanProceed);
     });
 
     // Initial validation after hydration or step change
-    form.trigger(stepFields[step]).then(setCanProceed);
+    form.trigger(fields).then(setCanProceed);
 
     return () => subscription.unsubscribe();
-  }, [form, step, isHydrated]);
+  }, [form, step, stepFieldGroups, isHydrated]);
 
   const validateStep = async () => {
-    const fields = stepFields[step];
+    const fields = stepFieldGroups[step - 1] ?? [];
     const result = await form.trigger(fields);
     setCanProceed(result);
     return result;
@@ -159,12 +191,12 @@ export function MultiStepFormProvider({
     const valid = await validateStep();
     if (!valid) return;
 
-    setStep((prev) => (prev < 5 ? ((prev + 1) as Step) : prev));
+    setStep((prev) => (prev < steps.length ? prev + 1 : prev));
     setCanProceed(false);
   };
 
   const prevStep = () => {
-    setStep((prev) => (prev > 1 ? ((prev - 1) as Step) : prev));
+    setStep((prev) => (prev > 1 ? prev - 1 : prev));
     setCanProceed(true);
   };
 
@@ -172,6 +204,8 @@ export function MultiStepFormProvider({
     <multiStepFormContext.Provider
       value={{
         step,
+        steps,
+        requireDocuments,
         nextStep,
         prevStep,
         canProceed,

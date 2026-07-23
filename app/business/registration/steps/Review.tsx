@@ -17,7 +17,7 @@ import { BusinessProps } from '../validator/business-registration-form-schema';
 import { LegalDialog } from '../components/legal-dialog';
 
 export function ShopReview() {
-  const { form } = useMultiStepForm();
+  const { form, requireDocuments } = useMultiStepForm();
   const data = useWatch<BusinessProps>({ control: form.control });
 
   return (
@@ -145,56 +145,58 @@ export function ShopReview() {
         </CardContent>
       </Card>
 
-      {/* Step 4: Documents */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Documents</CardTitle>
-          <CardDescription>Review uploaded documents</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col">
-          <div className="border-border inline-flex items-center gap-2 rounded-md border p-4">
-            <div className="bg-primary/10 text-primary mr-5 rounded-sm p-2">
-              <FileText />
-            </div>
-            {data.business_license ? (
-              <div className="flex w-full flex-row items-center justify-between">
-                <p className="flex flex-col font-medium">
-                  {data.business_license.name}
-                  <span className="text-muted-foreground text-sm font-normal">
-                    Business License
-                  </span>
-                </p>
-                <span className="text-muted-foreground">
-                  {(data.business_license.size / (1024 * 1024)).toFixed(2)} MB
-                </span>
+      {/* Step 4: Documents (hidden when the admin flag waives them) */}
+      {requireDocuments && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Documents</CardTitle>
+            <CardDescription>Review uploaded documents</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col">
+            <div className="border-border inline-flex items-center gap-2 rounded-md border p-4">
+              <div className="bg-primary/10 text-primary mr-5 rounded-sm p-2">
+                <FileText />
               </div>
-            ) : (
-              <p className="text-muted-foreground">No file uploaded</p>
-            )}
-          </div>
+              {data.business_license ? (
+                <div className="flex w-full flex-row items-center justify-between">
+                  <p className="flex flex-col font-medium">
+                    {data.business_license.name}
+                    <span className="text-muted-foreground text-sm font-normal">
+                      Business License
+                    </span>
+                  </p>
+                  <span className="text-muted-foreground">
+                    {(data.business_license.size / (1024 * 1024)).toFixed(2)} MB
+                  </span>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">No file uploaded</p>
+              )}
+            </div>
 
-          <div className="border-border mt-4 inline-flex items-center gap-2 rounded-md border p-4">
-            <div className="bg-primary/10 text-primary mr-5 rounded-sm p-2">
-              <HandCoins />
-            </div>
-            {data.tax_certificate ? (
-              <div className="flex w-full flex-row items-center justify-between">
-                <p className="flex flex-col font-medium">
-                  {data.tax_certificate.name}
-                  <span className="text-muted-foreground text-sm font-normal">
-                    Tax Certificate
-                  </span>
-                </p>
-                <span className="text-muted-foreground">
-                  {(data.tax_certificate.size / (1024 * 1024)).toFixed(2)} MB
-                </span>
+            <div className="border-border mt-4 inline-flex items-center gap-2 rounded-md border p-4">
+              <div className="bg-primary/10 text-primary mr-5 rounded-sm p-2">
+                <HandCoins />
               </div>
-            ) : (
-              <p className="text-muted-foreground">No file uploaded</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+              {data.tax_certificate ? (
+                <div className="flex w-full flex-row items-center justify-between">
+                  <p className="flex flex-col font-medium">
+                    {data.tax_certificate.name}
+                    <span className="text-muted-foreground text-sm font-normal">
+                      Tax Certificate
+                    </span>
+                  </p>
+                  <span className="text-muted-foreground">
+                    {(data.tax_certificate.size / (1024 * 1024)).toFixed(2)} MB
+                  </span>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">No file uploaded</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Terms & Privacy acceptance */}
       <Card>

@@ -8,7 +8,6 @@ import {
 import { ROUTES } from '@/config/routeConfig';
 import { useRouter } from 'next/navigation';
 import { useMultiStepForm } from '../provider/registration-form-provider';
-import { STEPS } from '../data/steps';
 import { ApplicationSuccessDialog } from './application-success-dialog';
 
 export function RegistrationNav({
@@ -21,10 +20,10 @@ export function RegistrationNav({
   onSuccessDialogChange: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const { step, prevStep, canProceed, nextStep } = useMultiStepForm();
+  const { step, steps, prevStep, canProceed, nextStep } = useMultiStepForm();
 
   const handleNext = async () => {
-    if (step < STEPS.length && !isSubmitting) {
+    if (step < steps.length && !isSubmitting) {
       await nextStep();
     }
   };
@@ -47,7 +46,7 @@ export function RegistrationNav({
             Back to Home
           </Button>
         )}
-        {step < STEPS.length ? (
+        {step < steps.length ? (
           <Button onClick={handleNext} disabled={!canProceed || isSubmitting}>
             {isSubmitting ? (
               <>

@@ -21,6 +21,7 @@ interface TourDialogProps {
   onStart: () => void;
   title?: string;
   description?: string;
+  requireDocuments?: boolean;
   features?: Array<{
     icon?: 'check';
     text: string;
@@ -41,6 +42,7 @@ export function TourDialog({
     { icon: 'check', text: 'Upload your products' },
     { icon: 'check', text: 'Start selling to customers' },
   ],
+  requireDocuments = true,
 }: TourDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -49,7 +51,7 @@ export function TourDialog({
         showCloseButton={false}
       >
         <div className="bg-primary/10 flex w-1/2 items-center justify-center rounded-xl">
-          <OnboardingCard />
+          <OnboardingCard requireDocuments={requireDocuments} />
         </div>
         <div className="flex flex-1 flex-col">
           <DialogHeader>

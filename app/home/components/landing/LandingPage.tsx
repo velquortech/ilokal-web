@@ -10,6 +10,7 @@ import './landing.css';
 import { rootStyle } from './tokens';
 import { LandingNav } from './LandingNav';
 import { LandingFooter } from './LandingFooter';
+import { BetaBanner } from './BetaBanner';
 import { fadeUp, inViewOnce, staggerContainer } from './motion';
 import { useCountUp } from './useCountUp';
 import {
@@ -62,6 +63,8 @@ export function LandingPage() {
   return (
     <div data-ilokal-root style={rootStyle(dark)}>
       <LandingNav dark={dark} onToggleDark={() => setDark((v) => !v)} />
+
+      <BetaBanner />
 
       {/* HERO */}
       <section id="top" style={s('padding:72px 0 64px;')}>

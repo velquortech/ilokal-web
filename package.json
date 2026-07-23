@@ -23,7 +23,6 @@
     "analyze:usage": "node WORKFLOW/tools/analyzeServiceUsage.js",
     "ci:checks": "yarn lint --fix && yarn check:protected && yarn check:imports && yarn analyze:usage && yarn test:run",
     "pre-push": "yarn lint && yarn check:protected && yarn check:imports && yarn test:run && yarn build",
-    "prepare": "husky",
     "prepare": "husky"
   },
   "dependencies": {

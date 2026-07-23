@@ -6,6 +6,7 @@ import {
   getBusinessBranchByIdAction,
 } from './actions/branchActions';
 import { getBusinessById } from '@/lib/api/business/business';
+import { getRegistrationSettings } from '@/lib/api/appSettings';
 import type { BusinessAnalyticsDashboard, Branch } from '@/lib/types';
 
 type Params = Promise<{ businessId: string }>;
@@ -41,7 +42,8 @@ export default async function Page({
 
   const business = await getBusinessById(businessId);
   if (!business || business.status !== 'verified') {
-    return <BusinessHome />;
+    const { requireBusinessDocuments } = await getRegistrationSettings();
+    return <BusinessHome requireDocuments={requireBusinessDocuments} />;
   }
 
   // Branch mode: fetch analytics scoped to that branch + branch name

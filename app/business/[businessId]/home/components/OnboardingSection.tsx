@@ -4,7 +4,7 @@ import { Clock, DollarSign, CheckCircle2, ArrowRight, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { STEPS } from '@/app/business/registration/data/steps';
+import { getSteps } from '@/app/business/registration/data/steps';
 import Image from 'next/image';
 
 interface OnboardingSectionProps {
@@ -80,7 +80,11 @@ export function OnboardingSection({ onStartTour }: OnboardingSectionProps) {
   );
 }
 
-export function OnboardingCard() {
+export function OnboardingCard({
+  requireDocuments = true,
+}: {
+  requireDocuments?: boolean;
+}) {
   return (
     <div className="hidden w-xs lg:block">
       <div className="bg-card/80 space-y-5 rounded-xl border p-5 shadow-lg">
@@ -88,7 +92,7 @@ export function OnboardingCard() {
           Registration Progress
         </p>
         <div className="space-y-4">
-          {STEPS.map((step, index) => (
+          {getSteps(requireDocuments).map((step, index) => (
             <div key={step.title} className="flex items-center gap-5">
               <div className="bg-primary/20 flex size-6 items-center justify-center rounded-full text-xs font-medium">
                 {index + 1}

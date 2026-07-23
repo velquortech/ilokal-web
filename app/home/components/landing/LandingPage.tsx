@@ -63,6 +63,17 @@ export function LandingPage() {
     <div data-ilokal-root style={rootStyle(dark)}>
       <LandingNav dark={dark} onToggleDark={() => setDark((v) => !v)} />
 
+      {/* BETA BANNER */}
+      <div
+        role="status"
+        style={s(
+          'background:var(--tint);color:var(--brandhover);border-bottom:1px solid var(--border);text-align:center;font-size:13px;font-weight:600;padding:9px 16px;line-height:1.4;',
+        )}
+      >
+        🚧 iLokal is in <strong>beta</strong> — things are still being polished
+        and you may run into rough edges. Thanks for being an early explorer!
+      </div>
+
       {/* HERO */}
       <section id="top" style={s('padding:72px 0 64px;')}>
         <div className="wrap herogrid">

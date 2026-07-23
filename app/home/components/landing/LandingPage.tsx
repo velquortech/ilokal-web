@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'motion/react';
 import { styleFromString as s } from '@/lib/utils/cssStyle';
 import { ROUTES } from '@/config/routeConfig';
@@ -17,9 +18,6 @@ import {
   bizSteps,
   categories,
   COUNTER_TARGETS,
-  dashCoupons,
-  dashNav,
-  dashStats,
   dealAvatarColor,
   dealBadgeLabel,
   deals,
@@ -652,233 +650,18 @@ export function LandingPage() {
                   dashboard.ilokal.ph/overview
                 </div>
               </div>
-              <div className="dashshell" style={s('min-height:440px;')}>
-                <aside
-                  style={s(
-                    'border-right:1px solid var(--border);padding:20px 14px;display:flex;flex-direction:column;gap:4px;background:var(--bg);',
-                  )}
-                >
-                  <div
-                    style={s(
-                      'font-size:20px;font-weight:800;color:var(--brand);padding:4px 10px 16px;',
-                    )}
-                  >
-                    iLokal{' '}
-                    <span
-                      style={s(
-                        'font-size:11px;font-weight:600;color:var(--muted);',
-                      )}
-                    >
-                      Business
-                    </span>
-                  </div>
-                  {dashNav.map((n) => (
-                    <div
-                      key={n.label}
-                      style={s(
-                        `display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;font-size:13.5px;font-weight:${n.active ? '700' : '500'};color:${n.active ? 'var(--brandhover)' : 'var(--muted)'};background:${n.active ? 'var(--tint)' : 'transparent'};`,
-                      )}
-                    >
-                      <span
-                        style={s(
-                          `width:8px;height:8px;border-radius:999px;background:${n.active ? '#65A30D' : 'var(--muted)'};`,
-                        )}
-                      />
-                      {n.label}
-                    </div>
-                  ))}
-                  <div
-                    style={s(
-                      'margin-top:auto;display:flex;align-items:center;gap:10px;padding:12px 10px 4px;',
-                    )}
-                  >
-                    <span
-                      style={s(
-                        'width:34px;height:34px;border-radius:999px;background:#16A34A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;',
-                      )}
-                    >
-                      NT
-                    </span>
-                    <div style={s('min-width:0;')}>
-                      <div
-                        style={s(
-                          'font-size:13px;font-weight:700;color:var(--text);',
-                        )}
-                      >
-                        Nonoy T.
-                      </div>
-                      <div style={s('font-size:11px;color:var(--muted);')}>
-                        Owner
-                      </div>
-                    </div>
-                  </div>
-                </aside>
-                <div style={s('padding:22px 24px;background:var(--surface);')}>
-                  <div
-                    style={s(
-                      'display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:20px;',
-                    )}
-                  >
-                    <div style={s('display:flex;align-items:center;gap:12px;')}>
-                      <span
-                        style={s(
-                          'width:40px;height:40px;border-radius:10px;background:#16A34A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;',
-                        )}
-                      >
-                        KC
-                      </span>
-                      <div>
-                        <div
-                          style={s(
-                            'font-size:16px;font-weight:800;letter-spacing:-0.01em;display:flex;align-items:center;gap:6px;',
-                          )}
-                        >
-                          Kap Ising&apos;s Café <VerifiedSeal size={15} />
-                        </div>
-                        <div style={s('font-size:12px;color:var(--muted);')}>
-                          3 branches · Molo, La Paz, Jaro
-                        </div>
-                      </div>
-                    </div>
-                    <span
-                      style={s(
-                        'display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--brandhover);background:var(--tint);padding:7px 13px;border-radius:999px;',
-                      )}
-                    >
-                      <CheckIcon size={13} width={2.4} />
-                      Verified shop
-                    </span>
-                  </div>
-                  <div
-                    className="dashstats"
-                    style={s('gap:12px;margin-bottom:16px;')}
-                  >
-                    {dashStats.map((st) => (
-                      <div
-                        key={st.label}
-                        style={s(
-                          'background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:14px;',
-                        )}
-                      >
-                        <div
-                          style={s(
-                            'font-size:11.5px;color:var(--muted);margin-bottom:6px;',
-                          )}
-                        >
-                          {st.label}
-                        </div>
-                        <div
-                          style={s(
-                            'font-size:23px;font-weight:800;letter-spacing:-0.02em;color:var(--text);',
-                          )}
-                        >
-                          {st.value}
-                        </div>
-                        <div
-                          style={s(
-                            'font-size:11px;font-weight:600;color:#16A34A;margin-top:2px;',
-                          )}
-                        >
-                          {st.delta}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="dashsplit" style={s('gap:12px;')}>
-                    <div
-                      style={s(
-                        'background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:16px;',
-                      )}
-                    >
-                      <div
-                        style={s(
-                          'display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;',
-                        )}
-                      >
-                        <div
-                          style={s(
-                            'font-size:13px;font-weight:700;color:var(--text);',
-                          )}
-                        >
-                          Redemptions · last 7 days
-                        </div>
-                        <div style={s('font-size:11px;color:var(--muted);')}>
-                          This week
-                        </div>
-                      </div>
-                      <svg
-                        viewBox="0 0 320 90"
-                        style={s('width:100%;height:96px;')}
-                      >
-                        <polyline
-                          points="0,74 53,64 106,68 160,40 213,46 266,20 320,10"
-                          fill="none"
-                          stroke="#65A30D"
-                          strokeWidth="3"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <polyline
-                          points="0,74 53,64 106,68 160,40 213,46 266,20 320,10 320,90 0,90"
-                          fill="rgba(101,163,13,.1)"
-                          stroke="none"
-                        />
-                      </svg>
-                    </div>
-                    <div
-                      style={s(
-                        'background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:16px;',
-                      )}
-                    >
-                      <div
-                        style={s(
-                          'font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px;',
-                        )}
-                      >
-                        Active coupons
-                      </div>
-                      <div
-                        style={s(
-                          'display:flex;flex-direction:column;gap:11px;',
-                        )}
-                      >
-                        {dashCoupons.map((c) => (
-                          <div
-                            key={c.text}
-                            style={s(
-                              'display:flex;align-items:center;justify-content:space-between;gap:8px;',
-                            )}
-                          >
-                            <div style={s('min-width:0;')}>
-                              <div
-                                style={s(
-                                  'font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;',
-                                )}
-                              >
-                                {c.text}
-                              </div>
-                              <div
-                                style={s(
-                                  'font-size:10.5px;color:var(--muted);',
-                                )}
-                              >
-                                {c.expiry}
-                              </div>
-                            </div>
-                            <span
-                              style={s(
-                                'font-size:10.5px;font-weight:700;color:var(--brandhover);background:var(--tint);padding:4px 9px;border-radius:999px;flex-shrink:0;',
-                              )}
-                            >
-                              {c.count}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {/* Real dashboard capture (animated walkthrough) — replaces the
+                  hand-built mock so the section always matches the product.
+                  `unoptimized` keeps the GIF animated (the image optimizer
+                  would serve a single frame). */}
+              <Image
+                src="/images/dashboard-preview.gif"
+                alt="iLokal business dashboard walkthrough showing retention rate, new followers, active deals, average rating, a 6-month follower and redemption trend, and customer segments"
+                width={1903}
+                height={906}
+                unoptimized
+                style={s('display:block;width:100%;height:auto;')}
+              />
             </div>
           </motion.div>
         </div>

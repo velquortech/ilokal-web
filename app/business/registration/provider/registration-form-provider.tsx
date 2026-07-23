@@ -60,7 +60,7 @@ const stepFields: Record<Step, FieldPath<BusinessProps>[]> = {
   ],
   3: ['shop_logo', 'interior_images', 'shop_banner'],
   4: ['business_license', 'tax_certificate'],
-  5: [], // Review step has no required fields
+  5: ['accepted_terms'], // Review step: terms + privacy acceptance
 };
 
 export function MultiStepFormProvider({
@@ -104,6 +104,7 @@ export function MultiStepFormProvider({
       interior_images: [],
       business_license: undefined,
       tax_certificate: undefined,
+      accepted_terms: false,
     },
   });
 

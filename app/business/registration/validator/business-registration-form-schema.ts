@@ -82,9 +82,19 @@ export const step4Schema = z.object({
     .optional(),
 });
 
+export const step5Schema = z.object({
+  accepted_terms: z
+    .boolean()
+    .refine(
+      (val) => val === true,
+      'You must accept the Terms and Conditions and Privacy Policy to register',
+    ),
+});
+
 export const fullSchema = step1Schema
   .merge(step2Schema)
   .merge(step3Schema)
-  .merge(step4Schema);
+  .merge(step4Schema)
+  .merge(step5Schema);
 
 export type BusinessProps = z.infer<typeof fullSchema>;

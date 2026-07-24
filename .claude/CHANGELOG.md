@@ -1,5 +1,40 @@
 # Changelog
 
+## 2026-07-24 — Logout redirect fix + per-page loading skeletons (feat/forgot-password)
+
+> Presentational + a client-navigation fix. No schema/API-contract change. Plan
+> in `.claude/LOGOUT_LOADING.md`. Applies to **both** business and admin.
+
+- **Fixed: logout didn't redirect until a manual refresh.** `useAuth().logout`
+  called a Server Action that does `redirect()` from a bare dropdown `onClick` —
+  a Server-Action redirect only drives client navigation inside a form/transition,
+  so the cookie cleared but the page stayed put. Reworked to the correct
+  server/client split (see below).
+- **Server/client navigation split (codified):** server-side flows navigate with
+  `redirect()` (`next/navigation`); client-side flows use `useRouter().push()` +
+  `router.refresh()`. New redirect-less `signOutAction()` does the server sign-out
+  only; the client `useAuth().logout(redirectTo)` awaits it, then
+  `router.push(redirectTo)` + `router.refresh()` (drops the cached authed RSC
+  tree so Back can't show stale content). The redirecting `logoutAction` /
+  `redirectByRole` stay as the server-side primitive. **No `window.location`.**
+- **Role-based logout destination:** business `UserMenu` →
+  `/login/business`, admin `AdminUserMenu` → `/login/admin` (each passes its
+  path to the shared hook; hook default = `/login`). Both menus show a
+  `Loader2` + "Signing out…" busy state (disabled, menu kept open via
+  `onSelect` + `preventDefault`).
+- **Per-page loading skeletons (both dashboards):** new
+  `components/custom/skeletons.tsx` (`DashboardSkeleton`, `TablePageSkeleton`,
+  `FormPageSkeleton` + pieces, each a `role="status"`/`aria-busy` region with an
+  sr-only label). 11 route-level `loading.tsx` files: business + admin roots
+  (dashboard), the table routes (product-catalogues/coupons/redeemed-coupons/
+  branches; businesses/users/account-status), and settings (form). Sidebar +
+  header persist; the skeleton fills the layout's padded content area — so page
+  navigation shows a matching skeleton instead of a frozen frame.
+- **Tests (+11):** `useAuth` unit (5 — role paths, `refresh`, fail-safe,
+  `isLoggingOut`), menu integration (2 — open the Radix dropdown, select "Log
+  out", assert the role login), skeleton render (3), + net. Verified:
+  `yarn lint` + **1161** tests + `yarn build` green.
+
 ## 2026-07-24 — Password reset: MFA (2FA) support + Resend diagnostics (feat/forgot-password)
 
 > Auth-surface change — review before merge. No schema/migration. Plan in

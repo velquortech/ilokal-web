@@ -21,7 +21,7 @@
  * No raw Supabase error text is returned to the client (SEC-5).
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import {
   createServerSupabaseClient,
   createServerAdminClient,
@@ -100,6 +100,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const { error: updateError } = await supabase.auth.updateUser({
         password,
       });
+
+      // verifyOtp established a full recovery session — always tear it down
+      // before returning (success OR failure), so a failed update can't leave a
+      // working authenticated session with the password unchanged.
+      await supabase.auth.signOut();
+
       if (updateError) {
         console.error(
           '[API] reset-password confirm — updateUser error:',
@@ -107,10 +113,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         );
         return jsonError('INTERNAL_ERROR', 'Failed to reset password.', 500);
       }
-
-      // The recovery session is a full session — end it so the user must
-      // re-login with the new password.
-      await supabase.auth.signOut();
 
       return NextResponse.json<ApiResponse>(
         { success: true, data: { message: 'Password reset successfully.' } },
@@ -129,7 +131,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const { email } = parsed.data;
-    const base = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
+
+    // Fail closed: the reset link's host must come from our own configured URL,
+    // never from the request (a spoofed Host/X-Forwarded-Host header would
+    // poison the emailed link — reset-link poisoning → account takeover). If the
+    // base URL isn't configured, log and return the generic 200 without sending.
+    const base = process.env.NEXT_PUBLIC_APP_URL;
+    if (!base) {
+      console.error(
+        '[API] reset-password request — NEXT_PUBLIC_APP_URL not set; cannot build a safe reset link. Not sending.',
+      );
+      return NextResponse.json<ApiResponse>(
+        { success: true, data: { message: GENERIC_REQUEST_MESSAGE } },
+        { status: 200 },
+      );
+    }
 
     try {
       const admin = await createServerAdminClient();
@@ -151,8 +167,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         const url = `${base}/reset-password?token_hash=${encodeURIComponent(
           tokenHash,
         )}&type=recovery`;
-        // Non-fatal: a mail failure must not reveal account existence.
-        await sendResetEmail({ to: email, url });
+        // Send AFTER the response so the send latency can't be used as a
+        // timing oracle to distinguish existing vs non-existent accounts
+        // (existing accounts would otherwise wait on the Resend POST).
+        // `sendResetEmail` never throws.
+        after(() => sendResetEmail({ to: email, url }));
       }
     } catch (err) {
       console.error(

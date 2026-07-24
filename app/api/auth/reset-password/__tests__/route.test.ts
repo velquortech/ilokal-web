@@ -16,6 +16,13 @@ import {
 import { sendResetEmail } from '@/app/api/emails/sendResetEmail';
 import { checkAuthRateLimit } from '@/app/api/helpers/auth-rate-limit';
 
+// `after()` runs post-response inside Next's request scope, which a direct
+// handler call doesn't provide — run the callback inline so the send is
+// observable in tests.
+vi.mock('next/server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('next/server')>();
+  return { ...actual, after: (cb: () => unknown) => cb() };
+});
 vi.mock('@/supabase/server', () => ({
   createServerAdminClient: vi.fn(),
   createServerSupabaseClient: vi.fn(),
@@ -113,6 +120,25 @@ describe('reset-password — request branch', () => {
     expect(mockSend).not.toHaveBeenCalled();
   });
 
+  it('fails closed (generic 200, no send) when NEXT_PUBLIC_APP_URL is unset', async () => {
+    delete process.env.NEXT_PUBLIC_APP_URL;
+    const generateLink = generateLinkMock({
+      data: { properties: { hashed_token: 'HASH123' } },
+      error: null,
+    });
+
+    const res = await POST(post({ email: 'user@example.com' }));
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    // No link host to trust → never mint/send a link, never even call generateLink.
+    expect(generateLink).not.toHaveBeenCalled();
+    expect(mockSend).not.toHaveBeenCalled();
+
+    process.env.NEXT_PUBLIC_APP_URL = APP_URL;
+  });
+
   it('rejects an invalid email with 400', async () => {
     const res = await POST(post({ email: 'not-an-email' }));
     expect(res.status).toBe(400);
@@ -160,14 +186,15 @@ describe('reset-password — confirm branch', () => {
     expect(updateUser).not.toHaveBeenCalled();
   });
 
-  it('returns 500 when the password update fails', async () => {
+  it('returns 500 when the password update fails, but still tears down the recovery session', async () => {
     const { signOut } = cookieClientMock({
       updateError: { message: 'db error' },
     });
 
     const res = await POST(post(good));
     expect(res.status).toBe(500);
-    expect(signOut).not.toHaveBeenCalled();
+    // signOut must fire even on failure so no working session lingers.
+    expect(signOut).toHaveBeenCalledTimes(1);
   });
 
   it('rejects a weak password before touching Supabase', async () => {

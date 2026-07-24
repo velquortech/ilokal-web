@@ -41,6 +41,15 @@
   `yarn lint` + **1140** tests + `yarn build` green.
 - **Scope:** business only (admin pass deferred). **Prod step:** verify a Resend
   sending domain, set `RESEND_API_KEY` + `EMAIL_FROM`.
+- **Review hardening (react-doctor + api-doctor):** reset-link base is now
+  **fail-closed** on `NEXT_PUBLIC_APP_URL` — never derived from the request
+  origin (closes a Host/X-Forwarded-Host reset-link-poisoning → ATO vector); the
+  recovery session is `signOut()`'d on update **failure** too (no lingering
+  authenticated session); the reset email is sent via `after()` post-response so
+  send latency isn't an account-enumeration timing oracle; the sandbox link log
+  is gated to non-production; removed dead `authService.resetPassword*` methods;
+  a11y `role="status"` on the reset-page Suspense fallback. Tests updated (+1
+  fail-closed case; `after()` mocked to run inline).
 
 ## 2026-07-24 — Functional, collapse-aware sidebar search (chore/remove-unecessary-feature)
 

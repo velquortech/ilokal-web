@@ -42,7 +42,7 @@ export default function ForgotPasswordForm() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: data.email }),
         });
-        if (!res.ok && res.status !== 200) {
+        if (!res.ok) {
           const body = await res.json().catch(() => null);
           throw new Error(body?.error?.message ?? 'Something went wrong');
         }

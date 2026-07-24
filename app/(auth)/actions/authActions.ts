@@ -314,6 +314,23 @@ export async function logoutAction(): Promise<void> {
 }
 
 /**
+ * Server Action: sign out WITHOUT redirecting.
+ *
+ * The redirect-less counterpart to `logoutAction` — clears the Supabase session
+ * (cookies) and returns. Client callers own the navigation (`useRouter().push`
+ * + `router.refresh()`) so it can be role-specific and reliable from an
+ * event handler; server-initiated flows keep using `logoutAction`/`redirectByRole`.
+ */
+export async function signOutAction(): Promise<void> {
+  try {
+    const supabase = await createServerSupabaseClient();
+    await supabase.auth.signOut();
+  } catch (error) {
+    console.error('[signOutAction] Error signing out:', error);
+  }
+}
+
+/**
  * Server Action: Verify session and get current user
  */
 export async function verifySessionAction(): Promise<{ user: User } | null> {

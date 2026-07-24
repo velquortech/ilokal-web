@@ -23,10 +23,13 @@ import { GlobalSearch } from '@/components/custom/GlobalSearch';
 import { useBusinessShop } from '@/providers/BusinessProvider';
 import { businessPath } from '@/config/routeConfig';
 import { useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { filterNavSections, hasNavResults } from '@/lib/utils/navSearch';
 
 export function BusinessSidebar() {
   const { business, selectedBranchId } = useBusinessShop();
   const searchParams = useSearchParams();
+  const [query, setQuery] = useState('');
 
   const injectId = (href: string) => {
     if (!business?.id) return href;
@@ -56,6 +59,9 @@ export function BusinessSidebar() {
     })),
   }));
 
+  const filteredSections = filterNavSections(sections, query);
+  const noResults = query.trim().length > 0 && !hasNavResults(filteredSections);
+
   return (
     <Sidebar collapsible="icon" variant="sidebar" className="border-r">
       <SidebarHeader className="space-y-1 border-b px-4 py-3 group-data-[collapsible=icon]:px-2.5">
@@ -64,14 +70,19 @@ export function BusinessSidebar() {
 
       <SidebarContent className="overflow-y-auto py-3">
         <SidebarGroup>
-          <GlobalSearch />
+          <GlobalSearch value={query} onChange={setQuery} />
         </SidebarGroup>
-        {sections.map(({ items, header }, idx) => (
-          <Fragment key={idx}>
+        {filteredSections.map(({ items, header }, idx) => (
+          <Fragment key={header ?? idx}>
             {header && <NavSectionHeader title={header} />}
             <NavSection items={items} disabled={!business} />
           </Fragment>
         ))}
+        {noResults && (
+          <p className="text-muted-foreground px-4 py-2 text-sm group-data-[collapsible=icon]:hidden">
+            No results for &ldquo;{query.trim()}&rdquo;
+          </p>
+        )}
       </SidebarContent>
       <div className="mt-auto p-3">
         <ProCard />

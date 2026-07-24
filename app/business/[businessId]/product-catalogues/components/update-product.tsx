@@ -6,6 +6,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -137,15 +138,18 @@ export function UpdateProductDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-max">
+      <DialogContent className="overflow-hidden sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Update Product</DialogTitle>
           <DialogDescription>
             Modify the details for {product.name}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="mt-4 w-lg space-y-4 text-left">
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="flex min-h-0 flex-1 flex-col gap-4"
+        >
+          <DialogBody className="space-y-4 text-left">
             <Field>
               <FieldLabel className={errors.name ? 'text-destructive' : ''}>
                 Product Name
@@ -242,9 +246,9 @@ export function UpdateProductDialog({
             {serverError && (
               <p className="text-destructive text-sm">{serverError}</p>
             )}
-          </div>
+          </DialogBody>
 
-          <DialogFooter className="mt-6">
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"

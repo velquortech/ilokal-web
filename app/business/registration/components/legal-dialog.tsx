@@ -195,12 +195,14 @@ export function LegalDialog({
   return (
     <Dialog>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-h-[85vh] sm:max-w-2xl">
+      <DialogContent className="overflow-hidden sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{doc.title}</DialogTitle>
           <DialogDescription>{doc.description}</DialogDescription>
         </DialogHeader>
-        <ScrollArea className="h-[60vh] pr-4">{doc.body}</ScrollArea>
+        <ScrollArea className="-mx-4 min-h-0 flex-1 px-4 sm:-mx-6 sm:px-6">
+          {doc.body}
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

@@ -63,17 +63,51 @@ function generateLinkMock(result: unknown) {
 function cookieClientMock({
   verifyError = null,
   updateError = null,
+  // Default: no MFA (AAL1 is the required level), so step 1 proceeds straight
+  // to updateUser. MFA-path tests override nextLevel to 'aal2'.
+  currentLevel = 'aal1',
+  nextLevel = 'aal1',
+  // Step-2 (MFA code) knobs.
+  factors = [{ id: 'factor-1', status: 'verified' }],
+  challengeError = null,
 }: {
   verifyError?: { message: string } | null;
-  updateError?: { message: string } | null;
+  updateError?: { message?: string; code?: string } | null;
+  currentLevel?: 'aal1' | 'aal2';
+  nextLevel?: 'aal1' | 'aal2';
+  factors?: Array<{ id: string; status: string }>;
+  challengeError?: { message: string } | null;
 } = {}) {
   const verifyOtp = vi.fn().mockResolvedValue({ error: verifyError });
   const updateUser = vi.fn().mockResolvedValue({ error: updateError });
   const signOut = vi.fn().mockResolvedValue({ error: null });
+  const getAuthenticatorAssuranceLevel = vi
+    .fn()
+    .mockResolvedValue({ data: { currentLevel, nextLevel } });
+  const listFactors = vi.fn().mockResolvedValue({ data: { totp: factors } });
+  const challengeAndVerify = vi
+    .fn()
+    .mockResolvedValue({ error: challengeError });
   mockCookie.mockResolvedValue({
-    auth: { verifyOtp, updateUser, signOut },
+    auth: {
+      verifyOtp,
+      updateUser,
+      signOut,
+      mfa: {
+        getAuthenticatorAssuranceLevel,
+        listFactors,
+        challengeAndVerify,
+      },
+    },
   } as unknown as CookieClient);
-  return { verifyOtp, updateUser, signOut };
+  return {
+    verifyOtp,
+    updateUser,
+    signOut,
+    getAuthenticatorAssuranceLevel,
+    listFactors,
+    challengeAndVerify,
+  };
 }
 
 beforeAll(() => {
@@ -203,5 +237,93 @@ describe('reset-password — confirm branch', () => {
     const res = await POST(post({ token_hash: 'HASH123', password: 'weak' }));
     expect(res.status).toBe(400);
     expect(verifyOtp).not.toHaveBeenCalled();
+  });
+});
+
+describe('reset-password — MFA (2FA) path', () => {
+  const good = { token_hash: 'HASH123', password: 'NewPass1' };
+  const codeBody = { password: 'NewPass1', code: '123456' };
+
+  it('step 1: returns mfaRequired without changing the password or ending the session', async () => {
+    const { updateUser, signOut } = cookieClientMock({ nextLevel: 'aal2' });
+
+    const res = await POST(post(good));
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.data.mfaRequired).toBe(true);
+    // password not changed yet; recovery session kept alive for step 2
+    expect(updateUser).not.toHaveBeenCalled();
+    expect(signOut).not.toHaveBeenCalled();
+  });
+
+  it('step 1: maps an insufficient_aal update error to mfaRequired (safety net)', async () => {
+    const { signOut } = cookieClientMock({
+      updateError: { code: 'insufficient_aal', message: 'AAL2 required' },
+    });
+
+    const res = await POST(post(good));
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.data.mfaRequired).toBe(true);
+    // must NOT sign out — the session is needed for the code step
+    expect(signOut).not.toHaveBeenCalled();
+  });
+
+  it('step 2: verifies the code, updates the password, and signs out', async () => {
+    const { challengeAndVerify, updateUser, signOut } = cookieClientMock();
+
+    const res = await POST(post(codeBody));
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(challengeAndVerify).toHaveBeenCalledWith({
+      factorId: 'factor-1',
+      code: '123456',
+    });
+    expect(updateUser).toHaveBeenCalledWith({ password: 'NewPass1' });
+    expect(signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('step 2: wrong code → 400 INVALID_CODE, password untouched', async () => {
+    const { updateUser } = cookieClientMock({
+      challengeError: { message: 'invalid code' },
+    });
+
+    const res = await POST(post(codeBody));
+    const json = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(json.error.code).toBe('INVALID_CODE');
+    expect(updateUser).not.toHaveBeenCalled();
+  });
+
+  it('step 2: no verified factor / lost session → 400 SESSION_EXPIRED', async () => {
+    const { challengeAndVerify } = cookieClientMock({ factors: [] });
+
+    const res = await POST(post(codeBody));
+    const json = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(json.error.code).toBe('SESSION_EXPIRED');
+    expect(challengeAndVerify).not.toHaveBeenCalled();
+  });
+
+  it('step 2: rejects a weak password before touching Supabase', async () => {
+    const { listFactors } = cookieClientMock();
+
+    const res = await POST(post({ password: 'weak', code: '123456' }));
+    expect(res.status).toBe(400);
+    expect(listFactors).not.toHaveBeenCalled();
+  });
+
+  it('step 2: rejects a malformed code', async () => {
+    const { listFactors } = cookieClientMock();
+
+    const res = await POST(post({ password: 'NewPass1', code: '12' }));
+    expect(res.status).toBe(400);
+    expect(listFactors).not.toHaveBeenCalled();
   });
 });

@@ -101,14 +101,21 @@ export async function sendResetEmail({
     );
     return { sent: true };
   } catch (error) {
-    // Log server-side only; the caller still returns a generic success.
-    const message =
-      axios.isAxiosError(error) && error.response
-        ? `status ${error.response.status}`
-        : error instanceof Error
-          ? error.message
-          : 'unknown error';
-    console.error(`[reset-email] Resend send failed (${message})`);
+    // Log server-side only (never to the client). Include Resend's response
+    // body — its message names the actual cause (e.g. unverified domain, or an
+    // onboarding@resend.dev send to a non-account address), which a bare status
+    // code hides.
+    if (axios.isAxiosError(error) && error.response) {
+      console.error(
+        `[reset-email] Resend send failed (status ${error.response.status}):`,
+        JSON.stringify(error.response.data),
+      );
+    } else {
+      console.error(
+        '[reset-email] Resend send failed:',
+        error instanceof Error ? error.message : 'unknown error',
+      );
+    }
     return { sent: false };
   }
 }

@@ -1,5 +1,50 @@
 # Changelog
 
+## 2026-07-24 — Responsive modals + remove non-functional OAuth (chore/remove-unecessary-feature)
+
+> No schema, API, or auth change — presentational + a dead-UI removal. Plan +
+> full modal audit in `.claude/MODAL_RESPONSIVE.md`.
+
+- **Removed non-functional Google/Facebook OAuth login UI.** Deleted
+  `components/auth/OAuthButtons.tsx` (the "OR CONTINUE WITH" divider + both
+  provider buttons) and its usage in `BusinessLoginForm` + `AdminLoginForm`.
+  Kept `app/api/auth/callback/route.ts` — it's the generic PKCE
+  `exchangeCodeForSession` handler that also backs email-confirm / magic-link
+  redirects, not OAuth-specific.
+- **Made all modals fit any viewport (the Add Product modal overflowed on short
+  laptop screens — title + footer clipped and unreachable).** Root cause: the
+  base `DialogContent` had no `max-height` and no overflow handling, so tall
+  content spilled off the top and bottom of the centered card. Reworked in 5
+  phases:
+  - **Phase 1 — base primitive** (`components/ui/dialog.tsx`): `DialogContent`
+    is now a scrollable flex column — `flex flex-col`,
+    `max-h-[calc(100dvh-2rem)]`, `overflow-y-auto overscroll-contain`,
+    `scroll-p-4 sm:scroll-p-6` (keyboard-safe), `p-4 sm:p-6`. New exported
+    `DialogBody` (the `flex-1 min-h-0` scroll region); `DialogHeader`/`Footer`
+    get `shrink-0`. Fixes all 28 dialogs at once. Used `overflow-y-auto` (not
+    `overflow-hidden`) on the base so un-migrated modals degrade to
+    whole-dialog scroll, never a trapped clip.
+  - **Phase 2 — 7 long-form modals** adopt pinned-header / `DialogBody` /
+    pinned-footer and drop their hand-rolled heights (`add-product`,
+    `add-coupon`, `update-coupon`, `update-product`, `edit-branch`,
+    `legal-dialog`, admin `view-documents`). The ✕ button is pinned again in
+    these.
+  - **Phase 3 — width/layout offenders:** `application-success-dialog`
+    `min-w-3xl` → `sm:max-w-2xl` (min-width was clipping phones); `TourDialog`
+    stacks `flex-col` on mobile, `sm:h-140 sm:flex-row` on desktop; `Masonry`
+    lightbox `w-4xl` (fixed 896px) → `w-[min(90vw,56rem)]`, `85vh` → `85dvh`.
+  - **Phase 4 — mobile ergonomics:** scroll-padding for keyboard safety (P9);
+    `TourDialog` `max-w-5xl!` → responsive (the `!` was killing the mobile
+    margin); confirmed footer buttons full-width on mobile via flex stretch.
+  - **Phase 5 — guardrail + docs:** `components/ui/__tests__/dialog.contract.test.ts`
+    (+10) asserts the base contract and sweeps every `<DialogContent>` in the
+    repo, failing the build if any reintroduces a fixed `h-*` or `min-w-*`.
+    Documented the header/body/footer contract in `component-standards.md` +
+    `ui-standards.md`.
+- Verified each phase: `yarn lint` + **1094** tests + `yarn build` green.
+  ⚠️ Browser sweep across the viewport matrix (esp. the mobile keyboard) still
+  pending — static + unit verification only.
+
 ## 2026-07-23 — Registration gating flags + terms acceptance (feat/landing-real-dashboard)
 
 > **One HIGH-risk schema migration** (`20260723000000_app_settings_registration_gating.sql`)

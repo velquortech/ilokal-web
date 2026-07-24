@@ -47,10 +47,10 @@ export function TourDialog({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="flex h-140 max-w-5xl! flex-row gap-8"
+        className="max-w-[calc(100%-2rem)] flex-col gap-6 sm:h-140 sm:max-w-5xl sm:flex-row sm:gap-8"
         showCloseButton={false}
       >
-        <div className="bg-primary/10 flex w-1/2 items-center justify-center rounded-xl">
+        <div className="bg-primary/10 flex w-full shrink-0 items-center justify-center rounded-xl py-8 sm:w-1/2 sm:py-0">
           <OnboardingCard requireDocuments={requireDocuments} />
         </div>
         <div className="flex flex-1 flex-col">

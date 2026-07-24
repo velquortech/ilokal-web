@@ -35,7 +35,7 @@ export function ApplicationSuccessDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="min-w-3xl p-10"
+        className="p-6 sm:max-w-2xl sm:p-10"
         showCloseButton={false}
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}

@@ -64,18 +64,26 @@ export async function sendResetEmail({
   // doomed 401 request.
   const hasRealKey = typeof apiKey === 'string' && apiKey.startsWith('re_');
   if (!hasRealKey || !from) {
-    console.info(
-      [
-        '',
-        '┌─ [reset-email] SANDBOX MODE — email not sent (no valid RESEND_API_KEY / EMAIL_FROM)',
-        `│  to:   ${to}`,
-        `│  link: ${url}`,
-        '│  ⚠️  Single-use, expires in 1h. Requesting another reset INVALIDATES this one —',
-        '│      always open the MOST RECENT link, and only click it once.',
-        '└─',
-        '',
-      ].join('\n'),
-    );
+    // Only surface the (single-use) link in non-production, so a misconfigured
+    // prod (missing/placeholder key) can never write live reset tokens to logs.
+    if (process.env.NODE_ENV !== 'production') {
+      console.info(
+        [
+          '',
+          '┌─ [reset-email] SANDBOX MODE — email not sent (no valid RESEND_API_KEY / EMAIL_FROM)',
+          `│  to:   ${to}`,
+          `│  link: ${url}`,
+          '│  ⚠️  Single-use, expires in 1h. Requesting another reset INVALIDATES this one —',
+          '│      always open the MOST RECENT link, and only click it once.',
+          '└─',
+          '',
+        ].join('\n'),
+      );
+    } else {
+      console.error(
+        '[reset-email] RESEND_API_KEY/EMAIL_FROM not configured in production — reset email NOT sent.',
+      );
+    }
     return { sent: false };
   }
 

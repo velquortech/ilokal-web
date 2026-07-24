@@ -13,8 +13,12 @@ export default function ResetPasswordPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex w-full max-w-sm justify-center py-10">
+        <div
+          role="status"
+          className="flex w-full max-w-sm justify-center py-10"
+        >
           <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+          <span className="sr-only">Loading…</span>
         </div>
       }
     >

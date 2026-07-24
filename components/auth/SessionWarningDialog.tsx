@@ -1,8 +1,9 @@
 'use client';
 
 import { useTransition } from 'react';
+import { usePathname } from 'next/navigation';
 import { useSessionMonitor } from '@/hooks/useSessionMonitor';
-import { useAuth } from '@/hooks/useAuth';
+import { ROUTES } from '@/config/routeConfig';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -17,12 +18,18 @@ import { AlertCircle, Clock } from 'lucide-react';
 /**
  * SessionWarningDialog Component
  *
+ * ⚠️ NOT MOUNTED — reachable only through `AuthProvider`, which nothing renders.
+ * See the note in `providers/AuthProvider.tsx`.
+ *
  * Displays when user's session is about to expire
  * Offers options to continue session or logout
  */
 export function SessionWarningDialog() {
-  const { isExpiring, timeRemaining, refreshSession } = useSessionMonitor();
-  const { logout, isLoggingOut } = useAuth();
+  // Same `useAuth()` instance the monitor uses, so an auto-logout it triggers
+  // also puts THIS dialog's buttons into the busy state.
+  const { isExpiring, timeRemaining, refreshSession, logout, isLoggingOut } =
+    useSessionMonitor();
+  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
 
   const handleContinue = () => {
@@ -31,10 +38,16 @@ export function SessionWarningDialog() {
     });
   };
 
-  // Client-side logout: signs out on the server, then navigates. A failed
-  // sign-out keeps the dialog open with a retry toast (see `useAuth`).
+  // Client-side logout: signs out on the server, then navigates to the login
+  // for the portal the user is in. A failed sign-out keeps the dialog open with
+  // a retry toast (see `useAuth`).
   const handleLogout = () => {
-    void logout();
+    const loginPath = pathname?.startsWith('/admin')
+      ? ROUTES.AUTH.ADMIN_LOGIN
+      : pathname?.startsWith('/business')
+        ? ROUTES.AUTH.BUSINESS_LOGIN
+        : ROUTES.AUTH.LOGIN;
+    void logout(loginPath);
   };
 
   return (

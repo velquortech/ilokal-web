@@ -80,7 +80,7 @@ export function AdminUserMenu() {
           // Keep the menu open so the busy state is visible during sign-out.
           onSelect={(e) => {
             e.preventDefault();
-            logout(ROUTES.AUTH.ADMIN_LOGIN);
+            void logout(ROUTES.AUTH.ADMIN_LOGIN);
           }}
         >
           {isLoggingOut ? (

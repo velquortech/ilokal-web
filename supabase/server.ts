@@ -1,6 +1,26 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
+/**
+ * Name prefix of every Supabase auth cookie (`sb-<project-ref>-auth-token`,
+ * its `.0`/`.1` chunks, and `-code-verifier`). supabase-js derives this itself
+ * and nothing here overrides `storageKey`/`cookieOptions.name`.
+ */
+export const SUPABASE_COOKIE_PREFIX = 'sb-';
+
+/**
+ * The attributes every Supabase auth cookie is written with. Deletion matches
+ * on name + domain + path, so an expiry write MUST reuse these or the original
+ * cookie survives — keep this the single source for both the write and the
+ * clear (`clearSupabaseAuthCookies` in the auth actions).
+ */
+export const SUPABASE_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+};
+
 // Session-aware server client (uses cookies to manage user sessions)
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies();
@@ -22,14 +42,10 @@ export async function createServerSupabaseClient() {
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) => {
-          const secureOptions = {
+          cookieStore.set(name, value, {
             ...options,
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax' as const,
-            path: '/',
-          };
-          cookieStore.set(name, value, secureOptions);
+            ...SUPABASE_COOKIE_OPTIONS,
+          });
         });
       },
     },

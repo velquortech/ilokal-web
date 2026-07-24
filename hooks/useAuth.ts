@@ -21,6 +21,10 @@ import { ROUTES } from '@/config/routeConfig';
  *
  * `redirectTo` lets each caller send the user to its role's login
  * (business → /login/business, admin → /login/admin).
+ *
+ * `force` is for callers that already KNOW the session is dead (session-expiry
+ * auto-logout): staying put protects nothing, so navigate regardless of whether
+ * the sign-out round-trip succeeded, and stay quiet about it.
  */
 export function useAuth() {
   const router = useRouter();
@@ -28,7 +32,10 @@ export function useAuth() {
   const [isNavigating, startTransition] = useTransition();
 
   const logout = useCallback(
-    async (redirectTo: string = ROUTES.AUTH.LOGIN) => {
+    async (
+      redirectTo: string = ROUTES.AUTH.LOGIN,
+      options?: { force?: boolean },
+    ) => {
       setIsSigningOut(true);
 
       let ok = false;
@@ -46,8 +53,12 @@ export function useAuth() {
         setIsSigningOut(false);
       }
 
-      if (!ok) {
-        toast.error('Could not sign you out. Please try again.');
+      if (!ok && !options?.force) {
+        // Stable id: a persistent failure must not stack one toast per retry
+        // or per session-monitor tick.
+        toast.error('Could not sign you out. Please try again.', {
+          id: 'logout-failed',
+        });
         return;
       }
 

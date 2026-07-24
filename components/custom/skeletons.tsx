@@ -15,17 +15,18 @@ function StatusRegion({
   className?: string;
 }) {
   return (
-    <div
-      aria-busy="true"
-      className={cn('flex flex-1 flex-col space-y-6', className)}
-    >
+    <div className={cn('flex flex-1 flex-col', className)}>
       {/* The live region announces only the label — the placeholders below are
           decorative, so assistive tech skips them instead of traversing dozens
           of empty boxes. */}
-      <div role="status" className="sr-only">
+      <div role="status" aria-busy="true" className="sr-only">
         Loading…
       </div>
-      <div aria-hidden="true" className="contents">
+      {/* The layout classes live HERE, not on the parent: Tailwind v4 compiles
+          `space-y-*` to `:where(& > :not(:last-child))`, which only matches DOM
+          direct children — so spacing declared on the parent would never reach
+          the blocks inside this wrapper. */}
+      <div aria-hidden="true" className="flex flex-1 flex-col space-y-6">
         {children}
       </div>
     </div>

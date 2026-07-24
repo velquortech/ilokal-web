@@ -11,6 +11,8 @@ interface ErrorProps {
   reset: () => void;
 }
 
+//sample
+
 export default function Error({ error, reset }: ErrorProps) {
   const [isLoaded, setIsLoaded] = useState(false);
 

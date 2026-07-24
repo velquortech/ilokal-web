@@ -73,6 +73,22 @@ export function getDashboardRoute(role?: string): string {
 }
 
 /**
+ * Pick the login page matching the portal a pathname belongs to.
+ *
+ * Used by logout flows so a signed-out admin lands on the admin login and a
+ * business owner on the business login, instead of the generic one. Falls back
+ * to the generic login for anything outside the two dashboards.
+ */
+export function loginPathForPathname(pathname?: string | null): string {
+  if (pathname?.startsWith(ROUTES.DASHBOARD.ADMIN))
+    return ROUTES.AUTH.ADMIN_LOGIN;
+  if (pathname?.startsWith(ROUTES.DASHBOARD.BUSINESS)) {
+    return ROUTES.AUTH.BUSINESS_LOGIN;
+  }
+  return ROUTES.AUTH.LOGIN;
+}
+
+/**
  * Build any path under /business/[businessId].
  * Pass additional segments as rest args, e.g. businessPath(id, 'shop').
  */

@@ -14,12 +14,12 @@ export const SUPABASE_COOKIE_PREFIX = 'sb-';
  * cookie survives — keep this the single source for both the write and the
  * clear (`clearSupabaseAuthCookies` in the auth actions).
  */
-export const SUPABASE_COOKIE_OPTIONS = {
+export const SUPABASE_COOKIE_OPTIONS = Object.freeze({
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'lax' as const,
   path: '/',
-};
+});
 
 // Session-aware server client (uses cookies to manage user sessions)
 export async function createServerSupabaseClient() {

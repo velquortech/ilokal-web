@@ -3,11 +3,13 @@
  *
  * The contract under test:
  * - `ok`      — the browser no longer holds a Supabase session cookie.
- * - `revoked` — the tokens were confirmed revoked server-side.
+ * - `revoked` — a revoke was issued for a real session token and auth-js did
+ *               not report a failure (NOT a hard guarantee — it swallows
+ *               401/403/404, and returns early when there is no session).
  *
  * auth-js RETURNS `{ error }` rather than throwing, and on a non-401/403/404
- * failure it bails before removing the local session — so the action must retry
- * the revoke with the service-role client and then expire the `sb-*` cookies.
+ * failure it bails before removing the local session — so the action must
+ * expire the `sb-*` cookies itself and report `revoked: false`.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -16,27 +18,22 @@ import type { Mock } from 'vitest';
 import { signOutAction } from '@/app/(auth)/actions/authActions';
 import {
   createServerSupabaseClient,
-  createServerAdminClient,
+  SUPABASE_COOKIE_OPTIONS,
 } from '@/supabase/server';
 import { cookies } from 'next/headers';
 
-vi.mock('@/supabase/server', () => ({
-  createServerSupabaseClient: vi.fn(),
-  createServerAdminClient: vi.fn(),
-  SUPABASE_COOKIE_PREFIX: 'sb-',
-  SUPABASE_COOKIE_OPTIONS: {
-    httpOnly: true,
-    secure: false,
-    sameSite: 'lax' as const,
-    path: '/',
-  },
-}));
+// Only the client factory is faked — the cookie constants come through REAL, so
+// the "clear reuses the write attributes" assertion below actually guards
+// `supabase/server.ts` instead of validating a copy of itself.
+vi.mock('@/supabase/server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/supabase/server')>();
+  return { ...actual, createServerSupabaseClient: vi.fn() };
+});
 vi.mock('next/headers', () => ({
   cookies: vi.fn(),
 }));
 
 type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>;
-type AdminClient = Awaited<ReturnType<typeof createServerAdminClient>>;
 type CookieStore = Awaited<ReturnType<typeof cookies>>;
 
 const TOKEN = 'access-token-123';
@@ -52,13 +49,6 @@ function mockSupabase(signOut: Mock, accessToken: string | null = TOKEN) {
   } as unknown as SupabaseClient;
   (createServerSupabaseClient as unknown as Mock).mockResolvedValue(client);
   return client;
-}
-
-function mockAdmin(adminSignOut: Mock) {
-  (createServerAdminClient as unknown as Mock).mockResolvedValue({
-    auth: { admin: { signOut: adminSignOut } },
-  } as unknown as AdminClient);
-  return adminSignOut;
 }
 
 function mockCookieStore(names: string[]) {
@@ -85,27 +75,12 @@ describe('signOutAction', () => {
     await expect(signOutAction()).resolves.toEqual({ ok: true, revoked: true });
     expect(signOut).toHaveBeenCalledTimes(1);
     expect(set).not.toHaveBeenCalled();
-    expect(createServerAdminClient).not.toHaveBeenCalled();
   });
 
-  it('retries the revoke via the admin client when the cookie client fails', async () => {
-    mockSupabase(
-      vi.fn().mockResolvedValue({ error: { message: 'gotrue 500' } }),
-    );
-    const adminSignOut = mockAdmin(vi.fn().mockResolvedValue({ error: null }));
-    const set = mockCookieStore(['sb-abc-auth-token']);
-
-    await expect(signOutAction()).resolves.toEqual({ ok: true, revoked: true });
-    expect(adminSignOut).toHaveBeenCalledWith(TOKEN, 'global');
-    // Cookies are cleared regardless, since the cookie client did not do it.
-    expect(set).toHaveBeenCalledTimes(1);
-  });
-
-  it('reports revoked:false when the admin retry also fails', async () => {
-    mockSupabase(
-      vi.fn().mockResolvedValue({ error: { message: 'gotrue 500' } }),
-    );
-    mockAdmin(vi.fn().mockResolvedValue({ error: { message: 'still down' } }));
+  it('reports revoked:false when there was no session to revoke', async () => {
+    // auth-js returns `error: null` without issuing any HTTP call when there is
+    // no session, so a clean result alone does not prove a revoke happened.
+    mockSupabase(vi.fn().mockResolvedValue({ error: null }), null);
     mockCookieStore(['sb-abc-auth-token']);
 
     await expect(signOutAction()).resolves.toEqual({
@@ -114,9 +89,21 @@ describe('signOutAction', () => {
     });
   });
 
+  it('reports revoked:false when the revoke fails (cookies cleared only)', async () => {
+    mockSupabase(
+      vi.fn().mockResolvedValue({ error: { message: 'gotrue 500' } }),
+    );
+    const set = mockCookieStore(['sb-abc-auth-token']);
+
+    await expect(signOutAction()).resolves.toEqual({
+      ok: true,
+      revoked: false,
+    });
+    expect(set).toHaveBeenCalledTimes(1);
+  });
+
   it('expires every sb-* cookie (incl. chunks) and leaves others alone', async () => {
     mockSupabase(vi.fn().mockResolvedValue({ error: { message: 'boom' } }));
-    mockAdmin(vi.fn().mockResolvedValue({ error: { message: 'boom' } }));
     const set = mockCookieStore([
       'sb-abc-auth-token.0',
       'sb-abc-auth-token.1',
@@ -133,29 +120,11 @@ describe('signOutAction', () => {
     ]);
     for (const call of set.mock.calls) {
       expect(call[1]).toBe('');
-      // Deletion matches on name + domain + path, so the write attributes must
-      // be reused — a mismatch would silently leave the original cookie alive.
-      expect(call[2]).toMatchObject({
-        maxAge: 0,
-        path: '/',
-        httpOnly: true,
-        sameSite: 'lax',
-      });
+      // Deletion matches on name + domain + path, so the clear MUST reuse the
+      // real write attributes — a mismatch silently leaves the cookie alive.
+      // These come from `supabase/server.ts` itself, not a copy.
+      expect(call[2]).toMatchObject({ ...SUPABASE_COOKIE_OPTIONS, maxAge: 0 });
     }
-  });
-
-  it('skips the admin retry when there is no session token to revoke', async () => {
-    mockSupabase(
-      vi.fn().mockResolvedValue({ error: { message: 'boom' } }),
-      null,
-    );
-    mockCookieStore(['sb-abc-auth-token']);
-
-    await expect(signOutAction()).resolves.toEqual({
-      ok: true,
-      revoked: false,
-    });
-    expect(createServerAdminClient).not.toHaveBeenCalled();
   });
 
   it('expires the cookies when creating the client throws', async () => {
@@ -173,7 +142,6 @@ describe('signOutAction', () => {
 
   it('reports ok:false when neither the revoke nor the cookie clear works', async () => {
     mockSupabase(vi.fn().mockResolvedValue({ error: { message: 'boom' } }));
-    mockAdmin(vi.fn().mockResolvedValue({ error: { message: 'boom' } }));
     (cookies as unknown as Mock).mockRejectedValue(new Error('no store'));
 
     await expect(signOutAction()).resolves.toEqual({

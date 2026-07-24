@@ -30,10 +30,40 @@
   branches; businesses/users/account-status), and settings (form). Sidebar +
   header persist; the skeleton fills the layout's padded content area — so page
   navigation shows a matching skeleton instead of a frozen frame.
-- **Tests (+11):** `useAuth` unit (5 — role paths, `refresh`, fail-safe,
-  `isLoggingOut`), menu integration (2 — open the Radix dropdown, select "Log
-  out", assert the role login), skeleton render (3), + net. Verified:
-  `yarn lint` + **1161** tests + `yarn build` green.
+- **Tests:** `useAuth` unit (7), menu integration (4 — open the Radix dropdown,
+  select "Log out", assert the role login + the busy state), `signOutAction`
+  server-side (5), skeleton render (3).
+- **Review hardening (react-doctor + api-doctor, PR #12):**
+  - **`signOutAction` no longer swallows a failed sign-out.** auth-js *returns*
+    `{ error }` rather than throwing, and on a non-401/403/404 failure (e.g. a
+    GoTrue 5xx as `AuthRetryableFetchError`) it bails **before** removing the
+    local session — the `sb-*` cookies survived while the UI reported a
+    completed logout. The action now inspects `{ error }`, falls back to
+    expiring every `sb-*` cookie itself (covers chunked `.0`/`.1`), and returns
+    `{ ok: boolean }`. `ok` is true only when the browser is guaranteed to hold
+    no session. `logoutAction` now delegates to it (no duplicated body), so the
+    same safety net covers the redirecting path.
+  - **`useAuth` branches on the result:** navigates only on `ok`; otherwise
+    stays put with a retry toast instead of showing a login page over a live
+    session (the login pages have no authenticated-session guard).
+  - **`push` → `replace`**, so the protected URL leaves the history stack, and
+    **dropped the bare `router.refresh()`** — it fired against the route the
+    client router still considered current (the authed page), whose layout
+    answers with its own `redirect()` and could race the navigation. Both
+    dashboard layouts are cookie-dynamic, so their RSC payloads aren't reused.
+  - **`isLoggingOut` can no longer stick:** `useState` + `finally` for the
+    server phase, `useTransition().isPending` for the navigation phase.
+  - **Completed the fix at the remaining callers:** `useSessionMonitor` (×3)
+    and `SessionWarningDialog` still called the redirecting `logoutAction()`
+    from an effect/handler — the exact "cookie clears, no navigation" pattern
+    this entry fixes. Both now go through `useAuth().logout()`.
+  - **Skeleton coverage gaps:** added `loading.tsx` for `business/[businessId]/
+    profile` + `shop` (form) and `admin/[adminId]/branches` (table) — they were
+    inheriting the root **dashboard** skeleton from the segment above.
+  - **a11y:** `role="status"` now wraps only the sr-only label; the decorative
+    placeholders are `aria-hidden` (AT no longer traverses dozens of empty
+    boxes).
+- Verified: `yarn lint` + **1170** tests + `yarn build` green.
 
 ## 2026-07-24 — Password reset: MFA (2FA) support + Resend diagnostics (feat/forgot-password)
 

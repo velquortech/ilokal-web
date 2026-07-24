@@ -16,12 +16,18 @@ function StatusRegion({
 }) {
   return (
     <div
-      role="status"
       aria-busy="true"
       className={cn('flex flex-1 flex-col space-y-6', className)}
     >
-      <span className="sr-only">Loading…</span>
-      {children}
+      {/* The live region announces only the label — the placeholders below are
+          decorative, so assistive tech skips them instead of traversing dozens
+          of empty boxes. */}
+      <div role="status" className="sr-only">
+        Loading…
+      </div>
+      <div aria-hidden="true" className="contents">
+        {children}
+      </div>
     </div>
   );
 }

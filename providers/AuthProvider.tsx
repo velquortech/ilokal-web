@@ -8,6 +8,14 @@ interface AuthProviderProps {
 }
 
 /**
+ * ⚠️ NOT MOUNTED — this provider has zero render sites (verified 2026-07-24).
+ * Nothing in `app/**` renders it, so `SessionTracker`, `useSessionMonitor`,
+ * `SessionWarningDialog` and `config/sessionConfig.ts` are all currently dead:
+ * role-based session timeouts and the expiry warning DO NOT run in production.
+ * Wiring it into the business + admin shells is a tracked follow-up — it needs
+ * QA on the `sessionConfig` timeout values and on the 60s polling + window
+ * activity listeners. Until then, treat edits here as unverifiable at runtime.
+ *
  * AuthProvider - Minimal setup for monitoring session
  *
  * Auth state is now handled by:

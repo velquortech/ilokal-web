@@ -29,10 +29,10 @@ import { ROUTES } from '@/config/routeConfig';
 let container: HTMLDivElement;
 let root: Root;
 
-function Harness({ path }: { path?: string }) {
+function Harness({ path, force }: { path?: string; force?: boolean }) {
   const { logout, isLoggingOut } = useAuth();
   return (
-    <button onClick={() => logout(path)}>
+    <button onClick={() => logout(path, force ? { force: true } : undefined)}>
       {isLoggingOut ? 'signing-out' : 'idle'}
     </button>
   );
@@ -40,7 +40,7 @@ function Harness({ path }: { path?: string }) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  signOutAction.mockResolvedValue({ ok: true });
+  signOutAction.mockResolvedValue({ ok: true, revoked: true });
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -87,7 +87,7 @@ describe('useAuth.logout', () => {
   });
 
   it('stays put and warns when the session was NOT cleared', async () => {
-    signOutAction.mockResolvedValueOnce({ ok: false });
+    signOutAction.mockResolvedValueOnce({ ok: false, revoked: false });
     act(() => root.render(<Harness path={ROUTES.AUTH.BUSINESS_LOGIN} />));
     await clickLogout();
 
@@ -104,8 +104,28 @@ describe('useAuth.logout', () => {
     expect(toastError).toHaveBeenCalledTimes(1);
   });
 
+  it('uses a stable toast id so repeated failures do not stack', async () => {
+    signOutAction.mockResolvedValueOnce({ ok: false, revoked: false });
+    act(() => root.render(<Harness path={ROUTES.AUTH.LOGIN} />));
+    await clickLogout();
+
+    expect(toastError).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ id: 'logout-failed' }),
+    );
+  });
+
+  it('force navigates without a toast when the session is already known-dead', async () => {
+    signOutAction.mockResolvedValueOnce({ ok: false, revoked: false });
+    act(() => root.render(<Harness path={ROUTES.AUTH.LOGIN} force />));
+    await clickLogout();
+
+    expect(replace).toHaveBeenCalledWith(ROUTES.AUTH.LOGIN);
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
   it('releases the busy state after a failed sign-out so the user can retry', async () => {
-    signOutAction.mockResolvedValueOnce({ ok: false });
+    signOutAction.mockResolvedValueOnce({ ok: false, revoked: false });
     act(() => root.render(<Harness path={ROUTES.AUTH.LOGIN} />));
     await clickLogout();
 

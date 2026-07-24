@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { verifySessionAction } from '@/app/(auth)/actions';
 import { useAuth } from '@/hooks/useAuth';
+import { ROUTES } from '@/config/routeConfig';
 import {
   SESSION_CHECK_INTERVAL,
   ACTIVITY_DEBOUNCE_DELAY,
@@ -20,6 +21,10 @@ interface SessionWarning {
 
 /**
  * Hook to monitor session expiration
+ *
+ * ⚠️ NOT MOUNTED — its only consumers (`AuthProvider`, `SessionTracker`,
+ * `SessionWarningDialog`) have zero render sites. See the note in
+ * `providers/AuthProvider.tsx`.
  *
  * Features:
  * - Periodically verifies session is still valid with server
@@ -46,7 +51,9 @@ interface SessionWarning {
 export function useSessionMonitor() {
   // Client-side logout: a Server-Action `redirect()` awaited from an effect or
   // event handler clears the cookie without navigating (the bug this replaces).
-  const { logout } = useAuth();
+  // Re-exported below so consumers share THIS instance's busy state instead of
+  // instantiating a second, independent `useAuth()`.
+  const { logout, isLoggingOut } = useAuth();
   const [sessionWarning, setSessionWarning] = useState<SessionWarning>({
     isExpiring: false,
     timeRemaining: 0,
@@ -109,8 +116,10 @@ export function useSessionMonitor() {
           timeRemaining: timeoutMinutes,
         });
       } else {
-        // Session no longer valid, trigger logout
-        await logout();
+        // Session already known-invalid — force the navigation. Staying put
+        // would park the user on a protected page with a dead session and
+        // re-fire the retry toast on every tick.
+        await logout(ROUTES.AUTH.LOGIN, { force: true });
       }
     } catch (error) {
       console.error('[useSessionMonitor] Failed to refresh session:', error);
@@ -128,14 +137,15 @@ export function useSessionMonitor() {
       // Check session validity with server
       const sessionValid = await verifySessionAction();
 
+      // Both branches below are known-invalid sessions — force (see above).
       if (!sessionValid) {
-        await logout();
+        await logout(ROUTES.AUTH.LOGIN, { force: true });
         return;
       }
 
       // Check if already expired
       if (isSessionExpired(currentExpiration)) {
-        await logout();
+        await logout(ROUTES.AUTH.LOGIN, { force: true });
         return;
       }
 
@@ -180,5 +190,7 @@ export function useSessionMonitor() {
     timeRemaining: sessionWarning.timeRemaining,
     sessionExpiration,
     refreshSession,
+    logout,
+    isLoggingOut,
   };
 }

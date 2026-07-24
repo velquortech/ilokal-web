@@ -2,7 +2,12 @@
 
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { createServerSupabaseClient } from '@/supabase/server';
+import {
+  createServerSupabaseClient,
+  createServerAdminClient,
+  SUPABASE_COOKIE_PREFIX,
+  SUPABASE_COOKIE_OPTIONS,
+} from '@/supabase/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { ROUTES, businessPath } from '@/config/routeConfig';
 import { User } from '@/lib/types/user';
@@ -303,75 +308,93 @@ export async function redirectByRole(
  * Safety net for a failed `auth.signOut()`: auth-js RETURNS an error rather
  * than throwing, and for a non-401/403/404 failure (e.g. a GoTrue 5xx surfacing
  * as `AuthRetryableFetchError`) it bails out BEFORE removing the local session —
- * so the `sb-*` cookies would survive an apparently-successful logout. Clearing
- * them here guarantees the browser cannot keep using the session even when the
- * server-side token revoke did not land.
+ * so the `sb-*` cookies would survive an apparently-successful logout.
  *
- * Covers chunked cookies (`sb-<ref>-auth-token.0`, `.1`, …) via the prefix match.
+ * Covers chunked cookies (`sb-<ref>-auth-token.0`, `.1`, …) and the PKCE
+ * `-code-verifier` via the prefix match. Deletion matches on name + domain +
+ * path, so the attributes are reused from the write path.
  */
 async function clearSupabaseAuthCookies(): Promise<void> {
   const cookieStore = await cookies();
   for (const { name } of cookieStore.getAll()) {
-    if (!name.startsWith('sb-')) continue;
-    cookieStore.set(name, '', {
-      maxAge: 0,
-      path: '/',
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-    });
+    if (!name.startsWith(SUPABASE_COOKIE_PREFIX)) continue;
+    cookieStore.set(name, '', { ...SUPABASE_COOKIE_OPTIONS, maxAge: 0 });
   }
 }
 
 /**
- * Server Action: Handle user logout
+ * Best-effort server-side revoke of a token the cookie client could not revoke.
+ *
+ * Expiring the cookies only clears THIS browser; the refresh/access tokens stay
+ * valid at GoTrue until they expire naturally, so a copied token would still
+ * work. The service-role client can revoke them directly.
+ *
+ * Returns true only when the revoke is confirmed.
  */
-export async function logoutAction(): Promise<void> {
-  // Same sign-out semantics as `signOutAction` (incl. the cookie safety net);
-  // only the navigation differs.
-  await signOutAction();
-
-  // Perform redirect outside of try/catch so the Next.js internal redirect
-  // control flow (throws `NEXT_REDIRECT`) is not caught and logged here.
-  redirect(ROUTES.AUTH.LOGIN);
+async function revokeTokenAsAdmin(accessToken: string): Promise<boolean> {
+  try {
+    const admin = await createServerAdminClient();
+    const { error } = await admin.auth.admin.signOut(accessToken, 'global');
+    if (!error) return true;
+    console.error('[signOutAction] Admin revoke failed:', error);
+  } catch (error) {
+    console.error('[signOutAction] Admin revoke threw:', error);
+  }
+  return false;
 }
+
+/**
+ * The outcome of a sign-out attempt.
+ *
+ * - `ok` — the browser no longer holds a Supabase session cookie. Only when
+ *   this is true may a caller present the user as signed out.
+ * - `revoked` — the tokens were confirmed revoked server-side. When `ok` is
+ *   true but `revoked` is false the sign-out was browser-local ONLY: any copy
+ *   of the token stays usable until it expires. Callers that need a hard
+ *   guarantee (e.g. a shared device) must treat that as a partial sign-out.
+ */
+type SignOutOutcome = { ok: boolean; revoked: boolean };
 
 /**
  * Server Action: sign out WITHOUT redirecting.
  *
- * The redirect-less counterpart to `logoutAction` — clears the Supabase session
- * (cookies) and reports whether it actually succeeded. Client callers own the
- * navigation (`useRouter().replace`) so it can be role-specific and reliable
- * from an event handler; server-initiated flows keep using
- * `logoutAction`/`redirectByRole`.
+ * Clears the Supabase session and reports what it actually achieved. Client
+ * callers own the navigation (`useRouter().replace`) so it can be role-specific
+ * and reliable from an event handler — a Server-Action `redirect()` awaited
+ * from an `onClick` clears the cookie without navigating.
  *
- * Never throws — the result flag is the single signal callers branch on.
- *
- * `ok` is true only when the browser is guaranteed to no longer hold a Supabase
- * session (the revoke succeeded, or it failed and we expired the `sb-*` cookies
- * ourselves). `false` means the session may still be live, so the caller MUST
- * NOT present the user as signed out.
+ * Never throws — the result flags are the only signal callers branch on.
  */
-export async function signOutAction(): Promise<{ ok: boolean }> {
+export async function signOutAction(): Promise<SignOutOutcome> {
+  let accessToken: string | undefined;
+
   try {
     const supabase = await createServerSupabaseClient();
+
+    // Captured BEFORE the revoke attempt: on success the session is gone, and
+    // on failure we need it for the admin fallback below.
+    const { data } = await supabase.auth.getSession();
+    accessToken = data.session?.access_token;
+
     // auth-js returns `{ error }`; it does not throw on a failed revoke.
     const { error } = await supabase.auth.signOut();
-    if (!error) return { ok: true };
+    if (!error) return { ok: true, revoked: true };
 
     console.error('[signOutAction] Error signing out:', error);
   } catch (error) {
     console.error('[signOutAction] Error signing out:', error);
   }
 
-  // Revoke failed — fall back to expiring the cookies so the session cannot be
-  // reused from this browser.
+  // The cookie client could not revoke. Try the service-role path, then expire
+  // the cookies regardless so this browser cannot keep using the session.
+  const revoked = accessToken ? await revokeTokenAsAdmin(accessToken) : false;
+
   try {
     await clearSupabaseAuthCookies();
-    return { ok: true };
+    return { ok: true, revoked };
   } catch (cookieError) {
     console.error('[signOutAction] Failed to clear auth cookies:', cookieError);
-    return { ok: false };
+    return { ok: false, revoked };
   }
 }
 

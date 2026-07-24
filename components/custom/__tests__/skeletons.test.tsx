@@ -27,4 +27,23 @@ describe('dashboard skeletons', () => {
     expect(html).toContain('role="status"');
     expect(html).toContain('Loading…');
   });
+
+  it('announces only the label — placeholders are hidden from AT', () => {
+    const html = renderToStaticMarkup(<DashboardSkeleton />);
+    // The live region carries the label and nothing else.
+    expect(html).toContain('role="status" aria-busy="true" class="sr-only"');
+    expect(html).toContain('aria-hidden="true"');
+  });
+
+  it('spaces the placeholder blocks (guards the space-y regression)', () => {
+    // Tailwind v4 compiles `space-y-*` to `:where(& > :not(:last-child))`, which
+    // only matches DOM direct children. The spacing MUST live on the element
+    // that directly contains the blocks — putting it on an ancestor separated
+    // by a `display:contents` wrapper silently yields zero gap.
+    const html = renderToStaticMarkup(<DashboardSkeleton />);
+    expect(html).toContain(
+      'aria-hidden="true" class="flex flex-1 flex-col space-y-6"',
+    );
+    expect(html).not.toContain('class="contents"');
+  });
 });

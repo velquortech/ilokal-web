@@ -112,7 +112,7 @@ export function UserMenu() {
           // Keep the menu open so the busy state is visible during sign-out.
           onSelect={(e) => {
             e.preventDefault();
-            logout(ROUTES.AUTH.BUSINESS_LOGIN);
+            void logout(ROUTES.AUTH.BUSINESS_LOGIN);
           }}
         >
           {isLoggingOut ? (

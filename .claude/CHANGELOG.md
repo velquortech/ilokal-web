@@ -2,8 +2,12 @@
 
 ## 2026-07-24 — Logout redirect fix + per-page loading skeletons (feat/forgot-password)
 
-> Presentational + a client-navigation fix. No schema/API-contract change. Plan
-> in `.claude/LOGOUT_LOADING.md`. Applies to **both** business and admin.
+> **Auth-surface change — HIGH risk, needs human approval before merge.** It
+> changes server-side sign-out semantics, adds a new exported Server Action
+> (`signOutAction`) and removes one (`logoutAction`), and now uses the
+> service-role client on the sign-out failure path. **No schema/RLS/migration
+> change**, so nothing to apply to cloud. Plan in `.claude/LOGOUT_LOADING.md`.
+> Applies to **both** business and admin.
 
 - **Fixed: logout didn't redirect until a manual refresh.** `useAuth().logout`
   called a Server Action that does `redirect()` from a bare dropdown `onClick` —
@@ -63,7 +67,45 @@
   - **a11y:** `role="status"` now wraps only the sr-only label; the decorative
     placeholders are `aria-hidden` (AT no longer traverses dozens of empty
     boxes).
-- Verified: `yarn lint` + **1170** tests + `yarn build` green.
+- **Round-2 review (react-doctor + api-doctor, PR #12):**
+  - **Fixed a regression the round-1 a11y rewrite introduced.** Tailwind v4
+    compiles `space-y-*` to `:where(& > :not(:last-child))` — DOM direct
+    children only. The new `aria-hidden` wrapper was `display:contents`, so the
+    skeleton blocks became grandchildren and matched nothing: **every skeleton
+    rendered with zero vertical gap**. Spacing now lives on the wrapper that
+    directly contains the blocks; a render test asserts it so it can't regress
+    silently.
+  - **`signOutAction` no longer claims more than it delivers.** Expiring cookies
+    only clears *this browser* — the tokens stay valid at GoTrue. It now retries
+    the revoke via `createServerAdminClient().auth.admin.signOut(token,
+    'global')` before falling back, and returns `{ ok, revoked }`: `ok` = the
+    browser holds no session, `revoked` = confirmed server-side. `ok && !revoked`
+    is a browser-local-only sign-out.
+  - **Deleted `logoutAction`** — zero callers after the round-1 migration, and
+    every `'use server'` export is a live callable endpoint. Its `{ok}`-ignoring
+    redirect was also inconsistent with the new contract.
+  - **Session-expiry auto-logout now forces the navigation.** `logout(path,
+    { force: true })` for the three known-invalid-session branches in
+    `useSessionMonitor` — staying put protected nothing and re-fired the retry
+    toast every 60s tick. The toast also gained a stable id
+    (`logout-failed`) per the repo's one-Toaster convention.
+  - **`SessionWarningDialog` shares the monitor's `useAuth()` instance** (it was
+    creating a second, so an auto-logout left its buttons enabled), and picks
+    its login destination from `usePathname()` instead of always `/login`.
+  - **Cookie constants deduped:** `SUPABASE_COOKIE_PREFIX` +
+    `SUPABASE_COOKIE_OPTIONS` exported from `supabase/server.ts` and used by
+    both the write path and the clear path — a future `domain`/`name` change on
+    one side can no longer silently turn the fallback into a no-op.
+  - **Skeleton coverage:** added `loading.tsx` for `branches/create` and
+    `branches/[branchId]` (they were flashing a *table* skeleton).
+  - **⚠️ Documented dead surface:** `AuthProvider`, `SessionTracker`,
+    `SessionWarningDialog`, `useSessionMonitor` and `config/sessionConfig.ts`
+    have **zero mount sites** — role-based session timeouts and the expiry
+    warning do not run in production. The logout migration in those files is
+    therefore correct but unverifiable at runtime. Marked `⚠️ NOT MOUNTED` in
+    each file's header; wiring them up is a follow-up needing QA on the timeout
+    values and the 60s polling.
+- Verified: `yarn lint` + **1177** tests + `yarn build` green.
 
 ## 2026-07-24 — Password reset: MFA (2FA) support + Resend diagnostics (feat/forgot-password)
 

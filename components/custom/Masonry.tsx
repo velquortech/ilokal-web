@@ -137,7 +137,7 @@ export function Masonry({ images }: MasonryProps) {
         onOpenChange={() => setCurrentIndex(null)}
       >
         <DialogContent
-          className="w-max overflow-hidden border-none bg-black/95 p-0 sm:max-w-max sm:rounded-2xl"
+          className="w-max overflow-hidden border-none bg-black/95 p-0 sm:max-w-max sm:rounded-2xl sm:p-0"
           showCloseButton={false}
         >
           <VisuallyHidden.Root>
@@ -146,7 +146,7 @@ export function Masonry({ images }: MasonryProps) {
           </VisuallyHidden.Root>
 
           {currentIndex !== null && (
-            <div className="relative flex h-[85vh] w-4xl items-center justify-center">
+            <div className="relative flex h-[85dvh] w-[min(90vw,56rem)] items-center justify-center">
               {/* IMAGE */}
               <Image
                 src={images[currentIndex].src}

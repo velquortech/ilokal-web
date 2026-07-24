@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -154,8 +155,11 @@ export function EditBranchDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="h-[80vh] overflow-y-auto sm:max-w-lg">
-        <form onSubmit={handleSubmit(onSubmit)}>
+      <DialogContent className="overflow-hidden sm:max-w-lg">
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="flex min-h-0 flex-1 flex-col gap-4"
+        >
           <DialogHeader>
             <DialogTitle>Edit Branch</DialogTitle>
             <DialogDescription>
@@ -163,7 +167,7 @@ export function EditBranchDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="mt-4 space-y-4">
+          <DialogBody className="space-y-4">
             <Field>
               <FieldLabel className={errors.name ? 'text-destructive' : ''}>
                 Branch Name
@@ -409,9 +413,9 @@ export function EditBranchDialog({
             {serverError && (
               <p className="text-destructive text-sm">{serverError}</p>
             )}
-          </div>
+          </DialogBody>
 
-          <DialogFooter className="mt-6">
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"

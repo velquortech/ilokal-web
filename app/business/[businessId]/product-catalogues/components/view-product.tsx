@@ -15,7 +15,10 @@ export function ViewProduct(props: PropsWithChildren & ProductResponse) {
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent showCloseButton={false} className="rounded-xl p-0 sm:w-sm">
+      <DialogContent
+        showCloseButton={false}
+        className="rounded-xl p-0 sm:w-sm sm:p-0"
+      >
         <VisuallyHidden.Root>
           <DialogTitle>Product Card</DialogTitle>
           <DialogDescription>Product Card</DialogDescription>

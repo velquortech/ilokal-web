@@ -253,6 +253,17 @@ flex h-screen overflow-hidden
 - `Masonry` component handles responsive column count automatically
 - Fallback grid: `grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4`
 
+**Dialogs / modals:**
+
+- The base `DialogContent` caps every modal to `max-h-[calc(100dvh-2rem)]` /
+  `max-w-[calc(100%-2rem)]` and scrolls — a modal never exceeds the viewport.
+- Long forms: pinned header + `<DialogBody>` scroll region + pinned footer; add
+  `overflow-hidden` to `DialogContent`. Short dialogs need nothing extra.
+- **Never** put a fixed height (`h-*`) or `min-w-*` on `DialogContent` (enforced
+  by a grep test). Widen with `sm:max-w-*`.
+- Full detail: `component-standards.md` → "Dialogs / Modals";
+  `.claude/MODAL_RESPONSIVE.md`.
+
 ### Rules
 
 - **Mobile-first** — write base styles for mobile, add breakpoint overrides up.

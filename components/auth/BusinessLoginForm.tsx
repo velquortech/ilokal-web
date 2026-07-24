@@ -25,7 +25,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Field, FieldError } from '@/components/ui/field';
-import { OAuthButtons } from '@/components/auth/OAuthButtons';
 import { ROUTES } from '@/config/routeConfig';
 import type { User } from '@/lib/types';
 
@@ -269,8 +268,6 @@ export default function BusinessLoginForm() {
           )}
         </Button>
       </form>
-
-      <OAuthButtons disabled={isPending} />
 
       <div className="text-muted-foreground space-y-1.5 text-center text-sm">
         <p>

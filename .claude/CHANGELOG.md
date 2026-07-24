@@ -1,5 +1,56 @@
 # Changelog
 
+## 2026-07-24 — Business forgot-password flow (Resend + token-hash) (chore/remove-unecessary-feature)
+
+> Auth-surface change — **review before merge**. No schema/migration. Plan in
+> `.claude/FORGOT_PASSWORD.md`. New env: `RESEND_API_KEY`, `EMAIL_FROM`
+> (server-only; unset ⇒ local log fallback).
+
+- **Reworked `POST /api/auth/reset-password` to Option B (we own the email).**
+  - Request `{email}` → service-role `auth.admin.generateLink({type:'recovery'})`
+    (mints the token, does not send) → build the confirm URL from the returned
+    `hashed_token` → send a branded email via **Resend over `axios`** (no new
+    dep) or, with no `RESEND_API_KEY`/`EMAIL_FROM`, **log the link to the server
+    console** (local sandbox). Always returns a generic 200 — a non-existent
+    email is indistinguishable (no enumeration).
+  - Confirm `{token_hash, password}` → `verifyOtp({token_hash, type:'recovery'})`
+    → `updateUser({password})` → `signOut()` (the recovery session is a full
+    session; it must not linger). Generic error messages only (no raw Supabase
+    text). Dropped `generateLink`'s `redirectTo`, so the flow no longer depends
+    on the Supabase redirect allow-list.
+- **Email layer, server-side under `app/api/emails/`** (colocated with the other
+  route-only helpers; never client-bundled): `templates/resetPassword.ts` (pure,
+  inline-styled, HTML-escaped, `{subject, html, text}`) and `sendResetEmail.ts`
+  (Resend/axios send or log; never throws — a mail failure can't reveal account
+  existence). Plus a **dev-only preview route** `app/api/dev/email-preview`
+  (renders the template in the browser for design iteration; 404 in production).
+- **Pages** under the `(auth)` group (branded split-screen layout):
+  `/forgot-password` (`ForgotPasswordForm` — generic "check your email" panel)
+  and `/reset-password` (`ResetPasswordForm` — new-password + confirm, strength +
+  match, invalid-link state; success → toast + redirect `/login/business?reset=1`;
+  `<Suspense>`-wrapped for `useSearchParams`). Business login "Forgot password?"
+  now uses `ROUTES.AUTH.FORGOT_PASSWORD`; admin link left as-is (role-agnostic).
+- **Validation:** `resetPasswordRequestSchema`, `resetPasswordConfirmSchema`
+  (`token_hash` + password == signup rules), and `resetPasswordFormSchema`
+  (client confirm-match) added to `lib/validation/auth.ts`.
+  `authService.resetPasswordConfirm` updated to the `token_hash` contract.
+- **Tests (+31):** template (7), sender (5), preview route (4), route branches
+  (8 — enumeration-safety, rate limit, verify/update/signOut order, bad token,
+  weak password), and the two forms (3 + 4 — happy-dom + react-dom/client,
+  mocked `fetch`/`next-navigation`/`sonner`, no `@testing-library`). Verified:
+  `yarn lint` + **1140** tests + `yarn build` green.
+- **Scope:** business only (admin pass deferred). **Prod step:** verify a Resend
+  sending domain, set `RESEND_API_KEY` + `EMAIL_FROM`.
+- **Review hardening (react-doctor + api-doctor):** reset-link base is now
+  **fail-closed** on `NEXT_PUBLIC_APP_URL` — never derived from the request
+  origin (closes a Host/X-Forwarded-Host reset-link-poisoning → ATO vector); the
+  recovery session is `signOut()`'d on update **failure** too (no lingering
+  authenticated session); the reset email is sent via `after()` post-response so
+  send latency isn't an account-enumeration timing oracle; the sandbox link log
+  is gated to non-production; removed dead `authService.resetPassword*` methods;
+  a11y `role="status"` on the reset-page Suspense fallback. Tests updated (+1
+  fail-closed case; `after()` mocked to run inline).
+
 ## 2026-07-24 — Functional, collapse-aware sidebar search (chore/remove-unecessary-feature)
 
 > Presentational + a pure util. No schema/API/auth. Business sidebar only. Plan

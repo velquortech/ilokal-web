@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { verifySessionAction } from '@/app/(auth)/actions';
-import { useSessionMonitor } from '@/hooks/useSessionMonitor';
+import { useSessionMonitorContext } from '@/providers/SessionMonitorProvider';
 
 /**
  * SessionTracker Component
@@ -18,8 +18,9 @@ import { useSessionMonitor } from '@/hooks/useSessionMonitor';
  * - No sensitive data stored on client (non-httpOnly session cookie removed)
  */
 export function SessionTracker() {
-  // Initialize session monitor (starts periodic verification and activity listeners)
-  useSessionMonitor();
+  // Subscribe to the provider's monitor — do NOT call `useSessionMonitor()`
+  // here, that would start a second poller alongside the provider's.
+  useSessionMonitorContext();
 
   useEffect(() => {
     async function initializeSession() {

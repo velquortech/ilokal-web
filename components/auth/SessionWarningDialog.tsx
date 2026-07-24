@@ -2,8 +2,8 @@
 
 import { useTransition } from 'react';
 import { usePathname } from 'next/navigation';
-import { useSessionMonitor } from '@/hooks/useSessionMonitor';
-import { ROUTES } from '@/config/routeConfig';
+import { useSessionMonitorContext } from '@/providers/SessionMonitorProvider';
+import { loginPathForPathname } from '@/config/routeConfig';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -25,10 +25,11 @@ import { AlertCircle, Clock } from 'lucide-react';
  * Offers options to continue session or logout
  */
 export function SessionWarningDialog() {
-  // Same `useAuth()` instance the monitor uses, so an auto-logout it triggers
-  // also puts THIS dialog's buttons into the busy state.
+  // Reads the provider's SHARED monitor. Calling `useSessionMonitor()` here
+  // would spin up a second, independent one (own poll, own listeners, own
+  // `useAuth`), so an auto-logout it triggered would never reach these buttons.
   const { isExpiring, timeRemaining, refreshSession, logout, isLoggingOut } =
-    useSessionMonitor();
+    useSessionMonitorContext();
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
 
@@ -42,12 +43,7 @@ export function SessionWarningDialog() {
   // for the portal the user is in. A failed sign-out keeps the dialog open with
   // a retry toast (see `useAuth`).
   const handleLogout = () => {
-    const loginPath = pathname?.startsWith('/admin')
-      ? ROUTES.AUTH.ADMIN_LOGIN
-      : pathname?.startsWith('/business')
-        ? ROUTES.AUTH.BUSINESS_LOGIN
-        : ROUTES.AUTH.LOGIN;
-    void logout(loginPath);
+    void logout(loginPathForPathname(pathname));
   };
 
   return (

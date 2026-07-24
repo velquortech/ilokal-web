@@ -105,7 +105,52 @@
     therefore correct but unverifiable at runtime. Marked `⚠️ NOT MOUNTED` in
     each file's header; wiring them up is a follow-up needing QA on the timeout
     values and the 60s polling.
-- Verified: `yarn lint` + **1177** tests + `yarn build` green.
+- **Round-3 review (react-doctor + api-doctor, PR #12):**
+  - **Removed the pointless service-role revoke.** `signOut()` already revokes
+    globally — auth-js defaults to `scope: 'global'` and calls
+    `admin.signOut(accessToken, scope)` internally (`GoTrueClient.js:3191`),
+    and overwrites `Authorization` with whatever JWT is passed
+    (`lib/fetch.js:99`). The round-2 "admin retry" therefore re-sent a
+    byte-identical request and only dragged `SUPABASE_SERVICE_ROLE_KEY` onto a
+    publicly-invocable Server Action path. Deleted; `createServerAdminClient` is
+    no longer imported here.
+  - **`revoked` is now honest.** `error: null` does not prove a revoke: auth-js
+    returns early when there is no session, and swallows 401/403/404. `revoked`
+    now means "a revoke was issued for a real token and auth-js reported no
+    failure" — documented as NOT a hard guarantee. `ok && !revoked` stays the
+    strong signal (browser-local sign-out only).
+  - **Fixed a false claim + a real double-monitor.** `useSessionMonitor` is a
+    plain hook, so every caller gets its own poller, listeners and `useAuth` —
+    `AuthProvider` *and* `SessionTracker` were both calling it, and the round-2
+    comment wrongly claimed the dialog shared an instance. New
+    `providers/SessionMonitorProvider.tsx` owns the single instance;
+    `SessionTracker` + `SessionWarningDialog` consume it via
+    `useSessionMonitorContext()`.
+  - **Role-aware expiry destination.** The three forced auto-logouts hardcoded
+    `/login`. New pure `loginPathForPathname()` (`config/routeConfig.ts`, +4
+    tests) drives both the monitor and the dialog, matching the menus.
+  - **a11y:** `aria-busy` moved off the `role="status"` region onto the
+    container — on the region it tells AT to defer the very announcement the
+    component exists to make, and it never flips to `false`.
+  - **De-brittled the guard test.** It matched concatenated attribute strings
+    (any class reorder broke it) while never asserting the real invariant. Now
+    happy-dom + structural assertions: the placeholders must resolve to a direct
+    child of the `space-y-6` element.
+  - **Right-shaped skeletons:** new `ShopPageSkeleton` (banner + grids, no page
+    header), `TabsPageSkeleton` (tab strip + full-width panel) and
+    `ProfilePageSkeleton` (`lg:grid-cols-3` + its own `p-6`) replace the
+    mismatched `FormPageSkeleton` on shop/settings/profile. Extracted a shared
+    `FormCardSkeleton`.
+  - `SUPABASE_COOKIE_OPTIONS` is `Object.freeze`d (it is spread into every auth
+    cookie write; a stray mutation would downgrade `httpOnly`/`secure`
+    app-wide), and the sign-out test now imports the REAL constants via
+    `importOriginal` instead of asserting against its own copy.
+  - **Known follow-ups, not fixed here:** `app/api/auth/logout/route.ts` is a
+    second, caller-less logout surface still on the bare-`signOut()` pattern
+    (delete or delegate); admin `users`/`account-status` fetch client-side, so
+    their `loading.tsx` only covers the RSC hop and the data wait still shows an
+    empty table.
+- Verified: `yarn lint` + **1180** tests + `yarn build` green.
 
 ## 2026-07-24 — Password reset: MFA (2FA) support + Resend diagnostics (feat/forgot-password)
 

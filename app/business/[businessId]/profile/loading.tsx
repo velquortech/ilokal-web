@@ -1,5 +1,5 @@
-import { FormPageSkeleton } from '@/components/custom/skeletons';
+import { ProfilePageSkeleton } from '@/components/custom/skeletons';
 
 export default function Loading() {
-  return <FormPageSkeleton />;
+  return <ProfilePageSkeleton />;
 }

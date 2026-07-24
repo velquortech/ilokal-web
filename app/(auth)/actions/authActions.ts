@@ -4,7 +4,6 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import {
   createServerSupabaseClient,
-  createServerAdminClient,
   SUPABASE_COOKIE_PREFIX,
   SUPABASE_COOKIE_OPTIONS,
 } from '@/supabase/server';
@@ -323,35 +322,17 @@ async function clearSupabaseAuthCookies(): Promise<void> {
 }
 
 /**
- * Best-effort server-side revoke of a token the cookie client could not revoke.
- *
- * Expiring the cookies only clears THIS browser; the refresh/access tokens stay
- * valid at GoTrue until they expire naturally, so a copied token would still
- * work. The service-role client can revoke them directly.
- *
- * Returns true only when the revoke is confirmed.
- */
-async function revokeTokenAsAdmin(accessToken: string): Promise<boolean> {
-  try {
-    const admin = await createServerAdminClient();
-    const { error } = await admin.auth.admin.signOut(accessToken, 'global');
-    if (!error) return true;
-    console.error('[signOutAction] Admin revoke failed:', error);
-  } catch (error) {
-    console.error('[signOutAction] Admin revoke threw:', error);
-  }
-  return false;
-}
-
-/**
  * The outcome of a sign-out attempt.
  *
  * - `ok` — the browser no longer holds a Supabase session cookie. Only when
  *   this is true may a caller present the user as signed out.
- * - `revoked` — the tokens were confirmed revoked server-side. When `ok` is
- *   true but `revoked` is false the sign-out was browser-local ONLY: any copy
- *   of the token stays usable until it expires. Callers that need a hard
- *   guarantee (e.g. a shared device) must treat that as a partial sign-out.
+ * - `revoked` — a revoke request was issued for a real session token and
+ *   auth-js did not report a failure. It is NOT a hard guarantee: auth-js
+ *   deliberately swallows 401/403/404 from `POST /logout`, so a token that was
+ *   already unknown to GoTrue reports the same as one that was just killed.
+ *   `ok && !revoked` is the strong signal — the sign-out was browser-local
+ *   ONLY, and any copy of the token stays usable until it expires. Treat that
+ *   as a partial sign-out on a shared device.
  */
 type SignOutOutcome = { ok: boolean; revoked: boolean };
 
@@ -366,35 +347,40 @@ type SignOutOutcome = { ok: boolean; revoked: boolean };
  * Never throws — the result flags are the only signal callers branch on.
  */
 export async function signOutAction(): Promise<SignOutOutcome> {
-  let accessToken: string | undefined;
+  let hadSession = false;
 
   try {
     const supabase = await createServerSupabaseClient();
 
-    // Captured BEFORE the revoke attempt: on success the session is gone, and
-    // on failure we need it for the admin fallback below.
+    // `signOut()` already revokes globally (auth-js defaults to
+    // `scope: 'global'` and calls `admin.signOut(accessToken, scope)` under the
+    // hood), so there is no separate "admin retry" worth making — re-issuing it
+    // with the service-role client would send a byte-identical request and only
+    // drag SUPABASE_SERVICE_ROLE_KEY onto this path.
+    //
+    // `error: null` alone does not prove a revoke happened: auth-js returns
+    // early when there is no session at all. Record whether there was one, so
+    // `revoked` distinguishes "nothing to revoke" from "revoke issued".
     const { data } = await supabase.auth.getSession();
-    accessToken = data.session?.access_token;
+    hadSession = Boolean(data.session?.access_token);
 
     // auth-js returns `{ error }`; it does not throw on a failed revoke.
     const { error } = await supabase.auth.signOut();
-    if (!error) return { ok: true, revoked: true };
+    if (!error) return { ok: true, revoked: hadSession };
 
     console.error('[signOutAction] Error signing out:', error);
   } catch (error) {
     console.error('[signOutAction] Error signing out:', error);
   }
 
-  // The cookie client could not revoke. Try the service-role path, then expire
-  // the cookies regardless so this browser cannot keep using the session.
-  const revoked = accessToken ? await revokeTokenAsAdmin(accessToken) : false;
-
+  // The revoke failed. Expire the cookies so this browser cannot keep using the
+  // session — but the tokens themselves stay valid at GoTrue, hence revoked:false.
   try {
     await clearSupabaseAuthCookies();
-    return { ok: true, revoked };
+    return { ok: true, revoked: false };
   } catch (cookieError) {
     console.error('[signOutAction] Failed to clear auth cookies:', cookieError);
-    return { ok: false, revoked };
+    return { ok: false, revoked: false };
   }
 }
 

@@ -15,11 +15,13 @@ function StatusRegion({
   className?: string;
 }) {
   return (
-    <div className={cn('flex flex-1 flex-col', className)}>
+    <div aria-busy="true" className={cn('flex flex-1 flex-col', className)}>
       {/* The live region announces only the label — the placeholders below are
           decorative, so assistive tech skips them instead of traversing dozens
-          of empty boxes. */}
-      <div role="status" aria-busy="true" className="sr-only">
+          of empty boxes. `aria-busy` stays on the CONTAINER: on the live region
+          itself it tells AT to defer the very announcement this exists to make,
+          and it never flips to false (the node unmounts when loading ends). */}
+      <div role="status" className="sr-only">
         Loading…
       </div>
       {/* The layout classes live HERE, not on the parent: Tailwind v4 compiles
@@ -126,19 +128,94 @@ export function DashboardSkeleton() {
   );
 }
 
-/** Header + stacked form fields — for form/settings routes. */
+/** A bordered card of stacked label + input placeholders. */
+function FormCardSkeleton({ fields = 5 }: { fields?: number }) {
+  return (
+    <div className="space-y-5 rounded-xl border p-6">
+      {Array.from({ length: fields }).map((_, i) => (
+        <div key={i} className="space-y-2">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-9 w-full" />
+        </div>
+      ))}
+      <Skeleton className="h-9 w-32" />
+    </div>
+  );
+}
+
+/** Header + one narrow stacked form — for single-form routes. */
 export function FormPageSkeleton({ fields = 5 }: { fields?: number }) {
   return (
     <StatusRegion>
       <PageHeaderSkeleton action={false} />
-      <div className="max-w-2xl space-y-5 rounded-xl border p-6">
-        {Array.from({ length: fields }).map((_, i) => (
-          <div key={i} className="space-y-2">
-            <Skeleton className="h-4 w-28" />
-            <Skeleton className="h-9 w-full" />
-          </div>
+      <div className="max-w-2xl">
+        <FormCardSkeleton fields={fields} />
+      </div>
+    </StatusRegion>
+  );
+}
+
+/**
+ * Header + two-column forms with a side card — matches the profile route
+ * (`lg:grid-cols-3`, forms spanning two columns, status card in the third).
+ * Carries the page's own `p-6` so the fallback→content swap doesn't shift.
+ */
+export function ProfilePageSkeleton() {
+  return (
+    <StatusRegion className="gap-6 p-6">
+      <PageHeaderSkeleton action={false} />
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="flex flex-col gap-6 lg:col-span-2">
+          <FormCardSkeleton fields={4} />
+          <FormCardSkeleton fields={3} />
+        </div>
+        <div className="lg:col-span-1">
+          <Skeleton className="h-64 w-full rounded-xl" />
+        </div>
+      </div>
+    </StatusRegion>
+  );
+}
+
+/**
+ * Header + tab strip + full-width panel — for tabbed routes (business settings).
+ * Full width on purpose: `FormPageSkeleton`'s `max-w-2xl` mismatches a Tabs
+ * surface in both width and structure.
+ */
+export function TabsPageSkeleton({ tabs = 4 }: { tabs?: number }) {
+  return (
+    <StatusRegion className="gap-6 p-6">
+      <PageHeaderSkeleton action={false} />
+      <div className="flex items-center gap-6 border-b pb-3">
+        {Array.from({ length: tabs }).map((_, i) => (
+          <Skeleton key={i} className="h-4 w-24" />
         ))}
-        <Skeleton className="h-9 w-32" />
+      </div>
+      <FormCardSkeleton fields={4} />
+    </StatusRegion>
+  );
+}
+
+/**
+ * Full-bleed banner + spaced content sections — for the public-facing shop
+ * route, which has no page header and is not a form.
+ */
+export function ShopPageSkeleton() {
+  return (
+    <StatusRegion className="pb-8">
+      <Skeleton className="h-56 w-full rounded-xl" />
+      <div className="mt-8 flex flex-1 flex-col space-y-12">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-40 w-full rounded-xl" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-48 w-full rounded-xl" />
+          ))}
+        </div>
+        <Skeleton className="h-40 w-full rounded-xl" />
       </div>
     </StatusRegion>
   );

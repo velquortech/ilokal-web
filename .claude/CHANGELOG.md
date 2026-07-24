@@ -1,5 +1,39 @@
 # Changelog
 
+## 2026-07-24 — Functional, collapse-aware sidebar search (chore/remove-unecessary-feature)
+
+> Presentational + a pure util. No schema/API/auth. Business sidebar only. Plan
+> in `.claude/SIDEBAR_SEARCH.md`.
+
+- **Made the business sidebar search functional.** `GlobalSearch` was a dead
+  `<Input>` (no state/handler). It now filters the nav live, case-insensitive,
+  as you type.
+  - **Scalable core:** `lib/utils/navSearch.ts` — pure
+    `filterNavSections(sections, query)` + `hasNavResults()`. Matches section /
+    item / sub-item titles; parent-match keeps all subs, sub-only keeps matching
+    subs; drops empty items then empty sections; empty/whitespace query is a
+    same-reference passthrough; non-mutating. Adding nav entries needs no search
+    change.
+  - **Wiring:** `BusinessSidebar` lifts a `query` state, renders
+    `filterNavSections(sections, query)`, and shows a muted "No results for …"
+    row (hidden in icon mode) when a non-empty query matches nothing.
+- **Fixed the collapsed-sidebar sliver.** In `collapsible="icon"` mode the
+  full-width input rendered at icon width, leaving a clipped sliver.
+  `GlobalSearch` is now collapse-aware via `useSidebar()`: expanded → labelled
+  `searchbox` + leading icon + clear (✕) button; collapsed (desktop) → an
+  icon-only `SidebarMenuButton` (tooltip "Search") that expands the sidebar and
+  focuses the field on click (pending-focus effect, since the input is unmounted
+  at click time). Mobile drawer unaffected.
+- **Tests (+16):** `lib/utils/__tests__/navSearch.test.ts` (+11 — match rules,
+  section-drop, passthrough identity, non-mutation, `hasNavResults`) and
+  `components/custom/__tests__/GlobalSearch.test.tsx` (+5 — expanded searchbox,
+  typing→onChange, clear button, collapsed icon, click→`onOpenChange(true)`).
+  The component test is the repo's **first** DOM-render test: driven by
+  `react-dom/client` + happy-dom (opted in per-file via `@vitest-environment`)
+  rather than `@testing-library/react` — its peer `@testing-library/dom` isn't
+  installed and the stack is frozen. Every other test keeps the `node` env.
+- Verified: `yarn lint` + **1110** tests + `yarn build` green.
+
 ## 2026-07-24 — Responsive modals + remove non-functional OAuth (chore/remove-unecessary-feature)
 
 > No schema, API, or auth change — presentational + a dead-UI removal. Plan +

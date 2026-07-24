@@ -164,6 +164,30 @@ field. Rules for any new modal:
 
 Plan + full audit: `.claude/MODAL_RESPONSIVE.md`.
 
+## Sidebar Search
+
+The business sidebar search (`components/custom/GlobalSearch.tsx`) filters the
+nav, and adapts to the collapsible-icon sidebar:
+
+- **Filtering is a pure function** — `filterNavSections(sections, query)` in
+  `lib/utils/navSearch.ts` (case-insensitive title match over sections + items +
+  sub-items). The sidebar lifts the `query` state and renders the filtered
+  sections; adding nav entries needs no search change. Never hardcode a
+  searchable-item list.
+- **`GlobalSearch` is controlled** (`{ value, onChange }`) and collapse-aware via
+  `useSidebar()`: expanded → labelled `searchbox` + clear button; collapsed
+  (`state === 'collapsed' && !isMobile`) → an icon-only `SidebarMenuButton` that
+  expands the sidebar and focuses the field on click. Any sidebar-level field
+  that must survive icon-collapse follows this shape — never leave a full-width
+  input to render at icon width (it clips).
+- Show a "No results" row when a non-empty query matches nothing
+  (`group-data-[collapsible=icon]:hidden`).
+- Tests: `lib/utils/__tests__/navSearch.test.ts` (pure filter) +
+  `components/custom/__tests__/GlobalSearch.test.tsx` (render/interaction —
+  `react-dom/client` + happy-dom, no `@testing-library`).
+
+Plan: `.claude/SIDEBAR_SEARCH.md`.
+
 ## Multi-Step Forms
 
 Follow the `registration-form-provider.tsx` pattern:

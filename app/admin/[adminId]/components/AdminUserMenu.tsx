@@ -1,6 +1,6 @@
 'use client';
 
-import { LogOut, ChevronsUpDown } from 'lucide-react';
+import { LogOut, Loader2, ChevronsUpDown } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +14,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { SidebarMenuButton } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useUser } from '@/providers/UserContext';
+import { ROUTES } from '@/config/routeConfig';
 
 function initialsFromName(name?: string | null): string {
   if (!name) return 'AD';
@@ -26,7 +27,7 @@ function initialsFromName(name?: string | null): string {
 }
 
 export function AdminUserMenu() {
-  const { logout } = useAuth();
+  const { logout, isLoggingOut } = useAuth();
   const user = useUser();
   const isMobile = useIsMobile();
 
@@ -75,10 +76,24 @@ export function AdminUserMenu() {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="text-destructive focus:text-destructive"
-          onClick={logout}
+          disabled={isLoggingOut}
+          // Keep the menu open so the busy state is visible during sign-out.
+          onSelect={(e) => {
+            e.preventDefault();
+            void logout(ROUTES.AUTH.ADMIN_LOGIN);
+          }}
         >
-          <LogOut className="mr-2 h-4 w-4" />
-          Log out
+          {isLoggingOut ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Signing out…
+            </>
+          ) : (
+            <>
+              <LogOut className="mr-2 h-4 w-4" />
+              Log out
+            </>
+          )}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

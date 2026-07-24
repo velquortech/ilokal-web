@@ -1,8 +1,9 @@
 'use client';
 
 import { useTransition } from 'react';
-import { useSessionMonitor } from '@/hooks/useSessionMonitor';
-import { logoutAction } from '@/app/(auth)/actions';
+import { usePathname } from 'next/navigation';
+import { useSessionMonitorContext } from '@/providers/SessionMonitorProvider';
+import { loginPathForPathname } from '@/config/routeConfig';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -17,11 +18,19 @@ import { AlertCircle, Clock } from 'lucide-react';
 /**
  * SessionWarningDialog Component
  *
+ * ⚠️ NOT MOUNTED — reachable only through `AuthProvider`, which nothing renders.
+ * See the note in `providers/AuthProvider.tsx`.
+ *
  * Displays when user's session is about to expire
  * Offers options to continue session or logout
  */
 export function SessionWarningDialog() {
-  const { isExpiring, timeRemaining, refreshSession } = useSessionMonitor();
+  // Reads the provider's SHARED monitor. Calling `useSessionMonitor()` here
+  // would spin up a second, independent one (own poll, own listeners, own
+  // `useAuth`), so an auto-logout it triggered would never reach these buttons.
+  const { isExpiring, timeRemaining, refreshSession, logout, isLoggingOut } =
+    useSessionMonitorContext();
+  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
 
   const handleContinue = () => {
@@ -30,16 +39,11 @@ export function SessionWarningDialog() {
     });
   };
 
+  // Client-side logout: signs out on the server, then navigates to the login
+  // for the portal the user is in. A failed sign-out keeps the dialog open with
+  // a retry toast (see `useAuth`).
   const handleLogout = () => {
-    // Call logoutAction which will redirect after signing out
-    // The server action's redirect() throws an error that Next.js handles internally
-    logoutAction().catch((error) => {
-      // Redirect errors are expected and handled by Next.js
-      // Only log actual runtime errors
-      if (!error?.message?.includes('NEXT_REDIRECT')) {
-        console.error('[SessionWarningDialog] Logout error:', error);
-      }
-    });
+    void logout(loginPathForPathname(pathname));
   };
 
   return (
@@ -75,12 +79,16 @@ export function SessionWarningDialog() {
         </div>
 
         <DialogFooter className="gap-3">
-          <Button onClick={handleLogout} disabled={isPending} variant="outline">
-            Logout
+          <Button
+            onClick={handleLogout}
+            disabled={isPending || isLoggingOut}
+            variant="outline"
+          >
+            {isLoggingOut ? 'Signing out…' : 'Logout'}
           </Button>
           <Button
             onClick={handleContinue}
-            disabled={isPending}
+            disabled={isPending || isLoggingOut}
             className="bg-black text-white hover:bg-slate-900"
           >
             {isPending ? 'Processing...' : 'Continue Session'}

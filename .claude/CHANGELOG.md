@@ -1,5 +1,157 @@
 # Changelog
 
+## 2026-07-24 — Logout redirect fix + per-page loading skeletons (feat/forgot-password)
+
+> **Auth-surface change — HIGH risk, needs human approval before merge.** It
+> changes server-side sign-out semantics, adds a new exported Server Action
+> (`signOutAction`) and removes one (`logoutAction`), and now uses the
+> service-role client on the sign-out failure path. **No schema/RLS/migration
+> change**, so nothing to apply to cloud. Plan in `.claude/LOGOUT_LOADING.md`.
+> Applies to **both** business and admin.
+
+- **Fixed: logout didn't redirect until a manual refresh.** `useAuth().logout`
+  called a Server Action that does `redirect()` from a bare dropdown `onClick` —
+  a Server-Action redirect only drives client navigation inside a form/transition,
+  so the cookie cleared but the page stayed put. Reworked to the correct
+  server/client split (see below).
+- **Server/client navigation split (codified):** server-side flows navigate with
+  `redirect()` (`next/navigation`); client-side flows use `useRouter().push()` +
+  `router.refresh()`. New redirect-less `signOutAction()` does the server sign-out
+  only; the client `useAuth().logout(redirectTo)` awaits it, then
+  `router.push(redirectTo)` + `router.refresh()` (drops the cached authed RSC
+  tree so Back can't show stale content). The redirecting `logoutAction` /
+  `redirectByRole` stay as the server-side primitive. **No `window.location`.**
+- **Role-based logout destination:** business `UserMenu` →
+  `/login/business`, admin `AdminUserMenu` → `/login/admin` (each passes its
+  path to the shared hook; hook default = `/login`). Both menus show a
+  `Loader2` + "Signing out…" busy state (disabled, menu kept open via
+  `onSelect` + `preventDefault`).
+- **Per-page loading skeletons (both dashboards):** new
+  `components/custom/skeletons.tsx` (`DashboardSkeleton`, `TablePageSkeleton`,
+  `FormPageSkeleton` + pieces, each a `role="status"`/`aria-busy` region with an
+  sr-only label). 11 route-level `loading.tsx` files: business + admin roots
+  (dashboard), the table routes (product-catalogues/coupons/redeemed-coupons/
+  branches; businesses/users/account-status), and settings (form). Sidebar +
+  header persist; the skeleton fills the layout's padded content area — so page
+  navigation shows a matching skeleton instead of a frozen frame.
+- **Tests:** `useAuth` unit (7), menu integration (4 — open the Radix dropdown,
+  select "Log out", assert the role login + the busy state), `signOutAction`
+  server-side (5), skeleton render (3).
+- **Review hardening (react-doctor + api-doctor, PR #12):**
+  - **`signOutAction` no longer swallows a failed sign-out.** auth-js *returns*
+    `{ error }` rather than throwing, and on a non-401/403/404 failure (e.g. a
+    GoTrue 5xx as `AuthRetryableFetchError`) it bails **before** removing the
+    local session — the `sb-*` cookies survived while the UI reported a
+    completed logout. The action now inspects `{ error }`, falls back to
+    expiring every `sb-*` cookie itself (covers chunked `.0`/`.1`), and returns
+    `{ ok: boolean }`. `ok` is true only when the browser is guaranteed to hold
+    no session. `logoutAction` now delegates to it (no duplicated body), so the
+    same safety net covers the redirecting path.
+  - **`useAuth` branches on the result:** navigates only on `ok`; otherwise
+    stays put with a retry toast instead of showing a login page over a live
+    session (the login pages have no authenticated-session guard).
+  - **`push` → `replace`**, so the protected URL leaves the history stack, and
+    **dropped the bare `router.refresh()`** — it fired against the route the
+    client router still considered current (the authed page), whose layout
+    answers with its own `redirect()` and could race the navigation. Both
+    dashboard layouts are cookie-dynamic, so their RSC payloads aren't reused.
+  - **`isLoggingOut` can no longer stick:** `useState` + `finally` for the
+    server phase, `useTransition().isPending` for the navigation phase.
+  - **Completed the fix at the remaining callers:** `useSessionMonitor` (×3)
+    and `SessionWarningDialog` still called the redirecting `logoutAction()`
+    from an effect/handler — the exact "cookie clears, no navigation" pattern
+    this entry fixes. Both now go through `useAuth().logout()`.
+  - **Skeleton coverage gaps:** added `loading.tsx` for `business/[businessId]/
+    profile` + `shop` (form) and `admin/[adminId]/branches` (table) — they were
+    inheriting the root **dashboard** skeleton from the segment above.
+  - **a11y:** `role="status"` now wraps only the sr-only label; the decorative
+    placeholders are `aria-hidden` (AT no longer traverses dozens of empty
+    boxes).
+- **Round-2 review (react-doctor + api-doctor, PR #12):**
+  - **Fixed a regression the round-1 a11y rewrite introduced.** Tailwind v4
+    compiles `space-y-*` to `:where(& > :not(:last-child))` — DOM direct
+    children only. The new `aria-hidden` wrapper was `display:contents`, so the
+    skeleton blocks became grandchildren and matched nothing: **every skeleton
+    rendered with zero vertical gap**. Spacing now lives on the wrapper that
+    directly contains the blocks; a render test asserts it so it can't regress
+    silently.
+  - **`signOutAction` no longer claims more than it delivers.** Expiring cookies
+    only clears *this browser* — the tokens stay valid at GoTrue. It now retries
+    the revoke via `createServerAdminClient().auth.admin.signOut(token,
+    'global')` before falling back, and returns `{ ok, revoked }`: `ok` = the
+    browser holds no session, `revoked` = confirmed server-side. `ok && !revoked`
+    is a browser-local-only sign-out.
+  - **Deleted `logoutAction`** — zero callers after the round-1 migration, and
+    every `'use server'` export is a live callable endpoint. Its `{ok}`-ignoring
+    redirect was also inconsistent with the new contract.
+  - **Session-expiry auto-logout now forces the navigation.** `logout(path,
+    { force: true })` for the three known-invalid-session branches in
+    `useSessionMonitor` — staying put protected nothing and re-fired the retry
+    toast every 60s tick. The toast also gained a stable id
+    (`logout-failed`) per the repo's one-Toaster convention.
+  - **`SessionWarningDialog` shares the monitor's `useAuth()` instance** (it was
+    creating a second, so an auto-logout left its buttons enabled), and picks
+    its login destination from `usePathname()` instead of always `/login`.
+  - **Cookie constants deduped:** `SUPABASE_COOKIE_PREFIX` +
+    `SUPABASE_COOKIE_OPTIONS` exported from `supabase/server.ts` and used by
+    both the write path and the clear path — a future `domain`/`name` change on
+    one side can no longer silently turn the fallback into a no-op.
+  - **Skeleton coverage:** added `loading.tsx` for `branches/create` and
+    `branches/[branchId]` (they were flashing a *table* skeleton).
+  - **⚠️ Documented dead surface:** `AuthProvider`, `SessionTracker`,
+    `SessionWarningDialog`, `useSessionMonitor` and `config/sessionConfig.ts`
+    have **zero mount sites** — role-based session timeouts and the expiry
+    warning do not run in production. The logout migration in those files is
+    therefore correct but unverifiable at runtime. Marked `⚠️ NOT MOUNTED` in
+    each file's header; wiring them up is a follow-up needing QA on the timeout
+    values and the 60s polling.
+- **Round-3 review (react-doctor + api-doctor, PR #12):**
+  - **Removed the pointless service-role revoke.** `signOut()` already revokes
+    globally — auth-js defaults to `scope: 'global'` and calls
+    `admin.signOut(accessToken, scope)` internally (`GoTrueClient.js:3191`),
+    and overwrites `Authorization` with whatever JWT is passed
+    (`lib/fetch.js:99`). The round-2 "admin retry" therefore re-sent a
+    byte-identical request and only dragged `SUPABASE_SERVICE_ROLE_KEY` onto a
+    publicly-invocable Server Action path. Deleted; `createServerAdminClient` is
+    no longer imported here.
+  - **`revoked` is now honest.** `error: null` does not prove a revoke: auth-js
+    returns early when there is no session, and swallows 401/403/404. `revoked`
+    now means "a revoke was issued for a real token and auth-js reported no
+    failure" — documented as NOT a hard guarantee. `ok && !revoked` stays the
+    strong signal (browser-local sign-out only).
+  - **Fixed a false claim + a real double-monitor.** `useSessionMonitor` is a
+    plain hook, so every caller gets its own poller, listeners and `useAuth` —
+    `AuthProvider` *and* `SessionTracker` were both calling it, and the round-2
+    comment wrongly claimed the dialog shared an instance. New
+    `providers/SessionMonitorProvider.tsx` owns the single instance;
+    `SessionTracker` + `SessionWarningDialog` consume it via
+    `useSessionMonitorContext()`.
+  - **Role-aware expiry destination.** The three forced auto-logouts hardcoded
+    `/login`. New pure `loginPathForPathname()` (`config/routeConfig.ts`, +4
+    tests) drives both the monitor and the dialog, matching the menus.
+  - **a11y:** `aria-busy` moved off the `role="status"` region onto the
+    container — on the region it tells AT to defer the very announcement the
+    component exists to make, and it never flips to `false`.
+  - **De-brittled the guard test.** It matched concatenated attribute strings
+    (any class reorder broke it) while never asserting the real invariant. Now
+    happy-dom + structural assertions: the placeholders must resolve to a direct
+    child of the `space-y-6` element.
+  - **Right-shaped skeletons:** new `ShopPageSkeleton` (banner + grids, no page
+    header), `TabsPageSkeleton` (tab strip + full-width panel) and
+    `ProfilePageSkeleton` (`lg:grid-cols-3` + its own `p-6`) replace the
+    mismatched `FormPageSkeleton` on shop/settings/profile. Extracted a shared
+    `FormCardSkeleton`.
+  - `SUPABASE_COOKIE_OPTIONS` is `Object.freeze`d (it is spread into every auth
+    cookie write; a stray mutation would downgrade `httpOnly`/`secure`
+    app-wide), and the sign-out test now imports the REAL constants via
+    `importOriginal` instead of asserting against its own copy.
+  - **Known follow-ups, not fixed here:** `app/api/auth/logout/route.ts` is a
+    second, caller-less logout surface still on the bare-`signOut()` pattern
+    (delete or delegate); admin `users`/`account-status` fetch client-side, so
+    their `loading.tsx` only covers the RSC hop and the data wait still shows an
+    empty table.
+- Verified: `yarn lint` + **1180** tests + `yarn build` green.
+
 ## 2026-07-24 — Password reset: MFA (2FA) support + Resend diagnostics (feat/forgot-password)
 
 > Auth-surface change — review before merge. No schema/migration. Plan in

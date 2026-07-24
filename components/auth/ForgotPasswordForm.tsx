@@ -59,6 +59,7 @@ export default function ForgotPasswordForm() {
   if (submittedEmail) {
     return (
       <motion.div
+        role="status"
         className="w-full max-w-sm space-y-6"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}

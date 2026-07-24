@@ -12,6 +12,8 @@ export const ROUTES = {
     ADMIN_LOGIN: '/login/admin',
     BUSINESS_LOGIN: '/login/business',
     SIGNUP: '/signup',
+    FORGOT_PASSWORD: '/forgot-password',
+    RESET_PASSWORD: '/reset-password',
   },
 
   // Dashboard/Protected routes by role
@@ -30,6 +32,7 @@ export const ROUTES = {
       LOGIN: '/api/auth/login',
       SIGNUP: '/api/auth/signup',
       LOGOUT: '/api/auth/logout',
+      RESET_PASSWORD: '/api/auth/reset-password',
     },
     UPLOAD: '/api/upload',
     ADMIN_BASE: '/api/admin',

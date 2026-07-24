@@ -144,6 +144,25 @@ export type ResetPasswordConfirmInput = z.infer<
   typeof resetPasswordConfirmSchema
 >;
 
+/**
+ * Step 2 of a reset for an MFA-enabled user: the recovery session (from step 1's
+ * token_hash) is already established via cookies, so this carries only the new
+ * password + the 6-digit TOTP code used to elevate the session to AAL2.
+ */
+export const resetPasswordMfaSchema = z.object({
+  password: z
+    .string({ message: 'Password is required' })
+    .min(6, 'Password must be at least 6 characters')
+    .max(100, 'Password must not exceed 100 characters')
+    .refine(
+      validatePasswordStrength,
+      'Password must contain uppercase, lowercase, and numbers',
+    ),
+  code: z.string().regex(/^\d{6}$/, 'Enter the 6-digit code'),
+});
+
+export type ResetPasswordMfaInput = z.infer<typeof resetPasswordMfaSchema>;
+
 /** Client-side form schema for the set-new-password page (adds confirm match). */
 export const resetPasswordFormSchema = z
   .object({

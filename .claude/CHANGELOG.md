@@ -1,5 +1,44 @@
 # Changelog
 
+## 2026-07-24 — Password reset: MFA (2FA) support + Resend diagnostics (feat/forgot-password)
+
+> Auth-surface change — review before merge. No schema/migration. Plan in
+> `.claude/MFA_RESET.md`.
+
+- **Fixed: MFA-enabled users couldn't reset their password.** After the recovery
+  OTP the session is at **AAL1**, and Supabase forbids `updateUser({password})`
+  below **AAL2** when MFA is enrolled (`401 insufficient_aal`) — our route mapped
+  that to a generic 500, so the reset silently failed. Reproduced in SQL (enroll
+  TOTP → recovery → update → `insufficient_aal`).
+- **Two-step confirm** (`POST /api/auth/reset-password`):
+  - Step 1 `{ token_hash, password }` → `verifyOtp` → check
+    `getAuthenticatorAssuranceLevel()`. MFA user (`nextLevel==='aal2' &&
+    current!=='aal2'`) → return `{ mfaRequired: true }` and **keep** the AAL1
+    recovery session (no `updateUser`/`signOut`). Non-MFA → unchanged
+    (`updateUser`→`signOut`). Defensive `insufficient_aal` net also returns
+    `mfaRequired`.
+  - Step 2 `{ password, code }` (no token) → reuses the recovery-session cookie
+    → `listFactors` (factor id derived **server-side**, never client-sent) →
+    `challengeAndVerify` (AAL1→AAL2) → `updateUser` → `signOut`. No factor/
+    session → `400 SESSION_EXPIRED`; wrong code → `400 INVALID_CODE` (session
+    kept for retry). **Confirmed** the `verifyOtp` recovery cookie round-trips
+    across the two requests (runtime probe) — so no continuation token needed.
+  - `resetPasswordMfaSchema` (`password` + 6-digit `code`) added.
+- **Form** (`ResetPasswordForm`): two-step — the password step swaps to a
+  "Two-factor authentication" 6-digit code step on `mfaRequired`, carries the
+  validated password, and posts `{ password, code }`; wrong code is inline +
+  retryable. Non-MFA path unchanged.
+- **Resend diagnostics:** `sendResetEmail` now logs Resend's response **body**
+  on failure (was only the status), so a prod `403` shows the actual cause
+  (e.g. unverified sending domain) in the Vercel logs. (Diagnosed a live prod
+  `403` = `EMAIL_FROM` domain `ilokal.shop` not yet verified in Resend.)
+- **Tests (+11):** route MFA branches (7 — step-1 `mfaRequired`/safety-net,
+  step-2 verify/wrong-code/no-session, weak-password/malformed-code) + form
+  two-step (2). Validated end-to-end against the running route with a real TOTP
+  enrollment. Verified: `yarn lint` + **1151** tests + `yarn build` green.
+- **Known follow-up:** a user who loses BOTH password and TOTP is locked out
+  (no backup codes) — needs an admin "reset MFA" path. Out of scope here.
+
 ## 2026-07-24 — Business forgot-password flow (Resend + token-hash) (chore/remove-unecessary-feature)
 
 > Auth-surface change — **review before merge**. No schema/migration. Plan in

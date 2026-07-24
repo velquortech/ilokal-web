@@ -30,6 +30,20 @@ import type { User } from '@/lib/types';
 
 type LoginStep = 'credentials' | 'mfa';
 
+/**
+ * A successful server-action `redirect()` throws a Next.js redirect error — the
+ * reliable marker is `digest` starting with "NEXT_REDIRECT" (message may be
+ * empty across the client boundary). Match on digest first, message as a fallback.
+ */
+function isRedirectError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const digest = (error as { digest?: unknown }).digest;
+  if (typeof digest === 'string' && digest.startsWith('NEXT_REDIRECT'))
+    return true;
+  const message = (error as { message?: unknown }).message;
+  return typeof message === 'string' && message.includes('NEXT_REDIRECT');
+}
+
 export default function BusinessLoginForm() {
   const [serverError, setServerError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -67,8 +81,7 @@ export default function BusinessLoginForm() {
 
         await redirectByRole(response.user.role, response.businessId);
       } catch (error) {
-        if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-          return;
+        if (isRedirectError(error)) return;
         setServerError(
           error instanceof Error
             ? error.message
@@ -95,14 +108,17 @@ export default function BusinessLoginForm() {
       // Keep the button in its loading state through the redirect —
       // redirectByRole navigates to the dashboard (a couple of seconds), so we
       // intentionally do NOT clear mfaLoading on success; the component unmounts
-      // on navigation.
-      if (pendingUser)
-        await redirectByRole(pendingUser.role, pendingBusinessId);
+      // on navigation. The session is elevated to AAL2 at this point, so always
+      // navigate — fall back to the business role so a missing pendingUser can't
+      // strand the spinner.
+      await redirectByRole(
+        pendingUser?.role ?? 'business_owner',
+        pendingBusinessId,
+      );
     } catch (error) {
       // redirectByRole throws NEXT_REDIRECT on success — let navigation proceed
       // (leave the loading state on). Any other error stops the spinner.
-      if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-        return;
+      if (isRedirectError(error)) return;
       setMfaError(
         error instanceof Error ? error.message : 'Verification failed',
       );

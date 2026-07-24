@@ -5,6 +5,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -186,8 +187,11 @@ export function AddCouponDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="h-200 overflow-auto sm:max-w-xl">
-        <form onSubmit={handleSubmit(onSubmit)}>
+      <DialogContent className="overflow-hidden sm:max-w-xl">
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="flex min-h-0 flex-1 flex-col gap-4"
+        >
           <DialogHeader>
             <DialogTitle>Add Coupon or Deal</DialogTitle>
             <DialogDescription>
@@ -195,7 +199,7 @@ export function AddCouponDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="mt-4 space-y-4">
+          <DialogBody className="space-y-4">
             {/* Promotion Type Toggle */}
             <Field>
               <FieldLabel>Type</FieldLabel>
@@ -494,9 +498,9 @@ export function AddCouponDialog({
             {serverError && (
               <p className="text-destructive text-sm">{serverError}</p>
             )}
-          </div>
+          </DialogBody>
 
-          <DialogFooter className="mt-6">
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"

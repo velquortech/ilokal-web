@@ -130,6 +130,40 @@ import { Label } from '@/components/ui/label';
 
 Never render a raw `<input>` — always use the shadcn `<Input>` primitive wrapped in `<Field>`.
 
+## Dialogs / Modals
+
+The base `Dialog` primitive (`components/ui/dialog.tsx`) caps every modal to the
+viewport: `DialogContent` is a scrollable flex column with
+`max-h-[calc(100dvh-2rem)]`, `max-w-[calc(100%-2rem)]`, responsive padding
+(`p-4 sm:p-6`), and scroll-padding so the mobile keyboard can't hide a focused
+field. Rules for any new modal:
+
+- **Never set a fixed height** (`h-200`, `h-[80vh]`, …) on `DialogContent`. Use
+  the base `max-h` and let content drive the height. A grep test
+  (`components/ui/__tests__/dialog.contract.test.ts`) fails the build if you do.
+- **Never set `min-w-*`** on `DialogContent` — `min-width` beats the base
+  `max-width` and clips narrow screens. Use `sm:max-w-*` to widen instead.
+- **Long forms** → pinned header + scrolling body + pinned footer. Put the
+  scroll region in `<DialogBody>` and add `overflow-hidden` to `DialogContent`
+  so only the body scrolls (header/footer stay put):
+
+  ```tsx
+  <DialogContent className="overflow-hidden sm:max-w-lg">
+    <form className="flex min-h-0 flex-1 flex-col gap-4" onSubmit={…}>
+      <DialogHeader>…</DialogHeader>
+      <DialogBody className="space-y-4">{/* fields */}</DialogBody>
+      <DialogFooter>{/* actions */}</DialogFooter>
+    </form>
+  </DialogContent>
+  ```
+
+- **Short dialogs** (confirms, a few fields) need none of this — the base
+  primitive already scrolls the whole dialog if it ever grows.
+- **Multi-column layouts** collapse to one column below `sm`
+  (`flex-col sm:flex-row`) so they don't squeeze on phones.
+
+Plan + full audit: `.claude/MODAL_RESPONSIVE.md`.
+
 ## Multi-Step Forms
 
 Follow the `registration-form-provider.tsx` pattern:

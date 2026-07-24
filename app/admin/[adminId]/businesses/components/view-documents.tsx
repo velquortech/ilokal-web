@@ -4,6 +4,7 @@ import * as React from 'react';
 import { toast } from 'sonner';
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -54,7 +55,7 @@ export function ViewDocumentsDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent>
+      <DialogContent className="overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -66,36 +67,38 @@ export function ViewDocumentsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {loading ? (
-          <div className="text-muted-foreground flex items-center justify-center gap-2 py-10 text-sm">
-            <Loader2 className="size-4 animate-spin" />
-            Loading documents…
-          </div>
-        ) : available.length > 0 ? (
-          <ul className="divide-border divide-y rounded-lg border">
-            {available.map((doc) => (
-              <li key={doc.key}>
-                <a
-                  href={doc.url ?? '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:bg-accent flex items-center justify-between px-4 py-3 text-sm transition-colors"
-                >
-                  <span className="flex items-center gap-2">
-                    <FileText className="text-muted-foreground size-4" />
-                    {doc.label}
-                  </span>
-                  <ExternalLink className="text-muted-foreground size-4" />
-                </a>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="text-muted-foreground flex flex-col items-center justify-center gap-2 py-10 text-sm">
-            <FileX className="size-6 opacity-40" />
-            No documents submitted
-          </div>
-        )}
+        <DialogBody>
+          {loading ? (
+            <div className="text-muted-foreground flex items-center justify-center gap-2 py-10 text-sm">
+              <Loader2 className="size-4 animate-spin" />
+              Loading documents…
+            </div>
+          ) : available.length > 0 ? (
+            <ul className="divide-border divide-y rounded-lg border">
+              {available.map((doc) => (
+                <li key={doc.key}>
+                  <a
+                    href={doc.url ?? '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:bg-accent flex items-center justify-between px-4 py-3 text-sm transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <FileText className="text-muted-foreground size-4" />
+                      {doc.label}
+                    </span>
+                    <ExternalLink className="text-muted-foreground size-4" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="text-muted-foreground flex flex-col items-center justify-center gap-2 py-10 text-sm">
+              <FileX className="size-6 opacity-40" />
+              No documents submitted
+            </div>
+          )}
+        </DialogBody>
       </DialogContent>
     </Dialog>
   );

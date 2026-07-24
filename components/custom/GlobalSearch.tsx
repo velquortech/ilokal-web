@@ -74,7 +74,7 @@ export function GlobalSearch({
         placeholder={placeholder}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="bg-muted h-9 border-0 pr-8 pl-9 focus-visible:ring-1"
+        className="bg-muted h-9 border-0 pr-8 pl-9 focus-visible:ring-1 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
       />
       {value && (
         <button

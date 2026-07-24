@@ -42,12 +42,14 @@ function post(body: unknown): NextRequest {
   });
 }
 
+type AdminClient = Awaited<ReturnType<typeof createServerAdminClient>>;
+type CookieClient = Awaited<ReturnType<typeof createServerSupabaseClient>>;
+
 function generateLinkMock(result: unknown) {
   const generateLink = vi.fn().mockResolvedValue(result);
   mockAdmin.mockResolvedValue({
     auth: { admin: { generateLink } },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any);
+  } as unknown as AdminClient);
   return generateLink;
 }
 
@@ -63,8 +65,7 @@ function cookieClientMock({
   const signOut = vi.fn().mockResolvedValue({ error: null });
   mockCookie.mockResolvedValue({
     auth: { verifyOtp, updateUser, signOut },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any);
+  } as unknown as CookieClient);
   return { verifyOtp, updateUser, signOut };
 }
 

@@ -85,13 +85,29 @@ export default function BusinessLoginForm() {
     }
     setMfaLoading(true);
     setMfaError('');
-    const result = await verifyMFALoginAction(mfaFactorId, mfaCode);
-    setMfaLoading(false);
-    if (!result.success) {
-      setMfaError(result.error ?? 'Verification failed');
-      return;
+    try {
+      const result = await verifyMFALoginAction(mfaFactorId, mfaCode);
+      if (!result.success) {
+        setMfaError(result.error ?? 'Verification failed');
+        setMfaLoading(false);
+        return;
+      }
+      // Keep the button in its loading state through the redirect —
+      // redirectByRole navigates to the dashboard (a couple of seconds), so we
+      // intentionally do NOT clear mfaLoading on success; the component unmounts
+      // on navigation.
+      if (pendingUser)
+        await redirectByRole(pendingUser.role, pendingBusinessId);
+    } catch (error) {
+      // redirectByRole throws NEXT_REDIRECT on success — let navigation proceed
+      // (leave the loading state on). Any other error stops the spinner.
+      if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
+        return;
+      setMfaError(
+        error instanceof Error ? error.message : 'Verification failed',
+      );
+      setMfaLoading(false);
     }
-    if (pendingUser) await redirectByRole(pendingUser.role, pendingBusinessId);
   }
 
   if (step === 'mfa') {

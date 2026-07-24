@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { verifySessionAction, logoutAction } from '@/app/(auth)/actions';
+import { verifySessionAction } from '@/app/(auth)/actions';
+import { useAuth } from '@/hooks/useAuth';
 import {
   SESSION_CHECK_INTERVAL,
   ACTIVITY_DEBOUNCE_DELAY,
@@ -43,6 +44,9 @@ interface SessionWarning {
  * ```
  */
 export function useSessionMonitor() {
+  // Client-side logout: a Server-Action `redirect()` awaited from an effect or
+  // event handler clears the cookie without navigating (the bug this replaces).
+  const { logout } = useAuth();
   const [sessionWarning, setSessionWarning] = useState<SessionWarning>({
     isExpiring: false,
     timeRemaining: 0,
@@ -106,16 +110,12 @@ export function useSessionMonitor() {
         });
       } else {
         // Session no longer valid, trigger logout
-        try {
-          await logoutAction();
-        } catch {
-          // logoutAction throws NEXT_REDIRECT, which is expected
-        }
+        await logout();
       }
     } catch (error) {
       console.error('[useSessionMonitor] Failed to refresh session:', error);
     }
-  }, []);
+  }, [logout]);
 
   // Set up periodic session verification
   useEffect(() => {
@@ -129,21 +129,13 @@ export function useSessionMonitor() {
       const sessionValid = await verifySessionAction();
 
       if (!sessionValid) {
-        try {
-          await logoutAction();
-        } catch {
-          // logoutAction throws NEXT_REDIRECT, which is expected
-        }
+        await logout();
         return;
       }
 
       // Check if already expired
       if (isSessionExpired(currentExpiration)) {
-        try {
-          await logoutAction();
-        } catch {
-          // logoutAction throws NEXT_REDIRECT, which is expected
-        }
+        await logout();
         return;
       }
 
@@ -163,7 +155,7 @@ export function useSessionMonitor() {
     }, SESSION_CHECK_INTERVAL);
 
     return () => clearInterval(verificationInterval);
-  }, [sessionExpiration]);
+  }, [sessionExpiration, logout]);
 
   // Set up activity listeners to refresh session
   // Refresh is debounced to prevent excessive calls

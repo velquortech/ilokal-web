@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { ROUTES, businessPath } from '@/config/routeConfig';
@@ -297,16 +298,38 @@ export async function redirectByRole(
 }
 
 /**
+ * Expire every Supabase auth cookie on the response.
+ *
+ * Safety net for a failed `auth.signOut()`: auth-js RETURNS an error rather
+ * than throwing, and for a non-401/403/404 failure (e.g. a GoTrue 5xx surfacing
+ * as `AuthRetryableFetchError`) it bails out BEFORE removing the local session —
+ * so the `sb-*` cookies would survive an apparently-successful logout. Clearing
+ * them here guarantees the browser cannot keep using the session even when the
+ * server-side token revoke did not land.
+ *
+ * Covers chunked cookies (`sb-<ref>-auth-token.0`, `.1`, …) via the prefix match.
+ */
+async function clearSupabaseAuthCookies(): Promise<void> {
+  const cookieStore = await cookies();
+  for (const { name } of cookieStore.getAll()) {
+    if (!name.startsWith('sb-')) continue;
+    cookieStore.set(name, '', {
+      maxAge: 0,
+      path: '/',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
+  }
+}
+
+/**
  * Server Action: Handle user logout
  */
 export async function logoutAction(): Promise<void> {
-  try {
-    const supabase = await createServerSupabaseClient();
-    await supabase.auth.signOut();
-  } catch (error) {
-    // Log sign-out errors but do not swallow Next.js redirect behavior.
-    console.error('[logoutAction] Error signing out:', error);
-  }
+  // Same sign-out semantics as `signOutAction` (incl. the cookie safety net);
+  // only the navigation differs.
+  await signOutAction();
 
   // Perform redirect outside of try/catch so the Next.js internal redirect
   // control flow (throws `NEXT_REDIRECT`) is not caught and logged here.
@@ -317,16 +340,38 @@ export async function logoutAction(): Promise<void> {
  * Server Action: sign out WITHOUT redirecting.
  *
  * The redirect-less counterpart to `logoutAction` — clears the Supabase session
- * (cookies) and returns. Client callers own the navigation (`useRouter().push`
- * + `router.refresh()`) so it can be role-specific and reliable from an
- * event handler; server-initiated flows keep using `logoutAction`/`redirectByRole`.
+ * (cookies) and reports whether it actually succeeded. Client callers own the
+ * navigation (`useRouter().replace`) so it can be role-specific and reliable
+ * from an event handler; server-initiated flows keep using
+ * `logoutAction`/`redirectByRole`.
+ *
+ * Never throws — the result flag is the single signal callers branch on.
+ *
+ * `ok` is true only when the browser is guaranteed to no longer hold a Supabase
+ * session (the revoke succeeded, or it failed and we expired the `sb-*` cookies
+ * ourselves). `false` means the session may still be live, so the caller MUST
+ * NOT present the user as signed out.
  */
-export async function signOutAction(): Promise<void> {
+export async function signOutAction(): Promise<{ ok: boolean }> {
   try {
     const supabase = await createServerSupabaseClient();
-    await supabase.auth.signOut();
+    // auth-js returns `{ error }`; it does not throw on a failed revoke.
+    const { error } = await supabase.auth.signOut();
+    if (!error) return { ok: true };
+
+    console.error('[signOutAction] Error signing out:', error);
   } catch (error) {
     console.error('[signOutAction] Error signing out:', error);
+  }
+
+  // Revoke failed — fall back to expiring the cookies so the session cannot be
+  // reused from this browser.
+  try {
+    await clearSupabaseAuthCookies();
+    return { ok: true };
+  } catch (cookieError) {
+    console.error('[signOutAction] Failed to clear auth cookies:', cookieError);
+    return { ok: false };
   }
 }
 

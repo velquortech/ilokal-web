@@ -1,7 +1,12 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { createServerSupabaseClient } from '@/supabase/server';
+import { cookies } from 'next/headers';
+import {
+  createServerSupabaseClient,
+  SUPABASE_COOKIE_PREFIX,
+  SUPABASE_COOKIE_OPTIONS,
+} from '@/supabase/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { ROUTES, businessPath } from '@/config/routeConfig';
 import { User } from '@/lib/types/user';
@@ -297,20 +302,86 @@ export async function redirectByRole(
 }
 
 /**
- * Server Action: Handle user logout
+ * Expire every Supabase auth cookie on the response.
+ *
+ * Safety net for a failed `auth.signOut()`: auth-js RETURNS an error rather
+ * than throwing, and for a non-401/403/404 failure (e.g. a GoTrue 5xx surfacing
+ * as `AuthRetryableFetchError`) it bails out BEFORE removing the local session —
+ * so the `sb-*` cookies would survive an apparently-successful logout.
+ *
+ * Covers chunked cookies (`sb-<ref>-auth-token.0`, `.1`, …) and the PKCE
+ * `-code-verifier` via the prefix match. Deletion matches on name + domain +
+ * path, so the attributes are reused from the write path.
  */
-export async function logoutAction(): Promise<void> {
+async function clearSupabaseAuthCookies(): Promise<void> {
+  const cookieStore = await cookies();
+  for (const { name } of cookieStore.getAll()) {
+    if (!name.startsWith(SUPABASE_COOKIE_PREFIX)) continue;
+    cookieStore.set(name, '', { ...SUPABASE_COOKIE_OPTIONS, maxAge: 0 });
+  }
+}
+
+/**
+ * The outcome of a sign-out attempt.
+ *
+ * - `ok` — the browser no longer holds a Supabase session cookie. Only when
+ *   this is true may a caller present the user as signed out.
+ * - `revoked` — a revoke request was issued for a real session token and
+ *   auth-js did not report a failure. It is NOT a hard guarantee: auth-js
+ *   deliberately swallows 401/403/404 from `POST /logout`, so a token that was
+ *   already unknown to GoTrue reports the same as one that was just killed.
+ *   `ok && !revoked` is the strong signal — the sign-out was browser-local
+ *   ONLY, and any copy of the token stays usable until it expires. Treat that
+ *   as a partial sign-out on a shared device.
+ */
+type SignOutOutcome = { ok: boolean; revoked: boolean };
+
+/**
+ * Server Action: sign out WITHOUT redirecting.
+ *
+ * Clears the Supabase session and reports what it actually achieved. Client
+ * callers own the navigation (`useRouter().replace`) so it can be role-specific
+ * and reliable from an event handler — a Server-Action `redirect()` awaited
+ * from an `onClick` clears the cookie without navigating.
+ *
+ * Never throws — the result flags are the only signal callers branch on.
+ */
+export async function signOutAction(): Promise<SignOutOutcome> {
+  let hadSession = false;
+
   try {
     const supabase = await createServerSupabaseClient();
-    await supabase.auth.signOut();
+
+    // `signOut()` already revokes globally (auth-js defaults to
+    // `scope: 'global'` and calls `admin.signOut(accessToken, scope)` under the
+    // hood), so there is no separate "admin retry" worth making — re-issuing it
+    // with the service-role client would send a byte-identical request and only
+    // drag SUPABASE_SERVICE_ROLE_KEY onto this path.
+    //
+    // `error: null` alone does not prove a revoke happened: auth-js returns
+    // early when there is no session at all. Record whether there was one, so
+    // `revoked` distinguishes "nothing to revoke" from "revoke issued".
+    const { data } = await supabase.auth.getSession();
+    hadSession = Boolean(data.session?.access_token);
+
+    // auth-js returns `{ error }`; it does not throw on a failed revoke.
+    const { error } = await supabase.auth.signOut();
+    if (!error) return { ok: true, revoked: hadSession };
+
+    console.error('[signOutAction] Error signing out:', error);
   } catch (error) {
-    // Log sign-out errors but do not swallow Next.js redirect behavior.
-    console.error('[logoutAction] Error signing out:', error);
+    console.error('[signOutAction] Error signing out:', error);
   }
 
-  // Perform redirect outside of try/catch so the Next.js internal redirect
-  // control flow (throws `NEXT_REDIRECT`) is not caught and logged here.
-  redirect(ROUTES.AUTH.LOGIN);
+  // The revoke failed. Expire the cookies so this browser cannot keep using the
+  // session — but the tokens themselves stay valid at GoTrue, hence revoked:false.
+  try {
+    await clearSupabaseAuthCookies();
+    return { ok: true, revoked: false };
+  } catch (cookieError) {
+    console.error('[signOutAction] Failed to clear auth cookies:', cookieError);
+    return { ok: false, revoked: false };
+  }
 }
 
 /**

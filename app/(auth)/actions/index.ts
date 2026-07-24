@@ -5,7 +5,7 @@ export {
   signupAction,
   signupFormAction,
   redirectByRole,
-  logoutAction,
+  signOutAction,
   verifySessionAction,
 } from './authActions';
 

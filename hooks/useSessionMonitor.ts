@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { verifySessionAction, logoutAction } from '@/app/(auth)/actions';
+import { usePathname } from 'next/navigation';
+import { verifySessionAction } from '@/app/(auth)/actions';
+import { useAuth } from '@/hooks/useAuth';
+import { loginPathForPathname } from '@/config/routeConfig';
 import {
   SESSION_CHECK_INTERVAL,
   ACTIVITY_DEBOUNCE_DELAY,
@@ -19,6 +22,10 @@ interface SessionWarning {
 
 /**
  * Hook to monitor session expiration
+ *
+ * ⚠️ NOT MOUNTED — its only consumers (`AuthProvider`, `SessionTracker`,
+ * `SessionWarningDialog`) have zero render sites. See the note in
+ * `providers/AuthProvider.tsx`.
  *
  * Features:
  * - Periodically verifies session is still valid with server
@@ -43,6 +50,18 @@ interface SessionWarning {
  * ```
  */
 export function useSessionMonitor() {
+  // Client-side logout: a Server-Action `redirect()` awaited from an effect or
+  // event handler clears the cookie without navigating (the bug this replaces).
+  // `logout`/`isLoggingOut` are re-exported below so a consumer can drive the
+  // same busy state — but note this hook is per-call: every component that
+  // calls it gets its OWN monitor (own poll, own listeners). Call it once and
+  // share the result via `SessionMonitorProvider`; never call it twice in a
+  // mounted tree.
+  const { logout, isLoggingOut } = useAuth();
+  // Expiry sends the user to the login for the portal they were in, matching
+  // the role-based destination the menus use.
+  const pathname = usePathname();
+  const loginPath = loginPathForPathname(pathname);
   const [sessionWarning, setSessionWarning] = useState<SessionWarning>({
     isExpiring: false,
     timeRemaining: 0,
@@ -105,17 +124,15 @@ export function useSessionMonitor() {
           timeRemaining: timeoutMinutes,
         });
       } else {
-        // Session no longer valid, trigger logout
-        try {
-          await logoutAction();
-        } catch {
-          // logoutAction throws NEXT_REDIRECT, which is expected
-        }
+        // Session already known-invalid — force the navigation. Staying put
+        // would park the user on a protected page with a dead session and
+        // re-fire the retry toast on every tick.
+        await logout(loginPath, { force: true });
       }
     } catch (error) {
       console.error('[useSessionMonitor] Failed to refresh session:', error);
     }
-  }, []);
+  }, [logout, loginPath]);
 
   // Set up periodic session verification
   useEffect(() => {
@@ -128,22 +145,15 @@ export function useSessionMonitor() {
       // Check session validity with server
       const sessionValid = await verifySessionAction();
 
+      // Both branches below are known-invalid sessions — force (see above).
       if (!sessionValid) {
-        try {
-          await logoutAction();
-        } catch {
-          // logoutAction throws NEXT_REDIRECT, which is expected
-        }
+        await logout(loginPath, { force: true });
         return;
       }
 
       // Check if already expired
       if (isSessionExpired(currentExpiration)) {
-        try {
-          await logoutAction();
-        } catch {
-          // logoutAction throws NEXT_REDIRECT, which is expected
-        }
+        await logout(loginPath, { force: true });
         return;
       }
 
@@ -163,7 +173,7 @@ export function useSessionMonitor() {
     }, SESSION_CHECK_INTERVAL);
 
     return () => clearInterval(verificationInterval);
-  }, [sessionExpiration]);
+  }, [sessionExpiration, logout, loginPath]);
 
   // Set up activity listeners to refresh session
   // Refresh is debounced to prevent excessive calls
@@ -188,5 +198,7 @@ export function useSessionMonitor() {
     timeRemaining: sessionWarning.timeRemaining,
     sessionExpiration,
     refreshSession,
+    logout,
+    isLoggingOut,
   };
 }

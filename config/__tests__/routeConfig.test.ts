@@ -10,6 +10,8 @@ import {
   adminUsersPath,
   adminBranchesPath,
   adminAccountStatusPath,
+  loginPathForPathname,
+  ROUTES,
   businessRedeemedCouponsPath,
 } from '../routeConfig';
 
@@ -61,5 +63,28 @@ describe('admin per-page helpers', () => {
     expect(adminAccountStatusPath(ADMIN_ID)).toBe(
       `/admin/${ADMIN_ID}/account-status`,
     );
+  });
+});
+
+describe('loginPathForPathname', () => {
+  it('sends an admin page to the admin login', () => {
+    expect(loginPathForPathname(`/admin/${ADMIN_ID}/users`)).toBe(
+      ROUTES.AUTH.ADMIN_LOGIN,
+    );
+  });
+
+  it('sends a business page to the business login', () => {
+    expect(loginPathForPathname('/business/biz-1/coupons')).toBe(
+      ROUTES.AUTH.BUSINESS_LOGIN,
+    );
+  });
+
+  it('falls back to the generic login outside the dashboards', () => {
+    expect(loginPathForPathname('/home')).toBe(ROUTES.AUTH.LOGIN);
+  });
+
+  it('falls back to the generic login for a missing pathname', () => {
+    expect(loginPathForPathname(null)).toBe(ROUTES.AUTH.LOGIN);
+    expect(loginPathForPathname(undefined)).toBe(ROUTES.AUTH.LOGIN);
   });
 });

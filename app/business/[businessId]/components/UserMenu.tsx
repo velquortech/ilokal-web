@@ -7,6 +7,7 @@ import {
   FileText,
   HelpCircle,
   LogOut,
+  Loader2,
   ChevronsUpDown,
 } from 'lucide-react';
 import {
@@ -24,10 +25,10 @@ import { SidebarMenuButton } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useUser } from '@/providers/UserContext';
 import { useBusinessShop } from '@/providers/BusinessProvider';
-import { businessPath } from '@/config/routeConfig';
+import { businessPath, ROUTES } from '@/config/routeConfig';
 
 export function UserMenu() {
-  const { logout } = useAuth();
+  const { logout, isLoggingOut } = useAuth();
   const user = useUser();
   const isMobile = useIsMobile();
   const { business } = useBusinessShop();
@@ -107,10 +108,24 @@ export function UserMenu() {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="text-destructive focus:text-destructive"
-          onClick={logout}
+          disabled={isLoggingOut}
+          // Keep the menu open so the busy state is visible during sign-out.
+          onSelect={(e) => {
+            e.preventDefault();
+            void logout(ROUTES.AUTH.BUSINESS_LOGIN);
+          }}
         >
-          <LogOut className="mr-2 h-4 w-4" />
-          Log out
+          {isLoggingOut ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Signing out…
+            </>
+          ) : (
+            <>
+              <LogOut className="mr-2 h-4 w-4" />
+              Log out
+            </>
+          )}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -1,43 +1,37 @@
 /**
- * Authentication API Route - Reset Password
+ * Authentication API Route — Reset Password (business web flow)
  *
- * POST /api/auth/reset-password - Password reset request
+ * POST /api/auth/reset-password
  *
- * This endpoint initiates the password reset flow. In production, this would:
- * 1. Accept email address
- * 2. Send password reset email with magic link
- * 3. User clicks link in email
- * 4. Link contains token to verify identity
- * 5. User can then set new password
+ * Two branches, distinguished by the body:
  *
- * Request body (for initiating reset):
- * {
- *   email: string
- * }
+ * 1. Request  { email }
+ *    - Mint a recovery link with the service-role admin client
+ *      (`auth.admin.generateLink`, type 'recovery') — this does NOT send.
+ *    - Send our own branded email via Resend (or, with no RESEND_API_KEY, log
+ *      the link locally — see `sendResetEmail`).
+ *    - ALWAYS returns a generic success, even for a non-existent email, so the
+ *      endpoint can't be used to enumerate accounts.
  *
- * Request body (for setting new password with token):
- * {
- *   token: string,
- *   newPassword: string
- * }
+ * 2. Confirm  { token_hash, password }
+ *    - `verifyOtp({ token_hash, type: 'recovery' })` establishes a short-lived
+ *      recovery session (cookie), then `updateUser({ password })` sets the new
+ *      password, then `signOut()` so the recovery session can't linger.
  *
- * Response on success (200):
- * {
- *   success: true,
- *   message: "Password reset email sent" / "Password reset successfully"
- * }
- *
- * Response on error:
- * {
- *   success: false,
- *   error: { code: string, message: string }
- * }
+ * No raw Supabase error text is returned to the client (SEC-5).
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/supabase/server';
+import { NextRequest, NextResponse, after } from 'next/server';
+import {
+  createServerSupabaseClient,
+  createServerAdminClient,
+} from '@/supabase/server';
 import { checkAuthRateLimit } from '@/app/api/helpers/auth-rate-limit';
-import { z } from 'zod';
+import { sendResetEmail } from '@/app/api/emails/sendResetEmail';
+import {
+  resetPasswordRequestSchema,
+  resetPasswordConfirmSchema,
+} from '@/lib/validation/auth';
 
 type ApiResponse<T = unknown> = {
   success: boolean;
@@ -45,26 +39,26 @@ type ApiResponse<T = unknown> = {
   error?: { code: string; message: string };
 };
 
-// Validation schemas
-const resetRequestSchema = z.object({
-  email: z.string().email('Invalid email address'),
-});
+const GENERIC_REQUEST_MESSAGE =
+  'If an account exists with that email, a reset link has been sent.';
 
-const resetConfirmSchema = z.object({
-  token: z.string().min(1, 'Token is required'),
-  newPassword: z.string().min(6, 'Password must be at least 6 characters'),
-});
+function jsonError(
+  code: string,
+  message: string,
+  status: number,
+): NextResponse {
+  return NextResponse.json<ApiResponse>(
+    { success: false, error: { code, message } },
+    { status },
+  );
+}
 
-/**
- * POST /api/auth/reset-password
- * Initiate password reset or confirm with token
- */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
 
-    // Throttle reset abuse (email enumeration / reset-mail spam). IP-keyed
-    // always; account-keyed on the request branch where an email is present.
+    // Throttle reset abuse (enumeration / reset-mail spam). IP-keyed always;
+    // account-keyed on the request branch where an email is present.
     const limited = checkAuthRateLimit(
       request,
       'reset',
@@ -72,118 +66,127 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
     if (limited) return limited;
 
-    // Check if this is a reset request or confirmation
-    if (body.token) {
-      // Confirm password reset with token
-      const validation = resetConfirmSchema.safeParse(body);
-      if (!validation.success) {
-        return NextResponse.json<ApiResponse>(
-          {
-            success: false,
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: validation.error.issues[0]?.message || 'Invalid input',
-            },
-          },
-          { status: 400 },
+    // ---- Confirm branch -------------------------------------------------
+    if (body?.token_hash) {
+      const parsed = resetPasswordConfirmSchema.safeParse(body);
+      if (!parsed.success) {
+        return jsonError(
+          'VALIDATION_ERROR',
+          parsed.error.issues[0]?.message || 'Invalid input',
+          400,
         );
       }
 
-      const { newPassword } = validation.data;
+      const { token_hash, password } = parsed.data;
       const supabase = await createServerSupabaseClient();
 
-      // Update password using token
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
+      // Establish the recovery session from the emailed token hash.
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        token_hash,
+        type: 'recovery',
+      });
+      if (verifyError) {
+        console.error(
+          '[API] reset-password confirm — verifyOtp error:',
+          verifyError.message,
+        );
+        return jsonError(
+          'INVALID_TOKEN',
+          'This reset link is invalid or has expired. Please request a new one.',
+          400,
+        );
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        password,
       });
 
-      if (error) {
+      // verifyOtp established a full recovery session — always tear it down
+      // before returning (success OR failure), so a failed update can't leave a
+      // working authenticated session with the password unchanged.
+      await supabase.auth.signOut();
+
+      if (updateError) {
         console.error(
-          '[API] POST /api/auth/reset-password - Update error:',
-          error.message,
+          '[API] reset-password confirm — updateUser error:',
+          updateError.message,
         );
-        return NextResponse.json<ApiResponse>(
-          {
-            success: false,
-            error: {
-              code: 'INTERNAL_ERROR',
-              message: 'Failed to reset password',
-            },
-          },
-          { status: 500 },
-        );
+        return jsonError('INTERNAL_ERROR', 'Failed to reset password.', 500);
       }
 
       return NextResponse.json<ApiResponse>(
-        {
-          success: true,
-          data: { message: 'Password reset successfully' },
-        },
-        { status: 200 },
-      );
-    } else {
-      // Initiate password reset email
-      const validation = resetRequestSchema.safeParse(body);
-      if (!validation.success) {
-        return NextResponse.json<ApiResponse>(
-          {
-            success: false,
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: validation.error.issues[0]?.message || 'Invalid input',
-            },
-          },
-          { status: 400 },
-        );
-      }
-
-      const { email } = validation.data;
-      const supabase = await createServerSupabaseClient();
-
-      // Request password reset email
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password-confirm`,
-      });
-
-      if (error) {
-        console.error(
-          '[API] POST /api/auth/reset-password - Email error:',
-          error.message,
-        );
-        // Don't reveal if email exists or not (security)
-        return NextResponse.json<ApiResponse>(
-          {
-            success: true,
-            data: {
-              message:
-                'If an account exists with that email, a reset link has been sent',
-            },
-          },
-          { status: 200 },
-        );
-      }
-
-      return NextResponse.json<ApiResponse>(
-        {
-          success: true,
-          data: {
-            message: 'Password reset email sent. Please check your inbox.',
-          },
-        },
+        { success: true, data: { message: 'Password reset successfully.' } },
         { status: 200 },
       );
     }
-  } catch (error) {
-    console.error('[API] POST /api/auth/reset-password - Error:', error);
+
+    // ---- Request branch -------------------------------------------------
+    const parsed = resetPasswordRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return jsonError(
+        'VALIDATION_ERROR',
+        parsed.error.issues[0]?.message || 'Invalid input',
+        400,
+      );
+    }
+
+    const { email } = parsed.data;
+
+    // Fail closed: the reset link's host must come from our own configured URL,
+    // never from the request (a spoofed Host/X-Forwarded-Host header would
+    // poison the emailed link — reset-link poisoning → account takeover). If the
+    // base URL isn't configured, log and return the generic 200 without sending.
+    const base = process.env.NEXT_PUBLIC_APP_URL;
+    if (!base) {
+      console.error(
+        '[API] reset-password request — NEXT_PUBLIC_APP_URL not set; cannot build a safe reset link. Not sending.',
+      );
+      return NextResponse.json<ApiResponse>(
+        { success: true, data: { message: GENERIC_REQUEST_MESSAGE } },
+        { status: 200 },
+      );
+    }
+
+    try {
+      const admin = await createServerAdminClient();
+      const { data, error } = await admin.auth.admin.generateLink({
+        type: 'recovery',
+        email,
+      });
+
+      const tokenHash = data?.properties?.hashed_token;
+      if (error || !tokenHash) {
+        // Non-existent email or admin failure — do NOT reveal it.
+        if (error) {
+          console.error(
+            '[API] reset-password request — generateLink error:',
+            error.message,
+          );
+        }
+      } else {
+        const url = `${base}/reset-password?token_hash=${encodeURIComponent(
+          tokenHash,
+        )}&type=recovery`;
+        // Send AFTER the response so the send latency can't be used as a
+        // timing oracle to distinguish existing vs non-existent accounts
+        // (existing accounts would otherwise wait on the Resend POST).
+        // `sendResetEmail` never throws.
+        after(() => sendResetEmail({ to: email, url }));
+      }
+    } catch (err) {
+      console.error(
+        '[API] reset-password request — unexpected error:',
+        err instanceof Error ? err.message : err,
+      );
+    }
+
+    // Generic response regardless of outcome (no enumeration).
     return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'An unexpected error occurred',
-        },
-      },
-      { status: 500 },
+      { success: true, data: { message: GENERIC_REQUEST_MESSAGE } },
+      { status: 200 },
     );
+  } catch (error) {
+    console.error('[API] POST /api/auth/reset-password — Error:', error);
+    return jsonError('INTERNAL_ERROR', 'An unexpected error occurred.', 500);
   }
 }

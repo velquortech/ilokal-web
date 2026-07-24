@@ -220,7 +220,7 @@ export default function BusinessLoginForm() {
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
                 <Link
-                  href="/forgot-password"
+                  href={ROUTES.AUTH.FORGOT_PASSWORD}
                   className="text-muted-foreground hover:text-foreground text-xs transition-colors"
                   tabIndex={-1}
                 >

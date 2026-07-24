@@ -112,6 +112,59 @@ export function validateLoginData(data: unknown) {
 }
 
 // ============================================================================
+// PASSWORD RESET VALIDATION
+// ============================================================================
+
+/** Request a reset email. */
+export const resetPasswordRequestSchema = z.object({
+  email: z.email('Please enter a valid email address'),
+});
+
+export type ResetPasswordRequestInput = z.infer<
+  typeof resetPasswordRequestSchema
+>;
+
+/**
+ * Confirm a reset with the emailed token hash + a new password. Password rules
+ * mirror signup (min 6, max 100, upper/lower/number).
+ */
+export const resetPasswordConfirmSchema = z.object({
+  token_hash: z.string().min(1, 'Reset token is required'),
+  password: z
+    .string({ message: 'Password is required' })
+    .min(6, 'Password must be at least 6 characters')
+    .max(100, 'Password must not exceed 100 characters')
+    .refine(
+      validatePasswordStrength,
+      'Password must contain uppercase, lowercase, and numbers',
+    ),
+});
+
+export type ResetPasswordConfirmInput = z.infer<
+  typeof resetPasswordConfirmSchema
+>;
+
+/** Client-side form schema for the set-new-password page (adds confirm match). */
+export const resetPasswordFormSchema = z
+  .object({
+    password: z
+      .string({ message: 'Password is required' })
+      .min(6, 'Password must be at least 6 characters')
+      .max(100, 'Password must not exceed 100 characters')
+      .refine(
+        validatePasswordStrength,
+        'Password must contain uppercase, lowercase, and numbers',
+      ),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
+
+export type ResetPasswordFormInput = z.infer<typeof resetPasswordFormSchema>;
+
+// ============================================================================
 // UPDATE PROFILE VALIDATION (Current User)
 // Used when user updates their own profile
 // ============================================================================

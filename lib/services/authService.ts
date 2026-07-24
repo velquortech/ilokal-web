@@ -52,14 +52,6 @@ const authService = {
     return await http.post('/auth/signup', data);
   },
 
-  async resetPasswordRequest(email: string) {
-    return await http.post('/auth/reset-password', { email });
-  },
-
-  async resetPasswordConfirm(token: string, newPassword: string) {
-    return await http.post('/auth/reset-password', { token, newPassword });
-  },
-
   async verifyEmail() {
     return await http.post('/auth/verify-email');
   },

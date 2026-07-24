@@ -22,6 +22,8 @@ make clean            # Full teardown (stops Supabase, deletes .env)
 | `NEXT_PUBLIC_SUPABASE_TOKEN`              | Used to name the auth cookie (`sb-<token>-auth-token`) |
 | `NEXT_IMAGE_PUBLIC_URL`                   | Supabase Storage base URL for `next/image`             |
 | `SUPABASE_DB_URL`                         | Direct Postgres connection string (server only)        |
+| `RESEND_API_KEY`                          | Resend API key for transactional email (password reset). **Server only.** Sandbox unless it's a real `re_…` key — any other value (placeholder/unset) logs the reset link to the console instead of sending. |
+| `EMAIL_FROM`                              | From-address for reset emails; a Resend-verified sending domain (local-part need not be a real mailbox). Server only. Missing ⇒ log fallback. |
 
 ## Database migrations
 

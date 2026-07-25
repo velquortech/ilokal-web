@@ -1,5 +1,57 @@
 # Changelog
 
+## 2026-07-25 — Anonymous /explore now renders the LANDING's nav (feat/explore-public-nav)
+
+> Presentational. No schema, API, or auth change.
+
+- **The two public surfaces were two designs.** /explore carried app chrome
+  (Home · Explore · Nearby · Deals, shadcn buttons) even for a first-time
+  visitor with no account, while / and /home carried the marketing nav. The
+  explore header now delegates to the **actual `LandingNav`** whenever there is
+  no session, so the two surfaces are one design by construction rather than by
+  a maintained resemblance.
+- **Why this needed a refactor rather than an import.** `LandingNav` is a 1:1
+  port of the design export: styled entirely from CSS custom properties and
+  from `.wrap`/`.navlinks`/`.navactions`/`.hamb`, every rule scoped under
+  `[data-ilokal-root]` in `landing.css`. Dropped into another page it renders
+  with no layout and no palette. Three changes made it embeddable:
+  - **`tokens.ts`** — extracted `themeTokens(dark)` (the custom properties
+    alone) from `rootStyle(dark)` (properties **+** whole-page layout:
+    `min-height:100vh`, `overflow-x:hidden`, page background). Embedding one
+    piece of landing chrome no longer drags page layout with it.
+  - **`LandingNav`** — now takes `links`, `logoHref`, `actions` and `mobileCta`,
+    every one defaulting to exactly what the landing renders, so `/home` is
+    byte-identical. The brand lockup gained the same `#`-vs-route split the
+    links already had, so a route logo soft-navigates.
+  - **`PublicNav`** (new) — supplies the `data-ilokal-root` wrapper +
+    `themeTokens`, imports `landing.css`, and drives `dark` from **next-themes**
+    rather than page-local state, so the header tracks the theme the rest of
+    /explore is painted with. Passes absolute links (`/home#shoppers`) because a
+    bare `#shoppers` scrolls nowhere off the landing.
+- **`CustomerHeader` is now a session switch:** no user → `PublicNav`; user →
+  the app header (customer: Wallet + avatar menu; owner/admin: Go to dashboard).
+  A signed-in owner never sees "For Businesses", and `/customer/**` — which
+  shares this header — always gets the app set.
+- **Dropped an unshipped intermediate.** A first pass (never committed) had
+  `CustomerHeader` carry two link arrays and a hand-rolled `xl:`/`md:` row
+  pairing to keep six marketing labels from overflowing. `LandingNav` already
+  solves that with its own hamburger overlay below 1100px (`landing.css`), so
+  none of that machinery survives here.
+- **Fixed the logo/nav misalignment** in both the header and the footer. The
+  brand `<Link>` renders an `<a>`, which is `display:inline`: as a flex item its
+  box is a LINE box, so the inherited line-height strut pads the 28px lockup and
+  `items-center` centres that padded box instead of the logo. `flex
+  items-center` on the anchor removes the strut.
+- **Tests:** `CustomerHeader.test.tsx` reworked to the split — anon asserts
+  `[data-ilokal-root]` is present with the landing's label list; signed-in
+  asserts it is absent. Four assertions that described the removed anon chrome
+  (aria-labelled lockup, `sm:inline-flex` CTA, text-based toggle lookup) were
+  retargeted. Verified: `yarn lint` + **1339** tests + `yarn build` green.
+- **Unverified in a browser:** the header now paints from landing tokens
+  (`#FFFFFF`/`#1A1A1A`) while the body below uses app tokens — near-identical,
+  but a seam is possible in dark mode; and there is a one-frame light flash
+  before next-themes resolves (the standard mounted-guard trade-off).
+
 ## 2026-07-25 — Explore ⇄ landing navigation, phases 0–4 (feat/explore-public-nav)
 
 > Mostly presentational + route constants, but **two session-plumbing fixes

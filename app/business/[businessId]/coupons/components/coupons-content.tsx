@@ -106,18 +106,15 @@ export function CouponsContent({
 
       <Card>
         <CardContent className="space-y-2">
-          <div className="inline-flex h-10 w-full justify-between">
-            <div />
-            <div className="inline-flex items-center gap-2">
-              <FilterCoupons
-                selectedStatus={selectedStatus}
-                onStatusChange={handleStatusChange}
-              />
-              <SearchBar
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-              />
-            </div>
+          <div className="flex w-full flex-wrap items-center justify-end gap-2">
+            <FilterCoupons
+              selectedStatus={selectedStatus}
+              onStatusChange={handleStatusChange}
+            />
+            <SearchBar
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
           </div>
           <CouponsTable
             coupons={coupons}

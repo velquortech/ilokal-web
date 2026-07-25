@@ -1010,7 +1010,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      <LandingFooter />
+      <LandingFooter dark={dark} />
     </div>
   );
 }

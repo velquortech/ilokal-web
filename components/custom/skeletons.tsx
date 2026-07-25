@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
  * persist. Each top-level skeleton is a `role="status"` region for a11y.
  */
 
-function StatusRegion({
+export function StatusRegion({
   children,
   className,
 }: {

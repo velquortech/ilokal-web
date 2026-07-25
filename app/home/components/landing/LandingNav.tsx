@@ -56,24 +56,33 @@ export function LandingNav({ dark, onToggleDark }: LandingNavProps) {
               <BrandMark size={30} palette={dark ? 'dark' : 'light'} />
               iLokal
             </a>
-            <span
-              style={s(
-                'display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:999px;background:var(--tint);color:var(--brandhover);font-size:12.5px;font-weight:600;border:1px solid color-mix(in srgb,var(--brand) 22%,transparent);',
-              )}
-            >
-              📍 Made for Iloilo City
-            </span>
+            {/* "Made for Iloilo City" pill removed from the nav row: with the
+                brand mark + the Explore Shops link it pushed the row past the
+                1200px wrap and wrapped the whole header. The hero pill right
+                below carries the same message. */}
           </div>
           <nav className="navlinks">
-            {navLinks.map((l) => (
-              <a
-                key={l.href}
-                href={l.href}
-                style={s('color:var(--text);font-size:15px;font-weight:500;')}
-              >
-                {l.label}
-              </a>
-            ))}
+            {/* Hash anchors stay <a>; route links must be <Link> or every
+                click forces a full document reload. */}
+            {navLinks.map((l) =>
+              l.href.startsWith('#') ? (
+                <a
+                  key={l.href}
+                  href={l.href}
+                  style={s('color:var(--text);font-size:15px;font-weight:500;')}
+                >
+                  {l.label}
+                </a>
+              ) : (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  style={s('color:var(--text);font-size:15px;font-weight:500;')}
+                >
+                  {l.label}
+                </Link>
+              ),
+            )}
           </nav>
           <div className="navactions">
             <button
@@ -121,18 +130,31 @@ export function LandingNav({ dark, onToggleDark }: LandingNavProps) {
             'position:fixed;inset:72px 0 0 0;z-index:49;background:var(--bg);padding:24px;display:flex;flex-direction:column;gap:6px;',
           )}
         >
-          {navLinks.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              onClick={() => setMenuOpen(false)}
-              style={s(
-                'color:var(--text);font-size:20px;font-weight:600;padding:16px 4px;border-bottom:1px solid var(--border);',
-              )}
-            >
-              {l.label}
-            </a>
-          ))}
+          {navLinks.map((l) =>
+            l.href.startsWith('#') ? (
+              <a
+                key={l.href}
+                href={l.href}
+                onClick={() => setMenuOpen(false)}
+                style={s(
+                  'color:var(--text);font-size:20px;font-weight:600;padding:16px 4px;border-bottom:1px solid var(--border);',
+                )}
+              >
+                {l.label}
+              </a>
+            ) : (
+              <Link
+                key={l.href}
+                href={l.href}
+                onClick={() => setMenuOpen(false)}
+                style={s(
+                  'color:var(--text);font-size:20px;font-weight:600;padding:16px 4px;border-bottom:1px solid var(--border);',
+                )}
+              >
+                {l.label}
+              </Link>
+            ),
+          )}
           <Link
             href={ROUTES.BUSINESS.registration}
             onClick={() => setMenuOpen(false)}

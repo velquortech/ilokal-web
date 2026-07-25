@@ -1,5 +1,135 @@
 # Changelog
 
+## 2026-07-25 — Customer portal: public /explore + protected /customer (feat/customer-portal)
+
+> **Big feature — HIGH-risk review surface (auth doors + proxy rules), one
+> LOW-risk schema migration** (`20260725000000_business_rating_summary_rpc.sql`
+> — aggregate-only anon RPC, applied + smoke-tested locally as anon; needs
+> human approval + cloud apply). Everything else rides existing public RLS +
+> anon RPCs — **no other DB change**. (Parity/action plan kept local.)
+
+- **Public discovery (`/explore`, no auth):** business directory (trgm search,
+  category filter, follower counts, **offset pagination** — shareable URLs,
+  exact counts, repo pattern), business profile page (menu via
+  `getProductsPaginated`, live coupons under the access invariant, rating
+  summary via the new `get_business_rating_summary` RPC, follower count,
+  interior gallery, share button reusing `/s/[businessId]`, SEO
+  `generateMetadata`), **branch map** (react-leaflet, client-only dynamic
+  import) with a straight-line **polyline from the visitor's location** +
+  haversine distances (`lib/utils/geo.ts`; geolocation denied ⇒ Iloilo City
+  Proper fallback), `/explore/nearby` (geolocated `nearby_businesses` RPC via
+  the public mobile endpoint, radius picker), `/explore/deals` (`mobile_deals`
+  RPC: featured/flash/all + pagination).
+- **Customer accounts (role `app_user`, same as mobile):** `/login` is now the
+  customer door (was a redirect to the business login) —
+  `CustomerLoginForm` with sanitized `?next=` deep-link back after auth;
+  signup already had the Customer role, its post-signup redirect now lands in
+  the portal (was falling through to `/business`). `redirectByRole`/
+  `ROLE_ROUTES` send `app_user` to `/explore`. Proxy + `protectedRoutes` gate
+  the new `/customer` prefix to `app_user` only; layout re-checks server-side
+  (defense in depth). Sign-out via the existing `useAuth().logout` in the new
+  `CustomerHeader` (BrandLogo, Explore/Nearby/Deals nav, wallet + account
+  menu, mobile nav row).
+- **Redeem + wallet:** `redeemCouponAction` mirrors the mobile route's gate
+  matrix 1:1 (published/window/global-cap/follow-gate/active-dupe/per-user
+  cap, atomic `increment_coupon_redemptions` with rollback on the race, owner
+  notification non-fatal, same user copy — unification into one shared core is
+  a tracked follow-up). Anonymous visitors get an **auth-nudge dialog**
+  (signup/login with `?next=`). `/customer/wallet`: Active/Claimed/Expired
+  tabs, the server-generated 6-char claim code (copyable) and a **live
+  countdown** (`lib/utils/countdown.ts`, urgent style inside 24h).
+- **Follow + updates:** follow/unfollow server actions (RLS self-scoped,
+  idempotent on 23505), profile Follow button, `/customer/following` =
+  followed shops + an Updates feed (posts + new live promos + new products
+  from followed businesses) mirroring the mobile `/updates` bounded-scan
+  merge (offset over the merged set — kept in lockstep with mobile rather
+  than introducing a divergent keyset shape).
+- **Landing links:** "Explore Shops" in the landing nav + the hero primary CTA
+  now routes to `/explore` (replaced the dead `#` "Get the App").
+- **Skeletons:** new customer set (`components/customer/skeletons.tsx` —
+  explore grid, profile, wallet, following) on the shared `StatusRegion` a11y
+  contract; `loading.tsx` for every new route.
+- **Tests (+54):** redeem-action integration matrix (12 — every gate, exact
+  copy, rollback-on-race, follow idempotency), customerQuery units (filters/
+  offset/RPC merge/invariant/wallet filters/feed short-circuit), geo +
+  countdown units (14), protectedRoutes customer rules (4), explore page
+  searchParams passthrough (2). Verified: `yarn lint` + **1244** tests +
+  `yarn build` green; rating RPC smoke-tested in SQL as `anon`.
+- **Known follow-ups:** unify web action + mobile route redeem/updates cores;
+  ratings *submission* on web (SEC-4 gate exists server-side).
+- **Review hardening (react-doctor + api-doctor, PR #14):**
+  - **Unthrottled customer login door closed:** `loginAction` (the Server-
+    Action path both login forms use — never covered by the `/api/auth/*`
+    SEC-8 budgets) now enforces the same per-IP 30/60s + per-account 8/300s
+    budgets itself, generic message, before any auth/DB work.
+  - **Account-state gate on customer mutations:** `requireCustomer` now
+    rejects non-`active`/archived accounts (explore-page Server Actions bypass
+    the proxy's `/customer` status gate, and a live cookie session refreshes
+    indefinitely — role alone wasn't enough). `getCurrentUser` returns
+    `status` + `archived_at`. Plus a per-user 30/60s flood guard on
+    redeem/follow (Server-Action POSTs never enter the proxy limiter).
+  - **Two broken public read paths fixed:** menu images now resolve through
+    `getPublicMenu` (raw in-bucket paths crashed `next/image`), and branch map
+    coordinates come from the `business_branches` RPC (nested PostgREST
+    geography select returns WKB hex, so every pin rendered null).
+  - **Redeem branch validation (web-first, mobile shares the gap):** the
+    branch must belong to the coupon's business, and a branch-scoped coupon
+    only redeems at its branch — closes wrong-branch redemptions the "mirror
+    1:1" framing would have frozen.
+  - **Wallet parity + bounds:** NULL `expires_at` now counts as active /
+    can't be expired (mobile contract), and the wallet reads are `.range()`d
+    (12/page + PaginationBar) instead of unbounded.
+  - **Open-redirect edge closed:** shared `lib/utils/safeNext.ts` also rejects
+    backslash paths (`/\evil.com` normalizes protocol-relative); signup now
+    honors a validated `?next=` for customers and the auth nudge preserves the
+    query string, so the deep-link round-trip works on both doors.
+  - **Correctness/UX:** `mobile_deals` + menu reads moved behind
+    `customerQuery` (no Supabase in page components — repo rule);
+    `getPublicBusinessProfile` wrapped in `React.cache` (generateMetadata +
+    page shared fetch) and typed `NOT_FOUND` vs `LOAD_FAILED` (transient blips
+    no longer 404/deindex healthy shops); updates feed exposes `has_more`
+    (new `FeedPager`) instead of fabricated exact totals from the bounded
+    scan; soft-deleted category names filtered from public embeds; explore
+    search no longer clobbers in-flight typing after the debounce lands;
+    login redirect detection uses the `digest` marker; map geolocation is
+    button-only (no unsolicited permission prompt) and recenters when the
+    position arrives; distinct "couldn't load" vs "empty" states on all
+    customer surfaces; pagination uses `push` (Back walks pages); wallet code
+    a11y via sr-only hint.
+  - **Tests 1244 → 1250** (+ suspended/archived gates, branch-mismatch ×2,
+    per-user rate limit, wallet null-expiry/pagination assertions). Verified:
+    `yarn lint` + **1250** tests + `yarn build` green.
+- **Round-2 review (react-doctor + api-doctor, PR #14):** all nine round-1
+  fixes verified by both reviewers; this round fixed what the hardening itself
+  introduced or half-fixed:
+  - **`safeNext` control-character bypass closed** — the WHATWG parser strips
+    tab/CR/LF before parsing, so `/%09/evil.com` collapsed to
+    protocol-relative `//evil.com`; the validator now rejects `\` and all
+    ASCII control chars (dedicated unit suite added).
+  - **Login rate-limit unified + honest 429:** the Server-Action buckets now
+    share the route's `auth:login:*` keys (alternating doors no longer doubles
+    an attacker's per-account budget), and the limit branch RETURNS a typed
+    `{ rateLimited, message }` instead of throwing (prod Next redacts thrown
+    Server-Action messages; the form now shows the real copy and can tell 429
+    from bad credentials). Admin/business wrappers keep their throwing
+    contract.
+  - **Following page outage≠empty completed:** a failed shops read no longer
+    renders "not following anyone" or unmounts the updates feed — distinct
+    error panel, feed stays. `getFollowedBusinesses` is bounded
+    (`.range(0,199)` + exact count; the "Your shops (N)" label uses the count,
+    so it can't silently lie past the cap).
+  - **Landing nav route links** use `<Link>` (hash anchors stay `<a>`) — the
+    `/explore` entry was forcing full document reloads from both the desktop
+    nav and the mobile menu.
+  - **Redeem treats an archived business's coupons as not found** (the coupon
+    RLS policy only checks `verified`; mobile shares the gap — flagged for the
+    shared-core follow-up), header avatars resolve raw storage paths via
+    `resolvePublicAvatarUrl`, and owners/admins no longer see a permanently
+    disabled Redeem button (hidden, matching FollowButton).
+  - **Tests 1250 → 1256** (safeNext suite, archived-business gate). Verified:
+    `yarn lint` + **1256** tests + `yarn build` green. Migration
+    `20260725000000` still awaits human approval + cloud apply before merge.
+
 ## 2026-07-25 — Brand rollout: "Hablon Weave" logo across the app (fix/table-toolbar-pagination)
 
 > Presentational only — no schema/API/auth. Assets in `public/brand` (v0.2).

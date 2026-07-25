@@ -31,12 +31,27 @@ export async function createServerSupabaseClient() {
         return cookieStore.getAll();
       },
       setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          cookieStore.set(name, value, {
-            ...options,
-            ...SUPABASE_COOKIE_OPTIONS,
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, {
+              ...options,
+              ...SUPABASE_COOKIE_OPTIONS,
+            });
           });
-        });
+        } catch {
+          // Server Components render with a READ-ONLY cookie store: Next throws
+          // "Cookies can only be modified in a Server Action or Route Handler".
+          // auth-js calls setAll whenever it rotates an expiring access token,
+          // so any RSC that touches the session hits this — and the throw
+          // propagated out of getUser(), so getCurrentUser()'s catch turned a
+          // live session into `null` and the page rendered as signed-out.
+          //
+          // Swallowing is the documented @supabase/ssr pattern: the write is
+          // recoverable because `proxy.ts` refreshes the same cookies on a
+          // mutable response for every matched page route. That makes the
+          // matcher load-bearing — a route that reads the session MUST be
+          // matched there, or its token never actually rotates.
+        }
       },
     },
   });

@@ -287,6 +287,13 @@ export const config = {
     '/business/:path+',
     '/customer',
     '/customer/:path+',
+    // Public, but session-aware: the explore layout reads the session to pick
+    // its chrome. Unmatched, nothing here refreshes an expiring token — the
+    // RSC would try to (and cannot) write the rotated cookie itself, and the
+    // visitor silently renders as signed-out. `isProtectedPath` is false for
+    // these paths, so no redirect or role gate applies — refresh only.
+    '/explore',
+    '/explore/:path+',
     '/api/admin',
     '/api/admin/:path+',
     '/api/protected/:path+',

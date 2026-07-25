@@ -1,5 +1,164 @@
 # Changelog
 
+## 2026-07-25 — Anonymous /explore now renders the LANDING's nav (feat/explore-public-nav)
+
+> Presentational. No schema, API, or auth change.
+
+- **The two public surfaces were two designs.** /explore carried app chrome
+  (Home · Explore · Nearby · Deals, shadcn buttons) even for a first-time
+  visitor with no account, while / and /home carried the marketing nav. The
+  explore header now delegates to the **actual `LandingNav`** whenever there is
+  no session, so the two surfaces are one design by construction rather than by
+  a maintained resemblance.
+- **Why this needed a refactor rather than an import.** `LandingNav` is a 1:1
+  port of the design export: styled entirely from CSS custom properties and
+  from `.wrap`/`.navlinks`/`.navactions`/`.hamb`, every rule scoped under
+  `[data-ilokal-root]` in `landing.css`. Dropped into another page it renders
+  with no layout and no palette. Three changes made it embeddable:
+  - **`tokens.ts`** — extracted `themeTokens(dark)` (the custom properties
+    alone) from `rootStyle(dark)` (properties **+** whole-page layout:
+    `min-height:100vh`, `overflow-x:hidden`, page background). Embedding one
+    piece of landing chrome no longer drags page layout with it.
+  - **`LandingNav`** — now takes `links`, `logoHref`, `actions` and `mobileCta`,
+    every one defaulting to exactly what the landing renders, so `/home` is
+    byte-identical. The brand lockup gained the same `#`-vs-route split the
+    links already had, so a route logo soft-navigates.
+  - **`PublicNav`** (new) — supplies the `data-ilokal-root` wrapper +
+    `themeTokens`, imports `landing.css`, and drives `dark` from **next-themes**
+    rather than page-local state, so the header tracks the theme the rest of
+    /explore is painted with. Passes absolute links (`/home#shoppers`) because a
+    bare `#shoppers` scrolls nowhere off the landing.
+- **`CustomerHeader` is now a session switch:** no user → `PublicNav`; user →
+  the app header (customer: Wallet + avatar menu; owner/admin: Go to dashboard).
+  A signed-in owner never sees "For Businesses", and `/customer/**` — which
+  shares this header — always gets the app set.
+- **Dropped an unshipped intermediate.** A first pass (never committed) had
+  `CustomerHeader` carry two link arrays and a hand-rolled `xl:`/`md:` row
+  pairing to keep six marketing labels from overflowing. `LandingNav` already
+  solves that with its own hamburger overlay below 1100px (`landing.css`), so
+  none of that machinery survives here.
+- **Fixed the logo/nav misalignment** in both the header and the footer. The
+  brand `<Link>` renders an `<a>`, which is `display:inline`: as a flex item its
+  box is a LINE box, so the inherited line-height strut pads the 28px lockup and
+  `items-center` centres that padded box instead of the logo. `flex
+  items-center` on the anchor removes the strut.
+- **Tests:** `CustomerHeader.test.tsx` reworked to the split — anon asserts
+  `[data-ilokal-root]` is present with the landing's label list; signed-in
+  asserts it is absent. Four assertions that described the removed anon chrome
+  (aria-labelled lockup, `sm:inline-flex` CTA, text-based toggle lookup) were
+  retargeted. Verified: `yarn lint` + **1339** tests + `yarn build` green.
+- **Unverified in a browser:** the header now paints from landing tokens
+  (`#FFFFFF`/`#1A1A1A`) while the body below uses app tokens — near-identical,
+  but a seam is possible in dark mode; and there is a one-frame light flash
+  before next-themes resolves (the standard mounted-guard trade-off).
+
+## 2026-07-25 — Explore ⇄ landing navigation, phases 0–4 (feat/explore-public-nav)
+
+> Mostly presentational + route constants, but **two session-plumbing fixes
+> ride along** (see the last two bullets): the proxy matcher gains `/explore`
+> and `createServerSupabaseClient` stops throwing on a read-only cookie store.
+> No new migration — `20260725000000` was already committed, just never applied
+> locally. **Cloud is unverified** (no cloud credentials in this env): confirm
+> `20260717093122`, `20260723000000` and `20260725000000` are present on
+> `ilokal-database` before this ships, or `/explore/[businessId]` renders
+> without ratings in production.
+
+- **Fixed: `/explore` had no route back to the landing.** The landing links into
+  `/explore` (`navLinks[0]`), but `CustomerHeader` carried only Explore/Nearby/
+  Deals and its brand lockup pointed at `/explore` — so the browser Back button
+  was the only way out of the public shop surface.
+- **Why not just mount `LandingNav` there:** it is styled entirely from CSS
+  custom properties (`--bg`, `--brand`, …) and class names (`.wrap`,
+  `.navlinks`, `.hamb`) that exist **only** under the landing's
+  `[data-ilokal-root]` wrapper + `landing.css`, so it renders unstyled anywhere
+  else; adding that wrapper to `/explore` would put a second, `useState`-driven
+  theme system on top of the app's `next-themes` tokens; 5 of its 6 links are
+  landing-only hash anchors that no-op off-landing; and it is session-blind, so a
+  signed-in customer would lose the avatar/Wallet/logout menu and be shown a
+  "Log In" button. Chose to extend `CustomerHeader` instead.
+- **Phase 0 — route constants.** New `ROUTES.PUBLIC.LANDING`; it and the
+  no-role fallback `ROUTES.DASHBOARD.HOME` (used by `proxy.ts`,
+  `getCurrentUser`, the auth callback) now derive from one module-level
+  `LANDING_PATH`, so the two names for `/home` can't drift. New
+  `landingSectionPath(section)` + `LandingSection` union — cross-surface anchors
+  must be `/home#about`; a bare `#about` silently scrolls nowhere off the
+  landing, and a typo'd section is now a type error. `landing/data.ts` no longer
+  hardcodes `'/explore'`.
+- **Phase 1 — Home link.** `CustomerHeader.NAV_LINKS` leads with
+  **Home** → the landing, so it appears in the desktop row *and* the `md:hidden`
+  mobile scroll row (both map the same array). Brand lockup destination now
+  depends on who's looking: a signed-in customer's home is the shop feed
+  (`/explore`), everyone else (anon, owner, admin browsing publicly) gets the
+  landing; `aria-label` follows. Active state stays exact-match, so Home never
+  highlights while on explore.
+- **Phase 2 — CTA + theme parity.** The anon explore header now also carries
+  **List Your Business** → `/business/registration` (the landing's primary
+  conversion CTA; `hidden sm:inline-flex` so a 320px row can't overflow), and a
+  `ThemeToggle` sits first in the actions for every visitor — the explore
+  surface previously had no theme control at all. Documented in `tokens.ts` +
+  `LandingNav` that the landing's own toggle is page-local React state: it does
+  not persist, does not follow the OS preference, and neither toggle affects the
+  other's surface. Wiring them together means migrating the landing off its
+  design-export tokens — its own branch.
+- **Phase 3 — the explore surface finally has a footer.** New
+  `components/customer/CustomerFooter.tsx` (server component, Tailwind/shadcn
+  tokens): brand lockup + a labelled `Footer` nav — Home · Explore · Nearby ·
+  Deals · About · List your business — + the copyright line, mounted after
+  `<main>` in `app/explore/layout.tsx` (the layout's `flex-1` main pins it to
+  the viewport bottom on short pages). Written fresh rather than reusing
+  `LandingFooter`, which reads `[data-ilokal-root]` CSS vars and
+  `.wrap`/`.footgrid` from `landing.css` and would have re-imported the whole
+  landing theme system. The About entry goes through `landingSectionPath` and a
+  test asserts no footer href starts with `#`. The protected `/customer/**`
+  layout deliberately did **not** get it — those are logged-in app surfaces.
+- **Phase 4 — landing-side link hygiene.** The landing footer's "Shops" and
+  "Deals" pointed at `#shoppers`/`#deals` — the landing sections that *advertise*
+  the explore surface rather than the surface itself; they now point at
+  `/explore` and `/explore/deals`. `LandingFooter` also rendered every entry as
+  a plain `<a>`, which was harmless while they were all in-page hashes but
+  forces a **full document reload** on a route link. It now mirrors
+  `LandingNav`'s split (hash → `<a>`, route → `<Link>`), with the shared style
+  string extracted so the two branches can't drift.
+- **Tests (+26):** `CustomerHeader.test.tsx` (12 — new file, happy-dom +
+  `react-dom/client` per repo convention, no `@testing-library`),
+  `CustomerFooter.test.tsx` (5 — new file),
+  `landing/__tests__/LandingFooter.test.tsx` (4 — new file; the `next/link` mock
+  tags what it renders, so a future bare-`<a>` route link fails the catch-all
+  case) and `config/__tests__/routeConfig.test.ts` (+5).
+- **Fixed: `/explore` threw "Cookies can only be modified in a Server Action or
+  Route Handler".** Two faults, both load-bearing. (1)
+  `createServerSupabaseClient().setAll` wrote straight into the request cookie
+  store; in an RSC that store is read-only, so auth-js rotating an expiring
+  access token threw — and the throw escaped `getUser()` into
+  `getCurrentUser()`'s catch, which returned `null`, so a **live session
+  rendered as anonymous** (login buttons instead of the avatar menu). Now
+  wrapped in try/catch, the documented `@supabase/ssr` pattern. (2) Swallowing
+  is only safe because `proxy.ts` re-writes those cookies on a mutable
+  response — and `/explore` was **not in the matcher**, so nothing refreshed the
+  token there at all. Added `/explore` + `/explore/:path+`;
+  `isProtectedPath('/explore')` is false, so it takes the refresh path only —
+  no redirect, no role gate, anonymous visitors unaffected.
+- **Fixed: `/explore/[businessId]` logged `[getPublicBusinessProfile rating]
+  {}`.** `get_business_rating_summary` (migration `20260725000000`, committed
+  with the explore feature) had never been applied to the local DB — `pg_proc`
+  had only `business_branches` and `get_follower_counts`. Applied via
+  `make migrate-up`; verified SECURITY DEFINER + pinned `search_path` + anon
+  EXECUTE, and `make generate-types` produced no diff. The rating aggregate is
+  decorative, so the page rendered without stars rather than crashing. The
+  useless `{}` was its own bug: `PostgrestError` carries its fields
+  non-enumerably, so `console.error(err)` hid `PGRST202: Could not find the
+  function …`. New exported `describeDbError()` flattens
+  `code`/`message`/`details`/`hint`, wired into the three RPC error branches in
+  `customerQuery.ts` — the next unapplied migration will name itself.
+- **Tests (+33 total):** the 26 navigation tests above plus
+  `__test__/features/customer/exploreSessionCookies.test.ts` (5 — read-only
+  store doesn't throw, mutable store still writes `httpOnly`, batch abandoned
+  after the first rejection, matcher contains explore, explore stays
+  unprotected) and `describeDbError` (2). **1333** tests + `yarn lint` +
+  `yarn build` green.
+- **Remaining:** the manual viewport/role/theme sweep (320 / 768 / 1280px, anon
+  vs signed-in customer, light + dark), and the cloud migration check above.
+
 ## 2026-07-25 — Sign-in unification: one `/sign-in` door, role-routed (feat/signin-unification)
 
 > **Auth-surface + routing change — HIGH risk, needs human approval before

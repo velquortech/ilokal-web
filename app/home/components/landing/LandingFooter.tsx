@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import Link from 'next/link';
 import { styleFromString as s } from '@/lib/utils/cssStyle';
 import { footerColumns } from './data';
 import { FacebookIcon, InstagramIcon, TikTokIcon } from './icons';
@@ -10,9 +11,16 @@ const socials: { label: string; href: string; Icon: ComponentType }[] = [
   { label: 'TikTok', href: '#', Icon: TikTokIcon },
 ];
 
+const linkStyle = 'font-size:14.5px;color:var(--muted);';
+
 /**
  * Landing footer — presentational, driven by `footerColumns`/`socials`. Reusable
  * on any page rendered inside a `[data-ilokal-root]` theme wrapper.
+ *
+ * Only inside that wrapper: it is styled entirely from the landing's CSS custom
+ * properties (`--border`, `--muted`, …) and `.wrap`/`.footgrid` from
+ * `landing.css`. The explore surface has its own `CustomerFooter` on app tokens
+ * for exactly this reason.
  */
 export function LandingFooter({ dark = false }: { dark?: boolean }) {
   return (
@@ -63,15 +71,19 @@ export function LandingFooter({ dark = false }: { dark?: boolean }) {
                 {col.title}
               </div>
               <div style={s('display:flex;flex-direction:column;gap:11px;')}>
-                {col.links.map((l) => (
-                  <a
-                    key={l.label}
-                    href={l.href}
-                    style={s('font-size:14.5px;color:var(--muted);')}
-                  >
-                    {l.label}
-                  </a>
-                ))}
+                {/* Same split as LandingNav: hash anchors stay <a>; a route
+                    link rendered as <a> would force a full document reload. */}
+                {col.links.map((l) =>
+                  l.href.startsWith('#') ? (
+                    <a key={l.label} href={l.href} style={s(linkStyle)}>
+                      {l.label}
+                    </a>
+                  ) : (
+                    <Link key={l.label} href={l.href} style={s(linkStyle)}>
+                      {l.label}
+                    </Link>
+                  ),
+                )}
               </div>
             </div>
           ))}

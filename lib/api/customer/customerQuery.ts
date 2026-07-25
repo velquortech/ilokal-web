@@ -47,6 +47,35 @@ interface DirectoryRow {
   branches: { id: string; name: string; address: string | null }[] | null;
 }
 
+/**
+ * Make a Supabase error readable in a log line.
+ *
+ * `PostgrestError` carries its fields non-enumerably, so `console.error(err)`
+ * renders `{}` — which is exactly how a missing RPC (an unapplied migration,
+ * PostgREST code `PGRST202`) surfaced as `[getPublicBusinessProfile rating] {}`:
+ * an error report that names no error. Flatten the four fields that identify
+ * the fault instead.
+ */
+export function describeDbError(error: unknown): {
+  code: string;
+  message: string;
+  details?: string;
+  hint?: string;
+} {
+  const e = error as {
+    code?: string;
+    message?: string;
+    details?: string;
+    hint?: string;
+  } | null;
+  return {
+    code: e?.code ?? 'UNKNOWN',
+    message: e?.message ?? String(error),
+    details: e?.details ?? undefined,
+    hint: e?.hint ?? undefined,
+  };
+}
+
 async function getFollowerCountMap(
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
   businessIds: string[],
@@ -56,7 +85,7 @@ async function getFollowerCountMap(
     p_business_ids: businessIds,
   });
   if (error) {
-    console.error('[getFollowerCountMap]', error);
+    console.error('[getFollowerCountMap]', describeDbError(error));
     return new Map();
   }
   const rows = (data ?? []) as {
@@ -225,12 +254,18 @@ export const getPublicBusinessProfile = cache(
 
       if (ratingRes.error) {
         // Aggregate is decorative — log and render without it.
-        console.error('[getPublicBusinessProfile rating]', ratingRes.error);
+        console.error(
+          '[getPublicBusinessProfile rating]',
+          describeDbError(ratingRes.error),
+        );
       }
       const rating = ratingRes.data?.[0];
 
       if (branchesRes.error) {
-        console.error('[getPublicBusinessProfile branches]', branchesRes.error);
+        console.error(
+          '[getPublicBusinessProfile branches]',
+          describeDbError(branchesRes.error),
+        );
       }
       const branches: PublicBranch[] = (
         (branchesRes.data ?? []) as Array<{

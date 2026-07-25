@@ -5,6 +5,13 @@
 > [`.claude/ADMIN_REWORK.md`](.claude/ADMIN_REWORK.md) for parities, phased action
 > items, and the testing plan. Delete that file and this note when finished.
 
+<!-- TEMP: remove when sign-in unification is merged -->
+> **Active work:** Sign-in unification — one `/sign-in` door for customer +
+> business (admin moves to `/sign-in/admin`), role-routed after auth — see
+> [`.claude/SIGNIN_UNIFICATION.md`](.claude/SIGNIN_UNIFICATION.md) for
+> parities, phased action items, and the testing plan. Delete that file and
+> this note when finished.
+
 <!-- TEMP: remove when registration gating is merged -->
 > **Active work:** Registration gating flags (`app_settings`: docs on/off +
 > auto-verify) — see [`.claude/REGISTRATION_GATING.md`](.claude/REGISTRATION_GATING.md).

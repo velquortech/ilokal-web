@@ -16,7 +16,7 @@ This document explains the responsibilities and quick usage examples for the rou
 - Middleware (pages): use `isProtectedPath()` only for redirects and early rejects; rely on static matcher for performance.
 
   Example: in `proxy.ts`:
-  - check `isProtectedPath(request.nextUrl.pathname)` and redirect unauthenticated users to `/login`.
+  - check `isProtectedPath(request.nextUrl.pathname)` and redirect unauthenticated users to `/sign-in`.
 
 - API handlers / Server Actions: call `assertAuthorized(request, { roles: ['admin'] })` at the top of the handler to enforce authentication and roles.
 

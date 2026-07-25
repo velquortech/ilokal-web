@@ -1,5 +1,56 @@
 # Changelog
 
+## 2026-07-25 — Sign-in unification: one `/sign-in` door, role-routed (feat/signin-unification)
+
+> **Auth-surface + routing change — HIGH risk, needs human approval before
+> merge.** No schema migration. Branch cut from `main` (== `develop` HEAD).
+> ⚠️ **Manual pre-merge QA still pending** (needs the local stack + seeded
+> accounts): three-role login matrix, MFA owner, `?next=` round-trip via the
+> auth nudge, password-reset E2E, logout doors, 9-failure 429.
+
+- **One login door.** `/login` (customer) + `/login/business` replaced by a
+  single **`/sign-in`** page — no portal choice; the account's role decides:
+  `app_user` → validated `?next=` deep link else `/explore`; `business_owner`
+  → `/business/[businessId]` (or `/business/registration` when none); `admin`
+  → `/admin`. Admin keeps its own gated door, moved to **`/sign-in/admin`**
+  (`loginAsAdmin` unchanged; its wrong-role copy now points at `/sign-in`).
+  An admin or owner signing in at `/sign-in` is routed, never rejected — the
+  "wrong portal" dead end is gone (`loginAsBusiness` deleted).
+- **Legacy URLs survive:** `next.config.ts` 307s `/login` + `/login/business`
+  → `/sign-in` and `/login/admin` → `/sign-in/admin`, query preserved
+  (`?next=`, `?reset=1`, `?error=`). Deliberately 307 (not 308) until soaked —
+  browsers cache permanent redirects past a rollback; flip later.
+- **`signInAction`** = the existing role-agnostic `loginAction` core (SEC-8
+  shared-bucket rate limits, generic errors, archived/status gates — all
+  unchanged) + `businessId` lookup for `business_owner` only.
+- **`SignInForm`** merges the two old forms: `?next=` via `safeNext`
+  (customer-only), typed 429 rendered distinct from bad credentials, MFA
+  elevation step (now runs for every role — no-op unless a verified TOTP
+  factor is enrolled), password show/hide, Suspense-wrapped `useSearchParams`.
+  Shared `lib/utils/redirectError.ts` (digest-first NEXT_REDIRECT detection);
+  `AdminLoginForm` adopted it — its old message-only check breaks in prod
+  builds where thrown Server-Action messages are redacted.
+- **Route config:** `ROUTES.AUTH.SIGN_IN`/`ADMIN_SIGN_IN`; the three legacy
+  constants **deleted** and all ~26 call sites swept (proxy, `getCurrentUser`
+  ×8, customer layout/pages, auth callback, headers/menus, SignupForm,
+  `useAuth` default, apiClient 401 interceptor, LandingNav, forgot/reset
+  forms). `loginPathForPathname`: admin pages → `/sign-in/admin`, everything
+  else → `/sign-in`. Five literal `'/login'` strings in business pages +
+  DangerZoneTab rewritten to the constants (routeConfig-only rule).
+- **Dead code deleted:** `LoginForm` + `PortalSelector` (zero importers),
+  `CustomerLoginForm` + `BusinessLoginForm` (superseded).
+- **Tests (+14, 1258 → 1272):** `signInAction` unit (businessId per role,
+  rate-limited passthrough before any auth work), `SignInForm` happy-dom
+  matrix (role×`?next=` routing, 429 without navigation, MFA step + wrong
+  code), `isRedirectError` unit, routeConfig door constants +
+  `loginPathForPathname` matrix; ResetPasswordForm asserts `/sign-in?reset=1`.
+- Verified: `yarn lint` + **1272** tests + `yarn build` green; prod-server
+  smoke — `/sign-in` + `/sign-in/admin` 200, legacy paths 307 with query
+  passthrough, unauth `/customer` `/business` `/admin` all redirect to
+  `/sign-in`. Docs swept (`authentication`, `session-management`,
+  `protected-routes`, `caching-strategy`, `architecture`, `folder-structure`,
+  `business-owner-flow`).
+
 ## 2026-07-25 — Customer portal: public /explore + protected /customer (feat/customer-portal)
 
 > **Big feature — HIGH-risk review surface (auth doors + proxy rules), one

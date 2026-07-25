@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-07-25 — Forgot-password "Check your email" panel redesign + working resend (fix/table-toolbar-pagination)
+
+> Presentational + one client-side resend affordance. No API/schema change —
+> `POST /api/auth/reset-password` reused as-is, still enumeration-safe.
+> (Parity/action-item plan kept local, not committed.)
+
+- **Redesigned the confirmation panel to the repo's success-state language**
+  (centered `bg-primary/10` icon circle + centered heading/body, per
+  `application-success-dialog`): it was a left-aligned draft — small icon stuck
+  top-left, no structure, bare inline "try again" text button.
+- **Real resend flow:** bordered "Didn't get the email?" card (spam-folder +
+  spelling hints) with a **Resend email** button that re-POSTs the same email,
+  toasts generic success/failure (stable id `resend-reset-link` per the
+  one-Toaster rule), and runs a **60s cooldown** — started on the initial
+  submit and on every resend, so a fast clicker can't burn the route's
+  per-account rate budget (8/300s). Failure does NOT restart the cooldown
+  (immediate retry allowed). "Use a different email" link returns to the form
+  (replaces the old "try again").
+- **a11y:** `role="status"` now scoped to the static heading/body block only —
+  the cooldown countdown ticks outside it, so AT doesn't re-announce the
+  region every second.
+- **Tests (5 kept/updated + 5 new, happy-dom + react-dom/client + mocked
+  sonner/fake timers):** cooldown disable→enable across the full 60s, resend
+  re-POST + success toast + cooldown restart, resend-failure toast with panel
+  kept, back-to-form link, and the role="status" scoping.
+- Verified: `yarn lint` + **1195** tests + `yarn build` green.
+
 ## 2026-07-25 — Wrap-safe table toolbars + real product-catalogues pagination (main)
 
 > No schema/API/auth change — presentational fixes + one page rewired to the

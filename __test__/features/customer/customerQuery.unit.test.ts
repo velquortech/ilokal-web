@@ -7,6 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
+  describeDbError,
   getBusinessDirectory,
   getPublicCoupons,
   getWalletRedemptions,
@@ -236,5 +237,39 @@ describe('getUpdatesFeed', () => {
       per_page: 10,
       has_more: false,
     });
+  });
+});
+
+describe('describeDbError', () => {
+  it('surfaces the PostgREST code that names a missing RPC', () => {
+    // The real shape: `PostgrestError` keeps these non-enumerable, so logging
+    // the raw error printed `{}` and an unapplied migration looked like a
+    // nameless failure. PGRST202 = "function not found in schema cache".
+    const err = Object.defineProperties(new Error('x'), {
+      code: { value: 'PGRST202', enumerable: false },
+      message: {
+        value:
+          'Could not find the function public.get_business_rating_summary(p_business_ids)',
+        enumerable: false,
+      },
+      hint: {
+        value: 'Perhaps you meant to call another function',
+        enumerable: false,
+      },
+    });
+
+    expect(describeDbError(err)).toEqual({
+      code: 'PGRST202',
+      message:
+        'Could not find the function public.get_business_rating_summary(p_business_ids)',
+      details: undefined,
+      hint: 'Perhaps you meant to call another function',
+    });
+  });
+
+  it('never renders as an empty object, whatever it is handed', () => {
+    expect(JSON.stringify(describeDbError(null))).not.toBe('{}');
+    expect(describeDbError(null).code).toBe('UNKNOWN');
+    expect(describeDbError('boom').message).toBe('boom');
   });
 });

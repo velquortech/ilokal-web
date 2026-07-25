@@ -52,7 +52,7 @@ Complete guide to the authentication and authorization system for iLokal, built 
 ### Login Flow
 
 ```
-1. User navigates to /login
+1. User navigates to /sign-in
         ↓
 2. Enters email and password
         ↓
@@ -93,7 +93,7 @@ Periodic verification (every 60 seconds):
         ↓
 4. If expired:
    ├─ Call logoutAction()
-   ├─ Redirect to /login
+   ├─ Redirect to /sign-in
    └─ Clear session state
         ↓
 5. If valid but expiring soon (within 5 min):
@@ -115,7 +115,7 @@ Periodic verification (every 60 seconds):
 3. logoutAction() on server:
    ├─ Calls Supabase signOut()
    ├─ Clears HTTP-only auth cookie (automatic)
-   ├─ Sets redirect to /login
+   ├─ Sets redirect to /sign-in
    └─ Throws NEXT_REDIRECT (framework handles)
         ↓
 4. User redirected to login page
@@ -421,7 +421,7 @@ NEXT_PUBLIC_SESSION_WARNING_INTERVAL=5
 ### Test Login
 
 ```bash
-1. Navigate to http://localhost:3000/login
+1. Navigate to http://localhost:3000/sign-in
 2. Enter any email/password (or test account)
 3. Verify redirected to dashboard
 4. Check DevTools → Application → Cookies

@@ -10,6 +10,7 @@ import {
   listMFAFactorsAction,
   unenrollMFAAction,
   enrollMFAAction,
+  verifyMFAEnrollmentAction,
 } from '../mfaActions';
 
 const BID = 'biz-00000000-0000-0000-0000-000000000001';
@@ -158,9 +159,15 @@ describe('unenrollMFAAction', () => {
  * Client for the enroll path. `all` feeds the stale-factor cleanup (listFactors
  * exposes unverified factors ONLY via `data.all`; `data.totp` is verified-only).
  */
-function makeEnrollClient(all: unknown[]) {
+function makeEnrollClient(
+  all: unknown[],
+  qrCode = '<?xml version="1.0"?>\n<svg/>',
+) {
   return {
     auth: {
+      getUser: vi
+        .fn()
+        .mockResolvedValue({ data: { user: { id: UID } }, error: null }),
       mfa: {
         listFactors: vi.fn().mockResolvedValue({
           data: { all, totp: [] },
@@ -170,10 +177,7 @@ function makeEnrollClient(all: unknown[]) {
         enroll: vi.fn().mockResolvedValue({
           data: {
             id: 'factor-new',
-            totp: {
-              qr_code: 'data:image/svg+xml;utf-8,<svg/>',
-              secret: 'S3CR3T',
-            },
+            totp: { qr_code: qrCode, secret: 'S3CR3T' },
           },
           error: null,
         }),
@@ -258,5 +262,93 @@ describe('enrollMFAAction', () => {
 
     expect(result.error).toBe('enroll failed');
     expect(result.factorId).toBe('');
+  });
+
+  // GoTrue returns RAW SVG markup, not a URL. Handing it to <img>/next/image
+  // made the browser fetch it as a relative path — the QR request 404'd.
+  it('encodes the raw SVG QR code as a data URL', async () => {
+    const svg =
+      '<?xml version="1.0"?>\n<svg width="207"><rect fill="#000"/></svg>';
+    (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+      makeEnrollClient([], svg),
+    );
+
+    const result = await enrollMFAAction();
+
+    expect(result.qrCode.startsWith('data:image/svg+xml;base64,')).toBe(true);
+    const decoded = Buffer.from(
+      result.qrCode.replace('data:image/svg+xml;base64,', ''),
+      'base64',
+    ).toString('utf-8');
+    expect(decoded).toBe(svg);
+  });
+
+  it('passes an already-encoded data URL through untouched', async () => {
+    const encoded = 'data:image/svg+xml;base64,PHN2Zy8+';
+    (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+      makeEnrollClient([], encoded),
+    );
+
+    const result = await enrollMFAAction();
+
+    expect(result.qrCode).toBe(encoded);
+  });
+
+  it('refuses to enroll without a session', async () => {
+    const client = makeEnrollClient([]);
+    client.auth.getUser.mockResolvedValue({
+      data: { user: null },
+      error: null,
+    });
+    (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+      client,
+    );
+
+    const result = await enrollMFAAction();
+
+    expect(result.error).toMatch(/signed in/i);
+    expect(client.auth.mfa.enroll).not.toHaveBeenCalled();
+  });
+});
+
+// ── verifyMFAEnrollmentAction ─────────────────────────────────────────────────
+
+describe('verifyMFAEnrollmentAction', () => {
+  function makeVerifyClient(user: { id: string } | null, verifyError = null) {
+    return {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user }, error: null }),
+        mfa: {
+          challengeAndVerify: vi.fn().mockResolvedValue({ error: verifyError }),
+        },
+      },
+    };
+  }
+
+  it('verifies the challenge for the enrolled factor', async () => {
+    const client = makeVerifyClient({ id: UID });
+    (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+      client,
+    );
+
+    const result = await verifyMFAEnrollmentAction(FACTOR_ID, '123456');
+
+    expect(result.success).toBe(true);
+    expect(client.auth.mfa.challengeAndVerify).toHaveBeenCalledWith({
+      factorId: FACTOR_ID,
+      code: '123456',
+    });
+  });
+
+  it('refuses to verify without a session', async () => {
+    const client = makeVerifyClient(null);
+    (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+      client,
+    );
+
+    const result = await verifyMFAEnrollmentAction(FACTOR_ID, '123456');
+
+    expect(result.success).toBe(false);
+    expect(client.auth.mfa.challengeAndVerify).not.toHaveBeenCalled();
   });
 });

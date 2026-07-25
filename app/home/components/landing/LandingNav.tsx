@@ -62,15 +62,27 @@ export function LandingNav({ dark, onToggleDark }: LandingNavProps) {
                 below carries the same message. */}
           </div>
           <nav className="navlinks">
-            {navLinks.map((l) => (
-              <a
-                key={l.href}
-                href={l.href}
-                style={s('color:var(--text);font-size:15px;font-weight:500;')}
-              >
-                {l.label}
-              </a>
-            ))}
+            {/* Hash anchors stay <a>; route links must be <Link> or every
+                click forces a full document reload. */}
+            {navLinks.map((l) =>
+              l.href.startsWith('#') ? (
+                <a
+                  key={l.href}
+                  href={l.href}
+                  style={s('color:var(--text);font-size:15px;font-weight:500;')}
+                >
+                  {l.label}
+                </a>
+              ) : (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  style={s('color:var(--text);font-size:15px;font-weight:500;')}
+                >
+                  {l.label}
+                </Link>
+              ),
+            )}
           </nav>
           <div className="navactions">
             <button
@@ -118,18 +130,31 @@ export function LandingNav({ dark, onToggleDark }: LandingNavProps) {
             'position:fixed;inset:72px 0 0 0;z-index:49;background:var(--bg);padding:24px;display:flex;flex-direction:column;gap:6px;',
           )}
         >
-          {navLinks.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              onClick={() => setMenuOpen(false)}
-              style={s(
-                'color:var(--text);font-size:20px;font-weight:600;padding:16px 4px;border-bottom:1px solid var(--border);',
-              )}
-            >
-              {l.label}
-            </a>
-          ))}
+          {navLinks.map((l) =>
+            l.href.startsWith('#') ? (
+              <a
+                key={l.href}
+                href={l.href}
+                onClick={() => setMenuOpen(false)}
+                style={s(
+                  'color:var(--text);font-size:20px;font-weight:600;padding:16px 4px;border-bottom:1px solid var(--border);',
+                )}
+              >
+                {l.label}
+              </a>
+            ) : (
+              <Link
+                key={l.href}
+                href={l.href}
+                onClick={() => setMenuOpen(false)}
+                style={s(
+                  'color:var(--text);font-size:20px;font-weight:600;padding:16px 4px;border-bottom:1px solid var(--border);',
+                )}
+              >
+                {l.label}
+              </Link>
+            ),
+          )}
           <Link
             href={ROUTES.BUSINESS.registration}
             onClick={() => setMenuOpen(false)}

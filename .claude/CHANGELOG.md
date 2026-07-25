@@ -99,6 +99,36 @@
   - **Tests 1244 → 1250** (+ suspended/archived gates, branch-mismatch ×2,
     per-user rate limit, wallet null-expiry/pagination assertions). Verified:
     `yarn lint` + **1250** tests + `yarn build` green.
+- **Round-2 review (react-doctor + api-doctor, PR #14):** all nine round-1
+  fixes verified by both reviewers; this round fixed what the hardening itself
+  introduced or half-fixed:
+  - **`safeNext` control-character bypass closed** — the WHATWG parser strips
+    tab/CR/LF before parsing, so `/%09/evil.com` collapsed to
+    protocol-relative `//evil.com`; the validator now rejects `\` and all
+    ASCII control chars (dedicated unit suite added).
+  - **Login rate-limit unified + honest 429:** the Server-Action buckets now
+    share the route's `auth:login:*` keys (alternating doors no longer doubles
+    an attacker's per-account budget), and the limit branch RETURNS a typed
+    `{ rateLimited, message }` instead of throwing (prod Next redacts thrown
+    Server-Action messages; the form now shows the real copy and can tell 429
+    from bad credentials). Admin/business wrappers keep their throwing
+    contract.
+  - **Following page outage≠empty completed:** a failed shops read no longer
+    renders "not following anyone" or unmounts the updates feed — distinct
+    error panel, feed stays. `getFollowedBusinesses` is bounded
+    (`.range(0,199)` + exact count; the "Your shops (N)" label uses the count,
+    so it can't silently lie past the cap).
+  - **Landing nav route links** use `<Link>` (hash anchors stay `<a>`) — the
+    `/explore` entry was forcing full document reloads from both the desktop
+    nav and the mobile menu.
+  - **Redeem treats an archived business's coupons as not found** (the coupon
+    RLS policy only checks `verified`; mobile shares the gap — flagged for the
+    shared-core follow-up), header avatars resolve raw storage paths via
+    `resolvePublicAvatarUrl`, and owners/admins no longer see a permanently
+    disabled Redeem button (hidden, matching FollowButton).
+  - **Tests 1250 → 1256** (safeNext suite, archived-business gate). Verified:
+    `yarn lint` + **1256** tests + `yarn build` green. Migration
+    `20260725000000` still awaits human approval + cloud apply before merge.
 
 ## 2026-07-25 — Brand rollout: "Hablon Weave" logo across the app (fix/table-toolbar-pagination)
 

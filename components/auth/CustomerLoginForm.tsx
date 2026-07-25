@@ -47,6 +47,10 @@ function CustomerLoginFormContent() {
     startTransition(async () => {
       try {
         const response = await loginAction(data.email, data.password);
+        if ('rateLimited' in response) {
+          setServerError(response.message);
+          return;
+        }
         const next = safeNext(searchParams.get('next'));
         if (next && response.user.role === 'app_user') {
           router.replace(next);

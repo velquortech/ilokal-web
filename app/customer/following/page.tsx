@@ -50,7 +50,11 @@ export default async function FollowingPage({
     getUpdatesFeed(user.id, page, 10),
   ]);
 
-  const followed = 'error' in followedResult ? [] : followedResult.followed;
+  // Outage ≠ empty: a failed shops read must not render "not following
+  // anyone" (and must not unmount the updates feed, which loads separately).
+  const followedFailed = 'error' in followedResult;
+  const followed = followedFailed ? [] : followedResult.followed;
+  const followedTotal = followedFailed ? 0 : followedResult.total;
   const feedFailed = 'error' in feedResult;
   const feed = feedFailed
     ? { updates: [], page: 1, per_page: 10, has_more: false }
@@ -65,7 +69,7 @@ export default async function FollowingPage({
         </p>
       </div>
 
-      {followed.length === 0 ? (
+      {!followedFailed && followed.length === 0 ? (
         <div className="text-muted-foreground space-y-3 rounded-xl border border-dashed p-12 text-center text-sm">
           <p>You aren&apos;t following any shops yet.</p>
           <Button asChild variant="outline" size="sm">
@@ -158,8 +162,14 @@ export default async function FollowingPage({
           {/* Followed shops */}
           <section className="space-y-3">
             <h2 className="text-lg font-semibold tracking-tight">
-              Your shops ({followed.length})
+              Your shops{followedFailed ? '' : ` (${followedTotal})`}
             </h2>
+            {followedFailed && (
+              <p className="text-muted-foreground rounded-xl border border-dashed p-6 text-center text-sm">
+                Couldn&apos;t load your shops right now — please refresh to try
+                again.
+              </p>
+            )}
             <div className="space-y-2">
               {followed.map(({ follow_id, business }) => (
                 <div

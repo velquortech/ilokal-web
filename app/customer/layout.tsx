@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
+import { resolvePublicAvatarUrl } from '@/lib/api/customer/customerQuery';
 import { CustomerHeader } from '@/components/customer/CustomerHeader';
 import { ROUTES, getDashboardRoute } from '@/config/routeConfig';
 
@@ -18,13 +19,15 @@ export default async function CustomerLayout({
   if (!user) redirect(ROUTES.AUTH.LOGIN);
   if (user.role !== 'app_user') redirect(getDashboardRoute(user.role));
 
+  const avatarUrl = await resolvePublicAvatarUrl(user.avatar_url);
+
   return (
     <div className="font-giest bg-background flex min-h-screen flex-col">
       <CustomerHeader
         user={{
           id: user.id,
           full_name: user.full_name ?? null,
-          avatar_url: user.avatar_url ?? null,
+          avatar_url: avatarUrl,
           role: user.role,
         }}
       />

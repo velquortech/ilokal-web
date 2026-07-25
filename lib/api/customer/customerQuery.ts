@@ -428,18 +428,27 @@ export async function getWalletRedemptions(
   }
 }
 
+// Bounded read: past this many follows the sidebar list truncates (the count
+// stays exact via the piggybacked count) — well past that, PostgREST would
+// otherwise silently cap at max_rows and quietly lie.
+const FOLLOWED_LIST_LIMIT = 200;
+
 export async function getFollowedBusinesses(
   userId: string,
-): Promise<{ followed: FollowedBusiness[] } | { error: string }> {
+): Promise<
+  { followed: FollowedBusiness[]; total: number } | { error: string }
+> {
   try {
     const supabase = await createServerSupabaseClient();
-    const { data, error } = await supabase
+    const { data, count, error } = await supabase
       .from('follows')
       .select(
         'id, created_at, businesses (id, shop_name, logo_url, description)',
+        { count: 'exact' },
       )
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(0, FOLLOWED_LIST_LIMIT - 1);
 
     if (error) {
       console.error('[getFollowedBusinesses]', error);
@@ -472,11 +481,23 @@ export async function getFollowedBusinesses(
         },
       }));
 
-    return { followed };
+    return { followed, total: count ?? followed.length };
   } catch (err) {
     console.error('[getFollowedBusinesses]', err);
     return { error: 'Failed to load followed shops' };
   }
+}
+
+/**
+ * Resolve a profile avatar storage path to a public URL (real registrations
+ * store raw in-bucket paths; only seeds store full URLs).
+ */
+export async function resolvePublicAvatarUrl(
+  pathOrUrl: string | null | undefined,
+): Promise<string | null> {
+  if (!pathOrUrl) return null;
+  const supabase = await createServerSupabaseClient();
+  return resolveStorageUrl(supabase, 'avatars', pathOrUrl);
 }
 
 /** Whether the signed-in user already follows the business. */

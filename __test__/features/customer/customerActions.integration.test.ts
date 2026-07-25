@@ -51,6 +51,7 @@ interface CouponRow {
   requires_follow: boolean;
   business_id: string;
   branch_id: string | null;
+  businesses?: { archived_at: string | null } | null;
 }
 
 function liveCoupon(overrides: Partial<CouponRow> = {}): CouponRow {
@@ -65,6 +66,7 @@ function liveCoupon(overrides: Partial<CouponRow> = {}): CouponRow {
     requires_follow: false,
     business_id: BUSINESS_ID,
     branch_id: null,
+    businesses: { archived_at: null },
     ...overrides,
   };
 }
@@ -253,6 +255,21 @@ describe('redeemCouponAction — auth gates', () => {
 describe('redeemCouponAction — coupon gates (mobile-route copy)', () => {
   it('unknown/unpublished coupon', async () => {
     mockSupabase({ coupon: { data: null } });
+    const result = await redeemCouponAction(COUPON_ID, BRANCH_ID);
+    expect(result).toMatchObject({
+      ok: false,
+      message: 'Coupon not found or not yet active',
+    });
+  });
+
+  it('treats a coupon of an archived business as not found', async () => {
+    mockSupabase({
+      coupon: {
+        data: liveCoupon({
+          businesses: { archived_at: '2026-07-01T00:00:00Z' },
+        }),
+      },
+    });
     const result = await redeemCouponAction(COUPON_ID, BRANCH_ID);
     expect(result).toMatchObject({
       ok: false,

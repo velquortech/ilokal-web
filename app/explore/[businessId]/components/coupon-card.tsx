@@ -50,6 +50,9 @@ interface CouponCardProps {
 
 export function CouponCard({ coupon, branches, isCustomer }: CouponCardProps) {
   const router = useRouter();
+  // Owners/admins browse read-only — same treatment as FollowButton: no
+  // permanently-disabled button that reads as broken.
+  const showRedeem = isCustomer !== false;
   const [nudgeOpen, setNudgeOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
   const [redeemedCode, setRedeemedCode] = React.useState<string | null>(null);
@@ -116,42 +119,44 @@ export function CouponCard({ coupon, branches, isCustomer }: CouponCardProps) {
         )}
       </div>
 
-      <div className="mt-auto flex flex-wrap items-center gap-2">
-        {!coupon.branch_id && branchOptions.length > 1 && (
-          <Select value={branchId} onValueChange={setBranchId}>
-            <SelectTrigger className="h-9 w-40" aria-label="Redeem at branch">
-              <SelectValue placeholder="Pick a branch" />
-            </SelectTrigger>
-            <SelectContent>
-              {branchOptions.map((b) => (
-                <SelectItem key={b.id} value={b.id}>
-                  {b.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        <Button
-          size="sm"
-          onClick={redeem}
-          disabled={isPending || isCustomer === false || remaining === 0}
-          className="flex-1"
-        >
-          {isPending ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Redeeming…
-            </>
-          ) : remaining === 0 ? (
-            'Fully redeemed'
-          ) : (
-            <>
-              <Ticket className="h-4 w-4" />
-              Redeem
-            </>
+      {showRedeem && (
+        <div className="mt-auto flex flex-wrap items-center gap-2">
+          {!coupon.branch_id && branchOptions.length > 1 && (
+            <Select value={branchId} onValueChange={setBranchId}>
+              <SelectTrigger className="h-9 w-40" aria-label="Redeem at branch">
+                <SelectValue placeholder="Pick a branch" />
+              </SelectTrigger>
+              <SelectContent>
+                {branchOptions.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
-        </Button>
-      </div>
+          <Button
+            size="sm"
+            onClick={redeem}
+            disabled={isPending || remaining === 0}
+            className="flex-1"
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Redeeming…
+              </>
+            ) : remaining === 0 ? (
+              'Fully redeemed'
+            ) : (
+              <>
+                <Ticket className="h-4 w-4" />
+                Redeem
+              </>
+            )}
+          </Button>
+        </div>
+      )}
 
       <AuthNudgeDialog
         open={nudgeOpen}

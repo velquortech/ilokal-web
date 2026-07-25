@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { USER_MANAGEMENT_TABS } from '../config/tabsConfig';
 import { AdminErrorBoundary } from '../components/shared/AdminErrorBoundary';
 import { useUserTabsData } from './hooks/useUserTabsData';
@@ -116,11 +117,10 @@ export default function UserManagementHub() {
                 You must sign in to view and manage users.
               </p>
               <div className="mt-4">
-                <Button
-                  onClick={() => (window.location.href = ROUTES.AUTH.SIGN_IN)}
-                  className="gap-2"
-                >
-                  Sign in
+                <Button asChild className="gap-2">
+                  {/* Admin door, not the shared one — and a client-side nav
+                      instead of a full document reload. */}
+                  <Link href={ROUTES.AUTH.ADMIN_SIGN_IN}>Sign in</Link>
                 </Button>
               </div>
             </div>

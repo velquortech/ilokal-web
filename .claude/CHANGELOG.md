@@ -50,6 +50,68 @@
   `/sign-in`. Docs swept (`authentication`, `session-management`,
   `protected-routes`, `caching-strategy`, `architecture`, `folder-structure`,
   `business-owner-flow`).
+- **2FA repair (same branch):** enrolling never showed a QR. GoTrue returns
+  `totp.qr_code` as RAW SVG markup, not a URL — `next/image` threw in dev
+  ("cannot end with a space or control character") and in production silently
+  fetched the markup as a RELATIVE PATH, so the request came back as the 404
+  page. `enrollMFAAction` now base64-encodes it as a `data:image/svg+xml`
+  URL (verified against the live GoTrue response: 283032 B SVG →
+  377402 B data URL, round-trip identical), with a client-side normalizer as
+  a second net. The dialog auto-enrolls on open (the extra "Generate QR Code"
+  click is gone, StrictMode-double-fire guarded), and `SecurityTab` refetches
+  the real factor list instead of pushing a `crypto.randomUUID()` placeholder
+  whose id made the Remove button unenroll a factor that didn't exist. Enroll
+  + verify actions gained a `getUser()` guard.
+- **Review hardening (react-doctor + api-doctor, PR #16):**
+  - **🔴 Sign-in loop closed:** `signInAction`'s owner lookup had no
+    `.is('archived_at', null)`/`.limit(1)` and swallowed the query error — an
+    owner whose only business is archived was routed to
+    `/business/<archivedId>` → layout bounce → `/business` → `/sign-in`, and a
+    second row turned `maybeSingle()` into an error that dropped an existing
+    owner into the registration wizard. Now matches
+    `getMyBusinesses`/`verifyBusinessOwner`; a lookup error logs and falls back
+    to `businessId: null` (never surfaced to the client).
+  - **MFA is no longer advisory (HIGH-risk auth change).** Both doors set the
+    session BEFORE the TOTP step, and nothing downstream checked AAL — abandon
+    the code step, navigate to a dashboard URL, fully signed in. The proxy now
+    gates every protected page on
+    `mfa.getAuthenticatorAssuranceLevel()`: `nextLevel === 'aal2' &&
+    currentLevel === 'aal1'` → expire the `sb-*` cookies and redirect to
+    `/sign-in?mfa=required` (which renders an explanation). Fails OPEN on a
+    null level. No extra round trip — the call decodes the session JWT and
+    reads factors already on the session user (runtime-verified: a fresh
+    password login on an enrolled account is `aal1` and carries the verified
+    factor). Both forms also sign out when the step is abandoned, and
+    `AdminLoginForm` gained the elevation step it never had — required now,
+    or an enrolled admin could never reach `/admin`.
+  - `/business` sends a signed-in owner with no live business to
+    `/business/registration` (it was bouncing them to the sign-in door;
+    `getMyBusinesses` throws when unauthenticated, so `!business` only ever
+    means "authenticated, no row").
+  - The MFA stale-factor sweep is scoped to the friendly name this action
+    mints — the blanket version silently destroyed an enrollment started in
+    another tab/device — and a failed enroll returns hand-written copy instead
+    of GoTrue's message.
+  - `MFAEnrollDialog` awaits the parent refetch before closing (a rejection was
+    an unhandled rejection that left the card claiming 2FA was off), starts
+    busy so it can't paint "Try again" before anything was tried, and the retry
+    button only renders on a real error; `SecurityTab.refreshFactors` throws
+    instead of silently no-op'ing.
+  - `/sign-in` prerendered an empty document — `useSearchParams` bails the
+    Suspense boundary and the fallback was `null`. Now a form-shaped skeleton
+    (asserted present in `.next/server/app/sign-in.html`).
+  - Cookie constants moved to `supabase/cookies.ts` (no `next/headers`) so the
+    proxy can expire them; `supabase/server.ts` re-exports them.
+  - Admin users page "Sign in" points at `/sign-in/admin` via `<Link>` (was
+    `/sign-in` behind `window.location.href`).
+  - **Tests 1272 → 1301** (+29): proxy MFA gate incl. fail-open cases (6),
+    AdminLoginForm door incl. MFA step (4), MFAEnrollDialog (5),
+    SignInForm abandon/notice (2), signInAction archived+error branches (2),
+    mfaActions scoped cleanup + generic error (2), plus the earlier 2FA fixes.
+    Verified: `yarn lint` + **1301** tests + `yarn build` green.
+  - **Still manual-QA pending:** three-role login matrix, MFA owner + MFA
+    admin end-to-end, `?next=` round-trip, 9-failure 429, and the new gate's
+    behavior for a user who enrolls MFA mid-session.
 
 ## 2026-07-25 — Customer portal: public /explore + protected /customer (feat/customer-portal)
 

@@ -18,6 +18,7 @@ import { loginSchema, type LoginInput } from '@/lib/validation/auth';
 import {
   signInAction,
   redirectByRole,
+  signOutAction,
   checkMFARequiredAction,
   verifyMFALoginAction,
 } from '@/app/(auth)/actions';
@@ -73,7 +74,7 @@ function SignInFormContent() {
    * throws NEXT_REDIRECT on success — callers let isRedirectError pass it
    * through as navigation.
    */
-  async function finishSignIn(role: string, businessId: string | null) {
+  async function finishSignIn(role: User['role'], businessId: string | null) {
     const next = safeNext(searchParams.get('next'));
     if (next && role === 'app_user') {
       router.replace(next);
@@ -150,6 +151,29 @@ function SignInFormContent() {
     }
   }
 
+  /**
+   * Abandoning the code step must not leave the AAL1 session that
+   * `signInAction` already established — the proxy would bounce the user back
+   * here anyway, and a live half-authenticated cookie is worth killing at the
+   * source. Reset the form either way; a failed sign-out is handled by the
+   * proxy gate.
+   */
+  async function handleMFACancel() {
+    setMfaLoading(true);
+    try {
+      await signOutAction();
+    } finally {
+      setMfaLoading(false);
+      setStep('credentials');
+      setMfaCode('');
+      setMfaError('');
+      setMfaFactorId('');
+      setPendingUser(null);
+      setPendingBusinessId(null);
+      form.reset();
+    }
+  }
+
   if (step === 'mfa') {
     return (
       <motion.div
@@ -208,11 +232,8 @@ function SignInFormContent() {
           <Button
             variant="ghost"
             className="w-full"
-            onClick={() => {
-              setStep('credentials');
-              setMfaCode('');
-              setMfaError('');
-            }}
+            disabled={mfaLoading}
+            onClick={handleMFACancel}
           >
             Back to sign in
           </Button>
@@ -244,6 +265,18 @@ function SignInFormContent() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{serverError}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Set by the proxy's MFA gate when a half-authenticated (AAL1) session
+          tried to reach a protected page. */}
+      {!serverError && searchParams.get('mfa') === 'required' && (
+        <Alert>
+          <ShieldCheck className="h-4 w-4" />
+          <AlertDescription>
+            Two-factor verification wasn&apos;t completed. Sign in again and
+            enter the code from your authenticator app.
+          </AlertDescription>
         </Alert>
       )}
 
@@ -339,9 +372,37 @@ function SignInFormContent() {
   );
 }
 
+/**
+ * Form-shaped placeholder for the Suspense boundary. `useSearchParams` opts the
+ * subtree out of prerendering, so THIS is what the prerendered /sign-in
+ * document ships — `fallback={null}` shipped an empty page until hydration.
+ */
+function SignInFormFallback() {
+  return (
+    <div className="w-full max-w-sm space-y-6" aria-busy="true">
+      <span className="sr-only" role="status">
+        Loading sign-in form
+      </span>
+      <div aria-hidden className="space-y-6">
+        <div className="space-y-2">
+          <div className="bg-muted h-6 w-28 animate-pulse rounded-full" />
+          <div className="bg-muted h-8 w-48 animate-pulse rounded" />
+          <div className="bg-muted h-4 w-full animate-pulse rounded" />
+        </div>
+        <div className="space-y-4">
+          <div className="bg-muted h-10 w-full animate-pulse rounded-md" />
+          <div className="bg-muted h-10 w-full animate-pulse rounded-md" />
+          <div className="bg-muted h-10 w-full animate-pulse rounded-md" />
+        </div>
+        <div className="bg-muted mx-auto h-4 w-40 animate-pulse rounded" />
+      </div>
+    </div>
+  );
+}
+
 export default function SignInForm() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<SignInFormFallback />}>
       <SignInFormContent />
     </Suspense>
   );

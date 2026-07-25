@@ -36,7 +36,7 @@ type Step = 'qr' | 'verify';
  */
 function toQrSrc(qrCode: string): string {
   if (!qrCode || qrCode.startsWith('data:')) return qrCode;
-  return `data:image/svg+xml;utf-8,${encodeURIComponent(qrCode)}`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qrCode)}`;
 }
 
 export function MFAEnrollDialog({
@@ -50,7 +50,10 @@ export function MFAEnrollDialog({
   const [secret, setSecret] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  // Starts true: the dialog auto-enrolls on open, and the effect only runs
+  // after the first commit — `false` would paint a "Try again" button before
+  // anything had been tried.
+  const [loading, setLoading] = useState(true);
 
   // Guards React 18 StrictMode's double-effect (and a fast reopen) from firing
   // two enrollments — the second would be rejected as a duplicate factor.
@@ -91,16 +94,32 @@ export function MFAEnrollDialog({
     setLoading(true);
     setError('');
     const result = await verifyMFAEnrollmentAction(factorId, code);
-    setLoading(false);
     if (!result.success) {
+      setLoading(false);
       setError(result.error ?? 'Verification failed');
       return;
     }
+
+    // Await the parent's refetch BEFORE closing: it's what turns the settings
+    // card from "No authenticator app linked" into the enrolled state, and an
+    // unawaited rejection here would both leave the card lying and surface as
+    // an unhandled rejection.
+    try {
+      await onSuccess();
+    } catch (err) {
+      setLoading(false);
+      console.error('[MFAEnrollDialog] post-enroll refresh failed:', err);
+      setError(
+        'Two-factor authentication is enabled, but the page could not be refreshed. Reload to see it.',
+      );
+      return;
+    }
+
+    setLoading(false);
     setStep('qr');
     setCode('');
     setQrCode('');
     setSecret('');
-    onSuccess();
     onOpenChange(false);
   }
 
@@ -115,6 +134,8 @@ export function MFAEnrollDialog({
       setFactorId('');
       setQrCode('');
       setSecret('');
+      // Reopening auto-enrolls again, so the next mount must start busy.
+      setLoading(true);
     }
     onOpenChange(open);
   }
@@ -145,9 +166,13 @@ export function MFAEnrollDialog({
                 </p>
               </div>
             ) : (
-              <Button onClick={handleEnroll} className="w-full">
-                Try again
-              </Button>
+              // Only reachable after a failed enroll (the effect flips `loading`
+              // on open), so the retry label is always accurate here.
+              error && (
+                <Button onClick={handleEnroll} className="w-full">
+                  Try again
+                </Button>
+              )
             )}
           </div>
         )}

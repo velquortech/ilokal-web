@@ -20,10 +20,11 @@ const { replaceMock, refreshMock, actions, params } = vi.hoisted(() => ({
   actions: {
     signInAction: vi.fn(),
     redirectByRole: vi.fn(),
+    signOutAction: vi.fn(),
     checkMFARequiredAction: vi.fn(),
     verifyMFALoginAction: vi.fn(),
   },
-  params: { next: null as string | null },
+  params: { next: null as string | null, mfa: null as string | null },
 }));
 
 vi.mock('motion/react', () => ({
@@ -56,7 +57,8 @@ vi.mock('motion/react', () => ({
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: replaceMock, refresh: refreshMock }),
   useSearchParams: () => ({
-    get: (key: string) => (key === 'next' ? params.next : null),
+    get: (key: string) =>
+      key === 'next' ? params.next : key === 'mfa' ? params.mfa : null,
   }),
 }));
 
@@ -69,6 +71,11 @@ let root: Root;
 
 beforeEach(() => {
   params.next = null;
+  params.mfa = null;
+  actions.signOutAction.mockReset().mockResolvedValue({
+    ok: true,
+    revoked: true,
+  });
   replaceMock.mockReset();
   refreshMock.mockReset();
   actions.signInAction.mockReset();
@@ -248,5 +255,39 @@ describe('SignInForm', () => {
     expect(container.textContent).toContain('Invalid code');
     expect(container.textContent).toContain('Two-Factor Verification');
     expect(actions.redirectByRole).not.toHaveBeenCalled();
+  });
+
+  it('signs out the AAL1 session when the MFA step is abandoned', async () => {
+    // signInAction sets the session before the code step, so leaving it must
+    // not strand a live half-authenticated cookie.
+    signInResolves('business_owner', 'biz-7');
+    actions.checkMFARequiredAction.mockResolvedValue({
+      required: true,
+      factorId: 'factor-1',
+    });
+    render();
+    await submitCredentials();
+
+    const backButton = Array.from(container.querySelectorAll('button')).find(
+      (b) => b.textContent?.includes('Back to sign in'),
+    )!;
+    await act(async () => {
+      backButton.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    await flush();
+
+    expect(actions.signOutAction).toHaveBeenCalled();
+    expect(container.textContent).toContain('Welcome back');
+    expect(actions.redirectByRole).not.toHaveBeenCalled();
+  });
+
+  it('explains an incomplete MFA sign-in when the proxy sends ?mfa=required', async () => {
+    params.mfa = 'required';
+    render();
+
+    expect(container.textContent).toContain(
+      "Two-factor verification wasn't completed",
+    );
   });
 });

@@ -50,18 +50,27 @@ function buildClient(
 ): {
   client: Awaited<ReturnType<typeof createServerSupabaseClient>>;
   fromMock: Mock;
+  businessQuery: { is: Mock; limit: Mock; maybeSingle: Mock };
 } {
   const profile = buildProfile(role);
+  const businessQuery = {
+    is: vi.fn(),
+    limit: vi.fn(),
+    maybeSingle: vi.fn(),
+  };
   const fromMock = vi.fn((table: string) => {
     if (table === 'businesses') {
+      // Chain: .select('id').eq(owner_id).is('archived_at', null).limit(1)
+      //        .maybeSingle() — archived rows are excluded and a second row
+      //        can't turn maybeSingle() into an error.
+      businessQuery.is.mockReturnValue(businessQuery);
+      businessQuery.limit.mockReturnValue(businessQuery);
+      businessQuery.maybeSingle.mockResolvedValue({
+        data: businessRow,
+        error: null,
+      });
       return {
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            maybeSingle: vi
-              .fn()
-              .mockResolvedValue({ data: businessRow, error: null }),
-          })),
-        })),
+        select: vi.fn(() => ({ eq: vi.fn(() => businessQuery) })),
       };
     }
     return {
@@ -83,7 +92,7 @@ function buildClient(
     from: fromMock,
   } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
 
-  return { client, fromMock };
+  return { client, fromMock, businessQuery };
 }
 
 describe('signInAction', () => {
@@ -114,6 +123,38 @@ describe('signInAction', () => {
     if ('rateLimited' in res) throw new Error('unexpected rate limit');
     // redirectByRole sends a null businessId to /business/registration.
     expect(res.businessId).toBeNull();
+  });
+
+  it('excludes archived businesses and caps the lookup at one row', async () => {
+    // An archived row would route the owner to /business/<archivedId>, whose
+    // layout bounces to /business — and a second row would make maybeSingle()
+    // error, dropping an existing owner into the registration wizard.
+    const { client, businessQuery } = buildClient('business_owner', {
+      id: 'biz-1',
+    });
+    (createServerSupabaseClient as unknown as Mock).mockResolvedValue(client);
+
+    await signInAction('a@b.com', 'password');
+
+    expect(businessQuery.is).toHaveBeenCalledWith('archived_at', null);
+    expect(businessQuery.limit).toHaveBeenCalledWith(1);
+  });
+
+  it('falls back to a null businessId when the lookup errors', async () => {
+    const { client, businessQuery } = buildClient('business_owner', null);
+    businessQuery.maybeSingle.mockResolvedValue({
+      data: null,
+      error: { message: 'relation "businesses" does not exist' },
+    });
+    (createServerSupabaseClient as unknown as Mock).mockResolvedValue(client);
+
+    const res = await signInAction('a@b.com', 'password');
+
+    // Sign-in already succeeded — a lookup failure must not throw, and the
+    // driver message must not reach the client.
+    if ('rateLimited' in res) throw new Error('unexpected rate limit');
+    expect(res.businessId).toBeNull();
+    expect(JSON.stringify(res)).not.toContain('relation "businesses"');
   });
 
   it('skips the businesses lookup entirely for an app_user', async () => {

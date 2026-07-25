@@ -260,8 +260,44 @@ describe('enrollMFAAction', () => {
 
     const result = await enrollMFAAction();
 
-    expect(result.error).toBe('enroll failed');
+    // The GoTrue message ("… already exists") names factors/constraints and is
+    // useless to the user — logged server-side, generic copy returned.
+    expect(result.error).toBe(
+      'Could not start two-factor setup. Close this dialog and try again.',
+    );
+    expect(result.error).not.toContain('enroll failed');
     expect(result.factorId).toBe('');
+  });
+
+  it('leaves an unverified factor enrolled under another name alone', async () => {
+    // A blanket sweep would silently kill an enrollment started in another tab
+    // or on another device, whose later challengeAndVerify then fails blind.
+    const client = makeEnrollClient([
+      {
+        id: 'other-device-1',
+        factor_type: 'totp',
+        status: 'unverified',
+        friendly_name: 'iPhone',
+      },
+      {
+        id: 'ours-1',
+        factor_type: 'totp',
+        status: 'unverified',
+        friendly_name: 'Authenticator App',
+      },
+    ]);
+    (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+      client,
+    );
+
+    await enrollMFAAction();
+
+    expect(client.auth.mfa.unenroll).toHaveBeenCalledWith({
+      factorId: 'ours-1',
+    });
+    expect(client.auth.mfa.unenroll).not.toHaveBeenCalledWith({
+      factorId: 'other-device-1',
+    });
   });
 
   // GoTrue returns RAW SVG markup, not a URL. Handing it to <img>/next/image

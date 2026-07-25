@@ -11,6 +11,10 @@ import {
 } from '@/app/api/helpers/response';
 import { VERIFIED_USER_ID_HEADER } from '@/app/api/helpers/mobile-request';
 import { clientIp, rateLimit } from '@/app/api/helpers/rateLimit';
+import {
+  SUPABASE_COOKIE_OPTIONS,
+  SUPABASE_COOKIE_PREFIX,
+} from '@/supabase/cookies';
 
 // Baseline flood guard for the mobile API surface (public + protected). Keyed by
 // client IP. Generous so normal app usage (a screen fires several requests) and
@@ -233,6 +237,40 @@ export async function proxy(request: NextRequest) {
 
   if (isProtectedRoute && user && !roleAllowedForPath(userRole, pathname)) {
     return NextResponse.redirect(new URL(ROUTES.DASHBOARD.HOME, request.url));
+  }
+
+  // MFA elevation gate. The sign-in forms set the session BEFORE the TOTP step,
+  // so a user who abandons that step (or navigates straight to a dashboard URL)
+  // holds a valid AAL1 cookie on an MFA-enrolled account. Nothing downstream
+  // checks AAL, so without this the second factor is advisory only.
+  //
+  // getAuthenticatorAssuranceLevel() is local work — it decodes the session JWT
+  // (`aal` claim) and reads the verified factors already present on the session
+  // user. No extra network round trip per navigation.
+  if (isProtectedRoute && user) {
+    const { data: aal } =
+      await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
+    // Fail OPEN when the level is unknown (null): only an explicit
+    // "aal2 available but not reached" is a half-authenticated session.
+    if (aal?.nextLevel === 'aal2' && aal.currentLevel === 'aal1') {
+      console.warn(
+        `[proxy] User ${user.id} blocked on ${pathname}: MFA not completed (aal1)`,
+      );
+      const signIn = new URL(ROUTES.AUTH.SIGN_IN, request.url);
+      signIn.searchParams.set('mfa', 'required');
+      const mfaRedirect = NextResponse.redirect(signIn);
+      // Kill the half-authenticated session so the door starts clean instead of
+      // leaving a live AAL1 cookie behind the login form.
+      for (const { name } of request.cookies.getAll()) {
+        if (!name.startsWith(SUPABASE_COOKIE_PREFIX)) continue;
+        mfaRedirect.cookies.set(name, '', {
+          ...SUPABASE_COOKIE_OPTIONS,
+          maxAge: 0,
+        });
+      }
+      return mfaRedirect;
+    }
   }
 
   return response;

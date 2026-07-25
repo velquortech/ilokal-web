@@ -39,10 +39,15 @@ export function SecurityTab({ initialFactors }: SecurityTabProps) {
 
   // Re-read the real factor list after enrolling — the id/created_at must come
   // from GoTrue, or the Remove button unenrolls a factor id that doesn't exist.
+  // THROWS on failure so the dialog can keep itself open and say so: silently
+  // no-op'ing would leave the card claiming 2FA is off right after enabling it.
   async function refreshFactors() {
-    if (!business?.id) return;
+    if (!business?.id) throw new Error('Business not loaded');
     const result = await listMFAFactorsAction(business.id);
-    if (result.success) setFactors(result.data ?? []);
+    if (!result.success) {
+      throw new Error(result.error?.message ?? 'Failed to load authenticators');
+    }
+    setFactors(result.data ?? []);
   }
 
   async function handleUnenroll(factorId: string) {

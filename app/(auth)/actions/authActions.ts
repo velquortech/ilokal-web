@@ -326,11 +326,23 @@ export async function signInAction(
   let businessId: string | null = null;
   if (result.user.role === 'business_owner') {
     const supabase = await createServerSupabaseClient();
-    const { data: business } = await supabase
+    // Same shape as getMyBusinesses/verifyBusinessOwner: archived rows are NOT
+    // a destination (the business layout bounces them, and /business now sends
+    // an owner with no live business to registration), and `.limit(1)` keeps a
+    // second row from turning maybeSingle() into an error — which would send an
+    // existing owner into the registration wizard.
+    const { data: business, error } = await supabase
       .from('businesses')
       .select('id')
       .eq('owner_id', result.user.id)
+      .is('archived_at', null)
+      .limit(1)
       .maybeSingle();
+    if (error) {
+      // Non-fatal: fall back to the registration route rather than failing a
+      // sign-in that already succeeded. Never surface the driver message.
+      console.error('[signInAction] business lookup failed:', error.message);
+    }
     businessId = business?.id ?? null;
   }
 

@@ -498,3 +498,42 @@ describe('getProductsByBusinessId() — status filter', () => {
     expect(chain.eq).toHaveBeenCalledWith('status', 'archived');
   });
 });
+
+// ===== getProductsPaginated — archived + status gating =====
+
+describe('getProductsPaginated() — archived + status gating', () => {
+  let chain: ChainedMock;
+
+  beforeEach(() => {
+    chain = buildChain();
+    chain.range = vi
+      .fn()
+      .mockResolvedValue({ data: [], count: 0, error: null });
+    mockSupabase(chain);
+  });
+
+  it('always excludes archived products', async () => {
+    await productQuery.getProductsPaginated({ page: 1, per_page: 10 });
+
+    expect(chain.is).toHaveBeenCalledWith('archived_at', null);
+  });
+
+  it('defaults to status=active when status is omitted', async () => {
+    await productQuery.getProductsPaginated({ page: 1, per_page: 10 });
+
+    expect(chain.eq).toHaveBeenCalledWith('status', 'active');
+  });
+
+  it("status='' skips the status filter (owner all-statuses view)", async () => {
+    await productQuery.getProductsPaginated({
+      page: 1,
+      per_page: 10,
+      status: '',
+    });
+
+    const statusCalls = chain.eq.mock.calls.filter(
+      ([column]) => column === 'status',
+    );
+    expect(statusCalls).toEqual([]);
+  });
+});

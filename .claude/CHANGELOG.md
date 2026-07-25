@@ -1,5 +1,43 @@
 # Changelog
 
+## 2026-07-25 — Wrap-safe table toolbars + real product-catalogues pagination (main)
+
+> No schema/API/auth change — presentational fixes + one page rewired to the
+> existing paginated query. LOW-MEDIUM risk. (Parity/action-item plan kept
+> local, not committed.)
+
+- **Fixed toolbar overflow on every table (business + admin).** Two class bugs:
+  `SearchBar`'s wrapper hardcoded `min-w-sm` (384px — call-site `max-w-xs`
+  landed on the inner `<Input>`, not the wrapper, so it couldn't shrink), and
+  toolbar rows used `inline-flex h-10` (fixed height, no wrap — children
+  overlapped once they exceeded the row, as in the Product Catalogues
+  screenshot). SearchBar wrapper is now `w-full min-w-0 sm:w-64 lg:w-80`;
+  toolbar rows are `flex flex-wrap … gap-2` (product-catalogues, coupons,
+  redeemed-coupons, admin businesses); the category-chip strip is
+  `min-w-0 flex-1 overflow-x-auto`. `DataTablePagination` is wrap-safe too
+  (`flex-wrap` + `gap-*`, `space-x-*` removed).
+- **Fixed "Rows per page" doing nothing (product catalogues).** The page
+  rendered `ProductCataloguesClient`, which fetched ALL products
+  (`getProductsByBusinessId`, no pagination — silently truncates at the
+  PostgREST 1000-row cap), passed `pageSize={products.length}` (blank Select —
+  value not in `[10..50]`), a no-op `onPaginationChange`, and an **unwired**
+  SearchBar. Page now parses `page`/`perPage`/`search`/`category`/`status`/
+  `branch` searchParams, calls the existing `getProductsPaginated()`, and
+  renders the URL-driven `ProductCataloguesContent` (the previously dead twin
+  every other table already uses). Search, category chips, status filter,
+  page-size, and pager all work server-side now. Deleted
+  `ProductCataloguesClient.tsx`.
+- **`getProductsPaginated` hardening:** now excludes archived rows
+  (`.is('archived_at', null)` — stats + byBusinessId already did; this query
+  leaked soft-deleted products to `/api/web/products`), and accepts
+  `status: ''` (typed `ProductStatus | ''`) to mean "all statuses" — omitting
+  still defaults to `'active'`, so the public route contract is unchanged.
+- **Tests (+8):** `table-toolbar.contract.test.ts` (SearchBar shrinkable,
+  pagination wraps, repo sweep fails on any reintroduced `inline-flex h-10`
+  row), `getProductsPaginated` archived/status gating (3), and page-level
+  searchParams passthrough incl. clamping + invalid-status rejection (4).
+- Verified: `yarn lint` + **1190** tests + `yarn build` green.
+
 ## 2026-07-24 — Logout redirect fix + per-page loading skeletons (feat/forgot-password)
 
 > **Auth-surface change — HIGH risk, needs human approval before merge.** It

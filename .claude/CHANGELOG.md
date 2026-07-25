@@ -1,5 +1,96 @@
 # Changelog
 
+## 2026-07-25 — Brand rollout: "Hablon Weave" logo across the app (fix/table-toolbar-pagination)
+
+> Presentational only — no schema/API/auth. Assets in `public/brand` (v0.2).
+> (Parity/action-item plan kept local, not committed.)
+
+- **New `components/custom/BrandLogo.tsx`** — `BrandMark` (inline weave SVG),
+  `BrandWordmark` (Geist 800, tracking −3.5% — HTML text, since SVG-as-`<img>`
+  can't load document fonts and would fall back off-brand), `BrandLogo` lockup.
+  Palette is theme-aware by default (`#65A30D`/white, dark: `#84CC16`/`#1A1A1A`
+  per the brand README) with `palette="light"|"dark"` pinning for surfaces
+  outside the `.dark` class system.
+- **Swapped every app-brand logo site:** auth header (was lucide `Store` +
+  "ILOKAL"), landing nav + footer (were plain text; mark follows the landing's
+  own dark toggle — footer now receives `dark`), admin sidebar (was
+  `ShieldCheck`; keeps the "Admin" subtitle). Business sidebar and `/s/…`
+  share page untouched — tenant branding, not app branding. Reset email keeps
+  its text wordmark deliberately (remote images are blocked by default in most
+  clients).
+- **Favicons:** new `app/icon.svg` (brand favicon) + `app/apple-icon.png`
+  (180px) + `app/favicon.ico` regenerated from the brand 16/32 PNGs
+  (PNG-in-ICO), replacing the stale pre-brand default. Stripped the Windows
+  `*:Zone.Identifier` junk that came with the asset copy.
+- **Tests (+5):** BrandLogo render — accessible mark, default auto palette,
+  palette pinning, wordmark typography, lockup composition.
+- Verified: `yarn lint` + **1200** tests + `yarn build` green.
+
+## 2026-07-25 — Forgot-password "Check your email" panel redesign + working resend (fix/table-toolbar-pagination)
+
+> Presentational + one client-side resend affordance. No API/schema change —
+> `POST /api/auth/reset-password` reused as-is, still enumeration-safe.
+> (Parity/action-item plan kept local, not committed.)
+
+- **Redesigned the confirmation panel to the repo's success-state language**
+  (centered `bg-primary/10` icon circle + centered heading/body, per
+  `application-success-dialog`): it was a left-aligned draft — small icon stuck
+  top-left, no structure, bare inline "try again" text button.
+- **Real resend flow:** bordered "Didn't get the email?" card (spam-folder +
+  spelling hints) with a **Resend email** button that re-POSTs the same email,
+  toasts generic success/failure (stable id `resend-reset-link` per the
+  one-Toaster rule), and runs a **60s cooldown** — started on the initial
+  submit and on every resend, so a fast clicker can't burn the route's
+  per-account rate budget (8/300s). Failure does NOT restart the cooldown
+  (immediate retry allowed). "Use a different email" link returns to the form
+  (replaces the old "try again").
+- **a11y:** `role="status"` now scoped to the static heading/body block only —
+  the cooldown countdown ticks outside it, so AT doesn't re-announce the
+  region every second.
+- **Tests (5 kept/updated + 5 new, happy-dom + react-dom/client + mocked
+  sonner/fake timers):** cooldown disable→enable across the full 60s, resend
+  re-POST + success toast + cooldown restart, resend-failure toast with panel
+  kept, back-to-form link, and the role="status" scoping.
+- Verified: `yarn lint` + **1195** tests + `yarn build` green.
+
+## 2026-07-25 — Wrap-safe table toolbars + real product-catalogues pagination (main)
+
+> No schema/API/auth change — presentational fixes + one page rewired to the
+> existing paginated query. LOW-MEDIUM risk. (Parity/action-item plan kept
+> local, not committed.)
+
+- **Fixed toolbar overflow on every table (business + admin).** Two class bugs:
+  `SearchBar`'s wrapper hardcoded `min-w-sm` (384px — call-site `max-w-xs`
+  landed on the inner `<Input>`, not the wrapper, so it couldn't shrink), and
+  toolbar rows used `inline-flex h-10` (fixed height, no wrap — children
+  overlapped once they exceeded the row, as in the Product Catalogues
+  screenshot). SearchBar wrapper is now `w-full min-w-0 sm:w-64 lg:w-80`;
+  toolbar rows are `flex flex-wrap … gap-2` (product-catalogues, coupons,
+  redeemed-coupons, admin businesses); the category-chip strip is
+  `min-w-0 flex-1 overflow-x-auto`. `DataTablePagination` is wrap-safe too
+  (`flex-wrap` + `gap-*`, `space-x-*` removed).
+- **Fixed "Rows per page" doing nothing (product catalogues).** The page
+  rendered `ProductCataloguesClient`, which fetched ALL products
+  (`getProductsByBusinessId`, no pagination — silently truncates at the
+  PostgREST 1000-row cap), passed `pageSize={products.length}` (blank Select —
+  value not in `[10..50]`), a no-op `onPaginationChange`, and an **unwired**
+  SearchBar. Page now parses `page`/`perPage`/`search`/`category`/`status`/
+  `branch` searchParams, calls the existing `getProductsPaginated()`, and
+  renders the URL-driven `ProductCataloguesContent` (the previously dead twin
+  every other table already uses). Search, category chips, status filter,
+  page-size, and pager all work server-side now. Deleted
+  `ProductCataloguesClient.tsx`.
+- **`getProductsPaginated` hardening:** now excludes archived rows
+  (`.is('archived_at', null)` — stats + byBusinessId already did; this query
+  leaked soft-deleted products to `/api/web/products`), and accepts
+  `status: ''` (typed `ProductStatus | ''`) to mean "all statuses" — omitting
+  still defaults to `'active'`, so the public route contract is unchanged.
+- **Tests (+8):** `table-toolbar.contract.test.ts` (SearchBar shrinkable,
+  pagination wraps, repo sweep fails on any reintroduced `inline-flex h-10`
+  row), `getProductsPaginated` archived/status gating (3), and page-level
+  searchParams passthrough incl. clamping + invalid-status rejection (4).
+- Verified: `yarn lint` + **1190** tests + `yarn build` green.
+
 ## 2026-07-24 — Logout redirect fix + per-page loading skeletons (feat/forgot-password)
 
 > **Auth-surface change — HIGH risk, needs human approval before merge.** It

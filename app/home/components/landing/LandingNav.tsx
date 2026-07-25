@@ -6,6 +6,7 @@ import { styleFromString as s } from '@/lib/utils/cssStyle';
 import { ROUTES } from '@/config/routeConfig';
 import { navLinks } from './data';
 import { CloseIcon, MenuIcon, MoonIcon, SunIcon } from './icons';
+import { BrandMark } from '@/components/custom/BrandLogo';
 
 export type LandingNavProps = {
   /** Current theme of the self-contained landing (drives the toggle icon). */
@@ -49,9 +50,10 @@ export function LandingNav({ dark, onToggleDark }: LandingNavProps) {
             <a
               href="#top"
               style={s(
-                'font-size:24px;font-weight:800;letter-spacing:-0.02em;color:var(--brand);',
+                'display:inline-flex;align-items:center;gap:9px;font-size:24px;font-weight:800;letter-spacing:-0.035em;color:var(--brand);',
               )}
             >
+              <BrandMark size={30} palette={dark ? 'dark' : 'light'} />
               iLokal
             </a>
             <span

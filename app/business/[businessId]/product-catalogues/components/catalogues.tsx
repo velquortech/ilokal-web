@@ -15,7 +15,7 @@ export function Catalogues({
   onCategoryChange,
 }: CataloguesProps) {
   return (
-    <div className="h-full w-sm rounded-md">
+    <div className="min-w-0 flex-1 overflow-x-auto rounded-md">
       <ToggleGroup
         type="single"
         variant="outline"

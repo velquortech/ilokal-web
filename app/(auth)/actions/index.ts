@@ -1,7 +1,7 @@
 export {
   loginAction,
   loginAsAdmin,
-  loginAsBusiness,
+  signInAction,
   signupAction,
   signupFormAction,
   redirectByRole,

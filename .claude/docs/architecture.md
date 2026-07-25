@@ -78,7 +78,7 @@
 │ │    Form Components + useActionState                          │ │
 │ │                                                             │ │
 │ │  Forms:                                                     │ │
-│ │  ├─ LoginForm.tsx (Server Action: loginAction)            │ │
+│ │  ├─ SignInForm.tsx (Server Action: signInAction)            │ │
 │ │  └─ SignupForm.tsx (Server Action: signupAction)          │ │
 │ │                                                             │ │
 │ │  Features:                                                  │ │
@@ -164,7 +164,7 @@ See `authentication.md` for detailed sign-up, login, session verification, and l
 
 ```
 ┌────────────────────────────────────────────────────┐
-│         LoginForm / SignupForm.tsx                  │
+│         SignInForm / SignupForm.tsx                  │
 │              'use client'                           │
 │                                                    │
 │  import { useActionState } from 'react'            │
@@ -297,7 +297,7 @@ See `authentication.md` for detailed sign-up, login, session verification, and l
                   │
                   ▼
               Call logoutAction()
-              Redirect to /login
+              Redirect to /sign-in
 ```
 
 ## Security Architecture
@@ -347,7 +347,7 @@ HTTPS Enforcement
 ```
 ┌─────────────────────────────────┐
 │  Browser - Client Component     │
-│  (LoginForm.tsx)                │
+│  (SignInForm.tsx)                │
 │                                 │
 │  • User input                   │
 │  • Zod validation               │

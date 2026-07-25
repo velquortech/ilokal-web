@@ -102,7 +102,7 @@ useEffect(() => {
     if (!result.user) {
       // HTTP-only cookie invalid or expired → logout
       await logoutAction();
-      redirect('/login');
+      redirect('/sign-in');
     } else {
       // Recalculate expiration with fresh user role
       const roleTimeout = getSessionTimeout(result.role);
@@ -328,7 +328,7 @@ useEffect(() => {
 09:00 (next day) - Expiration time reached in localStorage
         └─ Auto-logout triggered
         └─ logoutAction() called to clear server session
-09:00 - Redirected to /login
+09:00 - Redirected to /sign-in
         └─ No more API requests from that user
 ```
 
@@ -475,7 +475,7 @@ export async function logoutAction() {
   // Clear session on server
   // HTTP-only cookie is cleared automatically
   await supabase.auth.signOut();
-  redirect('/login');
+  redirect('/sign-in');
 }
 ```
 

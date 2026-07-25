@@ -15,7 +15,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ChangePasswordDialog } from './ChangePasswordDialog';
 import { ChangeEmailDialog } from './ChangeEmailDialog';
 import { MFAEnrollDialog } from './MFAEnrollDialog';
-import { unenrollMFAAction } from '../../actions/mfaActions';
+import {
+  listMFAFactorsAction,
+  unenrollMFAAction,
+} from '../../actions/mfaActions';
 import { useBusinessShop } from '@/providers/BusinessProvider';
 import type { MFAFactor } from '@/lib/types';
 
@@ -33,6 +36,19 @@ export function SecurityTab({ initialFactors }: SecurityTabProps) {
   const [unenrolling, setUnenrolling] = useState(false);
 
   const verifiedFactor = factors.find((f) => f.status === 'verified');
+
+  // Re-read the real factor list after enrolling — the id/created_at must come
+  // from GoTrue, or the Remove button unenrolls a factor id that doesn't exist.
+  // THROWS on failure so the dialog can keep itself open and say so: silently
+  // no-op'ing would leave the card claiming 2FA is off right after enabling it.
+  async function refreshFactors() {
+    if (!business?.id) throw new Error('Business not loaded');
+    const result = await listMFAFactorsAction(business.id);
+    if (!result.success) {
+      throw new Error(result.error?.message ?? 'Failed to load authenticators');
+    }
+    setFactors(result.data ?? []);
+  }
 
   async function handleUnenroll(factorId: string) {
     if (!business?.id) return;
@@ -160,19 +176,7 @@ export function SecurityTab({ initialFactors }: SecurityTabProps) {
       <MFAEnrollDialog
         open={enrollOpen}
         onOpenChange={setEnrollOpen}
-        onSuccess={() =>
-          setFactors((prev) => [
-            ...prev,
-            {
-              id: crypto.randomUUID(),
-              friendly_name: 'Authenticator App',
-              factor_type: 'totp',
-              status: 'verified',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          ])
-        }
+        onSuccess={refreshFactors}
       />
     </div>
   );

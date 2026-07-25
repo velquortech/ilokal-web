@@ -152,7 +152,7 @@ export default function ForgotPasswordForm() {
 
         <div className="space-y-2">
           <Button asChild variant="ghost" className="w-full">
-            <Link href={ROUTES.AUTH.BUSINESS_LOGIN}>
+            <Link href={ROUTES.AUTH.SIGN_IN}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to login
             </Link>
@@ -229,7 +229,7 @@ export default function ForgotPasswordForm() {
         </Button>
 
         <Button asChild variant="ghost" className="w-full">
-          <Link href={ROUTES.AUTH.BUSINESS_LOGIN}>
+          <Link href={ROUTES.AUTH.SIGN_IN}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to login
           </Link>

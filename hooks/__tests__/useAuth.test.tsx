@@ -61,34 +61,34 @@ async function clickLogout() {
 
 describe('useAuth.logout', () => {
   it('signs out, then replaces the current entry with the given path', async () => {
-    act(() => root.render(<Harness path={ROUTES.AUTH.BUSINESS_LOGIN} />));
+    act(() => root.render(<Harness path={ROUTES.AUTH.SIGN_IN} />));
     await clickLogout();
 
     expect(signOutAction).toHaveBeenCalledTimes(1);
-    expect(replace).toHaveBeenCalledWith(ROUTES.AUTH.BUSINESS_LOGIN);
+    expect(replace).toHaveBeenCalledWith(ROUTES.AUTH.SIGN_IN);
   });
 
   it('routes admin logout to the admin login', async () => {
-    act(() => root.render(<Harness path={ROUTES.AUTH.ADMIN_LOGIN} />));
+    act(() => root.render(<Harness path={ROUTES.AUTH.ADMIN_SIGN_IN} />));
     await clickLogout();
-    expect(replace).toHaveBeenCalledWith(ROUTES.AUTH.ADMIN_LOGIN);
+    expect(replace).toHaveBeenCalledWith(ROUTES.AUTH.ADMIN_SIGN_IN);
   });
 
   it('defaults to the generic login when no path is given', async () => {
     act(() => root.render(<Harness />));
     await clickLogout();
-    expect(replace).toHaveBeenCalledWith(ROUTES.AUTH.LOGIN);
+    expect(replace).toHaveBeenCalledWith(ROUTES.AUTH.SIGN_IN);
   });
 
   it('does NOT refresh the route it is leaving (would race the navigation)', async () => {
-    act(() => root.render(<Harness path={ROUTES.AUTH.BUSINESS_LOGIN} />));
+    act(() => root.render(<Harness path={ROUTES.AUTH.SIGN_IN} />));
     await clickLogout();
     expect(refresh).not.toHaveBeenCalled();
   });
 
   it('stays put and warns when the session was NOT cleared', async () => {
     signOutAction.mockResolvedValueOnce({ ok: false, revoked: false });
-    act(() => root.render(<Harness path={ROUTES.AUTH.BUSINESS_LOGIN} />));
+    act(() => root.render(<Harness path={ROUTES.AUTH.SIGN_IN} />));
     await clickLogout();
 
     expect(replace).not.toHaveBeenCalled();
@@ -97,7 +97,7 @@ describe('useAuth.logout', () => {
 
   it('stays put when the sign-out request itself rejects', async () => {
     signOutAction.mockRejectedValueOnce(new Error('network'));
-    act(() => root.render(<Harness path={ROUTES.AUTH.BUSINESS_LOGIN} />));
+    act(() => root.render(<Harness path={ROUTES.AUTH.SIGN_IN} />));
     await clickLogout();
 
     expect(replace).not.toHaveBeenCalled();
@@ -106,7 +106,7 @@ describe('useAuth.logout', () => {
 
   it('uses a stable toast id so repeated failures do not stack', async () => {
     signOutAction.mockResolvedValueOnce({ ok: false, revoked: false });
-    act(() => root.render(<Harness path={ROUTES.AUTH.LOGIN} />));
+    act(() => root.render(<Harness path={ROUTES.AUTH.SIGN_IN} />));
     await clickLogout();
 
     expect(toastError).toHaveBeenCalledWith(
@@ -117,16 +117,16 @@ describe('useAuth.logout', () => {
 
   it('force navigates without a toast when the session is already known-dead', async () => {
     signOutAction.mockResolvedValueOnce({ ok: false, revoked: false });
-    act(() => root.render(<Harness path={ROUTES.AUTH.LOGIN} force />));
+    act(() => root.render(<Harness path={ROUTES.AUTH.SIGN_IN} force />));
     await clickLogout();
 
-    expect(replace).toHaveBeenCalledWith(ROUTES.AUTH.LOGIN);
+    expect(replace).toHaveBeenCalledWith(ROUTES.AUTH.SIGN_IN);
     expect(toastError).not.toHaveBeenCalled();
   });
 
   it('releases the busy state after a failed sign-out so the user can retry', async () => {
     signOutAction.mockResolvedValueOnce({ ok: false, revoked: false });
-    act(() => root.render(<Harness path={ROUTES.AUTH.LOGIN} />));
+    act(() => root.render(<Harness path={ROUTES.AUTH.SIGN_IN} />));
     await clickLogout();
 
     expect(container.querySelector('button')!.textContent).toBe('idle');

@@ -50,7 +50,7 @@ export default function ResetPasswordForm() {
 
   function finish() {
     toast.success('Password updated. Please sign in.');
-    router.push(`${ROUTES.AUTH.BUSINESS_LOGIN}?reset=1`);
+    router.push(`${ROUTES.AUTH.SIGN_IN}?reset=1`);
   }
 
   function onSubmit(data: ResetPasswordFormInput) {
@@ -206,7 +206,7 @@ export default function ResetPasswordForm() {
           </Button>
 
           <Button asChild variant="ghost" className="w-full">
-            <Link href={ROUTES.AUTH.BUSINESS_LOGIN}>
+            <Link href={ROUTES.AUTH.SIGN_IN}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to login
             </Link>
@@ -312,7 +312,7 @@ export default function ResetPasswordForm() {
         </Button>
 
         <Button asChild variant="ghost" className="w-full">
-          <Link href={ROUTES.AUTH.BUSINESS_LOGIN}>
+          <Link href={ROUTES.AUTH.SIGN_IN}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to login
           </Link>

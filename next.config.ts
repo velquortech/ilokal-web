@@ -106,6 +106,26 @@ const nextConfig: NextConfig = {
         destination: `${process.env.NEXT_PUBLIC_DESTINATION}`,
         permanent: true,
       },
+      // Sign-in unification: legacy login doors → /sign-in (query string is
+      // preserved automatically, so ?next= / ?reset=1 / ?error= survive).
+      // permanent:false (307) until the new door has soaked — browsers cache
+      // 308s, which would outlive a rollback. Flip to permanent:true in a
+      // follow-up. See .claude/SIGNIN_UNIFICATION.md.
+      {
+        source: '/login',
+        destination: '/sign-in',
+        permanent: false,
+      },
+      {
+        source: '/login/business',
+        destination: '/sign-in',
+        permanent: false,
+      },
+      {
+        source: '/login/admin',
+        destination: '/sign-in/admin',
+        permanent: false,
+      },
     ];
   },
   async headers() {

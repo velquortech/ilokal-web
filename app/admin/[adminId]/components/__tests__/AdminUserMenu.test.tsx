@@ -82,7 +82,7 @@ describe('AdminUserMenu logout', () => {
       await Promise.resolve();
     });
 
-    expect(logout).toHaveBeenCalledWith(ROUTES.AUTH.ADMIN_LOGIN);
+    expect(logout).toHaveBeenCalledWith(ROUTES.AUTH.ADMIN_SIGN_IN);
   });
 
   it('shows the busy state and disables the item while signing out', async () => {

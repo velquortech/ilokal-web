@@ -126,7 +126,7 @@ describe('ResetPasswordForm', () => {
       }),
     );
     expect(toastSuccess).toHaveBeenCalled();
-    expect(pushMock).toHaveBeenCalledWith('/login/business?reset=1');
+    expect(pushMock).toHaveBeenCalledWith('/sign-in?reset=1');
   });
 
   it('blocks submit when the passwords do not match', async () => {
@@ -195,7 +195,7 @@ describe('ResetPasswordForm', () => {
       }),
     );
     expect(toastSuccess).toHaveBeenCalled();
-    expect(pushMock).toHaveBeenCalledWith('/login/business?reset=1');
+    expect(pushMock).toHaveBeenCalledWith('/sign-in?reset=1');
   });
 
   it('keeps the 2FA step and shows an error on a wrong code', async () => {

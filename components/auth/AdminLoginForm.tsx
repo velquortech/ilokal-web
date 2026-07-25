@@ -7,17 +7,31 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'motion/react';
 import { AlertCircle, Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
 import { loginSchema, LoginInput } from '@/lib/validation/auth';
-import { loginAsAdmin, redirectByRole } from '@/app/(auth)/actions';
+import {
+  loginAsAdmin,
+  redirectByRole,
+  signOutAction,
+  checkMFARequiredAction,
+  verifyMFALoginAction,
+} from '@/app/(auth)/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Field, FieldError } from '@/components/ui/field';
+import { isRedirectError } from '@/lib/utils/redirectError';
+
+type AdminSignInStep = 'credentials' | 'mfa';
 
 export default function AdminLoginForm() {
   const [serverError, setServerError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [step, setStep] = useState<AdminSignInStep>('credentials');
+  const [mfaFactorId, setMfaFactorId] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaError, setMfaError] = useState('');
+  const [mfaLoading, setMfaLoading] = useState(false);
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -29,10 +43,23 @@ export default function AdminLoginForm() {
     startTransition(async () => {
       try {
         const response = await loginAsAdmin(data.email, data.password);
+
+        // MFA elevation — no-op unless the admin has a verified TOTP factor.
+        // Required, not cosmetic: the proxy bounces an AAL1 session off every
+        // protected page, so without this step an enrolled admin can never
+        // reach /admin from this door.
+        const mfa = await checkMFARequiredAction();
+        if (mfa.required && mfa.factorId) {
+          setMfaFactorId(mfa.factorId);
+          setStep('mfa');
+          return;
+        }
+
         await redirectByRole(response.user.role);
       } catch (error) {
-        if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-          return;
+        // redirect() rejections are expected navigation, not failures — match
+        // on the digest marker (message may be empty in production builds).
+        if (isRedirectError(error)) return;
         setServerError(
           error instanceof Error
             ? error.message
@@ -40,6 +67,114 @@ export default function AdminLoginForm() {
         );
       }
     });
+  }
+
+  async function handleMFAVerify() {
+    if (mfaCode.length !== 6) {
+      setMfaError('Enter the 6-digit code from your authenticator app');
+      return;
+    }
+    setMfaLoading(true);
+    setMfaError('');
+    try {
+      const result = await verifyMFALoginAction(mfaFactorId, mfaCode);
+      if (!result.success) {
+        setMfaError(result.error ?? 'Verification failed');
+        setMfaLoading(false);
+        return;
+      }
+      // Session is AAL2 now — keep the spinner through the navigation.
+      await redirectByRole('admin');
+    } catch (error) {
+      if (isRedirectError(error)) return;
+      setMfaError(
+        error instanceof Error ? error.message : 'Verification failed',
+      );
+      setMfaLoading(false);
+    }
+  }
+
+  /** Abandoning the code step must not leave the AAL1 session behind. */
+  async function handleMFACancel() {
+    setMfaLoading(true);
+    try {
+      await signOutAction();
+    } finally {
+      setMfaLoading(false);
+      setStep('credentials');
+      setMfaCode('');
+      setMfaError('');
+      setMfaFactorId('');
+      form.reset();
+    }
+  }
+
+  if (step === 'mfa') {
+    return (
+      <motion.div
+        className="w-full max-w-sm space-y-6"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+      >
+        <div className="space-y-1">
+          <div className="bg-foreground text-background mb-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Two-Factor Verification
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight">Enter your code</h1>
+          <p className="text-muted-foreground text-sm">
+            Open your authenticator app and enter the 6-digit code.
+          </p>
+        </div>
+
+        {mfaError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{mfaError}</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="space-y-3">
+          <Label htmlFor="admin-mfa-code">Verification Code</Label>
+          <Input
+            id="admin-mfa-code"
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            placeholder="000000"
+            value={mfaCode}
+            onChange={(e) =>
+              setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))
+            }
+            className="text-center font-mono text-lg tracking-widest"
+            autoFocus
+          />
+          <Button
+            onClick={handleMFAVerify}
+            disabled={mfaLoading || mfaCode.length !== 6}
+            className="w-full"
+          >
+            {mfaLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Verifying…
+              </>
+            ) : (
+              'Verify & Sign In'
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full"
+            disabled={mfaLoading}
+            onClick={handleMFACancel}
+          >
+            Back to sign in
+          </Button>
+        </div>
+      </motion.div>
+    );
   }
 
   return (

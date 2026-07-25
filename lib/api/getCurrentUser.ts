@@ -76,7 +76,7 @@ export async function getAdminUserOrRedirect(): Promise<User> {
 
     // Not authenticated
     if (!authUser) {
-      redirect(ROUTES.AUTH.LOGIN);
+      redirect(ROUTES.AUTH.SIGN_IN);
     }
 
     // Fetch full profile with status
@@ -87,7 +87,7 @@ export async function getAdminUserOrRedirect(): Promise<User> {
       .single();
 
     if (error || !profile) {
-      redirect(ROUTES.AUTH.LOGIN);
+      redirect(ROUTES.AUTH.SIGN_IN);
     }
 
     // Not admin
@@ -100,7 +100,7 @@ export async function getAdminUserOrRedirect(): Promise<User> {
       console.warn(
         `[getAdminUserOrRedirect] Admin user ${authUser.id} has status: ${profile.status}`,
       );
-      redirect(ROUTES.AUTH.LOGIN);
+      redirect(ROUTES.AUTH.SIGN_IN);
     }
 
     return {
@@ -114,7 +114,7 @@ export async function getAdminUserOrRedirect(): Promise<User> {
   } catch (error) {
     if (isRedirectError(error)) throw error;
     console.error('[getAdminUserOrRedirect] Error:', error);
-    redirect(ROUTES.AUTH.LOGIN);
+    redirect(ROUTES.AUTH.SIGN_IN);
   }
 }
 
@@ -136,7 +136,7 @@ export async function getBusinessUserOrRedirect(): Promise<User> {
 
     // Not authenticated
     if (!authUser) {
-      redirect(ROUTES.AUTH.LOGIN);
+      redirect(ROUTES.AUTH.SIGN_IN);
     }
 
     // Fetch full profile with status
@@ -147,7 +147,7 @@ export async function getBusinessUserOrRedirect(): Promise<User> {
       .single();
 
     if (error || !profile) {
-      redirect(ROUTES.AUTH.LOGIN);
+      redirect(ROUTES.AUTH.SIGN_IN);
     }
 
     // Not business owner
@@ -160,7 +160,7 @@ export async function getBusinessUserOrRedirect(): Promise<User> {
       console.warn(
         `[getBusinessUserOrRedirect] Business owner ${authUser.id} has status: ${profile.status}`,
       );
-      redirect(ROUTES.AUTH.LOGIN);
+      redirect(ROUTES.AUTH.SIGN_IN);
     }
 
     return {
@@ -174,6 +174,6 @@ export async function getBusinessUserOrRedirect(): Promise<User> {
   } catch (error) {
     if (isRedirectError(error)) throw error;
     console.error('[getBusinessUserOrRedirect] Error:', error);
-    redirect(ROUTES.AUTH.LOGIN);
+    redirect(ROUTES.AUTH.SIGN_IN);
   }
 }

@@ -1,4 +1,5 @@
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
+import { resolvePublicAvatarUrl } from '@/lib/api/customer/customerQuery';
 import { CustomerHeader } from '@/components/customer/CustomerHeader';
 
 /**
@@ -11,6 +12,9 @@ export default async function ExploreLayout({
   children: React.ReactNode;
 }) {
   const user = await getCurrentUser();
+  // Real registrations store raw in-bucket avatar paths — resolve before
+  // handing to next/image.
+  const avatarUrl = user ? await resolvePublicAvatarUrl(user.avatar_url) : null;
 
   return (
     <div className="font-giest bg-background flex min-h-screen flex-col">
@@ -20,7 +24,7 @@ export default async function ExploreLayout({
             ? {
                 id: user.id,
                 full_name: user.full_name ?? null,
-                avatar_url: user.avatar_url ?? null,
+                avatar_url: avatarUrl,
                 role: user.role,
               }
             : null

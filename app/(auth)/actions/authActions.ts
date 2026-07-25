@@ -34,10 +34,15 @@ const LOGIN_ACCOUNT_WINDOW_MS = Number(
  * - Generic error messages to prevent account enumeration
  * - Uses service role only for auth operations
  */
+export interface LoginRateLimited {
+  rateLimited: true;
+  message: string;
+}
+
 export async function loginAction(
   email: string,
   password: string,
-): Promise<{ user: User; message: string }> {
+): Promise<{ user: User; message: string } | LoginRateLimited> {
   try {
     // Validate required fields
     if (!email?.trim() || !password?.trim()) {
@@ -50,6 +55,9 @@ export async function loginAction(
     }
 
     // Rate-limit before any auth/DB work (generic message — no oracle).
+    // Bucket keys are shared with POST /api/auth/login (`auth:login:*`) so
+    // both doors drain ONE budget — separate keys would double an attacker's
+    // per-account attempts by alternating doors.
     // headers() is only available inside a request scope — outside one
     // (unit tests) fall back to a shared bucket rather than crashing login.
     let ip = 'unknown';
@@ -59,17 +67,23 @@ export async function loginAction(
       // non-request scope — keep the fallback key
     }
     const ipCheck = rateLimit(
-      `auth:login-action:ip:${ip}`,
+      `auth:login:ip:${ip}`,
       LOGIN_IP_LIMIT,
       LOGIN_IP_WINDOW_MS,
     );
     const accountCheck = rateLimit(
-      `auth:login-action:acct:${email.trim().toLowerCase()}`,
+      `auth:login:acct:${email.trim().toLowerCase()}`,
       LOGIN_ACCOUNT_LIMIT,
       LOGIN_ACCOUNT_WINDOW_MS,
     );
     if (!ipCheck.allowed || !accountCheck.allowed) {
-      throw new Error('Too many attempts. Please try again in a few minutes.');
+      // Returned (not thrown): production Next.js redacts messages thrown
+      // from Server Actions, and the form must distinguish 429 from bad
+      // credentials.
+      return {
+        rateLimited: true,
+        message: 'Too many attempts. Please try again in a few minutes.',
+      };
     }
 
     // Create server-side Supabase client
@@ -274,6 +288,10 @@ export async function loginAsAdmin(
 ): Promise<{ user: User; message: string }> {
   const result = await loginAction(email, password);
 
+  // Admin/business portals keep the throwing contract — surface the 429 the
+  // same way their other failures surface.
+  if ('rateLimited' in result) throw new Error(result.message);
+
   if (result.user.role !== 'admin') {
     const supabase = await createServerSupabaseClient();
     await supabase.auth.signOut();
@@ -294,6 +312,8 @@ export async function loginAsBusiness(
   password: string,
 ): Promise<{ user: User; businessId: string | null; message: string }> {
   const result = await loginAction(email, password);
+
+  if ('rateLimited' in result) throw new Error(result.message);
 
   if (result.user.role !== 'business_owner') {
     const supabase = await createServerSupabaseClient();

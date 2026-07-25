@@ -187,7 +187,7 @@ export async function redeemCouponAction(
     const { data: coupon, error: couponError } = await supabase
       .from('coupons')
       .select(
-        'id, start_date, expiry_date, status, max_redemptions_per_user, max_redemptions_global, current_redemptions, requires_follow, business_id, branch_id',
+        'id, start_date, expiry_date, status, max_redemptions_per_user, max_redemptions_global, current_redemptions, requires_follow, business_id, branch_id, businesses!business_id (archived_at)',
       )
       .eq('id', couponId)
       .eq('status', 'published')
@@ -195,7 +195,13 @@ export async function redeemCouponAction(
       .lte('start_date', now)
       .single();
 
-    if (couponError || !coupon) {
+    // An archived business's coupons stay readable through the coupon RLS
+    // policy (it checks verified only) — treat them as not found here.
+    const businessArchived =
+      (coupon as unknown as { businesses?: { archived_at: string | null } })
+        ?.businesses?.archived_at != null;
+
+    if (couponError || !coupon || businessArchived) {
       return {
         ok: false,
         code: 'BAD_REQUEST',

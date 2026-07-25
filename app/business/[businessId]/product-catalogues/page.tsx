@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { ROUTES } from '@/config/routeConfig';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import {
   getProductsPaginated,
@@ -30,7 +31,7 @@ export default async function ProductCataloguesPage({
       'code' in verify.error &&
       (verify.error as { code: string }).code === 'AUTHENTICATION_ERROR';
 
-    if (isUnauthenticated) redirect('/login');
+    if (isUnauthenticated) redirect(ROUTES.AUTH.SIGN_IN);
   }
 
   const businessId = verify.business?.id;

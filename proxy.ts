@@ -213,12 +213,12 @@ export async function proxy(request: NextRequest) {
   const isProtectedRoute = isProtectedPath(pathname);
 
   if (isProtectedRoute && !user) {
-    return NextResponse.redirect(new URL(ROUTES.AUTH.LOGIN, request.url));
+    return NextResponse.redirect(new URL(ROUTES.AUTH.SIGN_IN, request.url));
   }
 
   // Only block on an explicitly non-active status. null means the profile row
   // doesn't exist yet (e.g. trigger lag on first OAuth login) — let the page
-  // handle it rather than redirect-looping the user to /login.
+  // handle it rather than redirect-looping the user to /sign-in.
   if (
     isProtectedRoute &&
     user &&
@@ -228,7 +228,7 @@ export async function proxy(request: NextRequest) {
     console.warn(
       `[proxy] User ${user.id} status '${userStatus}' blocked on ${pathname}`,
     );
-    return NextResponse.redirect(new URL(ROUTES.AUTH.LOGIN, request.url));
+    return NextResponse.redirect(new URL(ROUTES.AUTH.SIGN_IN, request.url));
   }
 
   if (isProtectedRoute && user && !roleAllowedForPath(userRole, pathname)) {

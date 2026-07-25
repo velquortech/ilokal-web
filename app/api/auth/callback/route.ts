@@ -9,7 +9,7 @@ export async function GET(request: Request) {
 
   if (!code) {
     return NextResponse.redirect(
-      new URL(`${ROUTES.AUTH.LOGIN}?error=missing_code`, origin),
+      new URL(`${ROUTES.AUTH.SIGN_IN}?error=missing_code`, origin),
     );
   }
 
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
   if (error) {
     console.error('[auth/callback] Code exchange error:', error.message);
     return NextResponse.redirect(
-      new URL(`${ROUTES.AUTH.LOGIN}?error=auth_callback_error`, origin),
+      new URL(`${ROUTES.AUTH.SIGN_IN}?error=auth_callback_error`, origin),
     );
   }
 

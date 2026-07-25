@@ -436,7 +436,7 @@ function SignupFormContent() {
       <p className="text-muted-foreground text-center text-sm">
         Already have an account?{' '}
         <Link
-          href={ROUTES.AUTH.LOGIN}
+          href={ROUTES.AUTH.SIGN_IN}
           className="text-foreground hover:text-primary font-semibold transition-colors"
         >
           Sign in

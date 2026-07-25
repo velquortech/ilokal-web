@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation';
+import { ROUTES } from '@/config/routeConfig';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import {
   getBusinessSettings,
@@ -26,7 +27,7 @@ export default async function SettingsPage({ params }: { params: Params }) {
       'code' in err &&
       (err as { code: string }).code === 'AUTHENTICATION_ERROR'
     ) {
-      redirect('/login');
+      redirect(ROUTES.AUTH.SIGN_IN);
     }
     notFound();
   }

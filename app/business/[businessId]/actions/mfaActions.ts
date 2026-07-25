@@ -66,6 +66,29 @@ export async function enrollMFAAction(): Promise<{
   error?: string;
 }> {
   const supabase = await createServerSupabaseClient();
+
+  // Clean up orphaned UNVERIFIED TOTP factors before enrolling. An abandoned
+  // or crashed enrollment leaves an unverified factor behind, and GoTrue then
+  // rejects every new enrollment with the same friendly name (422 "already
+  // exists") — while the orphan is invisible to the settings list, because
+  // listFactors() only surfaces verified factors in `data.totp` (unverified
+  // ones live only in `data.all`). Verified factors are never touched.
+  const { data: existing } = await supabase.auth.mfa.listFactors();
+  const staleFactors = (existing?.all ?? []).filter(
+    (f) => f.factor_type === 'totp' && f.status !== 'verified',
+  );
+  for (const stale of staleFactors) {
+    const { error: unenrollError } = await supabase.auth.mfa.unenroll({
+      factorId: stale.id,
+    });
+    if (unenrollError) {
+      console.error(
+        '[enrollMFAAction] Failed to clean up stale factor:',
+        unenrollError.message,
+      );
+    }
+  }
+
   const { data, error } = await supabase.auth.mfa.enroll({
     factorType: 'totp',
     issuer: 'iLokal',

@@ -45,13 +45,26 @@ export const darkTokens: Tokens = {
   '--shadow': '0 1px 3px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35)',
 };
 
-/** Full root style (base vars + themed vars) for the given mode. */
-export function rootStyle(dark: boolean): CSSProperties {
-  const themed = dark ? darkTokens : lightTokens;
+/**
+ * The custom properties alone — no page layout.
+ *
+ * Any element that hosts a landing component needs these plus `data-ilokal-root`
+ * (the attribute every `landing.css` rule is scoped under). Use this when
+ * embedding a single piece of landing chrome in another surface; use
+ * `rootStyle` when the landing owns the whole page.
+ */
+export function themeTokens(dark: boolean): CSSProperties {
   return {
     '--brand': BRAND,
     '--brandhover': BRAND_HOVER,
-    ...themed,
+    ...(dark ? darkTokens : lightTokens),
+  } as CSSProperties;
+}
+
+/** Full root style (tokens + whole-page layout) for the given mode. */
+export function rootStyle(dark: boolean): CSSProperties {
+  return {
+    ...themeTokens(dark),
     background: 'var(--bg)',
     color: 'var(--text)',
     fontFamily: 'var(--font-geist-sans), Geist, system-ui, sans-serif',

@@ -16,7 +16,7 @@ import * as React from 'react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ROUTES } from '@/config/routeConfig';
+import { ROUTES, landingSectionPath } from '@/config/routeConfig';
 import {
   CustomerHeader,
   type CustomerHeaderUser,
@@ -90,14 +90,7 @@ function anchors(href: string) {
 }
 
 describe('CustomerHeader — route back to the landing', () => {
-  it('renders a Home link to the landing for an anonymous visitor', () => {
-    render(null);
-    const home = anchors(ROUTES.PUBLIC.LANDING);
-    expect(home.length).toBeGreaterThan(0);
-    expect(home.some((a) => a.textContent?.includes('Home'))).toBe(true);
-  });
-
-  it('renders the Home link for a signed-in customer too', () => {
+  it('renders the Home link for a signed-in customer', () => {
     render(CUSTOMER);
     expect(
       anchors(ROUTES.PUBLIC.LANDING).some((a) =>
@@ -106,9 +99,9 @@ describe('CustomerHeader — route back to the landing', () => {
     ).toBe(true);
   });
 
-  it('exposes Home in both the desktop and the mobile nav row', () => {
-    render(null);
-    // Both rows render from the same NAV_LINKS array — two Home anchors, so a
+  it('exposes Home in both the inline and the scroll nav row', () => {
+    render(CUSTOMER);
+    // Both rows render from the same array — two Home anchors, so a
     // small-screen visitor is never stranded on /explore.
     const home = anchors(ROUTES.PUBLIC.LANDING).filter((a) =>
       a.textContent?.includes('Home'),
@@ -116,19 +109,87 @@ describe('CustomerHeader — route back to the landing', () => {
     expect(home.length).toBe(2);
   });
 
-  it('keeps the existing explore entries alongside Home', () => {
-    render(null);
+  it('keeps the explore entries alongside Home', () => {
+    render(CUSTOMER);
     expect(anchors(ROUTES.EXPLORE.NEARBY).length).toBeGreaterThan(0);
     expect(anchors(ROUTES.EXPLORE.DEALS).length).toBeGreaterThan(0);
+  });
+});
+
+describe('CustomerHeader — session decides which chrome renders', () => {
+  /** Labels of the inline nav row. */
+  function navLabels() {
+    const inline = container.querySelector('nav')!;
+    return Array.from(inline.querySelectorAll('a')).map((a) =>
+      a.textContent?.trim(),
+    );
+  }
+
+  it('hands an anonymous visitor the landing nav, not the app header', () => {
+    render(null);
+    // Delegated to PublicNav, which mounts the real LandingNav inside the
+    // landing token wrapper — so /explore and / are one design, not two.
+    expect(container.querySelector('[data-ilokal-root]')).not.toBeNull();
+    expect(navLabels()).toEqual([
+      'Explore Shops',
+      'For Shoppers',
+      'For Businesses',
+      'How It Works',
+      'Deals',
+      'About',
+    ]);
+  });
+
+  it('swaps to the app header once there is a session', () => {
+    render(CUSTOMER);
+    expect(container.querySelector('[data-ilokal-root]')).toBeNull();
+    expect(navLabels()).toEqual(['Home', 'Explore', 'Nearby', 'Deals']);
+  });
+
+  it('gives an owner the app header too, not the marketing nav', () => {
+    // A signed-in owner on /explore, and every /customer page, must never get
+    // "For Businesses" — that is a pitch to someone without an account.
+    render(OWNER);
+    expect(navLabels()).toEqual(['Home', 'Explore', 'Nearby', 'Deals']);
+  });
+
+  it('points the anon nav at absolute landing anchors, never bare hashes', () => {
+    render(null);
+    const hrefs = Array.from(container.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    );
+    expect(hrefs).toContain(landingSectionPath('shoppers'));
+    expect(hrefs).toContain(landingSectionPath('businesses'));
+    expect(hrefs).toContain(landingSectionPath('how'));
+    // The landing's own nav uses `#shoppers` etc, which scroll nowhere here.
+    expect(hrefs.some((h) => h?.startsWith('#'))).toBe(false);
+  });
+
+  it('keeps all three anon doors: sign-in, sign-up, list your business', () => {
+    render(null);
+    expect(anchors(ROUTES.AUTH.SIGN_IN).length).toBeGreaterThan(0);
+    expect(anchors(ROUTES.AUTH.SIGNUP).length).toBeGreaterThan(0);
+    expect(anchors(ROUTES.BUSINESS.registration).length).toBeGreaterThan(0);
+  });
+
+  it('sends anon "Deals" to the real feed, not the landing teaser', () => {
+    render(null);
+    const deals = Array.from(container.querySelectorAll('nav a')).filter(
+      (a) => a.textContent?.trim() === 'Deals',
+    );
+    expect(deals.length).toBeGreaterThan(0);
+    expect(
+      deals.every((a) => a.getAttribute('href') === ROUTES.EXPLORE.DEALS),
+    ).toBe(true);
   });
 });
 
 describe('CustomerHeader — brand lockup destination', () => {
   it('sends an anonymous visitor to the landing', () => {
     render(null);
-    const brand = container.querySelector<HTMLAnchorElement>(
-      'a[aria-label="iLokal — home"]',
-    );
+    // The landing nav's lockup carries no aria-label of its own — it is the
+    // first anchor in the header.
+    const brand = container.querySelector<HTMLAnchorElement>('header a');
     expect(brand?.getAttribute('href')).toBe(ROUTES.PUBLIC.LANDING);
   });
 
@@ -138,6 +199,18 @@ describe('CustomerHeader — brand lockup destination', () => {
       'a[aria-label="iLokal — explore shops"]',
     );
     expect(brand?.getAttribute('href')).toBe(ROUTES.EXPLORE.HOME);
+  });
+
+  it('is a flex box, so no line-height strut offsets it from the nav row', () => {
+    render(CUSTOMER);
+    const brand = container.querySelector<HTMLAnchorElement>(
+      'a[aria-label="iLokal — explore shops"]',
+    )!;
+    // An inline anchor's flex-item box is a line box: the strut pads the
+    // lockup and items-center then centres the padding, not the logo.
+    // (The landing nav solves the same problem with inline `display:inline-flex`.)
+    expect(brand.className).toContain('flex');
+    expect(brand.className).toContain('items-center');
   });
 
   it('sends a business owner browsing publicly to the landing', () => {
@@ -153,18 +226,19 @@ describe('CustomerHeader — anonymous conversion CTAs', () => {
   it('offers sign-in, sign-up and the business-registration CTA', () => {
     render(null);
     expect(anchors(ROUTES.AUTH.SIGN_IN).length).toBe(1);
-    expect(anchors(ROUTES.AUTH.SIGNUP).length).toBe(1);
-    // Parity with the landing's primary CTA.
+    // Sign-up appears twice: the action row and the mobile overlay CTA.
+    expect(anchors(ROUTES.AUTH.SIGNUP).length).toBeGreaterThan(0);
     const listBusiness = anchors(ROUTES.BUSINESS.registration);
     expect(listBusiness.length).toBe(1);
     expect(listBusiness[0]!.textContent).toContain('List Your Business');
   });
 
-  it('hides the registration CTA below the sm breakpoint', () => {
+  it('collapses the whole row rather than hiding CTAs one by one', () => {
     render(null);
-    expect(anchors(ROUTES.BUSINESS.registration)[0]!.className).toContain(
-      'sm:inline-flex',
-    );
+    // The landing nav drops .navlinks/.navactions and shows .hamb below
+    // 1100px (landing.css), so no per-button breakpoint class is needed.
+    expect(container.querySelector('.navactions')).not.toBeNull();
+    expect(container.querySelector('.hamb')).not.toBeNull();
   });
 
   it('drops all three once a customer is signed in', () => {
@@ -184,10 +258,15 @@ describe('CustomerHeader — theme control', () => {
   it('renders a theme toggle for every visitor', () => {
     for (const user of [null, CUSTOMER, OWNER]) {
       render(user);
-      const toggle = Array.from(container.querySelectorAll('button')).find(
-        (b) => b.textContent?.includes('Toggle theme'),
-      );
-      expect(toggle).toBeDefined();
+      // Anonymous gets the landing nav's toggle (aria-label only, no text);
+      // signed-in gets the shadcn ThemeToggle (sr-only text). Both must exist,
+      // and both drive next-themes.
+      const toggle =
+        container.querySelector('[aria-label="Toggle theme"]') ??
+        Array.from(container.querySelectorAll('button')).find((b) =>
+          b.textContent?.includes('Toggle theme'),
+        );
+      expect(toggle).toBeTruthy();
     }
   });
 });
@@ -195,13 +274,16 @@ describe('CustomerHeader — theme control', () => {
 describe('CustomerHeader — active state', () => {
   it('marks the current explore route, not Home', () => {
     pathname.value = ROUTES.EXPLORE.NEARBY;
-    render(null);
+    // Nearby only exists in the app set, so this needs a session.
+    render(CUSTOMER);
 
     // `<Button asChild>` is a Radix Slot — the highlight classes land on the
     // anchor itself, not on a wrapper.
+    // classList, not a substring match: every ghost Button carries
+    // `hover:bg-accent`, which `toContain('bg-accent')` would happily match.
     const nearby = anchors(ROUTES.EXPLORE.NEARBY)[0]!;
     const home = anchors(ROUTES.PUBLIC.LANDING)[0]!;
-    expect(nearby.className).toContain('bg-accent');
-    expect(home.className).not.toContain('bg-accent');
+    expect(nearby.classList.contains('bg-accent')).toBe(true);
+    expect(home.classList.contains('bg-accent')).toBe(false);
   });
 });

@@ -15,7 +15,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ChangePasswordDialog } from './ChangePasswordDialog';
 import { ChangeEmailDialog } from './ChangeEmailDialog';
 import { MFAEnrollDialog } from './MFAEnrollDialog';
-import { unenrollMFAAction } from '../../actions/mfaActions';
+import {
+  listMFAFactorsAction,
+  unenrollMFAAction,
+} from '../../actions/mfaActions';
 import { useBusinessShop } from '@/providers/BusinessProvider';
 import type { MFAFactor } from '@/lib/types';
 
@@ -33,6 +36,14 @@ export function SecurityTab({ initialFactors }: SecurityTabProps) {
   const [unenrolling, setUnenrolling] = useState(false);
 
   const verifiedFactor = factors.find((f) => f.status === 'verified');
+
+  // Re-read the real factor list after enrolling — the id/created_at must come
+  // from GoTrue, or the Remove button unenrolls a factor id that doesn't exist.
+  async function refreshFactors() {
+    if (!business?.id) return;
+    const result = await listMFAFactorsAction(business.id);
+    if (result.success) setFactors(result.data ?? []);
+  }
 
   async function handleUnenroll(factorId: string) {
     if (!business?.id) return;
@@ -160,19 +171,7 @@ export function SecurityTab({ initialFactors }: SecurityTabProps) {
       <MFAEnrollDialog
         open={enrollOpen}
         onOpenChange={setEnrollOpen}
-        onSuccess={() =>
-          setFactors((prev) => [
-            ...prev,
-            {
-              id: crypto.randomUUID(),
-              friendly_name: 'Authenticator App',
-              factor_type: 'totp',
-              status: 'verified',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          ])
-        }
+        onSuccess={refreshFactors}
       />
     </div>
   );

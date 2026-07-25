@@ -59,6 +59,20 @@ export async function unenrollMFAAction(
   return { success: true, data: null };
 }
 
+/**
+ * GoTrue returns `totp.qr_code` as RAW SVG markup (`<?xml …?><svg …>`), NOT a
+ * URL — see the auth-js type docs ("convert it to a URL by prepending
+ * `data:image/svg+xml;utf-8,`"). Handing the raw markup to <img>/next/image
+ * makes the browser resolve it as a RELATIVE PATH, so the QR request hits the
+ * app and comes back as the 404 page. Base64 (not `utf-8,`) because the markup
+ * contains `#`, `<`, `"` and newlines, which are not valid unescaped in a data
+ * URL. Already-encoded values pass through untouched.
+ */
+function toQrDataUrl(qrCode: string): string {
+  if (!qrCode || qrCode.startsWith('data:')) return qrCode;
+  return `data:image/svg+xml;base64,${Buffer.from(qrCode, 'utf-8').toString('base64')}`;
+}
+
 export async function enrollMFAAction(): Promise<{
   factorId: string;
   qrCode: string;
@@ -66,6 +80,18 @@ export async function enrollMFAAction(): Promise<{
   error?: string;
 }> {
   const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return {
+      factorId: '',
+      qrCode: '',
+      secret: '',
+      error: 'You must be signed in to enable two-factor authentication',
+    };
+  }
 
   // Clean up orphaned UNVERIFIED TOTP factors before enrolling. An abandoned
   // or crashed enrollment leaves an unverified factor behind, and GoTrue then
@@ -106,7 +132,7 @@ export async function enrollMFAAction(): Promise<{
 
   return {
     factorId: data.id,
-    qrCode: data.totp.qr_code,
+    qrCode: toQrDataUrl(data.totp.qr_code),
     secret: data.totp.secret,
   };
 }
@@ -116,6 +142,17 @@ export async function verifyMFAEnrollmentAction(
   code: string,
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return {
+      success: false,
+      error: 'You must be signed in to enable two-factor authentication',
+    };
+  }
+
   const { error } = await supabase.auth.mfa.challengeAndVerify({
     factorId,
     code,

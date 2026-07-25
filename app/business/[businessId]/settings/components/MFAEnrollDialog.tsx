@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   enrollMFAAction,
   verifyMFAEnrollmentAction,
@@ -16,15 +16,28 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
 
 interface MFAEnrollDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: () => void | Promise<void>;
 }
 
 type Step = 'qr' | 'verify';
+
+/**
+ * Belt-and-braces: `enrollMFAAction` already returns a data URL, but GoTrue's
+ * `totp.qr_code` is RAW SVG markup — and next/image rejects a src ending in a
+ * control character ("cannot end with a space or control character"), while a
+ * plain <img> would fetch it as a relative path and 404. Never let raw markup
+ * reach the DOM, whatever the server hands back.
+ */
+function toQrSrc(qrCode: string): string {
+  if (!qrCode || qrCode.startsWith('data:')) return qrCode;
+  return `data:image/svg+xml;utf-8,${encodeURIComponent(qrCode)}`;
+}
 
 export function MFAEnrollDialog({
   open,
@@ -39,20 +52,36 @@ export function MFAEnrollDialog({
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function handleEnroll() {
+  // Guards React 18 StrictMode's double-effect (and a fast reopen) from firing
+  // two enrollments — the second would be rejected as a duplicate factor.
+  const enrolling = useRef(false);
+
+  const handleEnroll = useCallback(async () => {
+    if (enrolling.current) return;
+    enrolling.current = true;
     setLoading(true);
     setError('');
-    const result = await enrollMFAAction();
-    setLoading(false);
-    if (result.error) {
-      setError(result.error);
-      return;
+    try {
+      const result = await enrollMFAAction();
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setFactorId(result.factorId);
+      setQrCode(result.qrCode);
+      setSecret(result.secret);
+      setStep('verify');
+    } finally {
+      enrolling.current = false;
+      setLoading(false);
     }
-    setFactorId(result.factorId);
-    setQrCode(result.qrCode);
-    setSecret(result.secret);
-    setStep('verify');
-  }
+  }, []);
+
+  // Generate the QR as soon as the dialog opens — the old flow made the user
+  // click "Generate QR Code" first, for no reason.
+  useEffect(() => {
+    if (open && step === 'qr' && !qrCode) void handleEnroll();
+  }, [open, step, qrCode, handleEnroll]);
 
   async function handleVerify() {
     if (code.length !== 6) {
@@ -77,9 +106,15 @@ export function MFAEnrollDialog({
 
   function handleClose(open: boolean) {
     if (!open) {
+      // Drop the pending factor too: an abandoned enrollment leaves an
+      // unverified factor behind, and the next enroll cleans it up and mints a
+      // fresh one — so reopening must NOT reuse the stale QR/factorId.
       setStep('qr');
       setCode('');
       setError('');
+      setFactorId('');
+      setQrCode('');
+      setSecret('');
     }
     onOpenChange(open);
   }
@@ -98,13 +133,22 @@ export function MFAEnrollDialog({
 
         {step === 'qr' && (
           <div className="flex flex-col items-center gap-4">
-            <Button
-              onClick={handleEnroll}
-              disabled={loading}
-              className="w-full"
-            >
-              {loading ? 'Generating QR code...' : 'Generate QR Code'}
-            </Button>
+            {loading ? (
+              <div
+                role="status"
+                aria-busy="true"
+                className="flex flex-col items-center gap-3 py-6"
+              >
+                <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+                <p className="text-muted-foreground text-sm">
+                  Generating QR code…
+                </p>
+              </div>
+            ) : (
+              <Button onClick={handleEnroll} className="w-full">
+                Try again
+              </Button>
+            )}
           </div>
         )}
 
@@ -113,7 +157,7 @@ export function MFAEnrollDialog({
             {qrCode && (
               <div className="flex flex-col items-center gap-2">
                 <Image
-                  src={qrCode}
+                  src={toQrSrc(qrCode)}
                   alt="TOTP QR code"
                   width={200}
                   height={200}

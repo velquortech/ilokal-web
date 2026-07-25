@@ -296,7 +296,7 @@ export async function loginAsAdmin(
     const supabase = await createServerSupabaseClient();
     await supabase.auth.signOut();
     throw new Error(
-      'This portal is for admins only. Please use the Business portal.',
+      'This portal is for admins only. Please use the main sign-in page.',
     );
   }
 
@@ -304,33 +304,37 @@ export async function loginAsAdmin(
 }
 
 /**
- * Server Action: Login restricted to business_owner role only.
- * Signs the user out and throws if the account is not a business owner.
+ * Server Action: unified sign-in for the /sign-in door.
+ *
+ * Role-agnostic — any account signs in and the caller routes by
+ * `user.role` (via `redirectByRole`). On top of `loginAction` it resolves the
+ * owner's `businessId` when the account is a business_owner, so the client can
+ * land on `/business/[businessId]` (or `/business/registration` when null)
+ * without a second round-trip. Rate limiting, generic errors, and the
+ * archived/status gates all live in `loginAction`.
  */
-export async function loginAsBusiness(
+export async function signInAction(
   email: string,
   password: string,
-): Promise<{ user: User; businessId: string | null; message: string }> {
+): Promise<
+  { user: User; businessId: string | null; message: string } | LoginRateLimited
+> {
   const result = await loginAction(email, password);
 
-  if ('rateLimited' in result) throw new Error(result.message);
+  if ('rateLimited' in result) return result;
 
-  if (result.user.role !== 'business_owner') {
+  let businessId: string | null = null;
+  if (result.user.role === 'business_owner') {
     const supabase = await createServerSupabaseClient();
-    await supabase.auth.signOut();
-    throw new Error(
-      'This portal is for business owners only. Please use the Admin portal.',
-    );
+    const { data: business } = await supabase
+      .from('businesses')
+      .select('id')
+      .eq('owner_id', result.user.id)
+      .maybeSingle();
+    businessId = business?.id ?? null;
   }
 
-  const supabase = await createServerSupabaseClient();
-  const { data: business } = await supabase
-    .from('businesses')
-    .select('id')
-    .eq('owner_id', result.user.id)
-    .maybeSingle();
-
-  return { ...result, businessId: business?.id ?? null };
+  return { ...result, businessId };
 }
 
 /**

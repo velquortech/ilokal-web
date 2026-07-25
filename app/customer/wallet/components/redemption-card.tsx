@@ -96,10 +96,10 @@ export function RedemptionCard({
       {isActive && (
         <>
           <div className="bg-muted flex items-center justify-between gap-2 rounded-lg px-4 py-3">
-            <span
-              className="font-mono text-2xl font-bold tracking-[0.25em]"
-              aria-label="Show this code at the store"
-            >
+            <span className="font-mono text-2xl font-bold tracking-[0.25em]">
+              {/* aria-label on a role-less span is ignored (or worse,
+                  replaces the code) — the sr-only sibling carries the hint. */}
+              <span className="sr-only">Show this code at the store: </span>
               {redemption.code ?? '——————'}
             </span>
             <Button

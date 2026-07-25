@@ -1,12 +1,12 @@
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
-import type { ProductResponse } from '@/lib/types';
+import type { PublicProduct } from '@/lib/types';
 
 function peso(value: number): string {
   return `₱${Number(value).toLocaleString('en-PH')}`;
 }
 
-export function ProductCard({ product }: { product: ProductResponse }) {
+export function ProductCard({ product }: { product: PublicProduct }) {
   const onSale = product.sale_price != null;
   return (
     <div className="bg-card flex gap-3 rounded-xl border p-3">

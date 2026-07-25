@@ -56,9 +56,49 @@
   searchParams passthrough (2). Verified: `yarn lint` + **1244** tests +
   `yarn build` green; rating RPC smoke-tested in SQL as `anon`.
 - **Known follow-ups:** unify web action + mobile route redeem/updates cores;
-  ratings *submission* on web (SEC-4 gate exists server-side); wallet needs a
-  pagination bar if a user exceeds ~100 redemptions; `?next=` support on the
-  signup form.
+  ratings *submission* on web (SEC-4 gate exists server-side).
+- **Review hardening (react-doctor + api-doctor, PR #14):**
+  - **Unthrottled customer login door closed:** `loginAction` (the Server-
+    Action path both login forms use — never covered by the `/api/auth/*`
+    SEC-8 budgets) now enforces the same per-IP 30/60s + per-account 8/300s
+    budgets itself, generic message, before any auth/DB work.
+  - **Account-state gate on customer mutations:** `requireCustomer` now
+    rejects non-`active`/archived accounts (explore-page Server Actions bypass
+    the proxy's `/customer` status gate, and a live cookie session refreshes
+    indefinitely — role alone wasn't enough). `getCurrentUser` returns
+    `status` + `archived_at`. Plus a per-user 30/60s flood guard on
+    redeem/follow (Server-Action POSTs never enter the proxy limiter).
+  - **Two broken public read paths fixed:** menu images now resolve through
+    `getPublicMenu` (raw in-bucket paths crashed `next/image`), and branch map
+    coordinates come from the `business_branches` RPC (nested PostgREST
+    geography select returns WKB hex, so every pin rendered null).
+  - **Redeem branch validation (web-first, mobile shares the gap):** the
+    branch must belong to the coupon's business, and a branch-scoped coupon
+    only redeems at its branch — closes wrong-branch redemptions the "mirror
+    1:1" framing would have frozen.
+  - **Wallet parity + bounds:** NULL `expires_at` now counts as active /
+    can't be expired (mobile contract), and the wallet reads are `.range()`d
+    (12/page + PaginationBar) instead of unbounded.
+  - **Open-redirect edge closed:** shared `lib/utils/safeNext.ts` also rejects
+    backslash paths (`/\evil.com` normalizes protocol-relative); signup now
+    honors a validated `?next=` for customers and the auth nudge preserves the
+    query string, so the deep-link round-trip works on both doors.
+  - **Correctness/UX:** `mobile_deals` + menu reads moved behind
+    `customerQuery` (no Supabase in page components — repo rule);
+    `getPublicBusinessProfile` wrapped in `React.cache` (generateMetadata +
+    page shared fetch) and typed `NOT_FOUND` vs `LOAD_FAILED` (transient blips
+    no longer 404/deindex healthy shops); updates feed exposes `has_more`
+    (new `FeedPager`) instead of fabricated exact totals from the bounded
+    scan; soft-deleted category names filtered from public embeds; explore
+    search no longer clobbers in-flight typing after the debounce lands;
+    login redirect detection uses the `digest` marker; map geolocation is
+    button-only (no unsolicited permission prompt) and recenters when the
+    position arrives; distinct "couldn't load" vs "empty" states on all
+    customer surfaces; pagination uses `push` (Back walks pages); wallet code
+    a11y via sr-only hint.
+  - **Tests 1244 → 1250** (+ suspended/archived gates, branch-mismatch ×2,
+    per-user rate limit, wallet null-expiry/pagination assertions). Verified:
+    `yarn lint` + **1250** tests + `yarn build` green.
 
 ## 2026-07-25 — Brand rollout: "Hablon Weave" logo across the app (fix/table-toolbar-pagination)
 

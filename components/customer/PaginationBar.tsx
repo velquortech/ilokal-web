@@ -28,7 +28,8 @@ export function PaginationBar({
     const params = new URLSearchParams(searchParams.toString());
     if (page <= 1) params.delete(param);
     else params.set(param, String(page));
-    router.replace(`?${params.toString()}`, { scroll: true });
+    // push (not replace) so Back walks the pages instead of leaving the list.
+    router.push(`?${params.toString()}`, { scroll: true });
   };
 
   return (

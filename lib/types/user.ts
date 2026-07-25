@@ -39,7 +39,11 @@ export type Profile = {
 export type User = Pick<
   Profile,
   'id' | 'email' | 'full_name' | 'phone_number' | 'role' | 'avatar_url'
->;
+> &
+  // Account-state fields are optional (some callers construct a User without
+  // them), but getCurrentUser always populates both so server-side gates can
+  // rely on them.
+  Partial<Pick<Profile, 'status' | 'archived_at'>>;
 
 /**
  * Minimal user info for responses and stores

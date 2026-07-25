@@ -1,21 +1,22 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { Suspense, useState, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'motion/react';
 import {
   AlertCircle,
-  Building2,
   Eye,
   EyeOff,
   Loader2,
   ShieldCheck,
+  UserRound,
 } from 'lucide-react';
-import { loginSchema, LoginInput } from '@/lib/validation/auth';
+import { loginSchema, type LoginInput } from '@/lib/validation/auth';
 import {
-  loginAsBusiness,
+  signInAction,
   redirectByRole,
   checkMFARequiredAction,
   verifyMFALoginAction,
@@ -26,29 +27,32 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Field, FieldError } from '@/components/ui/field';
 import { ROUTES } from '@/config/routeConfig';
+import { safeNext } from '@/lib/utils/safeNext';
+import { isRedirectError } from '@/lib/utils/redirectError';
 import type { User } from '@/lib/types';
 
-type LoginStep = 'credentials' | 'mfa';
+type SignInStep = 'credentials' | 'mfa';
 
 /**
- * A successful server-action `redirect()` throws a Next.js redirect error — the
- * reliable marker is `digest` starting with "NEXT_REDIRECT" (message may be
- * empty across the client boundary). Match on digest first, message as a fallback.
+ * Unified sign-in form for the /sign-in door (customers + business owners;
+ * admins who land here are role-routed to /admin too). No portal choice — the
+ * account's role decides the destination:
+ *
+ * - app_user → validated ?next= deep link, else /explore
+ * - business_owner → /business/[businessId] (or /business/registration)
+ * - admin → /admin
+ *
+ * Keeps the MFA elevation step for enrolled accounts (checkMFARequiredAction
+ * is a no-op unless a verified TOTP factor exists) and the typed rate-limit
+ * result so a 429 renders distinctly from bad credentials.
  */
-function isRedirectError(error: unknown): boolean {
-  if (typeof error !== 'object' || error === null) return false;
-  const digest = (error as { digest?: unknown }).digest;
-  if (typeof digest === 'string' && digest.startsWith('NEXT_REDIRECT'))
-    return true;
-  const message = (error as { message?: unknown }).message;
-  return typeof message === 'string' && message.includes('NEXT_REDIRECT');
-}
-
-export default function BusinessLoginForm() {
+function SignInFormContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [serverError, setServerError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [step, setStep] = useState<LoginStep>('credentials');
+  const [step, setStep] = useState<SignInStep>('credentials');
   const [mfaFactorId, setMfaFactorId] = useState('');
   const [mfaCode, setMfaCode] = useState('');
   const [mfaError, setMfaError] = useState('');
@@ -63,13 +67,33 @@ export default function BusinessLoginForm() {
     defaultValues: { email: '', password: '' },
   });
 
+  /**
+   * Post-auth routing shared by both steps. Customers get their validated
+   * deep link back; everyone else goes to their role's home. `redirectByRole`
+   * throws NEXT_REDIRECT on success — callers let isRedirectError pass it
+   * through as navigation.
+   */
+  async function finishSignIn(role: string, businessId: string | null) {
+    const next = safeNext(searchParams.get('next'));
+    if (next && role === 'app_user') {
+      router.replace(next);
+      router.refresh();
+      return;
+    }
+    await redirectByRole(role, businessId);
+  }
+
   function onSubmit(data: LoginInput) {
     setServerError('');
     startTransition(async () => {
       try {
-        const response = await loginAsBusiness(data.email, data.password);
+        const response = await signInAction(data.email, data.password);
+        if ('rateLimited' in response) {
+          setServerError(response.message);
+          return;
+        }
 
-        // Check if MFA elevation is needed
+        // MFA elevation: no-op unless the account has a verified TOTP factor.
         const mfa = await checkMFARequiredAction();
         if (mfa.required && mfa.factorId) {
           setMfaFactorId(mfa.factorId);
@@ -79,13 +103,14 @@ export default function BusinessLoginForm() {
           return;
         }
 
-        await redirectByRole(response.user.role, response.businessId);
+        await finishSignIn(response.user.role, response.businessId);
       } catch (error) {
+        // redirect() rejections are expected navigation, not failures.
         if (isRedirectError(error)) return;
         setServerError(
           error instanceof Error
             ? error.message
-            : 'Login failed. Please try again.',
+            : 'Failed to sign in. Please try again.',
         );
       }
     });
@@ -105,18 +130,17 @@ export default function BusinessLoginForm() {
         setMfaLoading(false);
         return;
       }
-      // Keep the button in its loading state through the redirect —
-      // redirectByRole navigates to the dashboard (a couple of seconds), so we
-      // intentionally do NOT clear mfaLoading on success; the component unmounts
-      // on navigation. The session is elevated to AAL2 at this point, so always
-      // navigate — fall back to the business role so a missing pendingUser can't
-      // strand the spinner.
-      await redirectByRole(
+      // Keep the button in its loading state through the redirect — the
+      // navigation takes a moment and the component unmounts on success. The
+      // session is elevated to AAL2 at this point, so always navigate; fall
+      // back to the business role (the only one that enrolls MFA today) so a
+      // missing pendingUser can't strand the spinner.
+      await finishSignIn(
         pendingUser?.role ?? 'business_owner',
         pendingBusinessId,
       );
     } catch (error) {
-      // redirectByRole throws NEXT_REDIRECT on success — let navigation proceed
+      // finishSignIn throws NEXT_REDIRECT on success — let navigation proceed
       // (leave the loading state on). Any other error stops the spinner.
       if (isRedirectError(error)) return;
       setMfaError(
@@ -190,7 +214,7 @@ export default function BusinessLoginForm() {
               setMfaError('');
             }}
           >
-            Back to login
+            Back to sign in
           </Button>
         </div>
       </motion.div>
@@ -204,15 +228,15 @@ export default function BusinessLoginForm() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: 'easeOut' }}
     >
-      {/* Portal identity */}
       <div className="space-y-1">
         <div className="bg-primary text-primary-foreground mb-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold">
-          <Building2 className="h-3.5 w-3.5" />
-          Business Portal
+          <UserRound className="h-3.5 w-3.5" />
+          Sign in
         </div>
         <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
         <p className="text-muted-foreground text-sm">
-          Sign in to manage your business
+          One account for everything iLokal — customers and business owners both
+          sign in here, and we&apos;ll take you to the right place.
         </p>
       </div>
 
@@ -229,7 +253,7 @@ export default function BusinessLoginForm() {
           control={form.control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <Label htmlFor="email">Email address</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -253,8 +277,7 @@ export default function BusinessLoginForm() {
                 <Label htmlFor="password">Password</Label>
                 <Link
                   href={ROUTES.AUTH.FORGOT_PASSWORD}
-                  className="text-muted-foreground hover:text-foreground text-xs transition-colors"
-                  tabIndex={-1}
+                  className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-4"
                 >
                   Forgot password?
                 </Link>
@@ -296,22 +319,30 @@ export default function BusinessLoginForm() {
               Signing in…
             </>
           ) : (
-            'Sign In'
+            'Sign in'
           )}
         </Button>
       </form>
 
-      <div className="text-muted-foreground space-y-1.5 text-center text-sm">
+      <div className="text-muted-foreground space-y-2 text-center text-sm">
         <p>
-          Don&apos;t have an account?{' '}
+          New here?{' '}
           <Link
             href={ROUTES.AUTH.SIGNUP}
-            className="text-foreground font-semibold hover:underline"
+            className="text-foreground font-medium underline underline-offset-4"
           >
-            Sign up for free
+            Create an account
           </Link>
         </p>
       </div>
     </motion.div>
+  );
+}
+
+export default function SignInForm() {
+  return (
+    <Suspense fallback={null}>
+      <SignInFormContent />
+    </Suspense>
   );
 }

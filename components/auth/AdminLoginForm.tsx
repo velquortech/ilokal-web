@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Field, FieldError } from '@/components/ui/field';
+import { isRedirectError } from '@/lib/utils/redirectError';
 
 export default function AdminLoginForm() {
   const [serverError, setServerError] = useState('');
@@ -31,8 +32,9 @@ export default function AdminLoginForm() {
         const response = await loginAsAdmin(data.email, data.password);
         await redirectByRole(response.user.role);
       } catch (error) {
-        if (error instanceof Error && error.message.includes('NEXT_REDIRECT'))
-          return;
+        // redirect() rejections are expected navigation, not failures — match
+        // on the digest marker (message may be empty in production builds).
+        if (isRedirectError(error)) return;
         setServerError(
           error instanceof Error
             ? error.message

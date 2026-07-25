@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-07-25 — Brand rollout: "Hablon Weave" logo across the app (fix/table-toolbar-pagination)
+
+> Presentational only — no schema/API/auth. Assets in `public/brand` (v0.2).
+> (Parity/action-item plan kept local, not committed.)
+
+- **New `components/custom/BrandLogo.tsx`** — `BrandMark` (inline weave SVG),
+  `BrandWordmark` (Geist 800, tracking −3.5% — HTML text, since SVG-as-`<img>`
+  can't load document fonts and would fall back off-brand), `BrandLogo` lockup.
+  Palette is theme-aware by default (`#65A30D`/white, dark: `#84CC16`/`#1A1A1A`
+  per the brand README) with `palette="light"|"dark"` pinning for surfaces
+  outside the `.dark` class system.
+- **Swapped every app-brand logo site:** auth header (was lucide `Store` +
+  "ILOKAL"), landing nav + footer (were plain text; mark follows the landing's
+  own dark toggle — footer now receives `dark`), admin sidebar (was
+  `ShieldCheck`; keeps the "Admin" subtitle). Business sidebar and `/s/…`
+  share page untouched — tenant branding, not app branding. Reset email keeps
+  its text wordmark deliberately (remote images are blocked by default in most
+  clients).
+- **Favicons:** new `app/icon.svg` (brand favicon) + `app/apple-icon.png`
+  (180px) + `app/favicon.ico` regenerated from the brand 16/32 PNGs
+  (PNG-in-ICO), replacing the stale pre-brand default. Stripped the Windows
+  `*:Zone.Identifier` junk that came with the asset copy.
+- **Tests (+5):** BrandLogo render — accessible mark, default auto palette,
+  palette pinning, wordmark typography, lockup composition.
+- Verified: `yarn lint` + **1200** tests + `yarn build` green.
+
 ## 2026-07-25 — Forgot-password "Check your email" panel redesign + working resend (fix/table-toolbar-pagination)
 
 > Presentational + one client-side resend affordance. No API/schema change —

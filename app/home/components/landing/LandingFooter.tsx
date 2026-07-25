@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import { styleFromString as s } from '@/lib/utils/cssStyle';
 import { footerColumns } from './data';
 import { FacebookIcon, InstagramIcon, TikTokIcon } from './icons';
+import { BrandMark } from '@/components/custom/BrandLogo';
 
 const socials: { label: string; href: string; Icon: ComponentType }[] = [
   { label: 'Facebook', href: '#', Icon: FacebookIcon },
@@ -13,7 +14,7 @@ const socials: { label: string; href: string; Icon: ComponentType }[] = [
  * Landing footer — presentational, driven by `footerColumns`/`socials`. Reusable
  * on any page rendered inside a `[data-ilokal-root]` theme wrapper.
  */
-export function LandingFooter() {
+export function LandingFooter({ dark = false }: { dark?: boolean }) {
   return (
     <footer
       style={s('border-top:1px solid var(--border);padding:56px 0 32px;')}
@@ -23,9 +24,10 @@ export function LandingFooter() {
           <div>
             <div
               style={s(
-                'font-size:22px;font-weight:800;color:var(--brand);margin-bottom:12px;',
+                'display:flex;align-items:center;gap:8px;font-size:22px;font-weight:800;letter-spacing:-0.035em;color:var(--brand);margin-bottom:12px;',
               )}
             >
+              <BrandMark size={26} palette={dark ? 'dark' : 'light'} />
               iLokal
             </div>
             <p

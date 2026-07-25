@@ -21,8 +21,10 @@ html:has([data-ilokal-root]) { scroll-behavior: smooth; }
 @keyframes il-floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
 
 [data-ilokal-root] .wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
-[data-ilokal-root] .navlinks { display: flex; gap: 26px; align-items: center; }
+[data-ilokal-root] .navlinks { display: flex; gap: 22px; align-items: center; }
+[data-ilokal-root] .navlinks a { white-space: nowrap; }
 [data-ilokal-root] .navactions { display: flex; gap: 14px; align-items: center; }
+[data-ilokal-root] .navactions a { white-space: nowrap; }
 [data-ilokal-root] .hamb { display: none; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; }
 [data-ilokal-root] .herogrid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 56px; align-items: center; }
 [data-ilokal-root] .herotext { order: 1; }
@@ -51,10 +53,16 @@ html:has([data-ilokal-root]) { scroll-behavior: smooth; }
 [data-ilokal-root] .il-cta-ghost:hover { border-color: #fff !important; background: rgba(255, 255, 255, .1) !important; }
 [data-ilokal-root] .il-floaty { animation: il-floaty 6s ease-in-out infinite; }
 
-@media (max-width: 960px) {
+/* The desktop nav row (logo + 6 links + actions) needs ~1100px — collapse to
+   the hamburger below that, independent of the 960px grid breakpoint, or the
+   row wraps into a broken two-line header. */
+@media (max-width: 1100px) {
   [data-ilokal-root] .navlinks,
   [data-ilokal-root] .navactions { display: none; }
   [data-ilokal-root] .hamb { display: flex; }
+}
+
+@media (max-width: 960px) {
   [data-ilokal-root] .herogrid { grid-template-columns: 1fr; gap: 40px; }
   [data-ilokal-root] .herotext { order: 2; text-align: center; }
   [data-ilokal-root] .trustrow { justify-content: center; }

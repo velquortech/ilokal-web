@@ -42,6 +42,7 @@ export type FooterColumn = { title: string; links: NavLink[] };
 
 /** Primary nav + mobile-menu links (shared by LandingNav). */
 export const navLinks: NavLink[] = [
+  { href: '/explore', label: 'Explore Shops' },
   { href: '#shoppers', label: 'For Shoppers' },
   { href: '#businesses', label: 'For Businesses' },
   { href: '#how', label: 'How It Works' },

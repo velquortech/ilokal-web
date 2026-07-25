@@ -32,6 +32,9 @@ async function handleLogin(
 
     // Call server action
     const response = await loginAction(email, password);
+    if ('rateLimited' in response) {
+      return { error: response.message };
+    }
 
     // Redirect based on user role - let redirect() handle navigation
     // This will throw NEXT_REDIRECT which is handled by Next.js

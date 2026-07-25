@@ -46,3 +46,28 @@ describe('protectedRoutes helpers', () => {
     expect(roleAllowedForPath('user', businessPrefix)).toBe(false);
   });
 });
+
+describe('customer area (/customer) rules', () => {
+  it('is a protected prefix', () => {
+    expect(isProtectedPath('/customer')).toBe(true);
+    expect(isProtectedPath('/customer/wallet')).toBe(true);
+    expect(isProtectedPath('/customer/following?page=2')).toBe(true);
+  });
+
+  it('allows only app_user', () => {
+    expect(roleAllowedForPath('app_user', '/customer/wallet')).toBe(true);
+    expect(roleAllowedForPath('admin', '/customer/wallet')).toBe(false);
+    expect(roleAllowedForPath('business_owner', '/customer')).toBe(false);
+    expect(roleAllowedForPath(null, '/customer')).toBe(false);
+  });
+
+  it('keeps /explore public (not a protected prefix)', () => {
+    expect(isProtectedPath('/explore')).toBe(false);
+    expect(isProtectedPath('/explore/abc-123')).toBe(false);
+  });
+
+  it('does not let app_user into the other portals', () => {
+    expect(roleAllowedForPath('app_user', '/admin')).toBe(false);
+    expect(roleAllowedForPath('app_user', '/business/xyz')).toBe(false);
+  });
+});

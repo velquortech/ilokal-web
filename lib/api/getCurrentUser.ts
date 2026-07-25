@@ -29,10 +29,13 @@ export async function getCurrentUser(): Promise<User | null> {
       return null;
     }
 
-    // Fetch profile data including status
+    // Fetch profile data including status + archive marker (archived_at is
+    // the soft-delete flag — status has no 'archived' value).
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id, email, full_name, phone_number, role, avatar_url, status')
+      .select(
+        'id, email, full_name, phone_number, role, avatar_url, status, archived_at',
+      )
       .eq('id', authUser.id)
       .single();
 
@@ -47,6 +50,8 @@ export async function getCurrentUser(): Promise<User | null> {
       phone_number: profile.phone_number,
       role: profile.role,
       avatar_url: profile.avatar_url,
+      status: profile.status,
+      archived_at: profile.archived_at,
     };
   } catch (error) {
     console.error('[getCurrentUser] Error:', error);

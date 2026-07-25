@@ -1,16 +1,28 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import {
   createServerSupabaseClient,
   SUPABASE_COOKIE_PREFIX,
   SUPABASE_COOKIE_OPTIONS,
 } from '@/supabase/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
+import { rateLimit, clientIp } from '@/app/api/helpers/rateLimit';
 import { ROUTES, businessPath } from '@/config/routeConfig';
 import { User } from '@/lib/types/user';
 import { SignupInput } from '@/lib/validation/auth';
+
+// SEC-8 budgets for the Server-Action login path — /api/auth/* is covered by
+// checkAuthRateLimit, but this action is a separate publicly-invocable door
+// (the customer/business login forms), so it enforces the same per-IP +
+// per-account budgets itself.
+const LOGIN_IP_LIMIT = Number(process.env.AUTH_RATE_LIMIT_IP ?? 30);
+const LOGIN_IP_WINDOW_MS = Number(process.env.AUTH_RATE_WINDOW_MS ?? 60_000);
+const LOGIN_ACCOUNT_LIMIT = Number(process.env.AUTH_RATE_LIMIT_ACCOUNT ?? 8);
+const LOGIN_ACCOUNT_WINDOW_MS = Number(
+  process.env.AUTH_ACCOUNT_WINDOW_MS ?? 300_000,
+);
 
 /**
  * Server Action: Handle user login
@@ -22,10 +34,15 @@ import { SignupInput } from '@/lib/validation/auth';
  * - Generic error messages to prevent account enumeration
  * - Uses service role only for auth operations
  */
+export interface LoginRateLimited {
+  rateLimited: true;
+  message: string;
+}
+
 export async function loginAction(
   email: string,
   password: string,
-): Promise<{ user: User; message: string }> {
+): Promise<{ user: User; message: string } | LoginRateLimited> {
   try {
     // Validate required fields
     if (!email?.trim() || !password?.trim()) {
@@ -35,6 +52,38 @@ export async function loginAction(
     // Validate email format (basic)
     if (!email.includes('@')) {
       throw new Error('Invalid email format');
+    }
+
+    // Rate-limit before any auth/DB work (generic message — no oracle).
+    // Bucket keys are shared with POST /api/auth/login (`auth:login:*`) so
+    // both doors drain ONE budget — separate keys would double an attacker's
+    // per-account attempts by alternating doors.
+    // headers() is only available inside a request scope — outside one
+    // (unit tests) fall back to a shared bucket rather than crashing login.
+    let ip = 'unknown';
+    try {
+      ip = clientIp({ headers: await headers() });
+    } catch {
+      // non-request scope — keep the fallback key
+    }
+    const ipCheck = rateLimit(
+      `auth:login:ip:${ip}`,
+      LOGIN_IP_LIMIT,
+      LOGIN_IP_WINDOW_MS,
+    );
+    const accountCheck = rateLimit(
+      `auth:login:acct:${email.trim().toLowerCase()}`,
+      LOGIN_ACCOUNT_LIMIT,
+      LOGIN_ACCOUNT_WINDOW_MS,
+    );
+    if (!ipCheck.allowed || !accountCheck.allowed) {
+      // Returned (not thrown): production Next.js redacts messages thrown
+      // from Server Actions, and the form must distinguish 429 from bad
+      // credentials.
+      return {
+        rateLimited: true,
+        message: 'Too many attempts. Please try again in a few minutes.',
+      };
     }
 
     // Create server-side Supabase client
@@ -239,6 +288,10 @@ export async function loginAsAdmin(
 ): Promise<{ user: User; message: string }> {
   const result = await loginAction(email, password);
 
+  // Admin/business portals keep the throwing contract — surface the 429 the
+  // same way their other failures surface.
+  if ('rateLimited' in result) throw new Error(result.message);
+
   if (result.user.role !== 'admin') {
     const supabase = await createServerSupabaseClient();
     await supabase.auth.signOut();
@@ -259,6 +312,8 @@ export async function loginAsBusiness(
   password: string,
 ): Promise<{ user: User; businessId: string | null; message: string }> {
   const result = await loginAction(email, password);
+
+  if ('rateLimited' in result) throw new Error(result.message);
 
   if (result.user.role !== 'business_owner') {
     const supabase = await createServerSupabaseClient();
@@ -295,6 +350,8 @@ export async function redirectByRole(
       );
       break;
     case 'app_user':
+      redirect(ROUTES.EXPLORE.HOME);
+      break;
     default:
       redirect(ROUTES.BUSINESS.home);
       break;

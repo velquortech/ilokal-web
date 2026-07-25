@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment } from 'react';
-import { ShieldCheck } from 'lucide-react';
+import { BrandMark, BrandWordmark } from '@/components/custom/BrandLogo';
 import {
   Sidebar,
   SidebarContent,
@@ -19,11 +19,9 @@ import { useAdmin } from '@/providers/AdminProvider';
 function AdminLogo() {
   return (
     <div className="font-giest flex items-center gap-3">
-      <div className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-lg group-data-[collapsible=icon]:size-7">
-        <ShieldCheck className="size-4" />
-      </div>
+      <BrandMark size={32} className="group-data-[collapsible=icon]:size-7" />
       <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-        <span className="font-semibold">iLokal</span>
+        <BrandWordmark className="text-primary leading-tight" />
         <span className="text-secondary-foreground text-xs">Admin</span>
       </div>
     </div>

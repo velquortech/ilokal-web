@@ -4,6 +4,7 @@ import { PROTECTED_ROUTES } from '@/config/routeConfig';
 export const PROTECTED_ROUTE_PREFIXES = [
   PROTECTED_ROUTES.ADMIN,
   PROTECTED_ROUTES.BUSINESS,
+  PROTECTED_ROUTES.CUSTOMER,
 ] as const;
 
 export type ProtectedPrefix = (typeof PROTECTED_ROUTE_PREFIXES)[number];
@@ -26,6 +27,10 @@ export function roleAllowedForPath(
 
   if (trimmed.startsWith(PROTECTED_ROUTES.BUSINESS))
     return role === 'business_owner' || role === 'admin';
+
+  // Customer area is app_user-only: admins and owners have their own portals,
+  // and every query inside is auth.uid()-scoped anyway.
+  if (trimmed.startsWith(PROTECTED_ROUTES.CUSTOMER)) return role === 'app_user';
 
   return false;
 }

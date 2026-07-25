@@ -42,6 +42,8 @@ function getRouteForRole(role?: string) {
       return ROUTES.DASHBOARD.ADMIN;
     case 'business_owner':
       return ROUTES.DASHBOARD.BUSINESS;
+    case 'app_user':
+      return ROUTES.EXPLORE.HOME;
     default:
       return ROUTES.BUSINESS.home;
   }

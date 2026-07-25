@@ -103,9 +103,13 @@ export function LandingPage() {
                 'display:flex;flex-wrap:wrap;gap:14px;margin-bottom:28px;',
               )}
             >
-              <a href="#" className="il-btn-primary" style={s(primaryCta)}>
-                Get the App
-              </a>
+              <Link
+                href={ROUTES.EXPLORE.HOME}
+                className="il-btn-primary"
+                style={s(primaryCta)}
+              >
+                Explore Shops
+              </Link>
               <a
                 href="#businesses"
                 className="il-btn-outline"

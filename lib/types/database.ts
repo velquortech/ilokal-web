@@ -1786,6 +1786,14 @@ export type Database = {
         Args: { p_default: boolean; p_key: string }
         Returns: boolean
       }
+      get_business_rating_summary: {
+        Args: { p_business_ids: string[] }
+        Returns: {
+          business_id: string
+          rating_average: number
+          rating_count: number
+        }[]
+      }
       get_follower_counts: {
         Args: { p_business_ids: string[] }
         Returns: {

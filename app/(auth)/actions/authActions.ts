@@ -295,6 +295,8 @@ export async function redirectByRole(
       );
       break;
     case 'app_user':
+      redirect(ROUTES.EXPLORE.HOME);
+      break;
     default:
       redirect(ROUTES.BUSINESS.home);
       break;

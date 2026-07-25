@@ -10,8 +10,10 @@
  * shareable page URLs with exact counts, matching the repo's table pattern.
  */
 
+import { cache } from 'react';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
+import { getProductsPaginated } from '@/lib/api/products/productQuery';
 import type {
   CustomerCategory,
   DirectoryBusiness,
@@ -20,6 +22,7 @@ import type {
   PublicBranch,
   PublicBusinessProfile,
   PublicCoupon,
+  PublicProduct,
   WalletFilter,
   WalletRedemption,
 } from '@/lib/types/customer';
@@ -89,7 +92,10 @@ export async function getBusinessDirectory(
       )
       .eq('status', 'verified')
       .is('archived_at', null)
-      .is('branches.archived_at', null);
+      .is('branches.archived_at', null)
+      // Soft-deleted categories must not label public cards (embedded-relation
+      // soft-delete convention).
+      .is('business_categories.deleted_at', null);
 
     if (filters.search) {
       query = query.ilike('shop_name', `%${filters.search}%`);
@@ -160,94 +166,115 @@ export async function getCustomerCategories(): Promise<CustomerCategory[]> {
   }
 }
 
-interface ProfileBranchRow {
-  id: string;
-  name: string;
-  address: string | null;
-  location: { coordinates?: [number, number] } | null;
-}
+/**
+ * Wrapped in React.cache so generateMetadata + the page body share ONE fetch
+ * (this is the hottest public page; uncached it double-fires the profile read
+ * plus both RPC fan-outs on every request).
+ *
+ * Errors are typed: `NOT_FOUND` (render 404) vs `LOAD_FAILED` (transient —
+ * render an error state, NEVER notFound(), or healthy shops get deindexed
+ * during a DB blip).
+ */
+export const getPublicBusinessProfile = cache(
+  async (
+    businessId: string,
+  ): Promise<
+    { business: PublicBusinessProfile } | { error: 'NOT_FOUND' | 'LOAD_FAILED' }
+  > => {
+    try {
+      const supabase = await createServerSupabaseClient();
 
-export async function getPublicBusinessProfile(
-  businessId: string,
-): Promise<{ business: PublicBusinessProfile } | { error: string }> {
-  try {
-    const supabase = await createServerSupabaseClient();
+      const { data, error } = await supabase
+        .from('businesses')
+        .select(
+          `id, shop_name, description, logo_url, banner_url, interior_images,
+         business_categories!category_id (name)`,
+        )
+        .eq('id', businessId)
+        .eq('status', 'verified')
+        .is('archived_at', null)
+        .is('business_categories.deleted_at', null)
+        .maybeSingle();
 
-    const { data, error } = await supabase
-      .from('businesses')
-      .select(
-        `id, shop_name, description, logo_url, banner_url, interior_images,
-         business_categories!category_id (name),
-         branches (id, name, address, location)`,
-      )
-      .eq('id', businessId)
-      .eq('status', 'verified')
-      .is('archived_at', null)
-      .is('branches.archived_at', null)
-      .maybeSingle();
+      if (error) {
+        console.error('[getPublicBusinessProfile]', error);
+        return { error: 'LOAD_FAILED' };
+      }
+      if (!data) return { error: 'NOT_FOUND' };
 
-    if (error) {
-      console.error('[getPublicBusinessProfile]', error);
-      return { error: 'Failed to load business' };
+      const row = data as unknown as {
+        id: string;
+        shop_name: string;
+        description: string | null;
+        logo_url: string | null;
+        banner_url: string | null;
+        interior_images: string[] | null;
+        business_categories: { name: string } | null;
+      };
+
+      // Branch coordinates come from the business_branches RPC: PostGIS
+      // geography through a nested PostgREST select is WKB hex, not GeoJSON —
+      // the RPC exists precisely to expose lat/lng (see 20260602000000).
+      const [followerCounts, ratingRes, branchesRes] = await Promise.all([
+        getFollowerCountMap(supabase, [row.id]),
+        supabase.rpc('get_business_rating_summary', {
+          p_business_ids: [row.id],
+        }),
+        supabase.rpc('business_branches', { p_business_id: row.id }),
+      ]);
+
+      if (ratingRes.error) {
+        // Aggregate is decorative — log and render without it.
+        console.error('[getPublicBusinessProfile rating]', ratingRes.error);
+      }
+      const rating = ratingRes.data?.[0];
+
+      if (branchesRes.error) {
+        console.error('[getPublicBusinessProfile branches]', branchesRes.error);
+      }
+      const branches: PublicBranch[] = (
+        (branchesRes.data ?? []) as Array<{
+          id: string;
+          name: string;
+          address: string | null;
+          latitude: number | null;
+          longitude: number | null;
+        }>
+      ).map((b) => ({
+        id: b.id,
+        name: b.name,
+        address: b.address,
+        // PublicBranch keeps the GeoJSON [lng, lat] order the map expects.
+        coordinates:
+          b.latitude != null && b.longitude != null
+            ? [b.longitude, b.latitude]
+            : null,
+      }));
+
+      const business: PublicBusinessProfile = {
+        id: row.id,
+        shop_name: row.shop_name,
+        description: row.description,
+        logo_url: resolveStorageUrl(supabase, 'shop-logos', row.logo_url),
+        banner_url: resolveStorageUrl(supabase, 'shop-banners', row.banner_url),
+        interior_images: (row.interior_images ?? [])
+          .map((url) => resolveStorageUrl(supabase, 'interior-images', url))
+          .filter((u): u is string => Boolean(u)),
+        category_name: row.business_categories?.name ?? null,
+        branches,
+        follower_count: followerCounts.get(row.id) ?? 0,
+        rating_average:
+          rating?.rating_average != null ? Number(rating.rating_average) : null,
+        rating_count: Number(rating?.rating_count ?? 0),
+      };
+
+      return { business };
+    } catch (err) {
+      console.error('[getPublicBusinessProfile]', err);
+      return { error: 'LOAD_FAILED' };
     }
-    if (!data) return { error: 'NOT_FOUND' };
-
-    const row = data as unknown as {
-      id: string;
-      shop_name: string;
-      description: string | null;
-      logo_url: string | null;
-      banner_url: string | null;
-      interior_images: string[] | null;
-      business_categories: { name: string } | null;
-      branches: ProfileBranchRow[] | null;
-    };
-
-    const [followerCounts, ratingRes] = await Promise.all([
-      getFollowerCountMap(supabase, [row.id]),
-      supabase.rpc('get_business_rating_summary', {
-        p_business_ids: [row.id],
-      }),
-    ]);
-
-    if (ratingRes.error) {
-      // Aggregate is decorative — log and render without it.
-      console.error('[getPublicBusinessProfile rating]', ratingRes.error);
-    }
-    const rating = ratingRes.data?.[0];
-
-    const branches: PublicBranch[] = (
-      (row.branches ?? []) as unknown as ProfileBranchRow[]
-    ).map((b) => ({
-      id: b.id,
-      name: b.name,
-      address: b.address,
-      coordinates: b.location?.coordinates ?? null,
-    }));
-
-    const business: PublicBusinessProfile = {
-      id: row.id,
-      shop_name: row.shop_name,
-      description: row.description,
-      logo_url: resolveStorageUrl(supabase, 'shop-logos', row.logo_url),
-      banner_url: resolveStorageUrl(supabase, 'shop-banners', row.banner_url),
-      interior_images: (row.interior_images ?? [])
-        .map((url) => resolveStorageUrl(supabase, 'interior-images', url))
-        .filter((u): u is string => Boolean(u)),
-      category_name: row.business_categories?.name ?? null,
-      branches,
-      follower_count: followerCounts.get(row.id) ?? 0,
-      rating_average:
-        rating?.rating_average != null ? Number(rating.rating_average) : null,
-      rating_count: Number(rating?.rating_count ?? 0),
-    };
-
-    return { business };
-  } catch (err) {
-    console.error('[getPublicBusinessProfile]', err);
-    return { error: 'Failed to load business' };
-  }
-}
+  },
+);
 
 export async function getPublicCoupons(
   businessId: string,
@@ -282,6 +309,8 @@ export async function getPublicCoupons(
   }
 }
 
+// Filters mirror the mobile wallet contract exactly: a NULL expires_at counts
+// as ACTIVE (never expires), and `expired` requires a real, past expires_at.
 const WALLET_FILTERS: Record<
   WalletFilter,
   (
@@ -289,9 +318,14 @@ const WALLET_FILTERS: Record<
     now: string,
   ) => ReturnType<typeof walletBase>
 > = {
-  active: (q, now) => q.eq('is_claimed', false).gt('expires_at', now),
+  active: (q, now) =>
+    q.eq('is_claimed', false).or(`expires_at.is.null,expires_at.gt.${now}`),
   claimed: (q) => q.eq('is_claimed', true),
-  expired: (q, now) => q.eq('is_claimed', false).lte('expires_at', now),
+  expired: (q, now) =>
+    q
+      .eq('is_claimed', false)
+      .not('expires_at', 'is', null)
+      .lt('expires_at', now),
 };
 
 function walletBase(
@@ -302,23 +336,32 @@ function walletBase(
        coupons (id, code, description, discount, expiry_date,
          businesses (id, shop_name, logo_url)),
        branches (id, name, address)`,
+    { count: 'exact' },
   );
 }
+
+const WALLET_PER_PAGE = 12;
 
 export async function getWalletRedemptions(
   userId: string,
   filter?: WalletFilter,
-): Promise<{ redemptions: WalletRedemption[] } | { error: string }> {
+  page = 1,
+): Promise<
+  | { redemptions: WalletRedemption[]; metadata: DirectoryMetadata }
+  | { error: string }
+> {
   try {
     const supabase = await createServerSupabaseClient();
     const now = new Date().toISOString();
+    const safePage = Math.max(1, page);
+    const offset = (safePage - 1) * WALLET_PER_PAGE;
 
     let query = walletBase(supabase).eq('user_id', userId);
     if (filter) query = WALLET_FILTERS[filter](query, now);
 
-    const { data, error } = await query.order('redeemed_at', {
-      ascending: false,
-    });
+    const { data, count, error } = await query
+      .order('redeemed_at', { ascending: false })
+      .range(offset, offset + WALLET_PER_PAGE - 1);
 
     if (error) {
       console.error('[getWalletRedemptions]', error);
@@ -370,7 +413,15 @@ export async function getWalletRedemptions(
       branch: row.branches,
     }));
 
-    return { redemptions };
+    return {
+      redemptions,
+      metadata: {
+        total: count ?? 0,
+        page: safePage,
+        per_page: WALLET_PER_PAGE,
+        total_pages: Math.ceil((count ?? 0) / WALLET_PER_PAGE),
+      },
+    };
   } catch (err) {
     console.error('[getWalletRedemptions]', err);
     return { error: 'Failed to load redemptions' };
@@ -477,13 +528,23 @@ type FeedBizJoin = {
   logo_url: string | null;
 } | null;
 
+export interface UpdatesFeedPage {
+  updates: UpdateItem[];
+  page: number;
+  per_page: number;
+  /**
+   * The merged set is bounded at 3×FEED_SCAN, so an exact total would be a
+   * fabricated number for active followers — expose has_more only, exactly
+   * like the mobile route.
+   */
+  has_more: boolean;
+}
+
 export async function getUpdatesFeed(
   userId: string,
   page = 1,
   perPage = 10,
-): Promise<
-  { updates: UpdateItem[]; metadata: DirectoryMetadata } | { error: string }
-> {
+): Promise<UpdatesFeedPage | { error: string }> {
   try {
     const supabase = await createServerSupabaseClient();
 
@@ -498,9 +559,11 @@ export async function getUpdatesFeed(
     }
 
     const businessIds = (follows ?? []).map((f) => f.business_id as string);
-    const empty = {
-      updates: [] as UpdateItem[],
-      metadata: { total: 0, page: 1, per_page: perPage, total_pages: 0 },
+    const empty: UpdatesFeedPage = {
+      updates: [],
+      page: 1,
+      per_page: perPage,
+      has_more: false,
     };
     if (businessIds.length === 0) return empty;
 
@@ -612,15 +675,123 @@ export async function getUpdatesFeed(
     const offset = (page - 1) * perPage;
     return {
       updates: merged.slice(offset, offset + perPage),
-      metadata: {
-        total: merged.length,
-        page,
-        per_page: perPage,
-        total_pages: Math.ceil(merged.length / perPage),
-      },
+      page,
+      per_page: perPage,
+      has_more: offset + perPage < merged.length,
     };
   } catch (err) {
     console.error('[getUpdatesFeed]', err);
     return { error: 'Failed to load updates' };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Public menu — getProductsPaginated + storage-URL resolution (the raw query
+// returns in-bucket paths; next/image throws on relative srcs).
+// ---------------------------------------------------------------------------
+
+export async function getPublicMenu(
+  businessId: string,
+  page = 1,
+  perPage = 8,
+): Promise<
+  { products: PublicProduct[]; metadata: DirectoryMetadata } | { error: string }
+> {
+  const result = await getProductsPaginated({
+    business_id: businessId,
+    status: 'active',
+    page,
+    per_page: perPage,
+  });
+  if ('error' in result) return { error: 'Failed to load the menu' };
+
+  const supabase = await createServerSupabaseClient();
+  const products: PublicProduct[] = result.products.map((p) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description ?? null,
+    price: p.price,
+    sale_price: p.sale_price ?? null,
+    image_url: resolveStorageUrl(supabase, 'product-images', p.image_url),
+    category_name: p.category?.name ?? null,
+  }));
+
+  return {
+    products,
+    metadata: {
+      total: result.total,
+      page: result.page,
+      per_page: result.per_page,
+      total_pages: result.total_pages,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Deals feed — thin wrapper over the mobile_deals RPC + storage resolution,
+// so pages never touch the Supabase client directly (repo rule).
+// ---------------------------------------------------------------------------
+
+export interface FeedDeal {
+  id: string;
+  code: string;
+  description: string | null;
+  discount: PublicCoupon['discount'];
+  expiry_date: string;
+  promotion_type: string;
+  slots_remaining: number | null;
+  business_id: string;
+  business_name: string;
+  business_logo_url: string | null;
+}
+
+export interface DealsFeed {
+  featured: FeedDeal | null;
+  flash: FeedDeal[];
+  explore: FeedDeal[];
+  explore_total: number;
+  explore_page: number;
+  explore_per_page: number;
+}
+
+export async function getDealsFeed(
+  page = 1,
+  perPage = 20,
+): Promise<DealsFeed | { error: string }> {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase.rpc('mobile_deals', {
+      p_category: 'All',
+      p_search: '',
+      p_page: Math.max(1, page),
+      p_per_page: perPage,
+    });
+
+    if (error) {
+      console.error('[getDealsFeed]', error);
+      return { error: 'Failed to load deals' };
+    }
+
+    const payload = (data ?? {}) as unknown as Partial<DealsFeed>;
+    const resolve = (deal: FeedDeal): FeedDeal => ({
+      ...deal,
+      business_logo_url: resolveStorageUrl(
+        supabase,
+        'shop-logos',
+        deal.business_logo_url,
+      ),
+    });
+
+    return {
+      featured: payload.featured ? resolve(payload.featured) : null,
+      flash: (payload.flash ?? []).map(resolve),
+      explore: (payload.explore ?? []).map(resolve),
+      explore_total: payload.explore_total ?? 0,
+      explore_page: payload.explore_page ?? 1,
+      explore_per_page: payload.explore_per_page ?? perPage,
+    };
+  } catch (err) {
+    console.error('[getDealsFeed]', err);
+    return { error: 'Failed to load deals' };
   }
 }

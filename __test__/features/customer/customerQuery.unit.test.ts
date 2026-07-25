@@ -25,6 +25,7 @@ type Chain = {
   in: ReturnType<typeof vi.fn>;
   gt: ReturnType<typeof vi.fn>;
   gte: ReturnType<typeof vi.fn>;
+  lt: ReturnType<typeof vi.fn>;
   lte: ReturnType<typeof vi.fn>;
   not: ReturnType<typeof vi.fn>;
   or: ReturnType<typeof vi.fn>;
@@ -43,6 +44,7 @@ function buildChain(overrides: Partial<Chain> = {}): Chain {
     in: vi.fn().mockReturnThis(),
     gt: vi.fn().mockReturnThis(),
     gte: vi.fn().mockReturnThis(),
+    lt: vi.fn().mockReturnThis(),
     lte: vi.fn().mockReturnThis(),
     not: vi.fn().mockReturnThis(),
     or: vi.fn().mockReturnThis(),
@@ -173,27 +175,50 @@ describe('getPublicCoupons', () => {
 });
 
 describe('getWalletRedemptions', () => {
-  it('scopes to the user and applies the active filter', async () => {
+  it('scopes to the user; active filter counts NULL expires_at as active (mobile parity)', async () => {
     const chain = buildChain();
-    chain.order.mockResolvedValue({ data: [], error: null });
+    chain.range.mockResolvedValue({ data: [], count: 0, error: null });
     mockSupabase(() => chain);
 
     await getWalletRedemptions('user-1', 'active');
 
     expect(chain.eq).toHaveBeenCalledWith('user_id', 'user-1');
     expect(chain.eq).toHaveBeenCalledWith('is_claimed', false);
-    expect(chain.gt).toHaveBeenCalledWith('expires_at', expect.any(String));
+    expect(chain.or).toHaveBeenCalledWith(
+      expect.stringMatching(/^expires_at\.is\.null,expires_at\.gt\./),
+    );
   });
 
-  it('expired filter = unclaimed and past expires_at', async () => {
+  it('expired filter = unclaimed with a real, past expires_at', async () => {
     const chain = buildChain();
-    chain.order.mockResolvedValue({ data: [], error: null });
+    chain.range.mockResolvedValue({ data: [], count: 0, error: null });
     mockSupabase(() => chain);
 
     await getWalletRedemptions('user-1', 'expired');
 
     expect(chain.eq).toHaveBeenCalledWith('is_claimed', false);
-    expect(chain.lte).toHaveBeenCalledWith('expires_at', expect.any(String));
+    expect(chain.not).toHaveBeenCalledWith('expires_at', 'is', null);
+    expect(chain.lt).toHaveBeenCalledWith('expires_at', expect.any(String));
+  });
+
+  it('pages with .range() and returns exact-count metadata', async () => {
+    const chain = buildChain();
+    chain.range.mockResolvedValue({ data: [], count: 30, error: null });
+    mockSupabase(() => chain);
+
+    const result = await getWalletRedemptions('user-1', 'claimed', 2);
+
+    expect(chain.range).toHaveBeenCalledWith(12, 23);
+    if ('metadata' in result) {
+      expect(result.metadata).toEqual({
+        total: 30,
+        page: 2,
+        per_page: 12,
+        total_pages: 3,
+      });
+    } else {
+      throw new Error('expected metadata');
+    }
   });
 });
 
@@ -207,7 +232,9 @@ describe('getUpdatesFeed', () => {
 
     expect(result).toEqual({
       updates: [],
-      metadata: { total: 0, page: 1, per_page: 10, total_pages: 0 },
+      page: 1,
+      per_page: 10,
+      has_more: false,
     });
   });
 });

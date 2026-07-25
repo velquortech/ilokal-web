@@ -15,12 +15,20 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Field, FieldError } from '@/components/ui/field';
 import { ROUTES } from '@/config/routeConfig';
+import { safeNext } from '@/lib/utils/safeNext';
 
-/** Only same-origin relative paths may be used as a post-login target. */
-function safeNext(raw: string | null): string | null {
-  if (!raw) return null;
-  if (!raw.startsWith('/') || raw.startsWith('//')) return null;
-  return raw;
+/**
+ * A successful server-action `redirect()` throws a Next.js redirect error —
+ * the reliable marker is `digest` starting with "NEXT_REDIRECT" (message may
+ * be empty across the client boundary). Digest first, message as fallback.
+ */
+function isRedirectError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const digest = (error as { digest?: unknown }).digest;
+  if (typeof digest === 'string' && digest.startsWith('NEXT_REDIRECT'))
+    return true;
+  const message = (error as { message?: unknown }).message;
+  return typeof message === 'string' && message.includes('NEXT_REDIRECT');
 }
 
 function CustomerLoginFormContent() {
@@ -48,9 +56,7 @@ function CustomerLoginFormContent() {
         await redirectByRole(response.user.role);
       } catch (error) {
         // redirect() rejections are expected navigation, not failures.
-        if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
-          return;
-        }
+        if (isRedirectError(error)) return;
         setServerError(
           error instanceof Error
             ? error.message

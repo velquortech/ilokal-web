@@ -24,12 +24,15 @@ interface ExploreContentProps {
   businesses: DirectoryBusiness[];
   metadata: DirectoryMetadata;
   categories: CustomerCategory[];
+  /** True when the directory read failed — outage ≠ genuinely no shops. */
+  loadFailed?: boolean;
 }
 
 export function ExploreContent({
   businesses,
   metadata,
   categories,
+  loadFailed = false,
 }: ExploreContentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -37,9 +40,21 @@ export function ExploreContent({
   const [searchInput, setSearchInput] = React.useState(
     searchParams.get('search') ?? '',
   );
+  // The last search value THIS component pushed into the URL. The sync effect
+  // below must ignore navigations we caused ourselves — otherwise, when the
+  // debounce lands mid-typing, it resets the input to the URL value and
+  // silently deletes the characters typed during the server round-trip.
+  const lastPushedSearch = React.useRef<string | null>(null);
 
   React.useEffect(() => {
-    setSearchInput(searchParams.get('search') ?? '');
+    const urlValue = searchParams.get('search') ?? '';
+    if (
+      lastPushedSearch.current !== null &&
+      urlValue === lastPushedSearch.current
+    ) {
+      return;
+    }
+    setSearchInput(urlValue);
   }, [searchParams]);
 
   const updateParams = React.useCallback(
@@ -59,6 +74,7 @@ export function ExploreContent({
     const timeout = setTimeout(() => {
       const current = searchParams.get('search') ?? '';
       if (searchInput !== current) {
+        lastPushedSearch.current = searchInput;
         updateParams({ search: searchInput || null, page: null });
       }
     }, 400);
@@ -106,7 +122,11 @@ export function ExploreContent({
         </div>
       </div>
 
-      {businesses.length === 0 ? (
+      {loadFailed ? (
+        <div className="text-muted-foreground rounded-xl border border-dashed p-12 text-center text-sm">
+          Couldn&apos;t load shops right now — please refresh to try again.
+        </div>
+      ) : businesses.length === 0 ? (
         <div className="text-muted-foreground rounded-xl border border-dashed p-12 text-center text-sm">
           No shops found
           {searchInput ? (

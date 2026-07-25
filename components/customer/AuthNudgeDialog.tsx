@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
   Dialog,
   DialogContent,
@@ -31,7 +31,13 @@ export function AuthNudgeDialog({
   intent,
 }: AuthNudgeDialogProps) {
   const pathname = usePathname();
-  const next = encodeURIComponent(pathname ?? ROUTES.EXPLORE.HOME);
+  const searchParams = useSearchParams();
+  // Preserve the full location (path + query, e.g. menuPage) for the
+  // round-trip back after auth.
+  const query = searchParams.toString();
+  const next = encodeURIComponent(
+    `${pathname ?? ROUTES.EXPLORE.HOME}${query ? `?${query}` : ''}`,
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

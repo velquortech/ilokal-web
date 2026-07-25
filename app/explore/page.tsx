@@ -44,19 +44,20 @@ export default async function ExplorePage({
     getCustomerCategories(),
   ]);
 
-  const { businesses, metadata } =
-    'error' in directory
-      ? {
-          businesses: [],
-          metadata: { total: 0, page: 1, per_page: perPage, total_pages: 0 },
-        }
-      : directory;
+  const loadFailed = 'error' in directory;
+  const { businesses, metadata } = loadFailed
+    ? {
+        businesses: [],
+        metadata: { total: 0, page: 1, per_page: perPage, total_pages: 0 },
+      }
+    : directory;
 
   return (
     <ExploreContent
       businesses={businesses}
       metadata={metadata}
       categories={categories}
+      loadFailed={loadFailed}
     />
   );
 }

@@ -11,13 +11,13 @@ import { ShareButton } from '@/components/customer/ShareButton';
 import {
   getPublicBusinessProfile,
   getPublicCoupons,
+  getPublicMenu,
   isFollowingBusiness,
 } from '@/lib/api/customer/customerQuery';
-import { getProductsPaginated } from '@/lib/api/products/productQuery';
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import { CouponCard } from './components/coupon-card';
 import { ProductCard } from './components/product-card';
-import type { ProductResponse } from '@/lib/types';
+import type { PublicProduct } from '@/lib/types';
 
 type Params = Promise<{ businessId: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -62,18 +62,18 @@ export default async function PublicBusinessPage({
   );
 
   const profileResult = await getPublicBusinessProfile(businessId);
-  if ('error' in profileResult) notFound();
+  // Only a genuine miss 404s — a transient read failure must not deindex a
+  // healthy shop, so it surfaces to the error boundary instead.
+  if ('error' in profileResult) {
+    if (profileResult.error === 'NOT_FOUND') notFound();
+    throw new Error('Failed to load this shop — please try again.');
+  }
   const { business } = profileResult;
 
   const isCustomer = user ? user.role === 'app_user' : null;
 
   const [productsResult, couponsResult, following] = await Promise.all([
-    getProductsPaginated({
-      business_id: business.id,
-      status: 'active',
-      page: menuPage,
-      per_page: 8,
-    }),
+    getPublicMenu(business.id, menuPage, 8),
     getPublicCoupons(business.id),
     user && isCustomer ? isFollowingBusiness(user.id, business.id) : false,
   ]);
@@ -81,14 +81,13 @@ export default async function PublicBusinessPage({
   const products =
     'error' in productsResult
       ? {
-          products: [] as ProductResponse[],
-          total: 0,
-          page: 1,
-          per_page: 8,
-          total_pages: 0,
+          products: [] as PublicProduct[],
+          metadata: { total: 0, page: 1, per_page: 8, total_pages: 0 },
         }
       : productsResult;
   const coupons = 'error' in couponsResult ? [] : couponsResult.coupons;
+  const couponsFailed = 'error' in couponsResult;
+  const menuFailed = 'error' in productsResult;
 
   return (
     <div className="flex flex-1 flex-col space-y-6">
@@ -175,7 +174,9 @@ export default async function PublicBusinessPage({
             </h2>
             {coupons.length === 0 ? (
               <p className="text-muted-foreground rounded-xl border border-dashed p-6 text-center text-sm">
-                No live deals right now — follow the shop to catch the next one.
+                {couponsFailed
+                  ? 'Couldn’t load deals right now — please refresh to try again.'
+                  : 'No live deals right now — follow the shop to catch the next one.'}
               </p>
             ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -196,7 +197,9 @@ export default async function PublicBusinessPage({
             <h2 className="text-lg font-semibold tracking-tight">Menu</h2>
             {products.products.length === 0 ? (
               <p className="text-muted-foreground rounded-xl border border-dashed p-6 text-center text-sm">
-                This shop hasn&apos;t published its menu yet.
+                {menuFailed
+                  ? 'Couldn’t load the menu right now — please refresh to try again.'
+                  : "This shop hasn't published its menu yet."}
               </p>
             ) : (
               <>
@@ -206,12 +209,7 @@ export default async function PublicBusinessPage({
                   ))}
                 </div>
                 <PaginationBar
-                  metadata={{
-                    total: products.total,
-                    page: products.page,
-                    per_page: products.per_page,
-                    total_pages: products.total_pages,
-                  }}
+                  metadata={products.metadata}
                   param="menuPage"
                   noun="item"
                 />

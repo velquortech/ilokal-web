@@ -16,11 +16,13 @@
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
+import { rateLimit } from '@/app/api/helpers/rateLimit';
 
 export type CustomerActionError =
   | 'AUTH_REQUIRED'
   | 'FORBIDDEN'
   | 'BAD_REQUEST'
+  | 'RATE_LIMITED'
   | 'SERVER_ERROR';
 
 interface ActionFailure {
@@ -30,6 +32,14 @@ interface ActionFailure {
 }
 
 const guid = z.guid();
+
+// Server-Action POSTs from /explore never enter the proxy matcher, so the
+// mobile surface's flood guard doesn't cover these mutations — apply the same
+// baseline per-user budget here (in-memory/per-instance, like the proxy's).
+const ACTION_RATE_LIMIT = Number(process.env.CUSTOMER_ACTION_RATE_LIMIT ?? 30);
+const ACTION_RATE_WINDOW_MS = Number(
+  process.env.CUSTOMER_ACTION_RATE_WINDOW_MS ?? 60_000,
+);
 
 async function requireCustomer(): Promise<{ userId: string } | ActionFailure> {
   const user = await getCurrentUser();
@@ -45,6 +55,28 @@ async function requireCustomer(): Promise<{ userId: string } | ActionFailure> {
       ok: false,
       code: 'FORBIDDEN',
       message: 'Only customer accounts can do this',
+    };
+  }
+  // Explore-page actions bypass the proxy's /customer status gate, and a live
+  // cookie session keeps refreshing — enforce account state here so a
+  // suspended/archived customer can't keep mutating.
+  if (user.status !== 'active' || user.archived_at != null) {
+    return {
+      ok: false,
+      code: 'FORBIDDEN',
+      message: 'This account is not allowed to do this right now',
+    };
+  }
+  const { allowed } = rateLimit(
+    `customer-action:${user.id}`,
+    ACTION_RATE_LIMIT,
+    ACTION_RATE_WINDOW_MS,
+  );
+  if (!allowed) {
+    return {
+      ok: false,
+      code: 'RATE_LIMITED',
+      message: 'Too many requests — please try again in a moment',
     };
   }
   return { userId: user.id };
@@ -155,7 +187,7 @@ export async function redeemCouponAction(
     const { data: coupon, error: couponError } = await supabase
       .from('coupons')
       .select(
-        'id, start_date, expiry_date, status, max_redemptions_per_user, max_redemptions_global, current_redemptions, requires_follow, business_id',
+        'id, start_date, expiry_date, status, max_redemptions_per_user, max_redemptions_global, current_redemptions, requires_follow, business_id, branch_id',
       )
       .eq('id', couponId)
       .eq('status', 'published')
@@ -168,6 +200,36 @@ export async function redeemCouponAction(
         ok: false,
         code: 'BAD_REQUEST',
         message: 'Coupon not found or not yet active',
+      };
+    }
+
+    // Branch must belong to the coupon's business, and a branch-scoped coupon
+    // may only be redeemed at its branch. (Gate added on web first — the
+    // mobile route shares the gap; align it in the shared-core follow-up.)
+    const { data: branch, error: branchError } = await supabase
+      .from('branches')
+      .select('id, business_id')
+      .eq('id', branchId)
+      .is('archived_at', null)
+      .maybeSingle();
+
+    if (branchError) {
+      console.error('[redeemCouponAction]', branchError);
+      return {
+        ok: false,
+        code: 'SERVER_ERROR',
+        message: 'Could not redeem right now',
+      };
+    }
+    if (
+      !branch ||
+      branch.business_id !== coupon.business_id ||
+      (coupon.branch_id !== null && coupon.branch_id !== branchId)
+    ) {
+      return {
+        ok: false,
+        code: 'BAD_REQUEST',
+        message: 'This deal cannot be redeemed at that branch',
       };
     }
 

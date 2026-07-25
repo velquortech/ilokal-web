@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import { getWalletRedemptions } from '@/lib/api/customer/customerQuery';
+import { PaginationBar } from '@/components/customer/PaginationBar';
 import { ROUTES } from '@/config/routeConfig';
 import { cn } from '@/lib/utils';
 import { RedemptionCard } from './components/redemption-card';
@@ -33,9 +34,14 @@ export default async function WalletPage({
   const filter: WalletFilter = TABS.some((t) => t.value === sp.filter)
     ? (sp.filter as WalletFilter)
     : 'active';
+  const page = Math.max(
+    1,
+    parseInt(typeof sp.page === 'string' ? sp.page : '1', 10) || 1,
+  );
 
-  const result = await getWalletRedemptions(user.id, filter);
-  const redemptions = 'error' in result ? [] : result.redemptions;
+  const result = await getWalletRedemptions(user.id, filter, page);
+  const loadFailed = 'error' in result;
+  const redemptions = loadFailed ? [] : result.redemptions;
 
   return (
     <div className="flex flex-1 flex-col space-y-6">
@@ -69,7 +75,12 @@ export default async function WalletPage({
         ))}
       </div>
 
-      {redemptions.length === 0 ? (
+      {loadFailed ? (
+        <div className="text-muted-foreground rounded-xl border border-dashed p-12 text-center text-sm">
+          Couldn&apos;t load your wallet right now — please refresh to try
+          again.
+        </div>
+      ) : redemptions.length === 0 ? (
         <div className="text-muted-foreground space-y-3 rounded-xl border border-dashed p-12 text-center text-sm">
           <p>
             {filter === 'active'
@@ -81,11 +92,14 @@ export default async function WalletPage({
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {redemptions.map((redemption) => (
-            <RedemptionCard key={redemption.id} redemption={redemption} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {redemptions.map((redemption) => (
+              <RedemptionCard key={redemption.id} redemption={redemption} />
+            ))}
+          </div>
+          <PaginationBar metadata={result.metadata} noun="redemption" />
+        </>
       )}
     </div>
   );

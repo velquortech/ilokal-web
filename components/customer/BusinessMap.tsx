@@ -7,6 +7,7 @@ import {
   Marker,
   Polyline,
   Popup,
+  useMap,
 } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -31,6 +32,19 @@ const pinIcon = L.icon({
 
 interface BusinessMapProps {
   branches: PublicBranch[];
+}
+
+/**
+ * MapContainer's `center` is initial-only — when the visitor's position
+ * arrives later the view must be moved imperatively or the "you are here"
+ * marker can sit entirely off-viewport.
+ */
+function RecenterOnUser({ pos }: { pos: [number, number] | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (pos) map.setView(pos, map.getZoom());
+  }, [map, pos]);
+  return null;
 }
 
 /**
@@ -63,10 +77,8 @@ export function BusinessMap({ branches }: BusinessMapProps) {
     );
   };
 
-  // One-shot on mount; `locate` is stable for the component's lifetime.
-  useEffect(() => {
-    locate();
-  }, []);
+  // No auto-request: a permission prompt with no user gesture is hostile on a
+  // public page — geolocation runs only from the "Use my location" button.
 
   if (pins.length === 0) {
     return (
@@ -89,6 +101,7 @@ export function BusinessMap({ branches }: BusinessMapProps) {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+          <RecenterOnUser pos={userPos} />
           {pins.map((branch) => (
             <Marker key={branch.id} position={branch.latLng} icon={pinIcon}>
               <Popup>

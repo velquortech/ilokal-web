@@ -29,7 +29,12 @@ const COUPON_ID = '22222222-2222-2222-2222-222222222222';
 const BRANCH_ID = '33333333-3333-3333-3333-333333333333';
 const BUSINESS_ID = '44444444-4444-4444-4444-444444444444';
 
-const customer = { id: USER_ID, role: 'app_user' } as unknown as User;
+const customer = {
+  id: USER_ID,
+  role: 'app_user',
+  status: 'active',
+  archived_at: null,
+} as unknown as User;
 
 function futureIso(hours: number): string {
   return new Date(Date.now() + hours * 3_600_000).toISOString();
@@ -45,6 +50,7 @@ interface CouponRow {
   current_redemptions: number;
   requires_follow: boolean;
   business_id: string;
+  branch_id: string | null;
 }
 
 function liveCoupon(overrides: Partial<CouponRow> = {}): CouponRow {
@@ -58,6 +64,7 @@ function liveCoupon(overrides: Partial<CouponRow> = {}): CouponRow {
     current_redemptions: 0,
     requires_follow: false,
     business_id: BUSINESS_ID,
+    branch_id: null,
     ...overrides,
   };
 }
@@ -68,6 +75,8 @@ function liveCoupon(overrides: Partial<CouponRow> = {}): CouponRow {
  */
 interface TableConfig {
   coupon?: { data: CouponRow | null; error?: unknown };
+  /** Defaults to a branch belonging to the coupon's business. */
+  branch?: { id: string; business_id: string } | null;
   followCount?: number;
   priorRedemptions?: Array<{ is_claimed: boolean; expires_at: string | null }>;
   insertResult?: {
@@ -93,6 +102,20 @@ function mockSupabase(config: TableConfig) {
         single: vi.fn().mockResolvedValue({
           data: config.coupon?.data ?? null,
           error: config.coupon?.error ?? (config.coupon?.data ? null : {}),
+        }),
+      };
+    }
+    if (table === 'branches') {
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({
+          data:
+            config.branch === undefined
+              ? { id: BRANCH_ID, business_id: BUSINESS_ID }
+              : config.branch,
+          error: null,
         }),
       };
     }
@@ -185,6 +208,46 @@ describe('redeemCouponAction — auth gates', () => {
     expect(result).toMatchObject({ ok: false, code: 'BAD_REQUEST' });
     expect(createServerSupabaseClient).not.toHaveBeenCalled();
   });
+
+  it('blocks a suspended account even with the customer role', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      ...customer,
+      status: 'suspended',
+    } as unknown as User);
+    const result = await redeemCouponAction(COUPON_ID, BRANCH_ID);
+    expect(result).toMatchObject({ ok: false, code: 'FORBIDDEN' });
+    expect(createServerSupabaseClient).not.toHaveBeenCalled();
+  });
+
+  it('blocks an archived (soft-deleted) account', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      ...customer,
+      archived_at: '2026-07-01T00:00:00Z',
+    } as unknown as User);
+    const result = await followBusinessAction(BUSINESS_ID);
+    expect(result).toMatchObject({ ok: false, code: 'FORBIDDEN' });
+  });
+
+  it('rate-limits a flood of mutations per user', async () => {
+    // Dedicated user id so the shared in-memory bucket never bleeds into the
+    // other tests in this file.
+    const floodUser = {
+      ...customer,
+      id: '99999999-9999-9999-9999-999999999999',
+    } as unknown as User;
+    vi.mocked(getCurrentUser).mockResolvedValue(floodUser);
+    mockSupabase({});
+
+    let limited = false;
+    for (let i = 0; i < 31; i++) {
+      const result = await followBusinessAction(BUSINESS_ID);
+      if (!result.ok && result.code === 'RATE_LIMITED') {
+        limited = true;
+        break;
+      }
+    }
+    expect(limited).toBe(true);
+  });
 });
 
 describe('redeemCouponAction — coupon gates (mobile-route copy)', () => {
@@ -194,6 +257,33 @@ describe('redeemCouponAction — coupon gates (mobile-route copy)', () => {
     expect(result).toMatchObject({
       ok: false,
       message: 'Coupon not found or not yet active',
+    });
+  });
+
+  it('rejects a branch belonging to a different business', async () => {
+    mockSupabase({
+      coupon: { data: liveCoupon() },
+      branch: { id: BRANCH_ID, business_id: 'not-the-coupon-business' },
+    });
+    const result = await redeemCouponAction(COUPON_ID, BRANCH_ID);
+    expect(result).toMatchObject({
+      ok: false,
+      message: 'This deal cannot be redeemed at that branch',
+    });
+  });
+
+  it('rejects redeeming a branch-scoped coupon at another branch', async () => {
+    mockSupabase({
+      coupon: {
+        data: liveCoupon({
+          branch_id: '55555555-5555-5555-5555-555555555555',
+        }),
+      },
+    });
+    const result = await redeemCouponAction(COUPON_ID, BRANCH_ID);
+    expect(result).toMatchObject({
+      ok: false,
+      message: 'This deal cannot be redeemed at that branch',
     });
   });
 

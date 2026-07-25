@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { signupSchema, SignupInput } from '@/lib/validation/auth';
 import { signupFormAction } from '@/app/(auth)/actions';
 import { ROUTES } from '@/config/routeConfig';
+import { safeNext } from '@/lib/utils/safeNext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -135,7 +136,15 @@ function SignupFormContent() {
           : 'Welcome! Your account is ready.',
         { id: toastId },
       );
-      setTimeout(() => router.push(getRouteForRole(result.role)), 2000);
+      // Customers arriving from an auth nudge deep-link back to where they
+      // were (?next=, same-origin-validated); everyone else goes to their
+      // role's home.
+      const next = safeNext(searchParams.get('next'));
+      const destination =
+        result.role === 'app_user' && next
+          ? next
+          : getRouteForRole(result.role);
+      setTimeout(() => router.push(destination), 2000);
     } catch {
       toast.error('Failed to sign up. Please try again.', { id: toastId });
     } finally {

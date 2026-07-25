@@ -1,16 +1,28 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import {
   createServerSupabaseClient,
   SUPABASE_COOKIE_PREFIX,
   SUPABASE_COOKIE_OPTIONS,
 } from '@/supabase/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
+import { rateLimit, clientIp } from '@/app/api/helpers/rateLimit';
 import { ROUTES, businessPath } from '@/config/routeConfig';
 import { User } from '@/lib/types/user';
 import { SignupInput } from '@/lib/validation/auth';
+
+// SEC-8 budgets for the Server-Action login path — /api/auth/* is covered by
+// checkAuthRateLimit, but this action is a separate publicly-invocable door
+// (the customer/business login forms), so it enforces the same per-IP +
+// per-account budgets itself.
+const LOGIN_IP_LIMIT = Number(process.env.AUTH_RATE_LIMIT_IP ?? 30);
+const LOGIN_IP_WINDOW_MS = Number(process.env.AUTH_RATE_WINDOW_MS ?? 60_000);
+const LOGIN_ACCOUNT_LIMIT = Number(process.env.AUTH_RATE_LIMIT_ACCOUNT ?? 8);
+const LOGIN_ACCOUNT_WINDOW_MS = Number(
+  process.env.AUTH_ACCOUNT_WINDOW_MS ?? 300_000,
+);
 
 /**
  * Server Action: Handle user login
@@ -35,6 +47,29 @@ export async function loginAction(
     // Validate email format (basic)
     if (!email.includes('@')) {
       throw new Error('Invalid email format');
+    }
+
+    // Rate-limit before any auth/DB work (generic message — no oracle).
+    // headers() is only available inside a request scope — outside one
+    // (unit tests) fall back to a shared bucket rather than crashing login.
+    let ip = 'unknown';
+    try {
+      ip = clientIp({ headers: await headers() });
+    } catch {
+      // non-request scope — keep the fallback key
+    }
+    const ipCheck = rateLimit(
+      `auth:login-action:ip:${ip}`,
+      LOGIN_IP_LIMIT,
+      LOGIN_IP_WINDOW_MS,
+    );
+    const accountCheck = rateLimit(
+      `auth:login-action:acct:${email.trim().toLowerCase()}`,
+      LOGIN_ACCOUNT_LIMIT,
+      LOGIN_ACCOUNT_WINDOW_MS,
+    );
+    if (!ipCheck.allowed || !accountCheck.allowed) {
+      throw new Error('Too many attempts. Please try again in a few minutes.');
     }
 
     // Create server-side Supabase client

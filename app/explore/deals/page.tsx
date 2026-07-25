@@ -4,10 +4,8 @@ import Link from 'next/link';
 import { BadgePercent, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { PaginationBar } from '@/components/customer/PaginationBar';
-import { createServerSupabaseClient } from '@/supabase/server';
-import { resolveStorageUrl } from '@/app/api/helpers/storage';
+import { getDealsFeed, type FeedDeal } from '@/lib/api/customer/customerQuery';
 import { explorePath } from '@/config/routeConfig';
-import type { PublicCoupon } from '@/lib/types';
 
 export const metadata: Metadata = {
   title: 'Deals & Coupons - iLokal',
@@ -16,29 +14,7 @@ export const metadata: Metadata = {
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-interface FeedDeal {
-  id: string;
-  code: string;
-  description: string | null;
-  discount: PublicCoupon['discount'];
-  expiry_date: string;
-  promotion_type: string;
-  slots_remaining: number | null;
-  business_id: string;
-  business_name: string;
-  business_logo_url: string | null;
-}
-
-interface DealsPayload {
-  featured: FeedDeal | null;
-  flash: FeedDeal[];
-  explore: FeedDeal[];
-  explore_total: number;
-  explore_page: number;
-  explore_per_page: number;
-}
-
-function discountLabel(discount: PublicCoupon['discount']): string {
+function discountLabel(discount: FeedDeal['discount']): string {
   if (!discount) return 'Deal';
   return discount.type === 'percentage'
     ? `${discount.value}% off`
@@ -97,39 +73,7 @@ export default async function DealsPage({
     parseInt(typeof sp.page === 'string' ? sp.page : '1', 10) || 1,
   );
 
-  const supabase = await createServerSupabaseClient();
-  const { data, error } = await supabase.rpc('mobile_deals', {
-    p_category: 'All',
-    p_search: '',
-    p_page: page,
-    p_per_page: 20,
-  });
-
-  if (error) console.error('[explore/deals]', error);
-
-  const payload = (data ?? {
-    featured: null,
-    flash: [],
-    explore: [],
-    explore_total: 0,
-    explore_page: 1,
-    explore_per_page: 20,
-  }) as unknown as DealsPayload;
-
-  const resolve = (deal: FeedDeal): FeedDeal => ({
-    ...deal,
-    business_logo_url: resolveStorageUrl(
-      supabase,
-      'shop-logos',
-      deal.business_logo_url,
-    ),
-  });
-
-  const featured = payload.featured ? resolve(payload.featured) : null;
-  const flash = (payload.flash ?? []).map(resolve);
-  const explore = (payload.explore ?? []).map(resolve);
-
-  const isEmpty = !featured && flash.length === 0 && explore.length === 0;
+  const result = await getDealsFeed(page, 20);
 
   return (
     <div className="flex flex-1 flex-col space-y-8">
@@ -141,53 +85,59 @@ export default async function DealsPage({
         </p>
       </div>
 
-      {isEmpty ? (
+      {'error' in result ? (
+        <div className="text-muted-foreground rounded-xl border border-dashed p-12 text-center text-sm">
+          Couldn&apos;t load deals right now — please refresh to try again.
+        </div>
+      ) : !result.featured &&
+        result.flash.length === 0 &&
+        result.explore.length === 0 ? (
         <div className="text-muted-foreground rounded-xl border border-dashed p-12 text-center text-sm">
           No live deals right now — check back soon.
         </div>
       ) : (
         <>
-          {featured && (
+          {result.featured && (
             <section className="space-y-3">
               <h2 className="inline-flex items-center gap-2 text-lg font-semibold tracking-tight">
                 <BadgePercent className="text-primary h-5 w-5" />
                 Featured
               </h2>
-              <DealRow deal={featured} />
+              <DealRow deal={result.featured} />
             </section>
           )}
 
-          {flash.length > 0 && (
+          {result.flash.length > 0 && (
             <section className="space-y-3">
               <h2 className="inline-flex items-center gap-2 text-lg font-semibold tracking-tight">
                 <Zap className="text-primary h-5 w-5" />
                 Flash deals
               </h2>
               <div className="space-y-3">
-                {flash.map((deal) => (
+                {result.flash.map((deal) => (
                   <DealRow key={deal.id} deal={deal} flash />
                 ))}
               </div>
             </section>
           )}
 
-          {explore.length > 0 && (
+          {result.explore.length > 0 && (
             <section className="space-y-3">
               <h2 className="text-lg font-semibold tracking-tight">
                 All deals
               </h2>
               <div className="space-y-3">
-                {explore.map((deal) => (
+                {result.explore.map((deal) => (
                   <DealRow key={deal.id} deal={deal} />
                 ))}
               </div>
               <PaginationBar
                 metadata={{
-                  total: payload.explore_total,
-                  page: payload.explore_page,
-                  per_page: payload.explore_per_page,
+                  total: result.explore_total,
+                  page: result.explore_page,
+                  per_page: result.explore_per_page,
                   total_pages: Math.ceil(
-                    payload.explore_total / (payload.explore_per_page || 20),
+                    result.explore_total / (result.explore_per_page || 20),
                   ),
                 }}
                 noun="deal"

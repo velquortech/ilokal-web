@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { BadgePercent, Newspaper, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FollowButton } from '@/components/customer/FollowButton';
-import { PaginationBar } from '@/components/customer/PaginationBar';
+import { FeedPager } from '@/components/customer/FeedPager';
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import {
   getFollowedBusinesses,
@@ -51,13 +51,10 @@ export default async function FollowingPage({
   ]);
 
   const followed = 'error' in followedResult ? [] : followedResult.followed;
-  const feed =
-    'error' in feedResult
-      ? {
-          updates: [],
-          metadata: { total: 0, page: 1, per_page: 10, total_pages: 0 },
-        }
-      : feedResult;
+  const feedFailed = 'error' in feedResult;
+  const feed = feedFailed
+    ? { updates: [], page: 1, per_page: 10, has_more: false }
+    : feedResult;
 
   return (
     <div className="flex flex-1 flex-col space-y-8">
@@ -82,7 +79,9 @@ export default async function FollowingPage({
             <h2 className="text-lg font-semibold tracking-tight">Updates</h2>
             {feed.updates.length === 0 ? (
               <p className="text-muted-foreground rounded-xl border border-dashed p-8 text-center text-sm">
-                Nothing new from your shops yet — check back soon.
+                {feedFailed
+                  ? 'Couldn’t load updates right now — please refresh to try again.'
+                  : 'Nothing new from your shops yet — check back soon.'}
               </p>
             ) : (
               <>
@@ -151,7 +150,7 @@ export default async function FollowingPage({
                     );
                   })}
                 </div>
-                <PaginationBar metadata={feed.metadata} noun="update" />
+                <FeedPager page={feed.page} hasMore={feed.has_more} />
               </>
             )}
           </section>

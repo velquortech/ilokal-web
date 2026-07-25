@@ -1,6 +1,7 @@
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import { resolvePublicAvatarUrl } from '@/lib/api/customer/customerQuery';
 import { CustomerHeader } from '@/components/customer/CustomerHeader';
+import { CustomerFooter } from '@/components/customer/CustomerFooter';
 
 /**
  * Public shop-discovery shell. No auth gate — anonymous visitors browse
@@ -33,6 +34,9 @@ export default async function ExploreLayout({
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
         {children}
       </main>
+      {/* `flex-1` on <main> pins this to the viewport bottom on short pages
+          (e.g. an empty search result). */}
+      <CustomerFooter />
     </div>
   );
 }

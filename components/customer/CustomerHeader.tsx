@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Compass,
+  Home,
   Loader2,
   LogOut,
   MapPin,
@@ -12,6 +13,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { BrandLogo } from '@/components/custom/BrandLogo';
+import { ThemeToggle } from '@/components/custom/ThemeTogge';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -33,7 +35,12 @@ export interface CustomerHeaderUser {
   role: string;
 }
 
+/**
+ * Home first: the landing links into /explore, and without this entry the only
+ * way back out of the explore surface is the browser Back button.
+ */
 const NAV_LINKS = [
+  { href: ROUTES.PUBLIC.LANDING, label: 'Home', icon: Home },
   { href: ROUTES.EXPLORE.HOME, label: 'Explore', icon: Compass },
   { href: ROUTES.EXPLORE.NEARBY, label: 'Nearby', icon: MapPin },
   { href: ROUTES.EXPLORE.DEALS, label: 'Deals', icon: Ticket },
@@ -51,11 +58,18 @@ export function CustomerHeader({ user }: { user: CustomerHeaderUser | null }) {
   const isCustomer = user?.role === 'app_user';
   const initial = (user?.full_name?.trim()?.[0] ?? 'U').toUpperCase();
 
+  // A signed-in customer's home IS the shop feed; everyone else (anonymous
+  // visitor, owner, admin browsing publicly) gets the marketing landing.
+  const brandHref = isCustomer ? ROUTES.EXPLORE.HOME : ROUTES.PUBLIC.LANDING;
+
   return (
     <header className="bg-background/85 sticky top-0 z-50 border-b backdrop-blur">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-5">
-          <Link href={ROUTES.EXPLORE.HOME} aria-label="iLokal — explore shops">
+          <Link
+            href={brandHref}
+            aria-label={isCustomer ? 'iLokal — explore shops' : 'iLokal — home'}
+          >
             <BrandLogo markSize={26} wordmarkClassName="text-lg" />
           </Link>
           <nav className="hidden items-center gap-1 md:flex">
@@ -80,6 +94,10 @@ export function CustomerHeader({ user }: { user: CustomerHeaderUser | null }) {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Unlike the landing's page-local toggle, this one is real
+              next-themes and persists across navigation. */}
+          <ThemeToggle />
+
           {!user && (
             <>
               <Button asChild variant="ghost" size="sm">
@@ -87,6 +105,18 @@ export function CustomerHeader({ user }: { user: CustomerHeaderUser | null }) {
               </Button>
               <Button asChild size="sm">
                 <Link href={ROUTES.AUTH.SIGNUP}>Sign up</Link>
+              </Button>
+              {/* Matches the landing's primary conversion CTA. Hidden on the
+                  narrowest screens so the row can't overflow. */}
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="hidden sm:inline-flex"
+              >
+                <Link href={ROUTES.BUSINESS.registration}>
+                  List Your Business
+                </Link>
               </Button>
             </>
           )}

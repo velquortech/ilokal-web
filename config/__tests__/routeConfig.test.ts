@@ -10,6 +10,7 @@ import {
   adminUsersPath,
   adminBranchesPath,
   adminAccountStatusPath,
+  landingSectionPath,
   loginPathForPathname,
   ROUTES,
   businessRedeemedCouponsPath,
@@ -70,6 +71,29 @@ describe('ROUTES.AUTH sign-in doors', () => {
   it('exposes the unified sign-in door and the gated admin door', () => {
     expect(ROUTES.AUTH.SIGN_IN).toBe('/sign-in');
     expect(ROUTES.AUTH.ADMIN_SIGN_IN).toBe('/sign-in/admin');
+  });
+});
+
+describe('public landing route', () => {
+  it('exposes the landing under PUBLIC', () => {
+    expect(ROUTES.PUBLIC.LANDING).toBe('/home');
+  });
+
+  it('keeps the no-role dashboard fallback pointed at the same URL', () => {
+    // Both are the landing page — declared from one constant so they can't drift.
+    expect(ROUTES.DASHBOARD.HOME).toBe(ROUTES.PUBLIC.LANDING);
+  });
+});
+
+describe('landingSectionPath', () => {
+  it('builds an absolute anchor into the landing', () => {
+    expect(landingSectionPath('about')).toBe('/home#about');
+    expect(landingSectionPath('shoppers')).toBe('/home#shoppers');
+  });
+
+  it('never emits a bare hash (which no-ops off the landing)', () => {
+    expect(landingSectionPath('deals').startsWith('#')).toBe(false);
+    expect(landingSectionPath('deals')).toContain(ROUTES.PUBLIC.LANDING);
   });
 });
 

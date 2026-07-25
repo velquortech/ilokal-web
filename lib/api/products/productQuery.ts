@@ -149,12 +149,15 @@ export async function getProductsPaginated(
     const offset = (page - 1) * per_page;
     const supabase = await createServerSupabaseClient();
 
-    let query = supabase.from('products').select(
-      `*,
+    let query = supabase
+      .from('products')
+      .select(
+        `*,
         category:category_id (id, name, slug, description),
         business:business_id (id, shop_name)`,
-      { count: 'exact' },
-    );
+        { count: 'exact' },
+      )
+      .is('archived_at', null);
 
     if (search) {
       query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);

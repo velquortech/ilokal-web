@@ -114,7 +114,8 @@ export type ProductFilters = {
   per_page?: number;
   search?: string;
   category_id?: string;
-  status?: ProductStatus;
+  /** Omit for the `'active'` default; pass `''` explicitly to include every status. */
+  status?: ProductStatus | '';
   business_id?: string;
   branch_id?: string;
   sort_by?: ProductSortOrder;

@@ -124,13 +124,13 @@ export function ProductCataloguesContent({
 
       <Card>
         <CardContent className="space-y-2">
-          <div className="inline-flex h-10 w-full justify-between">
+          <div className="flex w-full flex-wrap items-center justify-between gap-2">
             <Catalogues
               categories={categories}
               selectedCategory={selectedCategory}
               onCategoryChange={handleCategoryChange}
             />
-            <div className="inline-flex w-max gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <ManageCatalogues categories={categories} />
               <FilterProducts
                 selectedStatus={selectedStatus}

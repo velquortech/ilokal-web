@@ -66,25 +66,36 @@ describe('admin per-page helpers', () => {
   });
 });
 
+describe('ROUTES.AUTH sign-in doors', () => {
+  it('exposes the unified sign-in door and the gated admin door', () => {
+    expect(ROUTES.AUTH.SIGN_IN).toBe('/sign-in');
+    expect(ROUTES.AUTH.ADMIN_SIGN_IN).toBe('/sign-in/admin');
+  });
+});
+
 describe('loginPathForPathname', () => {
-  it('sends an admin page to the admin login', () => {
+  it('sends an admin page to the admin sign-in door', () => {
     expect(loginPathForPathname(`/admin/${ADMIN_ID}/users`)).toBe(
-      ROUTES.AUTH.ADMIN_LOGIN,
+      ROUTES.AUTH.ADMIN_SIGN_IN,
     );
   });
 
-  it('sends a business page to the business login', () => {
+  it('sends a business page to the unified sign-in door', () => {
     expect(loginPathForPathname('/business/biz-1/coupons')).toBe(
-      ROUTES.AUTH.BUSINESS_LOGIN,
+      ROUTES.AUTH.SIGN_IN,
     );
   });
 
-  it('falls back to the generic login outside the dashboards', () => {
-    expect(loginPathForPathname('/home')).toBe(ROUTES.AUTH.LOGIN);
+  it('sends a customer page to the unified sign-in door', () => {
+    expect(loginPathForPathname('/customer/wallet')).toBe(ROUTES.AUTH.SIGN_IN);
   });
 
-  it('falls back to the generic login for a missing pathname', () => {
-    expect(loginPathForPathname(null)).toBe(ROUTES.AUTH.LOGIN);
-    expect(loginPathForPathname(undefined)).toBe(ROUTES.AUTH.LOGIN);
+  it('falls back to the unified sign-in door outside the dashboards', () => {
+    expect(loginPathForPathname('/home')).toBe(ROUTES.AUTH.SIGN_IN);
+  });
+
+  it('falls back to the unified sign-in door for a missing pathname', () => {
+    expect(loginPathForPathname(null)).toBe(ROUTES.AUTH.SIGN_IN);
+    expect(loginPathForPathname(undefined)).toBe(ROUTES.AUTH.SIGN_IN);
   });
 });

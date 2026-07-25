@@ -8,6 +8,12 @@
 export const ROUTES = {
   // Authentication routes
   AUTH: {
+    // Unified sign-in door (customer + business, role-routed after auth).
+    // Admin keeps its own gated door under the same segment.
+    SIGN_IN: '/sign-in',
+    ADMIN_SIGN_IN: '/sign-in/admin',
+    // DEPRECATED — legacy doors, 307-redirected to /sign-in in next.config.ts.
+    // Deleted in the Phase 2 call-site sweep (see .claude/SIGNIN_UNIFICATION.md).
     LOGIN: '/login',
     ADMIN_LOGIN: '/login/admin',
     BUSINESS_LOGIN: '/login/business',
@@ -88,20 +94,16 @@ export function getDashboardRoute(role?: string): string {
 }
 
 /**
- * Pick the login page matching the portal a pathname belongs to.
+ * Pick the sign-in page matching the portal a pathname belongs to.
  *
- * Used by logout flows so a signed-out admin lands on the admin login and a
- * business owner on the business login, instead of the generic one. Falls back
- * to the generic login for anything outside the two dashboards.
+ * Used by logout flows. Admin pages keep their own gated door; everyone else
+ * (business, customer, public) uses the unified /sign-in, which role-routes
+ * after auth.
  */
 export function loginPathForPathname(pathname?: string | null): string {
   if (pathname?.startsWith(ROUTES.DASHBOARD.ADMIN))
-    return ROUTES.AUTH.ADMIN_LOGIN;
-  if (pathname?.startsWith(ROUTES.DASHBOARD.BUSINESS)) {
-    return ROUTES.AUTH.BUSINESS_LOGIN;
-  }
-  // Customer area uses the generic login door.
-  return ROUTES.AUTH.LOGIN;
+    return ROUTES.AUTH.ADMIN_SIGN_IN;
+  return ROUTES.AUTH.SIGN_IN;
 }
 
 /**

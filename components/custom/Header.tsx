@@ -144,7 +144,7 @@ export function Header({
     if (onLogout) {
       onLogout();
     } else {
-      router.push(ROUTES.AUTH.LOGIN);
+      router.push(ROUTES.AUTH.SIGN_IN);
     }
   }, [onLogout, router]);
 

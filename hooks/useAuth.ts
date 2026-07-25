@@ -19,8 +19,8 @@ import { ROUTES } from '@/config/routeConfig';
  * sign-out keeps the user where they are with a retry toast rather than showing
  * them a login page while their session is still live.
  *
- * `redirectTo` lets each caller send the user to its role's login
- * (business → /login/business, admin → /login/admin).
+ * `redirectTo` lets each caller send the user to its portal's door
+ * (default /sign-in; admin pages pass /sign-in/admin).
  *
  * `force` is for callers that already KNOW the session is dead (session-expiry
  * auto-logout): staying put protects nothing, so navigate regardless of whether
@@ -33,7 +33,7 @@ export function useAuth() {
 
   const logout = useCallback(
     async (
-      redirectTo: string = ROUTES.AUTH.LOGIN,
+      redirectTo: string = ROUTES.AUTH.SIGN_IN,
       options?: { force?: boolean },
     ) => {
       setIsSigningOut(true);

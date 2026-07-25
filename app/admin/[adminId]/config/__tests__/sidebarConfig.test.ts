@@ -35,7 +35,7 @@ describe('injectAdminId', () => {
   });
 
   it('leaves non-admin app hrefs untouched', () => {
-    expect(injectAdminId('/login', ADMIN_ID)).toBe('/login');
+    expect(injectAdminId('/sign-in', ADMIN_ID)).toBe('/sign-in');
     // a path that merely starts with the word "admin" but not the /admin route
     expect(injectAdminId('/administration', ADMIN_ID)).toBe('/administration');
   });

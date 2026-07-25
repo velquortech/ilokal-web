@@ -16,7 +16,7 @@ export default async function CustomerLayout({
 }) {
   const user = await getCurrentUser();
 
-  if (!user) redirect(ROUTES.AUTH.LOGIN);
+  if (!user) redirect(ROUTES.AUTH.SIGN_IN);
   if (user.role !== 'app_user') redirect(getDashboardRoute(user.role));
 
   const avatarUrl = await resolvePublicAvatarUrl(user.avatar_url);

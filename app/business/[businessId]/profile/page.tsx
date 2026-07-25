@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation';
+import { ROUTES } from '@/config/routeConfig';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import { fetchProfileForPage } from '@/lib/api/users/userService';
 import { getBusinessProfileData } from '@/lib/api/business/businessQuery';
@@ -21,7 +22,7 @@ export default async function ProfilePage({ params }: { params: Params }) {
       'code' in err &&
       (err as { code: string }).code === 'AUTHENTICATION_ERROR'
     ) {
-      redirect('/login');
+      redirect(ROUTES.AUTH.SIGN_IN);
     }
     notFound();
   }

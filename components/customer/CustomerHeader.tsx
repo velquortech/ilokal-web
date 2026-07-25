@@ -83,7 +83,7 @@ export function CustomerHeader({ user }: { user: CustomerHeaderUser | null }) {
           {!user && (
             <>
               <Button asChild variant="ghost" size="sm">
-                <Link href={ROUTES.AUTH.LOGIN}>Log in</Link>
+                <Link href={ROUTES.AUTH.SIGN_IN}>Log in</Link>
               </Button>
               <Button asChild size="sm">
                 <Link href={ROUTES.AUTH.SIGNUP}>Sign up</Link>
@@ -154,7 +154,7 @@ export function CustomerHeader({ user }: { user: CustomerHeaderUser | null }) {
                     disabled={isLoggingOut}
                     onSelect={(e) => {
                       e.preventDefault();
-                      logout(ROUTES.AUTH.LOGIN);
+                      logout(ROUTES.AUTH.SIGN_IN);
                     }}
                   >
                     {isLoggingOut ? (

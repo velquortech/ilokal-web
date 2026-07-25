@@ -45,7 +45,7 @@ This is the correct pattern — call it at the end of every Server Action that m
 At build time these pages are fully static and served from CDN:
 
 - `/home` — landing page (no user data)
-- `/login`, `/signup` — public auth pages
+- `/sign-in`, `/signup` — public auth pages
 
 ---
 

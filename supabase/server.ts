@@ -1,25 +1,15 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
-/**
- * Name prefix of every Supabase auth cookie (`sb-<project-ref>-auth-token`,
- * its `.0`/`.1` chunks, and `-code-verifier`). supabase-js derives this itself
- * and nothing here overrides `storageKey`/`cookieOptions.name`.
- */
-export const SUPABASE_COOKIE_PREFIX = 'sb-';
+// Defined in `supabase/cookies.ts` (no `next/headers` import, so the proxy can
+// use them too) and re-exported here to keep `@/supabase/server` import sites
+// working.
+export {
+  SUPABASE_COOKIE_PREFIX,
+  SUPABASE_COOKIE_OPTIONS,
+} from '@/supabase/cookies';
 
-/**
- * The attributes every Supabase auth cookie is written with. Deletion matches
- * on name + domain + path, so an expiry write MUST reuse these or the original
- * cookie survives — keep this the single source for both the write and the
- * clear (`clearSupabaseAuthCookies` in the auth actions).
- */
-export const SUPABASE_COOKIE_OPTIONS = Object.freeze({
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
-  path: '/',
-});
+import { SUPABASE_COOKIE_OPTIONS } from '@/supabase/cookies';
 
 // Session-aware server client (uses cookies to manage user sessions)
 export async function createServerSupabaseClient() {

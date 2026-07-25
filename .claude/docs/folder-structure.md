@@ -234,7 +234,7 @@ Reusable components used across the entire application.
 ```
 components/
 ├── auth/                       # Authentication-specific components
-│   ├── LoginForm.tsx           # Login form with useActionState
+│   ├── SignInForm.tsx          # Unified sign-in form (role-routed)
 │   ├── SignupForm.tsx          # Signup form with useActionState
 │   ├── SessionWarningDialog.tsx # Session expiration warning (5 min before logout)
 │   └── SessionTracker.tsx       # Initializes useSessionMonitor hook on mount

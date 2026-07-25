@@ -12,7 +12,7 @@ The flow is gated by two independent status values:
 
 | Where | Column | Values | Meaning for the owner |
 | --- | --- | --- | --- |
-| `profiles.role` | `role` | `admin` · `business_owner` · `user` | Owners sign up as `business_owner`; business login is restricted to this role (`authActions.ts`). |
+| `profiles.role` | `role` | `admin` · `business_owner` · `user` | Owners sign up as `business_owner`; the unified `/sign-in` door routes them to the dashboard by role (`authActions.ts`). |
 | `profiles.status` | `status` | `active` · `inactive` · `suspended` | Account-level gate. A suspended account can't operate. |
 | `businesses.status` | `verification_status` | `pending` · `verified` · (rejected) | A business is invisible to the public mobile app until an admin marks it `verified`. |
 | `branches.status` | — | `pending_review` · `active` · `rejected` | Each branch goes through its own admin approval (`20260528000003`). |
@@ -30,7 +30,7 @@ flowchart TD
     subgraph ACCOUNT [Account · app/&#40;auth&#41;]
         Signup["Sign up<br/>/signup → signupAction"]
         Signup -->|"auth.signUp + profiles insert<br/>role = business_owner, status = active"| Login
-        Login["Log in<br/>/login/business<br/>(role must = business_owner)"]
+        Login["Log in<br/>/sign-in<br/>(role-routed)"]
     end
 
     Login --> RegWizard
@@ -81,7 +81,7 @@ flowchart TD
 ### 3.1 Account creation
 - **Route:** `/signup` (`app/(auth)/signup`) → `signupAction` (`authActions.ts`).
 - **Writes:** `auth.users` via `supabase.auth.signUp`, then a `profiles` row with `role = 'business_owner'`, `status = 'active'`. (A DB trigger `on_auth_user_created` also backstops profile creation.)
-- **Login:** `/login/business` — `businessLoginAction` rejects anything that isn't `role === 'business_owner'`.
+- **Login:** `/sign-in` — unified door; `signInAction` signs any account in and routes by role (`business_owner` → dashboard).
 
 ### 3.2 Registration wizard
 - **Route:** `/business/registration` — 5 steps defined in `registration/data/steps.tsx`:

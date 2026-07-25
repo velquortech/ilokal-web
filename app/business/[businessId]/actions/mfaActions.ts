@@ -59,6 +59,26 @@ export async function unenrollMFAAction(
   return { success: true, data: null };
 }
 
+/**
+ * Friendly name this action enrolls under. Also the scope of the stale-factor
+ * cleanup below — never widen it to "every unverified factor".
+ */
+const MFA_FRIENDLY_NAME = 'Authenticator App';
+
+/**
+ * GoTrue returns `totp.qr_code` as RAW SVG markup (`<?xml …?><svg …>`), NOT a
+ * URL — see the auth-js type docs ("convert it to a URL by prepending
+ * `data:image/svg+xml;utf-8,`"). Handing the raw markup to <img>/next/image
+ * makes the browser resolve it as a RELATIVE PATH, so the QR request hits the
+ * app and comes back as the 404 page. Base64 (not `utf-8,`) because the markup
+ * contains `#`, `<`, `"` and newlines, which are not valid unescaped in a data
+ * URL. Already-encoded values pass through untouched.
+ */
+function toQrDataUrl(qrCode: string): string {
+  if (!qrCode || qrCode.startsWith('data:')) return qrCode;
+  return `data:image/svg+xml;base64,${Buffer.from(qrCode, 'utf-8').toString('base64')}`;
+}
+
 export async function enrollMFAAction(): Promise<{
   factorId: string;
   qrCode: string;
@@ -66,24 +86,71 @@ export async function enrollMFAAction(): Promise<{
   error?: string;
 }> {
   const supabase = await createServerSupabaseClient();
-  const { data, error } = await supabase.auth.mfa.enroll({
-    factorType: 'totp',
-    issuer: 'iLokal',
-    friendlyName: 'Authenticator App',
-  });
 
-  if (error || !data) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
     return {
       factorId: '',
       qrCode: '',
       secret: '',
-      error: error?.message ?? 'Failed to start enrollment',
+      error: 'You must be signed in to enable two-factor authentication',
+    };
+  }
+
+  // Clean up the orphan THIS action leaves behind. An abandoned or crashed
+  // enrollment leaves an unverified factor, and GoTrue then rejects every new
+  // enrollment with the same friendly name (422 "already exists") — while the
+  // orphan is invisible to the settings list, because listFactors() only
+  // surfaces verified factors in `data.totp` (unverified ones live only in
+  // `data.all`).
+  //
+  // Scoped to MFA_FRIENDLY_NAME on purpose: a blanket sweep of every unverified
+  // TOTP factor would silently destroy an enrollment started in another tab or
+  // on another device, whose challengeAndVerify would then fail for no visible
+  // reason. Verified factors are never touched.
+  const { data: existing } = await supabase.auth.mfa.listFactors();
+  const staleFactors = (existing?.all ?? []).filter(
+    (f) =>
+      f.factor_type === 'totp' &&
+      f.status !== 'verified' &&
+      f.friendly_name === MFA_FRIENDLY_NAME,
+  );
+  for (const stale of staleFactors) {
+    const { error: unenrollError } = await supabase.auth.mfa.unenroll({
+      factorId: stale.id,
+    });
+    if (unenrollError) {
+      console.error(
+        '[enrollMFAAction] Failed to clean up stale factor:',
+        unenrollError.message,
+      );
+    }
+  }
+
+  const { data, error } = await supabase.auth.mfa.enroll({
+    factorType: 'totp',
+    issuer: 'iLokal',
+    friendlyName: MFA_FRIENDLY_NAME,
+  });
+
+  if (error || !data) {
+    // GoTrue's message names factors/constraints and is unhelpful to the user
+    // ("… already exists"). Log it, return a hand-written one.
+    console.error('[enrollMFAAction] enroll failed:', error?.message);
+    return {
+      factorId: '',
+      qrCode: '',
+      secret: '',
+      error:
+        'Could not start two-factor setup. Close this dialog and try again.',
     };
   }
 
   return {
     factorId: data.id,
-    qrCode: data.totp.qr_code,
+    qrCode: toQrDataUrl(data.totp.qr_code),
     secret: data.totp.secret,
   };
 }
@@ -93,6 +160,17 @@ export async function verifyMFAEnrollmentAction(
   code: string,
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return {
+      success: false,
+      error: 'You must be signed in to enable two-factor authentication',
+    };
+  }
+
   const { error } = await supabase.auth.mfa.challengeAndVerify({
     factorId,
     code,

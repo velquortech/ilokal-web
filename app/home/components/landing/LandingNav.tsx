@@ -56,13 +56,10 @@ export function LandingNav({ dark, onToggleDark }: LandingNavProps) {
               <BrandMark size={30} palette={dark ? 'dark' : 'light'} />
               iLokal
             </a>
-            <span
-              style={s(
-                'display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:999px;background:var(--tint);color:var(--brandhover);font-size:12.5px;font-weight:600;border:1px solid color-mix(in srgb,var(--brand) 22%,transparent);',
-              )}
-            >
-              📍 Made for Iloilo City
-            </span>
+            {/* "Made for Iloilo City" pill removed from the nav row: with the
+                brand mark + the Explore Shops link it pushed the row past the
+                1200px wrap and wrapped the whole header. The hero pill right
+                below carries the same message. */}
           </div>
           <nav className="navlinks">
             {navLinks.map((l) => (

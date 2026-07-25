@@ -23,6 +23,20 @@ export const ROUTES = {
     HOME: '/home',
   },
 
+  // Public shop-discovery surface (customer-facing, anon-readable)
+  EXPLORE: {
+    HOME: '/explore',
+    NEARBY: '/explore/nearby',
+    DEALS: '/explore/deals',
+  },
+
+  // Protected customer (role app_user) area
+  CUSTOMER: {
+    HOME: '/customer',
+    WALLET: '/customer/wallet',
+    FOLLOWING: '/customer/following',
+  },
+
   // API routes
   API: {
     ADMIN: {
@@ -50,6 +64,7 @@ export const ROUTES = {
 export const PROTECTED_ROUTES = {
   ADMIN: '/admin',
   BUSINESS: '/business',
+  CUSTOMER: '/customer',
 };
 
 /**
@@ -59,7 +74,7 @@ export const PROTECTED_ROUTES = {
 export const ROLE_ROUTES = {
   admin: ROUTES.DASHBOARD.ADMIN,
   business_owner: ROUTES.DASHBOARD.BUSINESS,
-  app_user: ROUTES.DASHBOARD.HOME,
+  app_user: ROUTES.EXPLORE.HOME,
 } as const;
 
 /**
@@ -85,7 +100,15 @@ export function loginPathForPathname(pathname?: string | null): string {
   if (pathname?.startsWith(ROUTES.DASHBOARD.BUSINESS)) {
     return ROUTES.AUTH.BUSINESS_LOGIN;
   }
+  // Customer area uses the generic login door.
   return ROUTES.AUTH.LOGIN;
+}
+
+/**
+ * Build the public business profile path under /explore.
+ */
+export function explorePath(businessId: string): string {
+  return ['/explore', businessId].join('/');
 }
 
 /**

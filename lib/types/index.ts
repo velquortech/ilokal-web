@@ -280,5 +280,19 @@ export type {
   Enums,
 } from './database';
 
+// Customer portal (public explore + protected customer area)
+export type {
+  DirectoryBusiness,
+  DirectoryMetadata,
+  CustomerCategory,
+  PublicBranch,
+  PublicProduct,
+  PublicCoupon,
+  PublicBusinessProfile,
+  WalletRedemption,
+  WalletFilter,
+  FollowedBusiness,
+} from './customer';
+
 // Test helpers (used by unit/integration tests)
 export type { TestNextRequest } from './test';

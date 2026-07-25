@@ -247,6 +247,8 @@ export const config = {
     '/admin/:path+',
     '/business',
     '/business/:path+',
+    '/customer',
+    '/customer/:path+',
     '/api/admin',
     '/api/admin/:path+',
     '/api/protected/:path+',

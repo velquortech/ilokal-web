@@ -1,5 +1,65 @@
 # Changelog
 
+## 2026-07-25 — Customer portal: public /explore + protected /customer (feat/customer-portal)
+
+> **Big feature — HIGH-risk review surface (auth doors + proxy rules), one
+> LOW-risk schema migration** (`20260725000000_business_rating_summary_rpc.sql`
+> — aggregate-only anon RPC, applied + smoke-tested locally as anon; needs
+> human approval + cloud apply). Everything else rides existing public RLS +
+> anon RPCs — **no other DB change**. (Parity/action plan kept local.)
+
+- **Public discovery (`/explore`, no auth):** business directory (trgm search,
+  category filter, follower counts, **offset pagination** — shareable URLs,
+  exact counts, repo pattern), business profile page (menu via
+  `getProductsPaginated`, live coupons under the access invariant, rating
+  summary via the new `get_business_rating_summary` RPC, follower count,
+  interior gallery, share button reusing `/s/[businessId]`, SEO
+  `generateMetadata`), **branch map** (react-leaflet, client-only dynamic
+  import) with a straight-line **polyline from the visitor's location** +
+  haversine distances (`lib/utils/geo.ts`; geolocation denied ⇒ Iloilo City
+  Proper fallback), `/explore/nearby` (geolocated `nearby_businesses` RPC via
+  the public mobile endpoint, radius picker), `/explore/deals` (`mobile_deals`
+  RPC: featured/flash/all + pagination).
+- **Customer accounts (role `app_user`, same as mobile):** `/login` is now the
+  customer door (was a redirect to the business login) —
+  `CustomerLoginForm` with sanitized `?next=` deep-link back after auth;
+  signup already had the Customer role, its post-signup redirect now lands in
+  the portal (was falling through to `/business`). `redirectByRole`/
+  `ROLE_ROUTES` send `app_user` to `/explore`. Proxy + `protectedRoutes` gate
+  the new `/customer` prefix to `app_user` only; layout re-checks server-side
+  (defense in depth). Sign-out via the existing `useAuth().logout` in the new
+  `CustomerHeader` (BrandLogo, Explore/Nearby/Deals nav, wallet + account
+  menu, mobile nav row).
+- **Redeem + wallet:** `redeemCouponAction` mirrors the mobile route's gate
+  matrix 1:1 (published/window/global-cap/follow-gate/active-dupe/per-user
+  cap, atomic `increment_coupon_redemptions` with rollback on the race, owner
+  notification non-fatal, same user copy — unification into one shared core is
+  a tracked follow-up). Anonymous visitors get an **auth-nudge dialog**
+  (signup/login with `?next=`). `/customer/wallet`: Active/Claimed/Expired
+  tabs, the server-generated 6-char claim code (copyable) and a **live
+  countdown** (`lib/utils/countdown.ts`, urgent style inside 24h).
+- **Follow + updates:** follow/unfollow server actions (RLS self-scoped,
+  idempotent on 23505), profile Follow button, `/customer/following` =
+  followed shops + an Updates feed (posts + new live promos + new products
+  from followed businesses) mirroring the mobile `/updates` bounded-scan
+  merge (offset over the merged set — kept in lockstep with mobile rather
+  than introducing a divergent keyset shape).
+- **Landing links:** "Explore Shops" in the landing nav + the hero primary CTA
+  now routes to `/explore` (replaced the dead `#` "Get the App").
+- **Skeletons:** new customer set (`components/customer/skeletons.tsx` —
+  explore grid, profile, wallet, following) on the shared `StatusRegion` a11y
+  contract; `loading.tsx` for every new route.
+- **Tests (+54):** redeem-action integration matrix (12 — every gate, exact
+  copy, rollback-on-race, follow idempotency), customerQuery units (filters/
+  offset/RPC merge/invariant/wallet filters/feed short-circuit), geo +
+  countdown units (14), protectedRoutes customer rules (4), explore page
+  searchParams passthrough (2). Verified: `yarn lint` + **1244** tests +
+  `yarn build` green; rating RPC smoke-tested in SQL as `anon`.
+- **Known follow-ups:** unify web action + mobile route redeem/updates cores;
+  ratings *submission* on web (SEC-4 gate exists server-side); wallet needs a
+  pagination bar if a user exceeds ~100 redemptions; `?next=` support on the
+  signup form.
+
 ## 2026-07-25 — Brand rollout: "Hablon Weave" logo across the app (fix/table-toolbar-pagination)
 
 > Presentational only — no schema/API/auth. Assets in `public/brand` (v0.2).

@@ -6,6 +6,16 @@ import type { CSSProperties } from 'react';
  * wrapper; toggling dark mode swaps the token set. `--brand`/`--brandhover` are
  * constant across modes. This is self-contained and independent of the app-wide
  * `next-themes` `.dark` class.
+ *
+ * That independence is DELIBERATE, not an oversight: these tokens are a 1:1 port
+ * of the design export and the landing renders none of the shadcn primitives
+ * that read the app tokens. Consequences to know before "fixing" it:
+ *   - the landing's dark mode is per-visit React state; it does not persist and
+ *     it does not follow the OS/system preference;
+ *   - toggling here changes nothing outside `[data-ilokal-root]`, and the app's
+ *     `next-themes` toggle (e.g. in `CustomerHeader`) changes nothing inside it.
+ * Wiring the two together means migrating the landing off these tokens onto the
+ * app's `.dark` class — a visual-diff-reviewed branch of its own.
  */
 
 export const BRAND = '#65A30D';

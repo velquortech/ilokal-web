@@ -5,6 +5,14 @@
  * Used throughout the app for redirects, navigation, and route protection.
  */
 
+/**
+ * The public marketing landing. Declared once because it wears two hats: it is
+ * the landing every public surface links back to (`ROUTES.PUBLIC.LANDING`) and
+ * the no-role fallback redirect (`ROUTES.DASHBOARD.HOME`). Same URL — keep them
+ * from drifting apart.
+ */
+const LANDING_PATH = '/home';
+
 export const ROUTES = {
   // Authentication routes
   AUTH: {
@@ -18,11 +26,16 @@ export const ROUTES = {
     RESET_PASSWORD: '/reset-password',
   },
 
+  // Public marketing surface (anonymous, no auth)
+  PUBLIC: {
+    LANDING: LANDING_PATH,
+  },
+
   // Dashboard/Protected routes by role
   DASHBOARD: {
     ADMIN: '/admin',
     BUSINESS: '/business',
-    HOME: '/home',
+    HOME: LANDING_PATH,
   },
 
   // Public shop-discovery surface (customer-facing, anon-readable)
@@ -107,6 +120,26 @@ export function loginPathForPathname(pathname?: string | null): string {
  */
 export function explorePath(businessId: string): string {
   return ['/explore', businessId].join('/');
+}
+
+/** Section anchors rendered by the landing page (`app/home/components/landing`). */
+export type LandingSection =
+  | 'top'
+  | 'shoppers'
+  | 'businesses'
+  | 'how'
+  | 'deals'
+  | 'about';
+
+/**
+ * Link to a section of the landing page from anywhere.
+ *
+ * Always absolute. A bare `#about` only works while already on the landing —
+ * from /explore it silently scrolls nowhere, so every cross-surface anchor must
+ * go through this helper.
+ */
+export function landingSectionPath(section: LandingSection): string {
+  return `${ROUTES.PUBLIC.LANDING}#${section}`;
 }
 
 /**

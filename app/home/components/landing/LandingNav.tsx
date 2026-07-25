@@ -9,7 +9,11 @@ import { CloseIcon, MenuIcon, MoonIcon, SunIcon } from './icons';
 import { BrandMark } from '@/components/custom/BrandLogo';
 
 export type LandingNavProps = {
-  /** Current theme of the self-contained landing (drives the toggle icon). */
+  /**
+   * Current theme of the self-contained landing (drives the toggle icon).
+   * NOT `next-themes` — this is page-local state that only repaints
+   * `[data-ilokal-root]`. See `tokens.ts` before wiring it to the app theme.
+   */
   dark: boolean;
   /** Flip the landing theme (owned by the page so the root tokens update). */
   onToggleDark: () => void;

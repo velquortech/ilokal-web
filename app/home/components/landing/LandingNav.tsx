@@ -1,26 +1,89 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { styleFromString as s } from '@/lib/utils/cssStyle';
 import { ROUTES } from '@/config/routeConfig';
-import { navLinks } from './data';
+import { navLinks, type NavLink } from './data';
 import { CloseIcon, MenuIcon, MoonIcon, SunIcon } from './icons';
 import { BrandMark } from '@/components/custom/BrandLogo';
 
 export type LandingNavProps = {
-  /** Current theme of the self-contained landing (drives the toggle icon). */
+  /**
+   * Current theme of the surface hosting this nav (drives the toggle icon).
+   * On the landing this is page-local state that only repaints
+   * `[data-ilokal-root]` — see `tokens.ts`. Embedders may instead drive it from
+   * `next-themes`, which is what `PublicNav` does.
+   */
   dark: boolean;
-  /** Flip the landing theme (owned by the page so the root tokens update). */
+  /** Flip the host's theme (owned by the host so its root tokens update). */
   onToggleDark: () => void;
+  /**
+   * Nav entries. Defaults to the landing's own list. Embedders must pass
+   * ABSOLUTE hrefs — a bare `#about` scrolls nowhere off the landing.
+   */
+  links?: NavLink[];
+  /** Where the brand lockup points. Landing scrolls to its own top anchor. */
+  logoHref?: string;
+  /** Right-hand action buttons, after the theme toggle. */
+  actions?: ReactNode;
+  /** Bottom-of-overlay call to action on the mobile menu. */
+  mobileCta?: ReactNode;
 };
 
+const navLinkStyle = 'color:var(--text);font-size:15px;font-weight:500;';
+
+const overlayLinkStyle =
+  'color:var(--text);font-size:20px;font-weight:600;padding:16px 4px;border-bottom:1px solid var(--border);';
+
+const overlayCtaStyle =
+  'display:block;margin-top:16px;text-align:center;background:var(--brand);color:#fff;font-size:17px;font-weight:600;padding:15px;border-radius:12px;';
+
+const brandStyle =
+  'display:inline-flex;align-items:center;gap:9px;font-size:24px;font-weight:800;letter-spacing:-0.035em;color:var(--brand);';
+
+const defaultActions = (
+  <>
+    <Link
+      href={ROUTES.AUTH.SIGN_IN}
+      style={s(
+        'color:var(--text);font-size:15px;font-weight:600;padding:9px 8px;',
+      )}
+    >
+      Log In
+    </Link>
+    <Link
+      href={ROUTES.BUSINESS.registration}
+      className="il-btn-primary"
+      style={s(
+        'background:var(--brand);color:#fff;font-size:15px;font-weight:600;padding:11px 18px;border-radius:10px;box-shadow:0 2px 8px rgba(101,163,13,.28);',
+      )}
+    >
+      List Your Business
+    </Link>
+  </>
+);
+
 /**
- * Sticky landing navigation + mobile-menu overlay. Reusable on any page that
- * renders inside a `[data-ilokal-root]` theme wrapper. Owns its own mobile-menu
- * open state; the theme toggle is lifted to the parent via props.
+ * Sticky navigation + mobile-menu overlay, shared by every public surface.
+ *
+ * Renders only inside an element carrying `data-ilokal-root` and the landing
+ * tokens — every rule it relies on (`.wrap`, `.navlinks`, `.navactions`,
+ * `.hamb`, and the `var(--*)` palette) is scoped under that attribute in
+ * `landing.css`. The landing supplies it via `rootStyle`; other surfaces use
+ * `PublicNav`, which supplies `themeTokens` and drives `dark` from next-themes.
+ *
+ * Owns its own mobile-menu open state; theme, links and actions come in as
+ * props so the same chrome can serve the landing and /explore.
  */
-export function LandingNav({ dark, onToggleDark }: LandingNavProps) {
+export function LandingNav({
+  dark,
+  onToggleDark,
+  links = navLinks,
+  logoHref = '#top',
+  actions = defaultActions,
+  mobileCta,
+}: LandingNavProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   // Lock body scroll while the mobile-menu overlay is open.
@@ -47,15 +110,19 @@ export function LandingNav({ dark, onToggleDark }: LandingNavProps) {
           )}
         >
           <div style={s('display:flex;align-items:center;gap:14px;')}>
-            <a
-              href="#top"
-              style={s(
-                'display:inline-flex;align-items:center;gap:9px;font-size:24px;font-weight:800;letter-spacing:-0.035em;color:var(--brand);',
-              )}
-            >
-              <BrandMark size={30} palette={dark ? 'dark' : 'light'} />
-              iLokal
-            </a>
+            {/* Hash targets stay <a> (same-page scroll); a route needs <Link>
+                or the click forces a full document reload. */}
+            {logoHref.startsWith('#') ? (
+              <a href={logoHref} style={s(brandStyle)}>
+                <BrandMark size={30} palette={dark ? 'dark' : 'light'} />
+                iLokal
+              </a>
+            ) : (
+              <Link href={logoHref} style={s(brandStyle)}>
+                <BrandMark size={30} palette={dark ? 'dark' : 'light'} />
+                iLokal
+              </Link>
+            )}
             {/* "Made for Iloilo City" pill removed from the nav row: with the
                 brand mark + the Explore Shops link it pushed the row past the
                 1200px wrap and wrapped the whole header. The hero pill right
@@ -64,21 +131,13 @@ export function LandingNav({ dark, onToggleDark }: LandingNavProps) {
           <nav className="navlinks">
             {/* Hash anchors stay <a>; route links must be <Link> or every
                 click forces a full document reload. */}
-            {navLinks.map((l) =>
+            {links.map((l) =>
               l.href.startsWith('#') ? (
-                <a
-                  key={l.href}
-                  href={l.href}
-                  style={s('color:var(--text);font-size:15px;font-weight:500;')}
-                >
+                <a key={l.href} href={l.href} style={s(navLinkStyle)}>
                   {l.label}
                 </a>
               ) : (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  style={s('color:var(--text);font-size:15px;font-weight:500;')}
-                >
+                <Link key={l.href} href={l.href} style={s(navLinkStyle)}>
                   {l.label}
                 </Link>
               ),
@@ -94,23 +153,7 @@ export function LandingNav({ dark, onToggleDark }: LandingNavProps) {
             >
               {dark ? <SunIcon /> : <MoonIcon />}
             </button>
-            <Link
-              href={ROUTES.AUTH.SIGN_IN}
-              style={s(
-                'color:var(--text);font-size:15px;font-weight:600;padding:9px 8px;',
-              )}
-            >
-              Log In
-            </Link>
-            <Link
-              href={ROUTES.BUSINESS.registration}
-              className="il-btn-primary"
-              style={s(
-                'background:var(--brand);color:#fff;font-size:15px;font-weight:600;padding:11px 18px;border-radius:10px;box-shadow:0 2px 8px rgba(101,163,13,.28);',
-              )}
-            >
-              List Your Business
-            </Link>
+            {actions}
           </div>
           <button
             className="hamb"
@@ -130,15 +173,13 @@ export function LandingNav({ dark, onToggleDark }: LandingNavProps) {
             'position:fixed;inset:72px 0 0 0;z-index:49;background:var(--bg);padding:24px;display:flex;flex-direction:column;gap:6px;',
           )}
         >
-          {navLinks.map((l) =>
+          {links.map((l) =>
             l.href.startsWith('#') ? (
               <a
                 key={l.href}
                 href={l.href}
                 onClick={() => setMenuOpen(false)}
-                style={s(
-                  'color:var(--text);font-size:20px;font-weight:600;padding:16px 4px;border-bottom:1px solid var(--border);',
-                )}
+                style={s(overlayLinkStyle)}
               >
                 {l.label}
               </a>
@@ -147,23 +188,28 @@ export function LandingNav({ dark, onToggleDark }: LandingNavProps) {
                 key={l.href}
                 href={l.href}
                 onClick={() => setMenuOpen(false)}
-                style={s(
-                  'color:var(--text);font-size:20px;font-weight:600;padding:16px 4px;border-bottom:1px solid var(--border);',
-                )}
+                style={s(overlayLinkStyle)}
               >
                 {l.label}
               </Link>
             ),
           )}
-          <Link
-            href={ROUTES.BUSINESS.registration}
+          {/* `display:contents` so the CTA stays a direct flex child of the
+              overlay — as a wrapped block it would lose the column stretch and
+              render at content width instead of full width. */}
+          <div
             onClick={() => setMenuOpen(false)}
-            style={s(
-              'margin-top:16px;text-align:center;background:var(--brand);color:#fff;font-size:17px;font-weight:600;padding:15px;border-radius:12px;',
-            )}
+            style={s('display:contents;')}
           >
-            List Your Business
-          </Link>
+            {mobileCta ?? (
+              <Link
+                href={ROUTES.BUSINESS.registration}
+                style={s(overlayCtaStyle)}
+              >
+                List Your Business
+              </Link>
+            )}
+          </div>
         </div>
       )}
     </>

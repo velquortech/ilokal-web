@@ -1,7 +1,13 @@
 /**
  * iLokal landing content — copied 1:1 from the design export.
  * TODO(real-data): replace copy, mock numbers, and `#` links with real values.
+ *
+ * Route links come from `config/routeConfig` — never hardcode a path here.
+ * `LandingNav` renders `#`-prefixed entries as `<a>` and everything else as
+ * `<Link>`, so a route string added here soft-navigates for free.
  */
+
+import { ROUTES } from '@/config/routeConfig';
 
 export type Feature = {
   title: string;
@@ -42,7 +48,7 @@ export type FooterColumn = { title: string; links: NavLink[] };
 
 /** Primary nav + mobile-menu links (shared by LandingNav). */
 export const navLinks: NavLink[] = [
-  { href: '/explore', label: 'Explore Shops' },
+  { href: ROUTES.EXPLORE.HOME, label: 'Explore Shops' },
   { href: '#shoppers', label: 'For Shoppers' },
   { href: '#businesses', label: 'For Businesses' },
   { href: '#how', label: 'How It Works' },
@@ -55,8 +61,10 @@ export const footerColumns: FooterColumn[] = [
   {
     title: 'Product',
     links: [
-      { href: '#shoppers', label: 'Shops' },
-      { href: '#deals', label: 'Deals' },
+      // Shops and Deals point at the real surfaces, not at the landing sections
+      // that merely advertise them — that's the whole point of having /explore.
+      { href: ROUTES.EXPLORE.HOME, label: 'Shops' },
+      { href: ROUTES.EXPLORE.DEALS, label: 'Deals' },
       { href: '#businesses', label: 'For Business' },
     ],
   },

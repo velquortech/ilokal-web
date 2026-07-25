@@ -9,14 +9,10 @@ export const ROUTES = {
   // Authentication routes
   AUTH: {
     // Unified sign-in door (customer + business, role-routed after auth).
-    // Admin keeps its own gated door under the same segment.
+    // Admin keeps its own gated door under the same segment. The legacy
+    // /login* URLs 307-redirect here (next.config.ts).
     SIGN_IN: '/sign-in',
     ADMIN_SIGN_IN: '/sign-in/admin',
-    // DEPRECATED — legacy doors, 307-redirected to /sign-in in next.config.ts.
-    // Deleted in the Phase 2 call-site sweep (see .claude/SIGNIN_UNIFICATION.md).
-    LOGIN: '/login',
-    ADMIN_LOGIN: '/login/admin',
-    BUSINESS_LOGIN: '/login/business',
     SIGNUP: '/signup',
     FORGOT_PASSWORD: '/forgot-password',
     RESET_PASSWORD: '/reset-password',

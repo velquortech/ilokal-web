@@ -95,7 +95,7 @@ export function LandingNav({ dark, onToggleDark }: LandingNavProps) {
               {dark ? <SunIcon /> : <MoonIcon />}
             </button>
             <Link
-              href={ROUTES.AUTH.BUSINESS_LOGIN}
+              href={ROUTES.AUTH.SIGN_IN}
               style={s(
                 'color:var(--text);font-size:15px;font-weight:600;padding:9px 8px;',
               )}

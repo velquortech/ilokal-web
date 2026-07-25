@@ -84,7 +84,7 @@ describe('UserMenu (business) logout', () => {
       await Promise.resolve();
     });
 
-    expect(logout).toHaveBeenCalledWith(ROUTES.AUTH.BUSINESS_LOGIN);
+    expect(logout).toHaveBeenCalledWith(ROUTES.AUTH.SIGN_IN);
   });
 
   it('shows the busy state and disables the item while signing out', async () => {

@@ -117,7 +117,7 @@ export default function UserManagementHub() {
               </p>
               <div className="mt-4">
                 <Button
-                  onClick={() => (window.location.href = ROUTES.AUTH.LOGIN)}
+                  onClick={() => (window.location.href = ROUTES.AUTH.SIGN_IN)}
                   className="gap-2"
                 >
                   Sign in

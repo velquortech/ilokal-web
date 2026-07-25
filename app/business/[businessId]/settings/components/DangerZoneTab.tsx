@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ROUTES } from '@/config/routeConfig';
 import { AlertTriangle } from 'lucide-react';
 import {
   Card,
@@ -81,7 +82,7 @@ export function DangerZoneTab() {
     });
     setDeleting(false);
     if (result.success) {
-      router.push('/login');
+      router.push(ROUTES.AUTH.SIGN_IN);
     } else {
       setDeleteError(result.error?.message ?? 'Failed to delete account');
     }

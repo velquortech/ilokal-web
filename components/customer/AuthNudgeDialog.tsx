@@ -59,7 +59,7 @@ export function AuthNudgeDialog({
             </Link>
           </Button>
           <Button asChild variant="outline" className="w-full">
-            <Link href={`${ROUTES.AUTH.LOGIN}?next=${next}`}>
+            <Link href={`${ROUTES.AUTH.SIGN_IN}?next=${next}`}>
               I already have an account
             </Link>
           </Button>

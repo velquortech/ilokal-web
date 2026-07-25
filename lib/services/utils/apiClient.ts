@@ -107,7 +107,7 @@ class ApiManager {
         if (error.response?.status === 401) {
           // Unauthorized - redirect to login
           if (typeof window !== 'undefined') {
-            window.location.href = ROUTES.AUTH.LOGIN;
+            window.location.href = ROUTES.AUTH.SIGN_IN;
           }
         }
 

@@ -29,7 +29,7 @@ export default async function WalletPage({
   searchParams: SearchParams;
 }) {
   const [user, sp] = await Promise.all([getCurrentUser(), searchParams]);
-  if (!user) redirect(ROUTES.AUTH.LOGIN);
+  if (!user) redirect(ROUTES.AUTH.SIGN_IN);
 
   const filter: WalletFilter = TABS.some((t) => t.value === sp.filter)
     ? (sp.filter as WalletFilter)

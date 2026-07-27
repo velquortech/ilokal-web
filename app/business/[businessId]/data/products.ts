@@ -4,6 +4,7 @@
  * so the FE renders identically whether it's consuming live data or this fallback.
  */
 import type { Product, Category } from '@/lib/types';
+import { DEFAULT_OFFERING_ATTRIBUTES } from '@/lib/types/offering';
 
 const DEMO_BUSINESS_ID = 'aaaaaaaa-0000-0000-0000-000000000001';
 const NOW = new Date().toISOString();
@@ -31,6 +32,8 @@ export const products: Product[] = [
   {
     id: 'prod-1',
     business_id: DEMO_BUSINESS_ID,
+    ...DEFAULT_OFFERING_ATTRIBUTES,
+    kind: 'product',
     branch_id: null,
     category_id: 'cat-coffees',
     name: 'Caramel Latte',
@@ -52,6 +55,8 @@ export const products: Product[] = [
   {
     id: 'prod-2',
     business_id: DEMO_BUSINESS_ID,
+    ...DEFAULT_OFFERING_ATTRIBUTES,
+    kind: 'product',
     branch_id: null,
     category_id: 'cat-coffees',
     name: 'Cappuccino',
@@ -73,6 +78,8 @@ export const products: Product[] = [
   {
     id: 'prod-3',
     business_id: DEMO_BUSINESS_ID,
+    ...DEFAULT_OFFERING_ATTRIBUTES,
+    kind: 'product',
     branch_id: null,
     category_id: 'cat-coffees',
     name: 'Iced Americano',
@@ -94,6 +101,8 @@ export const products: Product[] = [
   {
     id: 'prod-4',
     business_id: DEMO_BUSINESS_ID,
+    ...DEFAULT_OFFERING_ATTRIBUTES,
+    kind: 'product',
     branch_id: null,
     category_id: 'cat-coffees',
     name: 'Espresso Shot',
@@ -115,6 +124,8 @@ export const products: Product[] = [
   {
     id: 'prod-5',
     business_id: DEMO_BUSINESS_ID,
+    ...DEFAULT_OFFERING_ATTRIBUTES,
+    kind: 'product',
     branch_id: null,
     category_id: 'cat-pastries',
     name: 'Butter Croissant',
@@ -136,6 +147,8 @@ export const products: Product[] = [
   {
     id: 'prod-6',
     business_id: DEMO_BUSINESS_ID,
+    ...DEFAULT_OFFERING_ATTRIBUTES,
+    kind: 'product',
     branch_id: null,
     category_id: 'cat-pastries',
     name: 'Blueberry Muffin',
@@ -157,6 +170,8 @@ export const products: Product[] = [
   {
     id: 'prod-7',
     business_id: DEMO_BUSINESS_ID,
+    ...DEFAULT_OFFERING_ATTRIBUTES,
+    kind: 'product',
     branch_id: null,
     category_id: 'cat-pastries',
     name: 'Chocolate Donut',
@@ -178,6 +193,8 @@ export const products: Product[] = [
   {
     id: 'prod-8',
     business_id: DEMO_BUSINESS_ID,
+    ...DEFAULT_OFFERING_ATTRIBUTES,
+    kind: 'product',
     branch_id: null,
     category_id: 'cat-pastries',
     name: 'Strawberry Danish',

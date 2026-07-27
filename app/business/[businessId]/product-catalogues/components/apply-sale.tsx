@@ -59,11 +59,12 @@ export function ApplySale({ product, children }: ApplySaleProps) {
     formState: { errors },
   } = useForm<SaleFormValues>({
     defaultValues: {
-      price: product.price,
+      price: product.price ?? 0,
       salePrice: product.sale_price ?? undefined,
-      percentInput: product.sale_price
-        ? String(calculatePercentage(product.price, product.sale_price))
-        : '',
+      percentInput:
+        product.sale_price && product.price != null
+          ? String(calculatePercentage(product.price, product.sale_price))
+          : '',
       sale_starts_at: product.sale_starts_at
         ? toDatetimeLocal(product.sale_starts_at)
         : '',
@@ -164,6 +165,28 @@ export function ApplySale({ product, children }: ApplySaleProps) {
       reset();
     }
   };
+
+  // Inline rather than `if (isQuoteBased)` so TypeScript narrows
+  // `product.price` to a number for the rest of the component.
+  if (product.price_type === 'on_request' || product.price == null) {
+    return (
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogTrigger asChild>{children}</DialogTrigger>
+        <DialogContent className="sm:max-w-100">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BadgePercent className="text-primary" />
+              Apply Sale
+            </DialogTitle>
+            <DialogDescription>
+              <strong>{product.name}</strong> is priced on request, so there is
+              no figure to discount. Set a price type with an amount first.
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

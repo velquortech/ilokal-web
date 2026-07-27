@@ -28,7 +28,11 @@ import { ImageUploadField } from '@/components/custom/upload/image-upload';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ProductResponse } from '@/lib/types';
+import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
 import { cn } from '@/lib/utils';
+import { BOOKING_MODE_LABELS, PRICE_TYPE_LABELS } from './offering-labels';
+import type { PriceType } from '@/lib/types';
+import type { BookingMode } from '@/lib/types/offering';
 import {
   updateProductAction,
   uploadProductImageAction,
@@ -42,8 +46,11 @@ interface UpdateProductDialogProps {
 type ProductFormValues = {
   name: string;
   description: string;
-  price: number;
+  /** Null for quote-based offerings, which carry no figure. */
+  price: number | null;
+  price_type: PriceType;
   status: 'active' | 'unlisted' | 'disabled';
+  booking_mode: BookingMode;
   image_url: File | string | null;
 };
 
@@ -52,25 +59,47 @@ export function UpdateProductDialog({
   children,
 }: UpdateProductDialogProps) {
   const router = useRouter();
+  const vocabulary = useOfferingVocabulary();
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
+
+  // One object for defaultValues AND reset — a partial reset() literal drops
+  // whatever it omits, flipping those Selects to uncontrolled.
+  const currentValues = React.useMemo<ProductFormValues>(
+    () => ({
+      name: product.name,
+      description: product.description ?? '',
+      price: product.price,
+      price_type: product.price_type,
+      status: product.status,
+      image_url: product.image_url,
+      booking_mode: product.booking_mode,
+    }),
+    [product],
+  );
 
   const {
     register,
     handleSubmit,
     control,
     reset,
+    watch,
     formState: { errors },
-  } = useForm<ProductFormValues>({
-    defaultValues: {
-      name: product.name,
-      description: product.description ?? '',
-      price: product.price,
-      status: product.status,
-      image_url: product.image_url,
-    },
-  });
+  } = useForm<ProductFormValues>({ defaultValues: currentValues });
+
+  // Reactive, not derived from the stored row: an owner moving an offering OFF
+  // "price on request" must get the price field back in the same session.
+  const isQuoteBased = watch('price_type') === 'on_request';
+
+  const priceTypeOptions = (
+    Object.keys(PRICE_TYPE_LABELS) as PriceType[]
+  ).filter(
+    (pt) =>
+      vocabulary.allowedPriceTypes.includes(pt) ||
+      // Never hide the value the row already has, or it can't be changed.
+      pt === product.price_type,
+  );
 
   const onSubmit = async (data: ProductFormValues) => {
     setIsSubmitting(true);
@@ -94,16 +123,24 @@ export function UpdateProductDialog({
         image_url = data.image_url;
       }
 
+      const nextIsQuote = data.price_type === 'on_request';
+
       const result = await updateProductAction(product.id, {
         name: data.name,
         description: data.description || undefined,
-        price: data.price,
+        // Omitted when the offering is (or becomes) quote-based, so the
+        // update can't reintroduce a figure the business withdrew.
+        ...(nextIsQuote ? {} : { price: data.price }),
+        price_type: data.price_type,
         status: data.status,
+        booking_mode: data.booking_mode,
         image_url,
       });
 
       if (!result.success) {
-        const msg = result.error?.message ?? 'Failed to update product';
+        const msg =
+          result.error?.message ??
+          `Failed to update ${vocabulary.singular.toLowerCase()}`;
         setServerError(msg);
         toast.error(msg);
         return;
@@ -124,13 +161,7 @@ export function UpdateProductDialog({
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
-      reset({
-        name: product.name,
-        description: product.description ?? '',
-        price: product.price,
-        status: product.status,
-        image_url: product.image_url,
-      });
+      reset(currentValues);
       setServerError(null);
     }
   };
@@ -140,7 +171,7 @@ export function UpdateProductDialog({
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="overflow-hidden sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Update Product</DialogTitle>
+          <DialogTitle>{vocabulary.updateLabel}</DialogTitle>
           <DialogDescription>
             Modify the details for {product.name}
           </DialogDescription>
@@ -152,10 +183,12 @@ export function UpdateProductDialog({
           <DialogBody className="space-y-4 text-left">
             <Field>
               <FieldLabel className={errors.name ? 'text-destructive' : ''}>
-                Product Name
+                {vocabulary.singular} Name
               </FieldLabel>
               <Input
-                {...register('name', { required: 'Product name is required' })}
+                {...register('name', {
+                  required: vocabulary.nameRequiredLabel,
+                })}
               />
               {errors.name && <FieldError>{errors.name.message}</FieldError>}
             </Field>
@@ -166,33 +199,88 @@ export function UpdateProductDialog({
             </Field>
 
             <Field>
-              <FieldLabel className={errors.price ? 'text-destructive' : ''}>
-                Price
-              </FieldLabel>
-              <div className="relative">
-                <span className="absolute top-1/2 left-3 -translate-y-1/2">
-                  ₱
-                </span>
-                <Input
-                  type="number"
-                  step="0.01"
-                  {...register('price', {
-                    required: 'Price is required',
-                    valueAsNumber: true,
-                    min: {
-                      value: 0,
-                      message: 'Price cannot be negative',
-                    },
-                  })}
-                  placeholder="0.00"
-                  className={cn(
-                    'pl-8',
-                    errors.price ? 'border-destructive' : '',
-                  )}
-                />
-              </div>
-              {errors.price && <FieldError>{errors.price.message}</FieldError>}
+              <FieldLabel>Price Type</FieldLabel>
+              <Controller
+                control={control}
+                name="price_type"
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {priceTypeOptions.map((pt) => (
+                        <SelectItem key={pt} value={pt}>
+                          {PRICE_TYPE_LABELS[pt]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </Field>
+
+            <Field>
+              <FieldLabel>How do customers book this?</FieldLabel>
+              <Controller
+                control={control}
+                name="booking_mode"
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(BOOKING_MODE_LABELS) as BookingMode[]).map(
+                        (mode) => (
+                          <SelectItem key={mode} value={mode}>
+                            {BOOKING_MODE_LABELS[mode]}
+                          </SelectItem>
+                        ),
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+
+            {isQuoteBased ? (
+              <p className="text-muted-foreground text-sm">
+                Priced on request — customers see “Price on request” and contact
+                you for a quote.
+              </p>
+            ) : (
+              <Field>
+                <FieldLabel className={errors.price ? 'text-destructive' : ''}>
+                  Price
+                </FieldLabel>
+                <div className="relative">
+                  <span className="absolute top-1/2 left-3 -translate-y-1/2">
+                    ₱
+                  </span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    {...register('price', {
+                      required: 'Price is required',
+                      valueAsNumber: true,
+                      min: {
+                        value: 0,
+                        message: 'Price cannot be negative',
+                      },
+                    })}
+                    placeholder="0.00"
+                    className={cn(
+                      'pl-8',
+                      errors.price ? 'border-destructive' : '',
+                    )}
+                  />
+                </div>
+                {errors.price && (
+                  <FieldError>{errors.price.message}</FieldError>
+                )}
+              </Field>
+            )}
 
             <Field className="flex flex-col">
               <FieldLabel

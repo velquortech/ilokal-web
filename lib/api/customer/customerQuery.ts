@@ -20,6 +20,7 @@ import type {
   DirectoryMetadata,
   FollowedBusiness,
   PublicBranch,
+  PublicBusinessInfo,
   PublicBusinessProfile,
   PublicCoupon,
   PublicProduct,
@@ -244,13 +245,17 @@ export const getPublicBusinessProfile = cache(
       // Branch coordinates come from the business_branches RPC: PostGIS
       // geography through a nested PostgREST select is WKB hex, not GeoJSON —
       // the RPC exists precisely to expose lat/lng (see 20260602000000).
-      const [followerCounts, ratingRes, branchesRes] = await Promise.all([
-        getFollowerCountMap(supabase, [row.id]),
-        supabase.rpc('get_business_rating_summary', {
-          p_business_ids: [row.id],
-        }),
-        supabase.rpc('business_branches', { p_business_id: row.id }),
-      ]);
+      const [followerCounts, ratingRes, branchesRes, infoRes] =
+        await Promise.all([
+          getFollowerCountMap(supabase, [row.id]),
+          supabase.rpc('get_business_rating_summary', {
+            p_business_ids: [row.id],
+          }),
+          supabase.rpc('business_branches', { p_business_id: row.id }),
+          // business_settings is owner-only RLS; this RPC exposes just the
+          // four public fields (see 20260727000006).
+          supabase.rpc('get_business_public_info', { p_business_id: row.id }),
+        ]);
 
       if (ratingRes.error) {
         // Aggregate is decorative — log and render without it.
@@ -286,6 +291,26 @@ export const getPublicBusinessProfile = cache(
             : null,
       }));
 
+      if (infoRes.error) {
+        // Decorative like the rating aggregate: a failed read renders as "the
+        // shop published nothing", never a broken page.
+        console.error(
+          '[getPublicBusinessProfile info]',
+          describeDbError(infoRes.error),
+        );
+      }
+      const infoRow = (
+        infoRes.data as PublicBusinessInfo[] | null | undefined
+      )?.[0];
+      const info: PublicBusinessInfo | null = infoRow
+        ? {
+            operating_hours: infoRow.operating_hours ?? null,
+            social_links: infoRow.social_links ?? null,
+            contact_website: infoRow.contact_website ?? null,
+            contact_phone_public: infoRow.contact_phone_public ?? null,
+          }
+        : null;
+
       const business: PublicBusinessProfile = {
         id: row.id,
         shop_name: row.shop_name,
@@ -301,6 +326,7 @@ export const getPublicBusinessProfile = cache(
         rating_average:
           rating?.rating_average != null ? Number(rating.rating_average) : null,
         rating_count: Number(rating?.rating_count ?? 0),
+        info,
       };
 
       return { business };
@@ -768,6 +794,13 @@ export async function getPublicMenu(
     description: p.description ?? null,
     price: p.price,
     sale_price: p.sale_price ?? null,
+    // Carried through so a per-hour service / per-day rental renders its unit
+    // instead of a bare peso figure (see .claude/OFFERINGS_MODEL.md G1).
+    price_type: p.price_type ?? 'fixed',
+    price_unit: p.price_unit ?? null,
+    booking_mode: p.booking_mode ?? 'none',
+    duration_minutes: p.duration_minutes ?? null,
+    branch_id: p.branch_id ?? null,
     image_url: resolveStorageUrl(supabase, 'product-images', p.image_url),
     category_name: p.category?.name ?? null,
   }));

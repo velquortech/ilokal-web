@@ -196,6 +196,57 @@ describe('GET /api/mobile/businesses/:businessId/products', () => {
     expect(product).toHaveProperty('rating_count');
   });
 
+  it('adds price_display for a unit-priced service without changing price', async () => {
+    // Additive field (OFFERINGS_MODEL D6): a per-hour service must read
+    // "₱500/hr" for new clients while `price` stays a bare number for old ones.
+    const chain = buildRpcChain();
+    chain.order = vi.fn().mockResolvedValue({
+      data: [
+        {
+          ...rawDbProduct,
+          price: 500,
+          price_type: 'per_hour',
+          price_unit: null,
+        },
+      ],
+      error: null,
+      count: null,
+    });
+    mockBearerClient(chain);
+
+    const { req, params } = makeRequest(BUSINESS_ID);
+    const res = await GET(req, { params });
+    const body = await res.json();
+    const product = body.products[0];
+
+    expect(product.price_display).toBe('₱500/hr');
+    expect(product.price).toBe(500);
+    expect(product.price_type).toBe('per_hour');
+  });
+
+  it('honours a price_unit override in price_display', async () => {
+    const chain = buildRpcChain();
+    chain.order = vi.fn().mockResolvedValue({
+      data: [
+        {
+          ...rawDbProduct,
+          price: 3500,
+          price_type: 'per_day',
+          price_unit: 'per van',
+        },
+      ],
+      error: null,
+      count: null,
+    });
+    mockBearerClient(chain);
+
+    const { req, params } = makeRequest(BUSINESS_ID);
+    const res = await GET(req, { params });
+    const body = await res.json();
+
+    expect(body.products[0].price_display).toBe('₱3,500 per van');
+  });
+
   it('returns 500 on unexpected exception', async () => {
     vi.mocked(createBearerClient).mockImplementationOnce(() => {
       throw new Error('bearer client failed');

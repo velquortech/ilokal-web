@@ -224,12 +224,36 @@ export async function createProduct(
   input: CreateProductRequest,
 ): Promise<ApiResponse<Product>> {
   try {
-    if (input.price < 0) {
+    const isQuoteBased = input.price_type === 'on_request';
+
+    if (input.price != null && input.price < 0) {
       return {
         success: false,
         error: {
           code: 'VALIDATION_ERROR',
           message: 'Price cannot be negative',
+        },
+      };
+    }
+
+    // Mirrors the DB CHECK `price_type = 'on_request' OR price IS NOT NULL`,
+    // so a missing price fails with a readable message instead of a raw 23514.
+    if (!isQuoteBased && input.price == null) {
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Price is required unless the price type is "on request"',
+        },
+      };
+    }
+
+    if (isQuoteBased && input.price != null) {
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Quote-based offerings cannot carry a price',
         },
       };
     }
@@ -258,12 +282,42 @@ export async function createProduct(
         category_id: input.category_id ?? null,
         name: input.name,
         description: input.description ?? null,
-        price: input.price,
+        // NULL only survives the DB CHECK when price_type is 'on_request'.
+        price: input.price ?? null,
         sale_price: input.sale_price ?? null,
         price_type: input.price_type ?? 'fixed',
         price_unit: input.price_unit ?? null,
         image_url: input.image_url ?? null,
         status: 'active',
+        // Offering discriminator + service/rental attributes. Omitted keys
+        // fall to the DB defaults ('product' / 'none' / 'at_business' / NULL),
+        // so a retail write is byte-identical to before phase 3.
+        ...(input.kind !== undefined && { kind: input.kind }),
+        ...(input.booking_mode !== undefined && {
+          booking_mode: input.booking_mode,
+        }),
+        ...(input.duration_minutes !== undefined && {
+          duration_minutes: input.duration_minutes,
+        }),
+        ...(input.lead_time_minutes !== undefined && {
+          lead_time_minutes: input.lead_time_minutes,
+        }),
+        ...(input.inventory_count !== undefined && {
+          inventory_count: input.inventory_count,
+        }),
+        ...(input.capacity !== undefined && { capacity: input.capacity }),
+        ...(input.deposit_amount !== undefined && {
+          deposit_amount: input.deposit_amount,
+        }),
+        ...(input.min_duration_units !== undefined && {
+          min_duration_units: input.min_duration_units,
+        }),
+        ...(input.max_duration_units !== undefined && {
+          max_duration_units: input.max_duration_units,
+        }),
+        ...(input.service_location !== undefined && {
+          service_location: input.service_location,
+        }),
       })
       .select()
       .single();
@@ -328,6 +382,49 @@ export async function updateProduct(
       };
     }
 
+    // Quote-pricing rules, resolved against the STORED price_type.
+    //
+    // `updateProductSchema` can only see the payload, so a partial update that
+    // omits `price_type` skips its quote checks entirely — and the DB CHECK
+    // only constrains the other direction (`price_type <> 'on_request'`
+    // requires a price), so an existing on_request offering could be given a
+    // price or a sale that the UI then refuses to display.
+    const effectivePriceType = input.price_type ?? result.product.price_type;
+
+    if (effectivePriceType === 'on_request') {
+      if (input.price != null) {
+        return {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Quote-based offerings cannot carry a price',
+          },
+        };
+      }
+      if (input.sale_price != null) {
+        return {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Quote-based offerings cannot go on sale',
+          },
+        };
+      }
+    } else if (
+      // Switching AWAY from on_request needs a figure to switch to.
+      result.product.price_type === 'on_request' &&
+      input.price == null &&
+      result.product.price == null
+    ) {
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Set a price when moving off "price on request"',
+        },
+      };
+    }
+
     // Validate category if changing
     if (input.category_id) {
       const category = await productQuery.getCategoryById(input.category_id);
@@ -359,6 +456,32 @@ export async function updateProduct(
         ...(input.image_url !== undefined && { image_url: input.image_url }),
         ...(input.status !== undefined && { status: input.status }),
         ...('branch_id' in input && { branch_id: input.branch_id ?? null }),
+        ...(input.kind !== undefined && { kind: input.kind }),
+        ...(input.booking_mode !== undefined && {
+          booking_mode: input.booking_mode,
+        }),
+        ...(input.duration_minutes !== undefined && {
+          duration_minutes: input.duration_minutes,
+        }),
+        ...(input.lead_time_minutes !== undefined && {
+          lead_time_minutes: input.lead_time_minutes,
+        }),
+        ...(input.inventory_count !== undefined && {
+          inventory_count: input.inventory_count,
+        }),
+        ...(input.capacity !== undefined && { capacity: input.capacity }),
+        ...(input.deposit_amount !== undefined && {
+          deposit_amount: input.deposit_amount,
+        }),
+        ...(input.min_duration_units !== undefined && {
+          min_duration_units: input.min_duration_units,
+        }),
+        ...(input.max_duration_units !== undefined && {
+          max_duration_units: input.max_duration_units,
+        }),
+        ...(input.service_location !== undefined && {
+          service_location: input.service_location,
+        }),
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -415,6 +538,21 @@ export async function applySale(
         error: {
           code: 'AUTHORIZATION_ERROR',
           message: 'Unauthorized to update this product',
+        },
+      };
+    }
+
+    // Quote-based offerings have no figure to discount — a percentage off an
+    // unknown price is meaningless, and the row's price is NULL.
+    if (
+      result.product.price_type === 'on_request' ||
+      result.product.price == null
+    ) {
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Offerings priced on request cannot go on sale',
         },
       };
     }

@@ -21,13 +21,19 @@ import { UserMenu } from './UserMenu';
 import { ProCard } from './ProCard';
 import { GlobalSearch } from '@/components/custom/GlobalSearch';
 import { useBusinessShop } from '@/providers/BusinessProvider';
+import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
 import { businessPath } from '@/config/routeConfig';
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { filterNavSections, hasNavResults } from '@/lib/utils/navSearch';
 
-export function BusinessSidebar() {
+export function BusinessSidebar({
+  bookingsEnabled = false,
+}: {
+  bookingsEnabled?: boolean;
+}) {
   const { business, selectedBranchId } = useBusinessShop();
+  const vocabulary = useOfferingVocabulary();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState('');
 
@@ -53,10 +59,22 @@ export function BusinessSidebar() {
 
   const sections = SIDEBAR_SECTIONS.map((section) => ({
     ...section,
-    items: section.items.map((item) => ({
-      ...item,
-      href: item.href ? injectId(item.href) : item.href,
-    })),
+    items: section.items
+      // Bookings ships behind a kill switch; the route 404s when it's off, so
+      // the nav entry must not advertise it.
+      .filter(
+        (item) => bookingsEnabled || !item.href?.endsWith('/business/bookings'),
+      )
+      .map((item) => ({
+        ...item,
+        // The catalogue entry is the one nav label that changes per vertical
+        // ("Menu", "Service Menu", "Our Fleet"); the config value is the
+        // fallback when no profile resolves.
+        title: item.href?.endsWith('/product-catalogues')
+          ? vocabulary.catalogue
+          : item.title,
+        href: item.href ? injectId(item.href) : item.href,
+      })),
   }));
 
   const filteredSections = filterNavSections(sections, query);

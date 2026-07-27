@@ -2,15 +2,8 @@
 
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { useCallback, useEffect, useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
+import { useState } from 'react';
+import { ImageLightbox } from '@/components/custom/ImageLightbox';
 
 type MasonryProps = {
   images: {
@@ -31,37 +24,8 @@ export function Masonry({ images }: MasonryProps) {
     groups.push(images.slice(i, i + 4));
   }
 
-  const showPrev = useCallback(
-    (e?: React.MouseEvent) => {
-      e?.stopPropagation();
-      setCurrentIndex((prev) =>
-        prev === null ? null : prev === 0 ? images.length - 1 : prev - 1,
-      );
-    },
-    [images.length],
-  );
-
-  const showNext = useCallback(
-    (e?: React.MouseEvent) => {
-      e?.stopPropagation();
-      setCurrentIndex((prev) =>
-        prev === null ? null : prev === images.length - 1 ? 0 : prev + 1,
-      );
-    },
-    [images.length],
-  );
-
-  useEffect(() => {
-    if (currentIndex === null) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') showPrev();
-      else if (e.key === 'ArrowRight') showNext();
-      else if (e.key === 'Escape') setCurrentIndex(null);
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [currentIndex, showPrev, showNext]);
-
+  // Navigation, keyboard handling and the dialog itself now live in
+  // ImageLightbox — this component keeps only its masonry layout.
   return (
     <>
       {/* GRID */}
@@ -131,69 +95,11 @@ export function Masonry({ images }: MasonryProps) {
         })}
       </div>
 
-      {/* 🔍 MODAL */}
-      <Dialog
-        open={currentIndex !== null}
-        onOpenChange={() => setCurrentIndex(null)}
-      >
-        <DialogContent
-          className="w-max overflow-hidden border-none bg-black/95 p-0 sm:max-w-max sm:rounded-2xl sm:p-0"
-          showCloseButton={false}
-        >
-          <VisuallyHidden.Root>
-            <DialogTitle>Image Gallery Viewer</DialogTitle>
-            <DialogDescription>Image gallery viewer</DialogDescription>
-          </VisuallyHidden.Root>
-
-          {currentIndex !== null && (
-            <div className="relative flex h-[85dvh] w-[min(90vw,56rem)] items-center justify-center">
-              {/* IMAGE */}
-              <Image
-                src={images[currentIndex].src}
-                alt={images[currentIndex].alt || 'Gallery Preview'}
-                fill
-                priority
-                sizes="(max-width: 1280px) 90vw, 1280px"
-                className="object-contain p-4"
-              />
-
-              {/* CONTROLS */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCurrentIndex(null);
-                }}
-                className="absolute top-4 right-4 z-50 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
-              >
-                <X className="size-3" />
-              </button>
-
-              <button
-                onClick={showPrev}
-                className="absolute left-4 z-50 rounded-full bg-white/10 p-3 transition hover:bg-white/20"
-              >
-                <ChevronLeft className="size-4 text-white" />
-              </button>
-
-              <button
-                onClick={showNext}
-                className="absolute right-4 z-50 rounded-full bg-white/10 p-3 transition hover:bg-white/20"
-              >
-                <ChevronRight className="size-4 text-white" />
-              </button>
-
-              {/* CAPTION */}
-              {images[currentIndex].alt && (
-                <div className="absolute right-0 bottom-6 left-0 flex justify-center">
-                  <p className="rounded-full bg-black/60 px-4 py-2 text-sm font-medium text-white backdrop-blur-md">
-                    {images[currentIndex].alt}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <ImageLightbox
+        images={images}
+        index={currentIndex}
+        onIndexChange={setCurrentIndex}
+      />
     </>
   );
 }

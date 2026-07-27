@@ -177,11 +177,17 @@ export function ShopRegistrationContent() {
   return (
     <>
       <StepProgress />
+      {/*
+        No `overflow-hidden` / `overflow-y-auto` here any more — the page is
+        the only scroll container (see the layout comment). `min-w-0` so a wide
+        child (the gallery grid, a long shop name) shrinks instead of pushing
+        the flex row wider than the viewport.
+      */}
       <form
-        className="flex flex-1 flex-col overflow-hidden pt-5"
+        className="flex min-w-0 flex-1 flex-col pt-5"
         onSubmit={form.handleSubmit(handleSubmitForm)}
       >
-        <div className="flex flex-1 flex-col overflow-y-auto px-4 pb-5 sm:px-6 lg:px-10">
+        <div className="flex flex-1 flex-col px-4 pb-5 sm:px-6 lg:px-10">
           <div className="mb-4 flex items-center justify-between md:hidden">
             <span className="text-muted-foreground text-xs">
               Step {step} of {steps.length}

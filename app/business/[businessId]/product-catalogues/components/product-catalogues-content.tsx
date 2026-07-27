@@ -12,6 +12,7 @@ import { ProductTable } from './product-table/products-table';
 import { AddProductDialog } from './add-product';
 import { ProductStats } from './product-stats';
 import { Card, CardContent } from '@/components/ui/card';
+import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
 import type {
   ProductResponse,
   Category,
@@ -38,6 +39,7 @@ export function ProductCataloguesContent({
 }: ProductCataloguesContentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const vocabulary = useOfferingVocabulary();
 
   const [searchInput, setSearchInput] = React.useState(
     searchParams.get('search') ?? '',
@@ -104,9 +106,9 @@ export function ProductCataloguesContent({
     <div className="font-giest flex h-max flex-1 flex-col space-y-6 pb-8">
       <div className="inline-flex w-full items-end justify-between">
         <div className="flex flex-col">
-          <span className="text-lg font-medium">Product Catalogues</span>
+          <span className="text-lg font-medium">{vocabulary.catalogue}</span>
           <span className="text-muted-foreground text-sm">
-            Manage your product catalogues
+            Manage your {vocabulary.plural.toLowerCase()}
           </span>
         </div>
         <AddProductDialog
@@ -115,7 +117,7 @@ export function ProductCataloguesContent({
         >
           <Button>
             <Plus />
-            Add Product
+            {vocabulary.addLabel}
           </Button>
         </AddProductDialog>
       </div>

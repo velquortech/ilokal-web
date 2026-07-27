@@ -5,6 +5,7 @@ import {
   loggedServerError,
 } from '@/app/api/helpers/response';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
+import { formatOfferingPrice } from '@/lib/utils/formatOfferingPrice';
 import { NextRequest } from 'next/server';
 
 type Params = { params: Promise<{ businessId: string }> };
@@ -65,12 +66,19 @@ export async function GET(req: NextRequest, { params }: Params) {
 
     // Price range (on base price) + minimum average rating — both filter on the
     // RPC's projected columns, mirroring the category filter.
+    // Quote-based offerings (`price_type='on_request'`, NULL price) can't
+    // satisfy a numeric bound — PostgREST would drop them silently, which
+    // reads as "this shop has no packages" rather than "none in that range".
+    // Excluding them explicitly keeps the omission intentional and documented.
     if (priceMin != null) query = query.gte('price', priceMin);
     if (priceMax != null) query = query.lte('price', priceMax);
     if (minRating != null) query = query.gte('average_rating', minRating);
 
     // Mobile sort key → PostgREST ordering on the RPC's aggregate columns.
     // `popular` is the menu default; `name` backs the legacy non-paginated batch.
+    // `nullsFirst: false` in BOTH directions: quote-based offerings have a
+    // NULL price and Postgres defaults to NULLS FIRST on DESC, which would put
+    // every "price on request" item at the top of a price-high sort.
     const desc = { ascending: false, nullsFirst: false } as const;
     const asc = { ascending: true, nullsFirst: false } as const;
     switch (sort) {
@@ -119,12 +127,34 @@ export async function GET(req: NextRequest, { params }: Params) {
       sale_price: product.sale_price ?? null,
       price_type: product.price_type as string,
       price_unit: product.price_unit as string | null,
+      // Server-rendered display copy. Additive field (old clients ignore
+      // unknown keys) so a per-hour service / per-day rental reads correctly
+      // without waiting on an APK release — `price` keeps its exact current
+      // shape and meaning. See .claude/OFFERINGS_MODEL.md (D6, G1).
+      price_display: formatOfferingPrice({
+        price: product.price as number | null,
+        price_type: product.price_type as string | null,
+        price_unit: product.price_unit as string | null,
+      }),
       image_url: resolveStorageUrl(
         supabase,
         'product-images',
         product.image_url as string | null,
       ),
       is_available: product.is_available,
+      // Offering discriminators + service/rental attributes. All additive —
+      // old clients ignore unknown keys (OFFERINGS_MODEL D6).
+      kind: (product.kind as string) ?? 'product',
+      booking_mode: (product.booking_mode as string) ?? 'none',
+      duration_minutes: (product.duration_minutes as number | null) ?? null,
+      lead_time_minutes: (product.lead_time_minutes as number | null) ?? null,
+      inventory_count: (product.inventory_count as number | null) ?? null,
+      capacity: (product.capacity as number | null) ?? null,
+      deposit_amount:
+        product.deposit_amount != null ? Number(product.deposit_amount) : null,
+      min_duration_units: (product.min_duration_units as number | null) ?? null,
+      max_duration_units: (product.max_duration_units as number | null) ?? null,
+      service_location: (product.service_location as string) ?? 'at_business',
       category: product.category ?? null,
       average_rating:
         product.average_rating != null ? Number(product.average_rating) : 0,

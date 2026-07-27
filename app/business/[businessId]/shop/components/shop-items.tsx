@@ -1,3 +1,5 @@
+'use client';
+
 import { PackageOpen, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BusinessShop } from '@/providers/BusinessProvider';
@@ -5,6 +7,7 @@ import Link from 'next/link';
 import { ProductCard } from '@/components/custom/ProductCard';
 import type { ProductResponse } from '@/lib/types';
 import { businessProductCataloguesPath } from '@/config/routeConfig';
+import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
 
 interface ShopItemsProps {
   business?: BusinessShop | null;
@@ -12,15 +15,17 @@ interface ShopItemsProps {
 }
 
 export function ShopItems({ business, products }: ShopItemsProps) {
+  const vocabulary = useOfferingVocabulary();
   const hasBusinessData = business && business.shop_name;
   const hasProducts = products.length > 0;
+  const plural = vocabulary.plural.toLowerCase();
 
   return (
     <div className="space-y-5">
       <div className="flex w-full items-center justify-between">
         <div className="space-y-0.5">
           <h3 className="text-base font-semibold tracking-tight">
-            Product Catalogues
+            {vocabulary.catalogue}
           </h3>
           <p className="text-muted-foreground text-base">
             Manage your shop offerings
@@ -60,10 +65,10 @@ export function ShopItems({ business, products }: ShopItemsProps) {
               </div>
               <div className="space-y-1">
                 <p className="text-foreground text-2xl font-bold">
-                  No products yet
+                  {vocabulary.emptyLabel}
                 </p>
                 <p className="text-muted-foreground max-w-120 text-base">
-                  Start adding products to your catalogue to showcase them to
+                  Start adding {plural} to your catalogue to showcase them to
                   customers.
                 </p>
               </div>
@@ -76,7 +81,7 @@ export function ShopItems({ business, products }: ShopItemsProps) {
               >
                 <Button size="sm" className="h-8 text-sm">
                   <PlusCircle className="mr-2 h-3.5 w-3.5" />
-                  Add First Product
+                  Add First {vocabulary.singular}
                 </Button>
               </Link>
             </div>
@@ -95,7 +100,7 @@ export function ShopItems({ business, products }: ShopItemsProps) {
                 Catalogue is currently locked
               </p>
               <p className="text-muted-foreground max-w-60 text-[11px] leading-relaxed">
-                Your product catalogue will be available once you finish your
+                Your {plural} will be available once you finish your
                 <span className="text-primary font-semibold">
                   {' '}
                   business registration

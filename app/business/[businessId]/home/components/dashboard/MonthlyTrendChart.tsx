@@ -35,11 +35,19 @@ export function MonthlyTrendChart({ trend }: MonthlyTrendChartProps) {
       className="lg:col-span-2"
     >
       {trend.length === 0 ? (
-        <div className="text-muted-foreground flex h-48 items-center justify-center text-sm">
+        <div className="text-muted-foreground flex h-full min-h-48 items-center justify-center text-sm">
           No data yet
         </div>
       ) : (
-        <ChartContainer config={chartConfig} className="h-48 w-full">
+        // Fills the card (which stretches to the taller Customer Segments
+        // sibling) instead of leaving a dead band beneath a fixed h-48.
+        // `aspect-auto` overrides ChartContainer's default `aspect-video`,
+        // which would otherwise derive height from width and re-introduce the
+        // mismatch; `min-h-48` keeps the old height as a floor.
+        <ChartContainer
+          config={chartConfig}
+          className="aspect-auto h-full min-h-48 w-full"
+        >
           <LineChart data={trend}>
             <CartesianGrid vertical={false} />
             <XAxis

@@ -28,8 +28,16 @@ export default async function CustomerBookingsPage({
     <CustomerBookingsContent
       failed={'error' in result}
       bookings={'error' in result ? [] : result.bookings}
-      page={page}
-      totalPages={'error' in result ? 1 : result.total_pages}
+      metadata={
+        'error' in result
+          ? { total: 0, page, per_page: 12, total_pages: 1 }
+          : {
+              total: result.total,
+              page: result.page,
+              per_page: result.per_page,
+              total_pages: result.total_pages,
+            }
+      }
     />
   );
 }

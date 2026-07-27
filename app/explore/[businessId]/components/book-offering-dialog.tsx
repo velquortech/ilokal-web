@@ -19,7 +19,7 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { requestBookingAction } from '@/app/customer/actions/customerActions';
-import type { PublicProduct } from '@/lib/types';
+import type { PublicBranch, PublicProduct } from '@/lib/types';
 
 /**
  * Customer-side booking request.
@@ -30,12 +30,17 @@ import type { PublicProduct } from '@/lib/types';
  */
 export function BookOfferingDialog({
   product,
-  branchId,
+  branches,
   needsRange,
   children,
 }: {
   product: PublicProduct;
-  branchId?: string | null;
+  /**
+   * Every branch of the shop. The customer picks — pinning to `branches[0]`
+   * either records the wrong location for a multi-branch shop or trips the
+   * RPC's branch gates with copy they can't act on.
+   */
+  branches: PublicBranch[];
   /** Rentals occupy a window; appointments derive theirs from the duration. */
   needsRange: boolean;
   children: React.ReactNode;
@@ -45,10 +50,19 @@ export function BookOfferingDialog({
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // A branch-scoped offering can only be booked at its own branch, so the
+  // choice is fixed; otherwise the customer chooses.
+  const selectableBranches = product.branch_id
+    ? branches.filter((branch) => branch.id === product.branch_id)
+    : branches;
+
   const [startsAt, setStartsAt] = React.useState('');
   const [endsAt, setEndsAt] = React.useState('');
   const [partySize, setPartySize] = React.useState('');
   const [notes, setNotes] = React.useState('');
+  const [branchId, setBranchId] = React.useState<string>(
+    selectableBranches[0]?.id ?? '',
+  );
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -72,7 +86,7 @@ export function BookOfferingDialog({
         // `datetime-local` has no zone; toISOString applies the viewer's.
         starts_at: new Date(startsAt).toISOString(),
         ends_at: endsAt ? new Date(endsAt).toISOString() : null,
-        branch_id: branchId ?? null,
+        branch_id: branchId || null,
         party_size: partySize ? Number(partySize) : null,
         notes: notes.trim() || null,
       });
@@ -92,6 +106,14 @@ export function BookOfferingDialog({
       setPartySize('');
       setNotes('');
       router.refresh();
+    } catch (err) {
+      // A rejected Server Action (network blip, mid-rollout 500) would
+      // otherwise be an unhandled rejection and leave the loading toast
+      // spinning forever with nothing shown to the customer.
+      console.error('[BookOfferingDialog]', err);
+      const message = 'Something went wrong — please try again.';
+      setError(message);
+      toast.error(message, { id: toastId });
     } finally {
       setBusy(false);
     }
@@ -113,6 +135,24 @@ export function BookOfferingDialog({
           </DialogHeader>
 
           <DialogBody className="space-y-4">
+            {selectableBranches.length > 1 && (
+              <Field>
+                <FieldLabel htmlFor="booking-branch">Branch</FieldLabel>
+                <select
+                  id="booking-branch"
+                  value={branchId}
+                  onChange={(e) => setBranchId(e.target.value)}
+                  className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+                >
+                  {selectableBranches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
+
             <Field>
               <FieldLabel htmlFor="booking-start">
                 {needsRange ? 'From' : 'Preferred date and time'}

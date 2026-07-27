@@ -138,6 +138,18 @@ function shopLocalNow(now: Date): { key: DayKey; minutes: number } | null {
   }
 }
 
+/**
+ * Today's weekday key in SHOP-local terms.
+ *
+ * `new Date().getDay()` would answer in the server's zone (UTC on Vercel),
+ * which disagrees with Manila for 8 hours of every day — so a "today" row
+ * highlight would point at the wrong row while `isOpenNow` right beside it
+ * says otherwise. Returns null if the zone can't be resolved.
+ */
+export function shopLocalDayKey(now: Date = new Date()): DayKey | null {
+  return shopLocalNow(now)?.key ?? null;
+}
+
 function previousDay(key: DayKey): DayKey {
   const index = WEEKDAY_INDEX_TO_KEY.indexOf(key);
   return WEEKDAY_INDEX_TO_KEY[(index + 6) % 7];

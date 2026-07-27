@@ -30,6 +30,9 @@ import { toast } from 'sonner';
 import type { ProductResponse } from '@/lib/types';
 import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
 import { cn } from '@/lib/utils';
+import { BOOKING_MODE_LABELS, PRICE_TYPE_LABELS } from './offering-labels';
+import type { PriceType } from '@/lib/types';
+import type { BookingMode } from '@/lib/types/offering';
 import {
   updateProductAction,
   uploadProductImageAction,
@@ -45,7 +48,9 @@ type ProductFormValues = {
   description: string;
   /** Null for quote-based offerings, which carry no figure. */
   price: number | null;
+  price_type: PriceType;
   status: 'active' | 'unlisted' | 'disabled';
+  booking_mode: BookingMode;
   image_url: File | string | null;
 };
 
@@ -55,28 +60,46 @@ export function UpdateProductDialog({
 }: UpdateProductDialogProps) {
   const router = useRouter();
   const vocabulary = useOfferingVocabulary();
-  // Quote-based offerings have no figure to edit; the DB CHECK requires their
-  // price to stay NULL, so the field is hidden and never submitted.
-  const isQuoteBased = product.price_type === 'on_request';
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
+
+  // One object for defaultValues AND reset — a partial reset() literal drops
+  // whatever it omits, flipping those Selects to uncontrolled.
+  const currentValues = React.useMemo<ProductFormValues>(
+    () => ({
+      name: product.name,
+      description: product.description ?? '',
+      price: product.price,
+      price_type: product.price_type,
+      status: product.status,
+      image_url: product.image_url,
+      booking_mode: product.booking_mode,
+    }),
+    [product],
+  );
 
   const {
     register,
     handleSubmit,
     control,
     reset,
+    watch,
     formState: { errors },
-  } = useForm<ProductFormValues>({
-    defaultValues: {
-      name: product.name,
-      description: product.description ?? '',
-      price: product.price,
-      status: product.status,
-      image_url: product.image_url,
-    },
-  });
+  } = useForm<ProductFormValues>({ defaultValues: currentValues });
+
+  // Reactive, not derived from the stored row: an owner moving an offering OFF
+  // "price on request" must get the price field back in the same session.
+  const isQuoteBased = watch('price_type') === 'on_request';
+
+  const priceTypeOptions = (
+    Object.keys(PRICE_TYPE_LABELS) as PriceType[]
+  ).filter(
+    (pt) =>
+      vocabulary.allowedPriceTypes.includes(pt) ||
+      // Never hide the value the row already has, or it can't be changed.
+      pt === product.price_type,
+  );
 
   const onSubmit = async (data: ProductFormValues) => {
     setIsSubmitting(true);
@@ -100,13 +123,17 @@ export function UpdateProductDialog({
         image_url = data.image_url;
       }
 
+      const nextIsQuote = data.price_type === 'on_request';
+
       const result = await updateProductAction(product.id, {
         name: data.name,
         description: data.description || undefined,
-        // Omitted for quote-based rows so the update can't reintroduce a
-        // figure the business withdrew.
-        ...(isQuoteBased ? {} : { price: data.price }),
+        // Omitted when the offering is (or becomes) quote-based, so the
+        // update can't reintroduce a figure the business withdrew.
+        ...(nextIsQuote ? {} : { price: data.price }),
+        price_type: data.price_type,
         status: data.status,
+        booking_mode: data.booking_mode,
         image_url,
       });
 
@@ -134,13 +161,7 @@ export function UpdateProductDialog({
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
-      reset({
-        name: product.name,
-        description: product.description ?? '',
-        price: product.price,
-        status: product.status,
-        image_url: product.image_url,
-      });
+      reset(currentValues);
       setServerError(null);
     }
   };
@@ -175,6 +196,52 @@ export function UpdateProductDialog({
             <Field>
               <FieldLabel>Description</FieldLabel>
               <Textarea {...register('description')} className="resize-none" />
+            </Field>
+
+            <Field>
+              <FieldLabel>Price Type</FieldLabel>
+              <Controller
+                control={control}
+                name="price_type"
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {priceTypeOptions.map((pt) => (
+                        <SelectItem key={pt} value={pt}>
+                          {PRICE_TYPE_LABELS[pt]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel>How do customers book this?</FieldLabel>
+              <Controller
+                control={control}
+                name="booking_mode"
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(BOOKING_MODE_LABELS) as BookingMode[]).map(
+                        (mode) => (
+                          <SelectItem key={mode} value={mode}>
+                            {BOOKING_MODE_LABELS[mode]}
+                          </SelectItem>
+                        ),
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </Field>
 
             {isQuoteBased ? (

@@ -205,11 +205,55 @@ BEGIN
   PERFORM pg_temp.act_as(v_cust2);
   PERFORM request_booking(v_prod, v_start, v_end);
 
+  -- ─────────────────── duplicate guard ────────────────────────────────────
+  -- The RPC is granted straight to `authenticated`, so the Server Action's
+  -- per-user limiter is bypassable via /rest/v1/rpc — the DB must refuse an
+  -- overlapping second request itself.
+  PERFORM pg_temp.act_as(v_cust);
+  v_failed := FALSE;
+  BEGIN
+    PERFORM request_booking(v_prod, v_start + interval '90 days', v_end + interval '90 days');
+    PERFORM request_booking(v_prod, v_start + interval '90 days', v_end + interval '90 days');
+  EXCEPTION WHEN OTHERS THEN v_failed := TRUE;
+  END;
+  ASSERT v_failed, 'a user could stack duplicate overlapping requests';
+
+  -- ─────────────────── inventory cap without an end date ──────────────────
+  -- An offering with inventory but NO duration_minutes must still be capped:
+  -- omitting p_ends_at previously skipped the availability check entirely,
+  -- and a NULL end stored an EMPTY tstzrange that never overlapped anything.
+  INSERT INTO products (business_id, name, price, price_type, kind, booking_mode,
+                        inventory_count, status)
+  VALUES (v_biz, 'RT Chair', 500, 'fixed', 'service', 'request', 1, 'active')
+  RETURNING id INTO v_walkin;
+
+  PERFORM pg_temp.act_as(v_cust);
+  PERFORM request_booking(v_walkin, v_start + interval '200 days');
+
+  PERFORM pg_temp.act_as(v_cust2);
+  v_failed := FALSE;
+  BEGIN
+    PERFORM request_booking(v_walkin, v_start + interval '200 days');
+  EXCEPTION WHEN OTHERS THEN v_failed := TRUE;
+  END;
+  ASSERT v_failed,
+    'inventory_count was bypassable by omitting ends_at on a duration-less offering';
+
   -- ─────────────────── direct writes are denied ───────────────────────────
   -- No INSERT policy exists: the RPC is the only insert path.
   SELECT count(*) INTO v_count FROM pg_policies
    WHERE tablename = 'booking_requests' AND cmd = 'INSERT';
   ASSERT v_count = 0, 'an INSERT policy exists — the RPC is no longer the only path';
+
+  -- No non-admin UPDATE policy either. A permissive UPDATE policy is a
+  -- direct-PostgREST write surface that skips decide_booking's state machine
+  -- (rewriting user_id/starts_at, or resetting a decided booking to pending).
+  SELECT count(*) INTO v_count FROM pg_policies
+   WHERE tablename = 'booking_requests'
+     AND cmd IN ('UPDATE', 'ALL')
+     AND policyname NOT ILIKE '%admin%';
+  ASSERT v_count = 0,
+    format('a non-admin UPDATE policy exists on booking_requests: %s', v_count);
 
   -- Every policy wraps its auth calls (perf standard P1: a bare auth.uid()
   -- re-evaluates per row scanned). Postgres has no regex lookbehind, so this

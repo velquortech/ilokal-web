@@ -1,5 +1,6 @@
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import { resolvePublicAvatarUrl } from '@/lib/api/customer/customerQuery';
+import { getBookingsEnabled } from '@/lib/api/appSettings';
 import { CustomerHeader } from '@/components/customer/CustomerHeader';
 import { CustomerFooter } from '@/components/customer/CustomerFooter';
 
@@ -15,7 +16,10 @@ export default async function ExploreLayout({
   const user = await getCurrentUser();
   // Real registrations store raw in-bucket avatar paths — resolve before
   // handing to next/image.
-  const avatarUrl = user ? await resolvePublicAvatarUrl(user.avatar_url) : null;
+  const [avatarUrl, bookingsEnabled] = await Promise.all([
+    user ? resolvePublicAvatarUrl(user.avatar_url) : null,
+    getBookingsEnabled(),
+  ]);
 
   return (
     <div className="font-giest bg-background flex min-h-screen flex-col">
@@ -30,6 +34,7 @@ export default async function ExploreLayout({
               }
             : null
         }
+        bookingsEnabled={bookingsEnabled}
       />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
         {children}

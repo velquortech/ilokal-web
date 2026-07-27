@@ -10,7 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cancelBookingAction } from '@/app/customer/actions/customerActions';
 import { formatPeso } from '@/lib/utils/formatOfferingPrice';
+import { BUSINESS_TIME_ZONE } from '@/lib/utils/operatingHours';
+import { PaginationBar } from '@/components/customer/PaginationBar';
 import type { BookingStatus, BookingWithContext } from '@/lib/types/booking';
+import type { DirectoryMetadata } from '@/lib/types';
 
 const STATUS_TONE: Record<BookingStatus, string> = {
   pending: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
@@ -33,13 +36,11 @@ const STATUS_COPY: Record<BookingStatus, string> = {
 export function CustomerBookingsContent({
   bookings,
   failed,
-  page,
-  totalPages,
+  metadata,
 }: {
   bookings: BookingWithContext[];
   failed: boolean;
-  page: number;
-  totalPages: number;
+  metadata: DirectoryMetadata;
 }) {
   const router = useRouter();
   const [pendingId, setPendingId] = React.useState<string | null>(null);
@@ -56,6 +57,11 @@ export function CustomerBookingsContent({
       }
       toast.success('Booking cancelled', { id: toastId });
       router.refresh();
+    } catch (err) {
+      // Without this a rejected Server Action is an unhandled rejection and
+      // the loading toast never resolves.
+      console.error('[cancelBooking]', err);
+      toast.error('Something went wrong — please try again.', { id: toastId });
     } finally {
       setPendingId(null);
     }
@@ -113,11 +119,16 @@ export function CustomerBookingsContent({
                       </Link>
                     )}
                     <p className="text-muted-foreground text-sm">
+                      {/* Shop-local, always: without an explicit timeZone this
+                          renders in UTC during SSR and the device zone after
+                          hydration — a mismatch on every row, and the wrong
+                          time for a customer abroad. */}
                       {new Date(booking.starts_at).toLocaleString('en-PH', {
                         month: 'short',
                         day: 'numeric',
                         hour: 'numeric',
                         minute: '2-digit',
+                        timeZone: BUSINESS_TIME_ZONE,
                       })}
                     </p>
                     <p className="text-muted-foreground text-xs">
@@ -153,11 +164,9 @@ export function CustomerBookingsContent({
         </div>
       )}
 
-      {totalPages > 1 && (
-        <p className="text-muted-foreground text-xs">
-          Page {page} of {totalPages}
-        </p>
-      )}
+      {/* Real controls: nothing else writes ?page=, so a counter alone would
+          leave every booking past page 1 unreachable. */}
+      <PaginationBar metadata={metadata} noun="booking" />
     </div>
   );
 }

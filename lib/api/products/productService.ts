@@ -382,6 +382,49 @@ export async function updateProduct(
       };
     }
 
+    // Quote-pricing rules, resolved against the STORED price_type.
+    //
+    // `updateProductSchema` can only see the payload, so a partial update that
+    // omits `price_type` skips its quote checks entirely — and the DB CHECK
+    // only constrains the other direction (`price_type <> 'on_request'`
+    // requires a price), so an existing on_request offering could be given a
+    // price or a sale that the UI then refuses to display.
+    const effectivePriceType = input.price_type ?? result.product.price_type;
+
+    if (effectivePriceType === 'on_request') {
+      if (input.price != null) {
+        return {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Quote-based offerings cannot carry a price',
+          },
+        };
+      }
+      if (input.sale_price != null) {
+        return {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Quote-based offerings cannot go on sale',
+          },
+        };
+      }
+    } else if (
+      // Switching AWAY from on_request needs a figure to switch to.
+      result.product.price_type === 'on_request' &&
+      input.price == null &&
+      result.product.price == null
+    ) {
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Set a price when moving off "price on request"',
+        },
+      };
+    }
+
     // Validate category if changing
     if (input.category_id) {
       const category = await productQuery.getCategoryById(input.category_id);

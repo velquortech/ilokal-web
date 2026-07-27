@@ -1,5 +1,83 @@
 # Changelog
 
+## 2026-07-27 — PR #18 review hardening (feat/dynamic-product-service-listing)
+
+> Fixes from the react-doctor + api-doctor review. **Edits the seven unmerged
+> migrations in place** (none is on cloud) and re-verified with a full
+> `make migrate-reset` — so what reviewers read is what will apply.
+> **All seven still need human approval + `make migrate-cloud` + ledger
+> reconcile before merge.**
+
+- **🔴 Owner `UPDATE` policy on `booking_requests` removed.** It had no
+  `WITH CHECK`, so Postgres reused its `USING` clause — which only proved
+  business ownership. A direct PostgREST `PATCH` could rewrite `user_id` /
+  `product_id` / `starts_at`, or reset a decided booking to `pending` for a
+  second decision. The customer "may cancel" policy went too: it let a
+  `completed`/`no_show` row be flipped to `cancelled` (erasing a no-show) and
+  `quoted_amount`/`decision_note` rewritten in the same statement. **All
+  non-admin writes now go through the SECURITY DEFINER RPCs**, which bypass
+  RLS anyway — matching the INSERT side, which never had a policy.
+- **🔴 `inventory_count` was bypassable.** The availability check was skipped
+  when `ends_at` resolved to NULL, so an offering with stock but no
+  `duration_minutes` could be overbooked by simply omitting the end date — and
+  those NULL-end rows stored an EMPTY `tstzrange` that never overlapped
+  anything, so they never counted against the cap either. `v_end` now falls
+  back to a one-hour window whenever `inventory_count` is set, on both the
+  insert and the overlap scan.
+- **Active-dupe guard on `request_booking`.** The RPC is granted straight to
+  `authenticated`, so `/rest/v1/rpc/request_booking` bypassed the Server
+  Action's per-user rate limit entirely — unbounded pending rows, one owner
+  notification each.
+- **Private SQLSTATE class for RPC errors.** `22023` is raised by built-ins
+  too (`make_interval` on an out-of-range value), so forwarding its message
+  could leak Postgres internals. The RPCs now raise `IL001`/`IL002`; anything
+  else gets generic copy.
+- **`ENABLE ALWAYS` on `trg_businesses_sync_business_type`.** Seeds run under
+  `session_replication_role = replica`, which skips normal triggers — so
+  after `migrate-reset` every seeded business had `business_type_id = NULL`
+  and silently fell back to retail vocabulary. Same gotcha as
+  `trg_set_redemption_code`.
+- **`offering_mode` now has a write path.** It was set only by the one-time
+  backfill, so every business registered after the migration would have been
+  stuck on `'products'` forever. The trigger seeds it from the vertical **on
+  INSERT only** — changing category later must not overwrite an owner's
+  choice.
+- **The quote CHECK can no longer abort a cloud apply.** `products.price` has
+  always been nullable and "0 NULL rows" was verified on local only; the
+  migration now reclassifies any NULL-price row to `on_request` before adding
+  the constraint.
+- **Found by the clean reset, not by review:** migration `20260727000001`
+  seeds `offering_profile` with `UPDATE … WHERE name = …`, but
+  `business_types` rows are created by the *seed*, which runs **after**
+  migrations — so on a fresh database it matched zero rows and every vertical
+  fell back to retail copy. The profiles are now seeded in
+  `business_categories.sql` too (COALESCE, so an admin edit survives).
+- **App-layer:** booking times pinned to `Asia/Manila` (they rendered in UTC
+  during SSR and the device zone after hydration — a mismatch on every row);
+  a **branch picker** in the booking dialog (bookings were pinned to
+  `branches[0]`, wrong for multi-branch shops and a hard RPC failure for
+  branch-scoped offerings); `booking_mode` and `price_type` are now editable
+  in the update dialog (an offering could never leave `on_request`, and a
+  salon's shampoo was stuck showing "Request booking"); the owner's decline
+  note + quote amount are wired to the inputs the customer page already
+  rendered; `catch` on all three booking handlers (a rejected Server Action
+  left the loading toast spinning forever); real `PaginationBar` on both
+  booking lists; `sticky bottom-0` on the registration nav; `shopLocalDayKey`
+  for the "today" hours highlight; `loading.tsx` for both new routes;
+  `safeExternalUrl` accepts `unknown` (a non-string JSONB social link crashed
+  the server-rendered public page); `getBookingStats` reports failure instead
+  of showing four confident zeros.
+- **Not taken:** wrapping `getBookingsEnabled` in `React.cache` — the module
+  is `'use server'`, where every export must be a plain async function;
+  wrapping it collapsed inference at the call sites.
+- **Tests 1505 → 1508**, plus new SQL regressions for the duplicate guard, the
+  no-`ends_at` inventory bypass, and "no non-admin UPDATE policy". One test
+  was itself wrong and was rewritten: it asserted every product of a Services
+  business is `kind='service'`, but that flip is a point-in-time backfill, not
+  an invariant — a salon must still be able to list shampoo. Verified after a
+  full `make migrate-reset`: `yarn lint` + **1508** tests + `yarn build` green
+  + all three SQL suites passing.
+
 ## 2026-07-27 — Explore: shop info (hours / contact / socials) + gallery lightbox (feat/dynamic-product-service-listing)
 
 > **One schema migration** (`20260727000006_business_public_info_rpc.sql`) —

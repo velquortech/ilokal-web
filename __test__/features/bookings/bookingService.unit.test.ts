@@ -63,7 +63,7 @@ describe('requestBooking', () => {
   it('maps a unique violation to a "slot taken" message, not a driver error', async () => {
     mockRpc({
       error: {
-        code: '23505',
+        code: 'IL002',
         message: 'duplicate key value violates unique constraint "x_pkey"',
       },
     });
@@ -94,13 +94,30 @@ describe('requestBooking', () => {
 
   it('surfaces the RPC validation copy, which is written for end users', async () => {
     mockRpc({
-      error: { code: '22023', message: 'this offering needs more notice' },
+      error: { code: 'IL001', message: 'this offering needs more notice' },
     });
 
     const result = await requestBooking(INPUT);
 
     expect(result.error?.code).toBe('INVALID_REQUEST');
     expect(result.error?.message).toBe('This offering needs more notice');
+  });
+
+  it('does NOT forward a message from a generic SQLSTATE the RPC also uses', async () => {
+    // 22023 (invalid_parameter_value) is raised by built-ins too — e.g.
+    // make_interval on an out-of-range lead_time_minutes. Only the private
+    // IL0xx class is provably ours, so anything else gets generic copy.
+    mockRpc({
+      error: {
+        code: '22023',
+        message: 'interval field value out of range: "make_interval"',
+      },
+    });
+
+    const result = await requestBooking(INPUT);
+
+    expect(result.error?.code).toBe('INTERNAL_ERROR');
+    expect(result.error?.message).not.toMatch(/make_interval|interval field/);
   });
 
   it('falls back to a generic message on an unmapped SQLSTATE', async () => {
@@ -152,7 +169,7 @@ describe('decideBooking', () => {
   it('maps the "already decided" guard to a readable message', async () => {
     mockRpc({
       error: {
-        code: '22023',
+        code: 'IL001',
         message: 'this booking has already been decided',
       },
     });

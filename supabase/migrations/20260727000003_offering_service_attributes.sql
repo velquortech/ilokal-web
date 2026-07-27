@@ -77,8 +77,18 @@ ALTER TABLE public.products
 
 -- OF7 — quote-based pricing. Enforced at the DB so a direct PostgREST write
 -- can't create a priceless offering that renders as a blank where a number
--- should be. (`price_type` gained 'on_request' in 20260727000002; verified
--- 0 existing rows have a NULL price, so this validates immediately.)
+-- should be. (`price_type` gained 'on_request' in 20260727000002.)
+--
+-- `products.price` has been nullable since 20260217034520, so any environment
+-- MAY hold a NULL-price row even though local has none — and ADD CONSTRAINT
+-- validates immediately, which would abort the whole migration on apply.
+-- Reclassify those rows first: a priceless offering is, by definition, one
+-- priced on request.
+UPDATE public.products
+   SET price_type = 'on_request'
+ WHERE price IS NULL
+   AND price_type <> 'on_request';
+
 ALTER TABLE public.products
   ADD CONSTRAINT products_price_required_unless_on_request
     CHECK (price_type = 'on_request' OR price IS NOT NULL);

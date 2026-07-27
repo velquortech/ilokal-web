@@ -53,6 +53,8 @@ export interface PublicProduct {
   /** `'none'` ⇒ walk-in; anything else renders the booking CTA (phase 4). */
   booking_mode: BookingMode;
   duration_minutes: number | null;
+  /** Non-null ⇒ bookable only at that branch (the RPC enforces it). */
+  branch_id: string | null;
   image_url: string | null;
   category_name: string | null;
 }

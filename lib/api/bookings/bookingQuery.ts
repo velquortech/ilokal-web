@@ -163,13 +163,29 @@ export async function getUserBookings(
  * Aggregated in SQL via head-only counts, never by fetching rows and reducing
  * in Node (PostgREST caps at 1000 and would return WRONG numbers past that).
  */
-export async function getBookingStats(businessId: string): Promise<{
+export type BookingStats = {
   pending: number;
   confirmed: number;
   upcoming: number;
   total: number;
-}> {
-  const zero = { pending: 0, confirmed: 0, upcoming: 0, total: 0 };
+  /**
+   * True when the counts couldn't be read. The caller renders a muted "—"
+   * rather than four confident zeros next to a list that is itself saying
+   * "couldn't load".
+   */
+  failed?: boolean;
+};
+
+export async function getBookingStats(
+  businessId: string,
+): Promise<BookingStats> {
+  const zero: BookingStats = {
+    pending: 0,
+    confirmed: 0,
+    upcoming: 0,
+    total: 0,
+    failed: true,
+  };
   try {
     const supabase = await createServerSupabaseClient();
     const base = () =>
@@ -187,11 +203,22 @@ export async function getBookingStats(businessId: string): Promise<{
       base(),
     ]);
 
+    // Any failed count makes the whole set untrustworthy — report it rather
+    // than silently showing a zero for the one that errored.
+    if (pending.error || confirmed.error || upcoming.error || total.error) {
+      console.error(
+        '[getBookingStats]',
+        pending.error ?? confirmed.error ?? upcoming.error ?? total.error,
+      );
+      return zero;
+    }
+
     return {
       pending: pending.count ?? 0,
       confirmed: confirmed.count ?? 0,
       upcoming: upcoming.count ?? 0,
       total: total.count ?? 0,
+      failed: false,
     };
   } catch (err) {
     console.error('[getBookingStats]', err);

@@ -45,6 +45,17 @@ describe('safeExternalUrl — rejects', () => {
     expect(safeExternalUrl(null)).toBeNull();
     expect(safeExternalUrl(undefined)).toBeNull();
   });
+
+  it('rejects non-string JSONB values instead of throwing', () => {
+    // social_links is untyped JSONB: `{"facebook": 12}` reaching .trim() would
+    // crash the server-rendered public shop page.
+    for (const value of [12, true, {}, [], { href: 'x' }]) {
+      expect(() => safeExternalUrl(value)).not.toThrow();
+      expect(safeExternalUrl(value)).toBeNull();
+    }
+    expect(safeTelHref(12)).toBeNull();
+    expect(displayUrlLabel({})).toBeNull();
+  });
 });
 
 describe('safeExternalUrl — accepts', () => {

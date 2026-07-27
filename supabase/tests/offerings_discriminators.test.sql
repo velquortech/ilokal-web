@@ -48,15 +48,20 @@ BEGIN
   ASSERT v_bad_mode = 0,
     format('businesses whose offering_mode does not match their type: %s', v_bad_mode);
 
-  -- Products of a pure-services business were flipped to kind='service'.
-  SELECT count(*) INTO v_bad_mode
-    FROM products p
-    JOIN businesses b     ON b.id  = p.business_id
-    JOIN business_types bt ON bt.id = b.business_type_id
-   WHERE bt.name = 'Services'
-     AND p.kind <> 'service';
-  ASSERT v_bad_mode = 0,
-    format('service-business rows still marked kind=product: %s', v_bad_mode);
+  -- NOTE: there is deliberately no "every product of a Services business is
+  -- kind=service" assertion. That flip is a POINT-IN-TIME BACKFILL, not an
+  -- invariant: a services business must still be able to list a real product
+  -- (a salon selling shampoo), which is why no trigger force-flips `kind` —
+  -- the add form sends it explicitly from defaultKindForMode instead. Rows
+  -- created after the migration (including every seeded row, since seeds run
+  -- after migrations) legitimately carry the 'product' default.
+  --
+  -- What IS invariant: kind only ever holds a value the CHECK allows, and a
+  -- service row round-trips.
+  INSERT INTO products (business_id, name, price, kind, status)
+  VALUES ((SELECT id FROM businesses LIMIT 1), 'Kind Probe', 100, 'service', 'active')
+  RETURNING kind INTO v_kind;
+  ASSERT v_kind = 'service', 'a service-kind row did not round-trip';
 
   -- ─────────────────── trigger: category change resyncs type ───────────────
 

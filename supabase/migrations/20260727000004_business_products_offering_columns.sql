@@ -46,7 +46,7 @@ RETURNS TABLE (
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
   SELECT
     p.id,
@@ -86,4 +86,7 @@ AS $$
   GROUP BY p.id, c.id, c.name, c.slug;
 $$;
 
+-- DROP FUNCTION discards the old grants and Postgres re-grants EXECUTE to
+-- PUBLIC by default, so revoke before granting the intended roles.
+REVOKE ALL ON FUNCTION public.business_products(UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.business_products(UUID) TO anon, authenticated;

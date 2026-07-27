@@ -5,13 +5,14 @@ import {
   formatOperatingHours,
   hasOperatingHours,
   isOpenNow,
+  shopLocalDayKey,
 } from '@/lib/utils/operatingHours';
 import {
   displayUrlLabel,
   safeExternalUrl,
   safeTelHref,
 } from '@/lib/utils/safeExternalUrl';
-import type { DayKey, PublicBusinessInfo } from '@/lib/types';
+import type { PublicBusinessInfo } from '@/lib/types';
 
 /**
  * Operating hours, public contact details, and social links for the public
@@ -34,17 +35,6 @@ const SOCIAL_ENTRIES = [
   // lucide has no TikTok glyph; Music2 is the closest honest stand-in.
   { key: 'tiktok', label: 'TikTok', Icon: Music2 },
 ] as const;
-
-/** Sunday-indexed `getDay()` → our keys, for highlighting today's row. */
-const WEEKDAY_KEYS: readonly DayKey[] = [
-  'sun',
-  'mon',
-  'tue',
-  'wed',
-  'thu',
-  'fri',
-  'sat',
-];
 
 export function BusinessInfoPanel({
   info,
@@ -74,9 +64,9 @@ export function BusinessInfoPanel({
 
   if (!showHours && !showContact && socials.length === 0) return null;
 
-  // Today's key in shop-local terms is close enough for a highlight; the
-  // authoritative open/closed answer comes from `isOpenNow`.
-  const todayKey = WEEKDAY_KEYS[new Date().getDay()];
+  // Shop-local, matching isOpenNow. `new Date().getDay()` would answer in the
+  // server's zone (UTC), highlighting the wrong row for 8h of every day.
+  const todayKey = shopLocalDayKey();
 
   return (
     <section className="space-y-3">

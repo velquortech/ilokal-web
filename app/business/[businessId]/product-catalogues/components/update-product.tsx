@@ -28,6 +28,7 @@ import { ImageUploadField } from '@/components/custom/upload/image-upload';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ProductResponse } from '@/lib/types';
+import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
 import { cn } from '@/lib/utils';
 import {
   updateProductAction,
@@ -42,7 +43,8 @@ interface UpdateProductDialogProps {
 type ProductFormValues = {
   name: string;
   description: string;
-  price: number;
+  /** Null for quote-based offerings, which carry no figure. */
+  price: number | null;
   status: 'active' | 'unlisted' | 'disabled';
   image_url: File | string | null;
 };
@@ -52,6 +54,10 @@ export function UpdateProductDialog({
   children,
 }: UpdateProductDialogProps) {
   const router = useRouter();
+  const vocabulary = useOfferingVocabulary();
+  // Quote-based offerings have no figure to edit; the DB CHECK requires their
+  // price to stay NULL, so the field is hidden and never submitted.
+  const isQuoteBased = product.price_type === 'on_request';
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
@@ -97,13 +103,17 @@ export function UpdateProductDialog({
       const result = await updateProductAction(product.id, {
         name: data.name,
         description: data.description || undefined,
-        price: data.price,
+        // Omitted for quote-based rows so the update can't reintroduce a
+        // figure the business withdrew.
+        ...(isQuoteBased ? {} : { price: data.price }),
         status: data.status,
         image_url,
       });
 
       if (!result.success) {
-        const msg = result.error?.message ?? 'Failed to update product';
+        const msg =
+          result.error?.message ??
+          `Failed to update ${vocabulary.singular.toLowerCase()}`;
         setServerError(msg);
         toast.error(msg);
         return;
@@ -140,7 +150,7 @@ export function UpdateProductDialog({
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="overflow-hidden sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Update Product</DialogTitle>
+          <DialogTitle>{vocabulary.updateLabel}</DialogTitle>
           <DialogDescription>
             Modify the details for {product.name}
           </DialogDescription>
@@ -152,10 +162,12 @@ export function UpdateProductDialog({
           <DialogBody className="space-y-4 text-left">
             <Field>
               <FieldLabel className={errors.name ? 'text-destructive' : ''}>
-                Product Name
+                {vocabulary.singular} Name
               </FieldLabel>
               <Input
-                {...register('name', { required: 'Product name is required' })}
+                {...register('name', {
+                  required: vocabulary.nameRequiredLabel,
+                })}
               />
               {errors.name && <FieldError>{errors.name.message}</FieldError>}
             </Field>
@@ -165,34 +177,43 @@ export function UpdateProductDialog({
               <Textarea {...register('description')} className="resize-none" />
             </Field>
 
-            <Field>
-              <FieldLabel className={errors.price ? 'text-destructive' : ''}>
-                Price
-              </FieldLabel>
-              <div className="relative">
-                <span className="absolute top-1/2 left-3 -translate-y-1/2">
-                  ₱
-                </span>
-                <Input
-                  type="number"
-                  step="0.01"
-                  {...register('price', {
-                    required: 'Price is required',
-                    valueAsNumber: true,
-                    min: {
-                      value: 0,
-                      message: 'Price cannot be negative',
-                    },
-                  })}
-                  placeholder="0.00"
-                  className={cn(
-                    'pl-8',
-                    errors.price ? 'border-destructive' : '',
-                  )}
-                />
-              </div>
-              {errors.price && <FieldError>{errors.price.message}</FieldError>}
-            </Field>
+            {isQuoteBased ? (
+              <p className="text-muted-foreground text-sm">
+                Priced on request — customers see “Price on request” and contact
+                you for a quote.
+              </p>
+            ) : (
+              <Field>
+                <FieldLabel className={errors.price ? 'text-destructive' : ''}>
+                  Price
+                </FieldLabel>
+                <div className="relative">
+                  <span className="absolute top-1/2 left-3 -translate-y-1/2">
+                    ₱
+                  </span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    {...register('price', {
+                      required: 'Price is required',
+                      valueAsNumber: true,
+                      min: {
+                        value: 0,
+                        message: 'Price cannot be negative',
+                      },
+                    })}
+                    placeholder="0.00"
+                    className={cn(
+                      'pl-8',
+                      errors.price ? 'border-destructive' : '',
+                    )}
+                  />
+                </div>
+                {errors.price && (
+                  <FieldError>{errors.price.message}</FieldError>
+                )}
+              </Field>
+            )}
 
             <Field className="flex flex-col">
               <FieldLabel

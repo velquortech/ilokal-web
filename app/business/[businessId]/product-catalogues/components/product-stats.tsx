@@ -1,5 +1,8 @@
+'use client';
+
 import { StatCard } from '@/components/custom/StatCard';
 import { CircleCheck, FlagOff, Hash, PhilippinePeso } from 'lucide-react';
+import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
 import type { ProductStats } from '@/lib/types';
 
 interface Props {
@@ -7,8 +10,9 @@ interface Props {
 }
 
 export function ProductStats({ stats }: Props) {
+  const vocabulary = useOfferingVocabulary();
   const items = [
-    { title: 'Total Products', icon: Hash, value: stats.total },
+    { title: vocabulary.totalLabel, icon: Hash, value: stats.total },
     { title: 'On Sale', icon: PhilippinePeso, value: stats.on_sale },
     { title: 'Active', icon: CircleCheck, value: stats.active },
     { title: 'Unlisted', icon: FlagOff, value: stats.unlisted },

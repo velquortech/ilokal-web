@@ -4,6 +4,7 @@ import {
   Bell,
   Home,
   ShoppingBasket,
+  CalendarClock,
   BadgeCheck,
 } from 'lucide-react';
 import { NavItem } from '@/components/custom/Nav';
@@ -27,6 +28,11 @@ export const storeNavigation: NavItem[] = [
     title: 'Product Catalogues',
     href: '/business/product-catalogues',
     icon: ShoppingBasket,
+  },
+  {
+    title: 'Bookings',
+    href: '/business/bookings',
+    icon: CalendarClock,
   },
   {
     title: 'Coupons & Deals',

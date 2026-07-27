@@ -4,6 +4,9 @@
  * resolution — components never see raw storage paths.
  */
 
+import type { PriceType } from './product';
+import type { BookingMode } from './offering';
+
 export interface DirectoryBusiness {
   id: string;
   shop_name: string;
@@ -39,8 +42,16 @@ export interface PublicProduct {
   id: string;
   name: string;
   description: string | null;
-  price: number;
+  /** NULL for quote-based offerings (`price_type === 'on_request'`). */
+  price: number | null;
   sale_price: number | null;
+  /** Drives the display suffix ("/hr", "/day", "From …") — see `formatOfferingPrice`. */
+  price_type: PriceType;
+  /** Owner-supplied unit label ("per pax", "per table") overriding the suffix. */
+  price_unit: string | null;
+  /** `'none'` ⇒ walk-in; anything else renders the booking CTA (phase 4). */
+  booking_mode: BookingMode;
+  duration_minutes: number | null;
   image_url: string | null;
   category_name: string | null;
 }

@@ -1,15 +1,13 @@
 # CLAUDE.md — iLokal Web
 
-<!-- TEMP: remove when admin rework is merged -->
-> **Active work:** Admin design-parity + `/admin/[adminId]` migration — see
-> [`.claude/ADMIN_REWORK.md`](.claude/ADMIN_REWORK.md) for parities, phased action
-> items, and the testing plan. Delete that file and this note when finished.
-
-<!-- TEMP: remove when registration gating is merged -->
-> **Active work:** Registration gating flags (`app_settings`: docs on/off +
-> auto-verify) — see [`.claude/REGISTRATION_GATING.md`](.claude/REGISTRATION_GATING.md).
-> Migration `20260723000000` pending human approval + cloud apply. Delete that
-> file and this note when finished.
+<!-- TEMP: remove when the offerings model is merged -->
+> **Active work:** Offerings model — generalizing the product-only catalogue to
+> serve services/rentals (van rental, salon, tours). `products` carries
+> `kind` (product|service) and `booking_mode`; `businesses.offering_mode` and
+> `business_types.offering_profile` drive per-vertical vocabulary. Bookings
+> ship dark behind `app_settings.enable_bookings`. Decision record and phased
+> plan are kept local (not committed); see `.claude/CHANGELOG.md` for what
+> landed. Delete this note when finished.
 
 ## Commands
 

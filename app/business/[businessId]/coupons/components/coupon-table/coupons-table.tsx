@@ -22,6 +22,7 @@ import {
 import { DataTablePagination } from '@/components/custom/data-table/DataTablePagination';
 import { createColumns } from './columns';
 import type { Coupon, ProductResponse } from '@/lib/types';
+import { formatOfferingPrice } from '@/lib/utils/formatOfferingPrice';
 import { Package } from 'lucide-react';
 
 interface CouponsTableProps {
@@ -72,7 +73,7 @@ function ExpandedProducts({
           <div className="flex flex-col">
             <span className="text-sm font-medium">{product.name}</span>
             <span className="text-muted-foreground text-xs">
-              ₱{product.price.toLocaleString()}
+              {formatOfferingPrice(product)}
             </span>
           </div>
         </div>

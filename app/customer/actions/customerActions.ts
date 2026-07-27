@@ -14,9 +14,16 @@
  */
 
 import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import { rateLimit } from '@/app/api/helpers/rateLimit';
+import {
+  requestBooking,
+  cancelBooking,
+} from '@/lib/api/bookings/bookingService';
+import { ROUTES } from '@/config/routeConfig';
+import type { BookingRequest } from '@/lib/types/booking';
 
 export type CustomerActionError =
   | 'AUTH_REQUIRED'
@@ -369,6 +376,105 @@ export async function redeemCouponAction(
       ok: false,
       code: 'SERVER_ERROR',
       message: 'Could not redeem right now',
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Bookings (phase 4). The gate matrix, the authorization split, and the ATOMIC
+// availability check all live in the `request_booking` / `cancel_booking` RPCs
+// (`20260727000005`) — these actions only authenticate the caller, validate
+// the shape, and translate errors. Deliberately thin: duplicating the gates
+// here is how the redeem path ended up with two divergent copies.
+// ---------------------------------------------------------------------------
+
+interface BookingSuccess {
+  ok: true;
+  booking: BookingRequest;
+}
+
+const bookingInputSchema = z.object({
+  product_id: z.guid(),
+  starts_at: z.iso.datetime({ offset: true }),
+  ends_at: z.iso.datetime({ offset: true }).nullable().optional(),
+  branch_id: z.guid().nullable().optional(),
+  party_size: z.number().int().positive().max(999).nullable().optional(),
+  notes: z.string().max(2000).nullable().optional(),
+});
+
+export async function requestBookingAction(
+  input: unknown,
+): Promise<BookingSuccess | ActionFailure> {
+  try {
+    const auth = await requireCustomer();
+    if ('ok' in auth) return auth;
+
+    const parsed = bookingInputSchema.safeParse(input);
+    if (!parsed.success) {
+      return {
+        ok: false,
+        code: 'BAD_REQUEST',
+        message: 'Please check the booking details and try again',
+      };
+    }
+
+    const result = await requestBooking(parsed.data);
+    if (!result.success || !result.data) {
+      return {
+        ok: false,
+        // The RPC's own SQLSTATE mapping already produced user-safe copy.
+        code:
+          result.error?.code === 'UNAUTHORIZED'
+            ? 'AUTH_REQUIRED'
+            : 'BAD_REQUEST',
+        message: result.error?.message ?? 'Could not request this booking',
+      };
+    }
+
+    revalidatePath(ROUTES.CUSTOMER.BOOKINGS);
+    return { ok: true, booking: result.data };
+  } catch (err) {
+    console.error('[requestBookingAction]', err);
+    return {
+      ok: false,
+      code: 'SERVER_ERROR',
+      message: 'Could not request this booking right now',
+    };
+  }
+}
+
+export async function cancelBookingAction(
+  bookingId: string,
+): Promise<BookingSuccess | ActionFailure> {
+  try {
+    const auth = await requireCustomer();
+    if ('ok' in auth) return auth;
+
+    if (!guid.safeParse(bookingId).success) {
+      return {
+        ok: false,
+        code: 'BAD_REQUEST',
+        message: 'booking_id must be a valid UUID',
+      };
+    }
+
+    const result = await cancelBooking(bookingId);
+    if (!result.success || !result.data) {
+      return {
+        ok: false,
+        code: 'BAD_REQUEST',
+        message: result.error?.message ?? 'Could not cancel this booking',
+      };
+    }
+
+    revalidatePath(ROUTES.CUSTOMER.BOOKINGS);
+    return { ok: true, booking: result.data };
+  } catch (err) {
+    console.error('[cancelBookingAction]', err);
+    return {
+      ok: false,
+      code: 'SERVER_ERROR',
+      message: 'Could not cancel this booking right now',
     };
   }
 }

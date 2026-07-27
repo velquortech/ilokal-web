@@ -7,6 +7,7 @@ import { ImageOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { calculatePercentage } from '@/lib/product-helper';
+import { formatOfferingPricePair } from '@/lib/utils/formatOfferingPrice';
 import type { ProductResponse } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ViewProduct } from '../view-product';
@@ -90,17 +91,19 @@ export const columns: ColumnDef<ProductResponse>[] = [
     header: 'Price',
     cell: ({ row }) => {
       const { price, sale_price } = row.original;
-      if (sale_price !== null && sale_price !== undefined) {
+      const { base, sale } = formatOfferingPricePair(row.original);
+      // `sale` is null for quote-based rows, which have nothing to discount.
+      if (sale && price != null && sale_price != null) {
         return (
           <div className="flex flex-col gap-0.5">
-            <span className="text-primary font-semibold">₱{sale_price}</span>
+            <span className="text-primary font-semibold">{sale}</span>
             <span className="text-muted-foreground text-xs line-through">
-              ₱{price} (-{calculatePercentage(price, sale_price)}%)
+              {base} (-{calculatePercentage(price, sale_price)}%)
             </span>
           </div>
         );
       }
-      return <span>₱{price}</span>;
+      return <span>{base}</span>;
     },
   },
   {

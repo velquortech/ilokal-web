@@ -1,5 +1,66 @@
 # Changelog
 
+## 2026-07-27 — Explore: shop info (hours / contact / socials) + gallery lightbox (feat/dynamic-product-service-listing)
+
+> **One schema migration** (`20260727000006_business_public_info_rpc.sql`) —
+> **HIGH risk by nature: it opens four columns of an owner-only table to
+> anon.** Applied + red-teamed on LOCAL only. Plan kept local (not committed).
+
+- **`business_settings` was invisible to the public page.** Its only policy is
+  owner-scoped `FOR ALL`, so the explore page read *nothing* — and it would
+  have failed silently, rendering empty sections that look like "this shop has
+  no hours".
+- **Opened via an RPC, not a public SELECT policy.** The table also holds
+  `allow_reviews` and `coupon_default_expiry_days` — internal config. A broad
+  `USING (true)` read is exactly what leaked the whole follow graph
+  (`20260607000000`, dropped in `20260608000001`). With
+  `get_business_public_info` the **returned column list is the contract**: it
+  cannot over-expose, and a future column on the table stays private by
+  default. Gated on `status='verified' AND archived_at IS NULL`, so an
+  unverified or soft-deleted shop's phone number isn't reachable by id.
+- **🔴 Fixed a latent stored-XSS vector before rendering these columns.**
+  `urlOrEmpty` was `z.string().url()`, and Zod's `url()` is backed by
+  `new URL()` — which **accepts `javascript:alert(1)`** as a valid URL. It was
+  inert only because nothing rendered the links. Now: an http(s) scheme
+  allowlist in the schema **and** a render-side `safeExternalUrl()` guard
+  (rows written before the schema change, and admin edits, bypass Zod
+  entirely). Plus `safeTelHref()` — `contact_phone_public` is free text and
+  can't go into a `tel:` href raw — and `rel="noopener noreferrer"` on every
+  external link.
+- **New `BusinessInfoPanel`** on the shop page: 7-day opening hours with today
+  emphasized, an **Open now / Closed** badge, phone + website, and Facebook /
+  Instagram / TikTok links. Each block hides itself and the whole panel
+  disappears when all three are empty — a settings row only exists once the
+  owner saves, so most shops currently have nothing. `contact_website` wins
+  over `social_links.website` (the two columns hold the same idea).
+- **`lib/utils/operatingHours.ts`** — pure, and deliberately explicit about
+  two traps: **timezone** (pinned to `Asia/Manila`; the server is UTC and a
+  visiting tourist could be anywhere, so ambient zone is always wrong) and
+  **overnight spans** (`22:00–02:00` closes the *next* day — a naive
+  `open <= now < close` reports it closed all evening). `isOpenNow` returns
+  `null` for unusable hours so the UI renders no badge rather than claiming
+  "Closed".
+- **"Inside the shop" images now open.** Extracted `ImageLightbox` from
+  `Masonry` and refactored `Masonry` onto it, so there is one dialog rather
+  than two. `Masonry` itself was unusable here — it hard-returns *"Minimum 4
+  images required."* and shops routinely have 1–3 interiors. The new
+  `InteriorGallery` keeps the 4-tile grid and adds a **"+N more"** overlay that
+  opens at the first *hidden* image, so extra photos are no longer silently
+  dropped by `.slice(0, 4)`. Tiles are `<button>`s with
+  "Open photo N of M" labels; Radix restores focus on close.
+- **Tests (+59 vitest, +1 SQL suite):** URL/phone guards (27 — `javascript:`,
+  `data:`, `vbscript:`, tab/CR/LF-embedded schemes, protocol-relative, plus
+  the schema-level rejection), operating hours (19 — overnight, Sunday→Monday
+  spill, malformed times, UTC-vs-Manila boundary), gallery render (8 — opens
+  at the clicked index, overlay jumps to the first hidden image, <4 images,
+  a11y labels), profile info block (5 — degrades to `null` when the RPC
+  fails). SQL suite asserts the RPC exposes **exactly 4 columns**, returns
+  nothing for hidden businesses, and that `business_settings` gained no
+  anon-readable policy. Verified: `yarn lint` + **1505** tests +
+  `yarn build` green; "ALL PUBLIC INFO TESTS PASSED".
+- **Not done:** mobile business-detail parity for the info block (additive
+  follow-up), per-branch hours, holiday exceptions.
+
 ## 2026-07-27 — Offerings model phase 4: booking requests (feat/dynamic-product-service-listing)
 
 > **One schema migration** (`20260727000005_booking_requests.sql`) — **HIGH

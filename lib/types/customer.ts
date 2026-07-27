@@ -6,6 +6,7 @@
 
 import type { PriceType } from './product';
 import type { BookingMode } from './offering';
+import type { OperatingHours, SocialLinks } from './settings';
 
 export interface DirectoryBusiness {
   id: string;
@@ -71,6 +72,21 @@ export interface PublicCoupon {
   current_redemptions: number;
 }
 
+/**
+ * The public slice of `business_settings`, via the `get_business_public_info`
+ * RPC. Deliberately excludes `allow_reviews` / `coupon_default_expiry_days` —
+ * internal config — see the `get_business_public_info` migration.
+ *
+ * Every field is optional in practice: a settings row only exists once the
+ * owner saves the form, so most shops have none at all.
+ */
+export interface PublicBusinessInfo {
+  operating_hours: OperatingHours | null;
+  social_links: SocialLinks | null;
+  contact_website: string | null;
+  contact_phone_public: string | null;
+}
+
 export interface PublicBusinessProfile {
   id: string;
   shop_name: string;
@@ -83,6 +99,8 @@ export interface PublicBusinessProfile {
   follower_count: number;
   rating_average: number | null;
   rating_count: number;
+  /** `null` = the shop published nothing (or the read failed — both render as absent). */
+  info: PublicBusinessInfo | null;
 }
 
 export interface WalletRedemption {

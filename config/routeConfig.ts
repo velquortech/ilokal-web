@@ -50,6 +50,7 @@ export const ROUTES = {
     HOME: '/customer',
     WALLET: '/customer/wallet',
     FOLLOWING: '/customer/following',
+    BOOKINGS: '/customer/bookings',
   },
 
   // API routes

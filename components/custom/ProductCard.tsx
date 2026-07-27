@@ -3,9 +3,12 @@ import { ImageOff } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { calculatePercentage } from '@/lib/product-helper';
+import { formatOfferingPricePair } from '@/lib/utils/formatOfferingPrice';
 import type { ProductResponse } from '@/lib/types';
 
 export function ProductCard(product: ProductResponse) {
+  const { base, sale } = formatOfferingPricePair(product);
+
   return (
     <Card
       key={product.id}
@@ -42,22 +45,19 @@ export function ProductCard(product: ProductResponse) {
             {product.description}
           </p>
         )}
-        {product.sale_price !== null && product.sale_price !== undefined ? (
+        {/* `sale` is null for quote-based rows — nothing to discount. */}
+        {sale && product.price != null && product.sale_price != null ? (
           <div className="mt-auto flex items-center gap-2">
-            <span className="text-primary font-semibold">
-              ₱{product.sale_price.toLocaleString()}
-            </span>
+            <span className="text-primary font-semibold">{sale}</span>
             <span className="text-muted-foreground text-sm line-through">
-              ₱{product.price.toLocaleString()}
+              {base}
             </span>
             <Badge className="bg-primary/10 text-primary border-none text-xs">
               -{calculatePercentage(product.price, product.sale_price)}%
             </Badge>
           </div>
         ) : (
-          <p className="text-primary mt-auto font-semibold">
-            ₱{product.price.toLocaleString()}
-          </p>
+          <p className="text-primary mt-auto font-semibold">{base}</p>
         )}
       </CardContent>
     </Card>

@@ -46,3 +46,33 @@ export async function getRegistrationSettings(): Promise<RegistrationSettings> {
     ),
   };
 }
+
+/**
+ * Phase-4 booking kill switch (`enable_bookings`, default false).
+ *
+ * Fails CLOSED: an unreadable flag hides the booking UI rather than exposing a
+ * half-configured flow. The DB enforces the same flag inside
+ * `request_booking()`, so this is presentation only — hiding the button is not
+ * the security boundary.
+ */
+export async function getBookingsEnabled(): Promise<boolean> {
+  try {
+    const supabase = await createServerSupabaseClient();
+
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'enable_bookings')
+      .maybeSingle();
+
+    if (error || !data) {
+      if (error) console.error('[getBookingsEnabled]', error);
+      return false;
+    }
+
+    return data.value === true;
+  } catch (err) {
+    console.error('[getBookingsEnabled]', err);
+    return false;
+  }
+}

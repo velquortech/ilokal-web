@@ -768,6 +768,12 @@ export async function getPublicMenu(
     description: p.description ?? null,
     price: p.price,
     sale_price: p.sale_price ?? null,
+    // Carried through so a per-hour service / per-day rental renders its unit
+    // instead of a bare peso figure (see .claude/OFFERINGS_MODEL.md G1).
+    price_type: p.price_type ?? 'fixed',
+    price_unit: p.price_unit ?? null,
+    booking_mode: p.booking_mode ?? 'none',
+    duration_minutes: p.duration_minutes ?? null,
     image_url: resolveStorageUrl(supabase, 'product-images', p.image_url),
     category_name: p.category?.name ?? null,
   }));

@@ -56,12 +56,15 @@ export function ProductActions(product: ProductResponse) {
               Edit Product
             </DropdownMenuItem>
           </UpdateProductDialog>
-          <ApplySale product={product}>
-            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-              <BadgePercent />
-              Apply Sale
-            </DropdownMenuItem>
-          </ApplySale>
+          {/* Nothing to discount when the price is a quote. */}
+          {product.price_type !== 'on_request' && (
+            <ApplySale product={product}>
+              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                <BadgePercent />
+                Apply Sale
+              </DropdownMenuItem>
+            </ApplySale>
+          )}
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <Tag />

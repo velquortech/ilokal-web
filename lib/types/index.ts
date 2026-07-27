@@ -65,6 +65,16 @@ export type {
   ProductError,
 } from './product';
 
+// Offering Domain Types (product/service discriminators)
+export type { OfferingKind, OfferingMode } from './offering';
+export {
+  OFFERING_KINDS,
+  OFFERING_MODES,
+  modeAllowsProducts,
+  modeAllowsServices,
+  defaultKindForMode,
+} from './offering';
+
 // Branch Domain Types
 export type {
   Branch,

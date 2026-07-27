@@ -3,6 +3,7 @@ import type {
   ProductResponse,
   PaginatedProductsResponse,
 } from '@/lib/types';
+import { DEFAULT_OFFERING_ATTRIBUTES } from '@/lib/types/offering';
 import { mockCategory, mockCategoryClothing } from './categories.mock';
 
 export const BUSINESS_ID = 'biz-00000000-0000-0000-0000-000000000001';
@@ -13,6 +14,8 @@ export const mockProduct: Product = {
   business_id: BUSINESS_ID,
   branch_id: null,
   category_id: mockCategory.id,
+  ...DEFAULT_OFFERING_ATTRIBUTES,
+  kind: 'product',
   name: 'Flat White',
   description: 'Smooth espresso with steamed milk',
   price: 185,
@@ -34,6 +37,8 @@ export const mockProductOnSale: Product = {
   business_id: BUSINESS_ID,
   branch_id: null,
   category_id: mockCategory.id,
+  ...DEFAULT_OFFERING_ATTRIBUTES,
+  kind: 'product',
   name: 'Cappuccino',
   description: 'Classic Italian coffee',
   price: 160,
@@ -55,6 +60,8 @@ export const mockProductInactive: Product = {
   business_id: BUSINESS_ID,
   branch_id: null,
   category_id: mockCategoryClothing.id,
+  ...DEFAULT_OFFERING_ATTRIBUTES,
+  kind: 'product',
   name: 'Cotton T-Shirt',
   description: 'Basic cotton tee',
   price: 350,
@@ -76,6 +83,8 @@ export const mockProductArchived: Product = {
   business_id: BUSINESS_ID,
   branch_id: null,
   category_id: mockCategory.id,
+  ...DEFAULT_OFFERING_ATTRIBUTES,
+  kind: 'product',
   name: 'Old Brew',
   description: 'Discontinued item',
   price: 100,
@@ -97,6 +106,11 @@ export const mockProductPerHour: Product = {
   business_id: BUSINESS_ID,
   branch_id: null,
   category_id: mockCategoryClothing.id,
+  // A genuine service row: per-hour pricing, no goods changing hands.
+  ...DEFAULT_OFFERING_ATTRIBUTES,
+  kind: 'service',
+  booking_mode: 'request',
+  duration_minutes: 60,
   name: 'Sewing Lesson',
   description: 'Private tailoring lesson',
   price: 500,

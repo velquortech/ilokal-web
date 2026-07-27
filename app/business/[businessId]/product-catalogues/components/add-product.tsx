@@ -29,9 +29,15 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Category, PriceType } from '@/lib/types';
 import type {
+  BookingMode,
   OfferingAttributeField,
   ServiceLocation,
 } from '@/lib/types/offering';
+import {
+  BOOKING_MODE_LABELS,
+  PRICE_TYPE_LABELS,
+  SERVICE_LOCATION_LABELS,
+} from './offering-labels';
 import { useBusinessShop } from '@/providers/BusinessProvider';
 import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
 import {
@@ -65,6 +71,7 @@ type ProductFormValues = {
   min_duration_units: number | null;
   max_duration_units: number | null;
   service_location: ServiceLocation;
+  booking_mode: BookingMode;
 };
 
 /** Labels for the attribute inputs a profile can switch on. */
@@ -87,22 +94,6 @@ const ATTRIBUTE_LABELS: Record<
   max_duration_units: { label: 'Maximum booking length' },
 };
 
-const SERVICE_LOCATION_LABELS: Record<ServiceLocation, string> = {
-  at_business: 'At our location',
-  at_customer: 'We come to the customer',
-  both: 'Either',
-};
-
-const PRICE_TYPE_LABELS: Record<PriceType, string> = {
-  fixed: 'Fixed price',
-  from: 'Starting from',
-  per_hour: 'Per hour',
-  per_day: 'Per day',
-  per_person: 'Per person',
-  per_event: 'Per event',
-  on_request: 'Price on request (quote)',
-};
-
 export function AddProductDialog({
   children,
   categories,
@@ -113,37 +104,6 @@ export function AddProductDialog({
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
-
-  const {
-    register,
-    handleSubmit,
-    control,
-    reset,
-    watch,
-    formState: { errors },
-  } = useForm<ProductFormValues>({
-    defaultValues: {
-      name: '',
-      description: '',
-      price: null,
-      price_type: 'fixed',
-      price_unit: '',
-      category_id: undefined,
-      image: null,
-      is_available: true,
-      duration_minutes: null,
-      lead_time_minutes: null,
-      inventory_count: null,
-      capacity: null,
-      deposit_amount: null,
-      min_duration_units: null,
-      max_duration_units: null,
-      service_location: 'at_business',
-    },
-  });
-
-  const watchedPriceType = watch('price_type');
-  const isQuoteBased = watchedPriceType === 'on_request';
 
   // The vertical decides which price types are offered and which service
   // attributes appear. An empty/absent policy resolves to "all types, no
@@ -156,6 +116,48 @@ export function AddProductDialog({
     (f): f is Exclude<OfferingAttributeField, 'service_location'> =>
       f !== 'service_location',
   );
+
+  // One object for BOTH defaultValues and reset — see the reset() comment.
+  // `price_type` is picked from the allowed list rather than hardcoded to
+  // 'fixed': a profile whose allowed_price_types omits it would otherwise
+  // render a Select with no matching item (blank trigger) and submit a value
+  // the vertical disallows.
+  const emptyForm = React.useMemo<ProductFormValues>(
+    () => ({
+      name: '',
+      description: '',
+      price: null,
+      price_type: priceTypeOptions[0] ?? 'fixed',
+      price_unit: '',
+      category_id: undefined,
+      image: null,
+      is_available: true,
+      duration_minutes: null,
+      lead_time_minutes: null,
+      inventory_count: null,
+      capacity: null,
+      deposit_amount: null,
+      min_duration_units: null,
+      max_duration_units: null,
+      service_location: 'at_business',
+      booking_mode: vocabulary.defaultBookingMode,
+    }),
+    [priceTypeOptions, vocabulary.defaultBookingMode],
+  );
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<ProductFormValues>({
+    defaultValues: emptyForm,
+  });
+
+  const watchedPriceType = watch('price_type');
+  const isQuoteBased = watchedPriceType === 'on_request';
 
   const onSubmit = async (data: ProductFormValues) => {
     setIsSubmitting(true);
@@ -195,7 +197,9 @@ export function AddProductDialog({
         // an omitted field from a deliberate one, so a services business would
         // otherwise keep minting products (the phase-1 decay).
         kind: vocabulary.defaultKind,
-        booking_mode: vocabulary.defaultBookingMode,
+        // From the form (seeded with the vertical's default), not straight
+        // from the profile — see BOOKING_MODE_LABELS.
+        booking_mode: data.booking_mode,
         // Only the attributes this vertical actually renders are sent; the
         // rest stay NULL rather than shipping stale form state.
         ...Object.fromEntries(
@@ -232,15 +236,11 @@ export function AddProductDialog({
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
-      reset({
-        name: '',
-        description: '',
-        price_type: 'fixed',
-        price_unit: '',
-        category_id: undefined,
-        image: null,
-        is_available: true,
-      });
+      // Same object as defaultValues. RHF's reset(values) REPLACES the whole
+      // value set, so a partial literal here silently dropped the service
+      // attributes — `service_location` became undefined and its Radix Select
+      // flipped controlled → uncontrolled on the second open.
+      reset(emptyForm);
       setServerError(null);
     }
   };
@@ -405,6 +405,34 @@ export function AddProductDialog({
                 <p className="text-sm font-medium">
                   {vocabulary.singular} details
                 </p>
+
+                <Field>
+                  <FieldLabel>How do customers book this?</FieldLabel>
+                  <Controller
+                    control={control}
+                    name="booking_mode"
+                    render={({ field }) => (
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(
+                            Object.keys(BOOKING_MODE_LABELS) as BookingMode[]
+                          ).map((mode) => (
+                            <SelectItem key={mode} value={mode}>
+                              {BOOKING_MODE_LABELS[mode]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </Field>
+
                 <div className="grid grid-cols-2 gap-4">
                   {numericAttributes.map((field) => (
                     <Field key={field}>

@@ -32,8 +32,11 @@ const ALLOWED_PROTOCOLS = new Set(['http:', 'https:']);
  * Callers render nothing when this returns null — a shop with a malformed
  * link shows no link, never a broken or dangerous one.
  */
-export function safeExternalUrl(raw: string | null | undefined): string | null {
-  if (!raw) return null;
+export function safeExternalUrl(raw: unknown): string | null {
+  // `social_links` is untyped JSONB — an admin or a direct PostgREST write can
+  // store `{"facebook": 12}`, and `.trim()` on that would throw and crash the
+  // server-rendered public shop page.
+  if (typeof raw !== 'string' || !raw) return null;
 
   const value = raw.trim();
   if (!value || FORBIDDEN_CHARS.test(value)) return null;
@@ -60,7 +63,7 @@ export function safeExternalUrl(raw: string | null | undefined): string | null {
 }
 
 /** Host without `www.`, for compact display ("ilokal.shop"). */
-export function displayUrlLabel(raw: string | null | undefined): string | null {
+export function displayUrlLabel(raw: unknown): string | null {
   const safe = safeExternalUrl(raw);
   if (!safe) return null;
   try {
@@ -75,8 +78,8 @@ export function displayUrlLabel(raw: string | null | undefined): string | null {
  * `tel:` href as-is. Keep digits and a single leading `+`; require enough
  * digits to be a real number.
  */
-export function safeTelHref(raw: string | null | undefined): string | null {
-  if (!raw) return null;
+export function safeTelHref(raw: unknown): string | null {
+  if (typeof raw !== 'string' || !raw) return null;
 
   const value = raw.trim();
   if (!value) return null;

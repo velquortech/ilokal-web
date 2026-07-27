@@ -98,30 +98,30 @@ CREATE POLICY "Owners read bookings for their business"
        AND b.owner_id = (select auth.uid())
   ));
 
--- Customers may only ever move their own booking to 'cancelled'; every other
--- transition is the owner's. Enforced here as well as in the RPC, because
--- PostgREST is reachable directly.
-CREATE POLICY "Users cancel own bookings"
-  ON public.booking_requests FOR UPDATE
-  USING ((select auth.uid()) = user_id)
-  WITH CHECK ((select auth.uid()) = user_id AND status = 'cancelled');
-
-CREATE POLICY "Owners update bookings for their business"
-  ON public.booking_requests FOR UPDATE
-  USING (EXISTS (
-    SELECT 1 FROM public.businesses b
-     WHERE b.id = booking_requests.business_id
-       AND b.owner_id = (select auth.uid())
-  ));
-
 CREATE POLICY "Admins manage all bookings"
   ON public.booking_requests FOR ALL
-  USING (public.is_admin())
-  WITH CHECK (public.is_admin());
+  USING ((select public.is_admin()))
+  WITH CHECK ((select public.is_admin()));
 
--- No INSERT policy on purpose: inserts must go through request_booking(),
--- which is where the availability check and the gate matrix live. A direct
--- PostgREST insert is denied.
+-- ------------------------------------------------------------
+-- NO INSERT AND NO UPDATE POLICY FOR NON-ADMINS — deliberate.
+--
+-- Every mutation goes through request_booking / decide_booking /
+-- cancel_booking, which are SECURITY DEFINER and therefore bypass RLS anyway.
+-- A permissive UPDATE policy adds nothing those functions need and opens a
+-- direct-PostgREST write surface that skips the whole state machine:
+--
+--   * an owner-scoped UPDATE policy without WITH CHECK reuses its USING
+--     clause, which only proves business ownership — so a PATCH could rewrite
+--     user_id / product_id / starts_at, or reset a decided booking to
+--     'pending' to get a second decision.
+--   * a customer-scoped "may set status='cancelled'" policy still lets a
+--     completed / no_show row be flipped to cancelled (erasing a no-show) and
+--     lets quoted_amount / decision_note be rewritten in the same statement.
+--
+-- Writes are the RPCs' job; SELECT policies below are what the list queries
+-- actually need.
+-- ------------------------------------------------------------
 
 -- ------------------------------------------------------------
 -- Notification types
@@ -170,7 +170,7 @@ BEGIN
   END IF;
 
   IF NOT public.get_app_setting_bool('enable_bookings', false) THEN
-    RAISE EXCEPTION 'bookings are not enabled' USING ERRCODE = '22023';
+    RAISE EXCEPTION 'bookings are not enabled' USING ERRCODE = 'IL001';
   END IF;
 
   SELECT p.*, b.status AS business_status, b.archived_at AS business_archived_at
@@ -192,34 +192,43 @@ BEGIN
   END IF;
 
   IF v_product.booking_mode = 'none' THEN
-    RAISE EXCEPTION 'this offering cannot be booked' USING ERRCODE = '22023';
+    RAISE EXCEPTION 'this offering cannot be booked' USING ERRCODE = 'IL001';
   END IF;
 
   IF p_starts_at <= now() THEN
-    RAISE EXCEPTION 'booking must start in the future' USING ERRCODE = '22023';
+    RAISE EXCEPTION 'booking must start in the future' USING ERRCODE = 'IL001';
   END IF;
 
   IF v_product.lead_time_minutes IS NOT NULL
      AND p_starts_at < now() + make_interval(mins => v_product.lead_time_minutes) THEN
-    RAISE EXCEPTION 'this offering needs more notice' USING ERRCODE = '22023';
+    RAISE EXCEPTION 'this offering needs more notice' USING ERRCODE = 'IL001';
   END IF;
 
   -- A point-in-time booking derives its end from the offering's duration, so
-  -- the overlap maths below has a window either way.
+  -- the overlap maths below always has a window.
+  --
+  -- The final COALESCE matters: without it, an offering that has
+  -- `inventory_count` but no `duration_minutes` could skip the availability
+  -- check entirely just by omitting p_ends_at, and its stored NULL end would
+  -- make tstzrange(starts, starts) an EMPTY range that never overlaps
+  -- anything — so those rows would never count against the cap either.
   v_end := COALESCE(
     p_ends_at,
     CASE WHEN v_product.duration_minutes IS NOT NULL
          THEN p_starts_at + make_interval(mins => v_product.duration_minutes)
+    END,
+    CASE WHEN v_product.inventory_count IS NOT NULL
+         THEN p_starts_at + interval '1 hour'
     END
   );
 
   IF v_end IS NOT NULL AND v_end <= p_starts_at THEN
-    RAISE EXCEPTION 'booking must end after it starts' USING ERRCODE = '22023';
+    RAISE EXCEPTION 'booking must end after it starts' USING ERRCODE = 'IL001';
   END IF;
 
   IF p_party_size IS NOT NULL AND v_product.capacity IS NOT NULL
      AND p_party_size > v_product.capacity THEN
-    RAISE EXCEPTION 'party size exceeds capacity' USING ERRCODE = '22023';
+    RAISE EXCEPTION 'party size exceeds capacity' USING ERRCODE = 'IL001';
   END IF;
 
   -- The branch must belong to the offering's business (mirrors the redeem
@@ -228,31 +237,57 @@ BEGIN
     SELECT 1 FROM public.branches
      WHERE id = p_branch_id AND business_id = v_product.business_id
   ) THEN
-    RAISE EXCEPTION 'branch does not belong to this business' USING ERRCODE = '22023';
+    RAISE EXCEPTION 'branch does not belong to this business' USING ERRCODE = 'IL001';
   END IF;
 
   IF v_product.branch_id IS NOT NULL
      AND p_branch_id IS DISTINCT FROM v_product.branch_id THEN
     RAISE EXCEPTION 'this offering is only available at its own branch'
-      USING ERRCODE = '22023';
+      USING ERRCODE = 'IL001';
   END IF;
 
   -- ── Availability ────────────────────────────────────────────────────────
   -- Serialize concurrent requests for the SAME offering. Transaction-scoped,
   -- so it releases on commit/rollback without any explicit unlock.
-  IF v_product.inventory_count IS NOT NULL AND v_end IS NOT NULL THEN
+  -- v_end is guaranteed non-null whenever inventory_count is set (see above),
+  -- so a capped offering can never take the unguarded path.
+  IF v_product.inventory_count IS NOT NULL THEN
     PERFORM pg_advisory_xact_lock(hashtextextended(p_product_id::text, 0));
 
     SELECT count(*) INTO v_taken
       FROM public.booking_requests br
      WHERE br.product_id = p_product_id
        AND br.status IN ('pending','confirmed')
-       AND tstzrange(br.starts_at, COALESCE(br.ends_at, br.starts_at), '[)')
+       -- A legacy NULL end would make an EMPTY range; give it the same
+       -- one-hour floor so it still occupies a slot.
+       AND tstzrange(
+             br.starts_at,
+             COALESCE(br.ends_at, br.starts_at + interval '1 hour'),
+             '[)')
            && tstzrange(p_starts_at, v_end, '[)');
 
     IF v_taken >= v_product.inventory_count THEN
-      RAISE EXCEPTION 'no availability for those dates' USING ERRCODE = '23505';
+      RAISE EXCEPTION 'no availability for those dates' USING ERRCODE = 'IL002';
     END IF;
+  END IF;
+
+  -- Active-dupe guard (mirrors the coupon redeem route's rule). The Server
+  -- Action applies a per-user rate limit, but this RPC is granted directly to
+  -- `authenticated` — a client calling /rest/v1/rpc/request_booking with its
+  -- own JWT bypasses that limiter entirely. Without this, one user could mint
+  -- unbounded pending rows and an owner notification for each.
+  IF EXISTS (
+    SELECT 1 FROM public.booking_requests br
+     WHERE br.user_id = v_user
+       AND br.product_id = p_product_id
+       AND br.status IN ('pending','confirmed')
+       AND tstzrange(
+             br.starts_at,
+             COALESCE(br.ends_at, br.starts_at + interval '1 hour'),
+             '[)')
+           && tstzrange(p_starts_at, COALESCE(v_end, p_starts_at + interval '1 hour'), '[)')
+  ) THEN
+    RAISE EXCEPTION 'you already have a request for this time' USING ERRCODE = 'IL001';
   END IF;
 
   INSERT INTO public.booking_requests (
@@ -317,7 +352,7 @@ BEGIN
   END IF;
 
   IF p_status NOT IN ('confirmed','declined','completed','no_show') THEN
-    RAISE EXCEPTION 'invalid decision' USING ERRCODE = '22023';
+    RAISE EXCEPTION 'invalid decision' USING ERRCODE = 'IL001';
   END IF;
 
   SELECT br.* INTO v_booking
@@ -334,15 +369,15 @@ BEGIN
   -- A cancelled or already-decided booking is not re-decidable; confirming a
   -- booking the customer withdrew would be a real double-booking.
   IF v_booking.status = 'cancelled' THEN
-    RAISE EXCEPTION 'this booking was cancelled by the customer' USING ERRCODE = '22023';
+    RAISE EXCEPTION 'this booking was cancelled by the customer' USING ERRCODE = 'IL001';
   END IF;
 
   IF p_status IN ('confirmed','declined') AND v_booking.status <> 'pending' THEN
-    RAISE EXCEPTION 'this booking has already been decided' USING ERRCODE = '22023';
+    RAISE EXCEPTION 'this booking has already been decided' USING ERRCODE = 'IL001';
   END IF;
 
   IF p_status IN ('completed','no_show') AND v_booking.status <> 'confirmed' THEN
-    RAISE EXCEPTION 'only a confirmed booking can be closed out' USING ERRCODE = '22023';
+    RAISE EXCEPTION 'only a confirmed booking can be closed out' USING ERRCODE = 'IL001';
   END IF;
 
   UPDATE public.booking_requests
@@ -410,7 +445,7 @@ BEGIN
   END IF;
 
   IF v_booking.status NOT IN ('pending','confirmed') THEN
-    RAISE EXCEPTION 'this booking can no longer be cancelled' USING ERRCODE = '22023';
+    RAISE EXCEPTION 'this booking can no longer be cancelled' USING ERRCODE = 'IL001';
   END IF;
 
   UPDATE public.booking_requests

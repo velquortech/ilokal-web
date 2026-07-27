@@ -4,20 +4,21 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BookOfferingDialog } from './book-offering-dialog';
 import { formatOfferingPricePair } from '@/lib/utils/formatOfferingPrice';
-import type { PublicProduct } from '@/lib/types';
+import type { PublicBranch, PublicProduct } from '@/lib/types';
 
 export function ProductCard({
   product,
   bookingsEnabled = false,
   canBook = false,
-  branchId = null,
+  branches = [],
 }: {
   product: PublicProduct;
   /** Platform kill switch (`app_settings.enable_bookings`). */
   bookingsEnabled?: boolean;
   /** False for anon visitors, owners, and admins — matching FollowButton. */
   canBook?: boolean;
-  branchId?: string | null;
+  /** All the shop's branches; the dialog lets the customer pick. */
+  branches?: PublicBranch[];
 }) {
   const onSale = product.sale_price != null;
   const { base, sale } = formatOfferingPricePair(product);
@@ -60,7 +61,7 @@ export function ProductCard({
         {bookable && canBook && (
           <BookOfferingDialog
             product={product}
-            branchId={branchId}
+            branches={branches}
             needsRange={product.booking_mode === 'date_range'}
           >
             <Button size="sm" variant="outline" className="mt-2 h-7 text-xs">

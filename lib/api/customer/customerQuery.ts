@@ -800,6 +800,7 @@ export async function getPublicMenu(
     price_unit: p.price_unit ?? null,
     booking_mode: p.booking_mode ?? 'none',
     duration_minutes: p.duration_minutes ?? null,
+    branch_id: p.branch_id ?? null,
     image_url: resolveStorageUrl(supabase, 'product-images', p.image_url),
     category_name: p.category?.name ?? null,
   }));

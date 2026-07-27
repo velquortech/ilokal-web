@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  CalendarClock,
   Compass,
   Home,
   Loader2,
@@ -56,7 +57,14 @@ const NAV_LINKS = [
  * there is a session this app header takes over: customers get
  * wallet/following + sign-out, owners/admins a link back to their portal.
  */
-export function CustomerHeader({ user }: { user: CustomerHeaderUser | null }) {
+export function CustomerHeader({
+  user,
+  bookingsEnabled = false,
+}: {
+  user: CustomerHeaderUser | null;
+  /** `app_settings.enable_bookings` — resolved server-side by the layout. */
+  bookingsEnabled?: boolean;
+}) {
   const pathname = usePathname();
   const { logout, isLoggingOut } = useAuth();
 
@@ -162,6 +170,17 @@ export function CustomerHeader({ user }: { user: CustomerHeaderUser | null }) {
                       My wallet
                     </Link>
                   </DropdownMenuItem>
+                  {/* Only rendered when bookings are switched on — the route
+                      404s while the flag is off, so advertising it would be a
+                      dead end. */}
+                  {bookingsEnabled && (
+                    <DropdownMenuItem asChild>
+                      <Link href={ROUTES.CUSTOMER.BOOKINGS}>
+                        <CalendarClock className="h-4 w-4" />
+                        My bookings
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem asChild>
                     <Link href={ROUTES.CUSTOMER.FOLLOWING}>
                       <UserRound className="h-4 w-4" />

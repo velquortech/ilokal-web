@@ -38,14 +38,16 @@ function mapBookingError(error: PgError): {
         code: 'NOT_FOUND',
         message: 'That booking is no longer available.',
       };
-    case '23505':
+    // Private SQLSTATE class — only the booking RPCs raise IL0xx, so a message
+    // carrying one is provably ours and safe to surface. Forwarding a generic
+    // code like 22023 would also forward a built-in's internal message (e.g.
+    // make_interval on an out-of-range value).
+    case 'IL002':
       return {
         code: 'NO_AVAILABILITY',
         message: 'That slot was just taken. Please pick another time.',
       };
-    case '22023':
-      // The RPC's own validation messages are written for end users and carry
-      // no schema detail, so they are safe to surface verbatim.
+    case 'IL001':
       return {
         code: 'INVALID_REQUEST',
         message: error.message?.trim()

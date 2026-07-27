@@ -55,6 +55,9 @@ export async function getRegistrationSettings(): Promise<RegistrationSettings> {
  * `request_booking()`, so this is presentation only — hiding the button is not
  * the security boundary.
  */
+// NOT React.cache()-wrapped: this module is `'use server'`, where every export
+// must be a plain async function — wrapping it collapses the inferred type at
+// call sites. The duplicate read per request is one tiny indexed lookup.
 export async function getBookingsEnabled(): Promise<boolean> {
   try {
     const supabase = await createServerSupabaseClient();

@@ -227,7 +227,7 @@ export default async function PublicBusinessPage({
                       // Owners/admins/anon don't get a booking CTA, matching
                       // how FollowButton and Redeem are gated.
                       canBook={isCustomer === true}
-                      branchId={business.branches?.[0]?.id ?? null}
+                      branches={business.branches}
                     />
                   ))}
                 </div>

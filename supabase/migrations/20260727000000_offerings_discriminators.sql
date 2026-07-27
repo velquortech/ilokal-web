@@ -92,6 +92,8 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
+DECLARE
+  v_type_name TEXT;
 BEGIN
   IF NEW.category_id IS NULL THEN
     NEW.business_type_id := NULL;
@@ -100,6 +102,28 @@ BEGIN
       FROM public.business_categories bc
      WHERE bc.id = NEW.category_id;
   END IF;
+
+  -- Seed offering_mode from the vertical ON INSERT ONLY.
+  --
+  -- The one-time backfill below covers existing rows, but without this every
+  -- business registered AFTER this migration would be stuck on the 'products'
+  -- column default — a salon signing up post-merge would get retail vocabulary
+  -- with no way to change it (there is no owner-facing control yet).
+  --
+  -- Deliberately not applied on UPDATE: once an owner (or admin) sets a mode,
+  -- changing category must not silently overwrite their choice.
+  IF TG_OP = 'INSERT' AND NEW.business_type_id IS NOT NULL THEN
+    SELECT bt.name INTO v_type_name
+      FROM public.business_types bt
+     WHERE bt.id = NEW.business_type_id;
+
+    NEW.offering_mode := CASE v_type_name
+      WHEN 'Services'          THEN 'services'
+      WHEN 'Tourism & Leisure' THEN 'both'
+      ELSE NEW.offering_mode
+    END;
+  END IF;
+
   RETURN NEW;
 END;
 $$;
@@ -111,6 +135,16 @@ CREATE TRIGGER trg_businesses_sync_business_type
   BEFORE INSERT OR UPDATE OF category_id ON public.businesses
   FOR EACH ROW
   EXECUTE FUNCTION public.sync_business_type_id();
+
+-- ENABLE ALWAYS, not the default origin-only mode: the seeds run under
+-- `session_replication_role = replica` (to bypass the auth.users FK), which
+-- SKIPS normal triggers. Without this every seeded business would land with
+-- business_type_id = NULL after `make migrate-reset` — the migration's
+-- backfill runs before the seed — silently reverting every seeded shop to
+-- retail vocabulary and making the feature untestable locally. Same gotcha as
+-- trg_set_redemption_code (see CLAUDE.md).
+ALTER TABLE public.businesses
+  ENABLE ALWAYS TRIGGER trg_businesses_sync_business_type;
 
 -- ------------------------------------------------------------
 -- Seed offering_mode from the business type.

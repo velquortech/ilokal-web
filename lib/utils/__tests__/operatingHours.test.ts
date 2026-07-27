@@ -3,6 +3,7 @@ import {
   formatOperatingHours,
   hasOperatingHours,
   isOpenNow,
+  shopLocalDayKey,
 } from '@/lib/utils/operatingHours';
 import type { DayKey, OperatingHours } from '@/lib/types';
 
@@ -155,6 +156,15 @@ describe('isOpenNow — overnight ranges', () => {
     const sundayBar = week({ sun: { open: '20:00', close: '01:00' } });
     // Monday 2026-08-03, 00:30 local — still Sunday's session.
     expect(isOpenNow(sundayBar, manila('2026-08-03T00:30'))).toBe(true);
+  });
+});
+
+describe('shopLocalDayKey', () => {
+  it('answers in shop-local time, not the server zone', () => {
+    // 2026-07-27T22:00Z is already TUESDAY in Manila (+8) while still Monday
+    // in UTC — `new Date().getDay()` would highlight the wrong row.
+    expect(shopLocalDayKey(new Date('2026-07-27T22:00:00Z'))).toBe('tue');
+    expect(shopLocalDayKey(new Date('2026-07-27T02:00:00Z'))).toBe('mon');
   });
 });
 

@@ -7,6 +7,8 @@ import { CalendarClock, Check, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { PaginationBar } from '@/components/customer/PaginationBar';
 import { StatCard } from '@/components/custom/StatCard';
 import {
   Select,
@@ -16,7 +18,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { decideBookingAction } from '../../actions/bookingActions';
+import type { BookingStats } from '@/lib/api/bookings/bookingQuery';
 import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
+import { BUSINESS_TIME_ZONE } from '@/lib/utils/operatingHours';
 import {
   BOOKING_STATUSES,
   type BookingDecision,
@@ -33,21 +37,41 @@ const STATUS_TONE: Record<BookingStatus, string> = {
   no_show: 'bg-destructive/10 text-destructive border-destructive/20',
 };
 
+/**
+ * Appointment times are shop-local, always.
+ *
+ * Without an explicit `timeZone` these render in the AMBIENT zone — UTC during
+ * SSR on Vercel, the device zone after hydration — so every row mismatches on
+ * hydration and an owner travelling abroad sees times 8h out.
+ */
+const TIME_OPTS: Intl.DateTimeFormatOptions = {
+  month: 'short',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+  timeZone: BUSINESS_TIME_ZONE,
+};
+
+const CLOCK_OPTS: Intl.DateTimeFormatOptions = {
+  hour: 'numeric',
+  minute: '2-digit',
+  timeZone: BUSINESS_TIME_ZONE,
+};
+
+/** Shop-local calendar day, for deciding whether to repeat the date. */
+function shopLocalDate(value: Date): string {
+  return value.toLocaleDateString('en-PH', { timeZone: BUSINESS_TIME_ZONE });
+}
+
 function formatWindow(startsAt: string, endsAt: string | null): string {
   const start = new Date(startsAt);
-  const opts: Intl.DateTimeFormatOptions = {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  };
-  if (!endsAt) return start.toLocaleString('en-PH', opts);
+  if (!endsAt) return start.toLocaleString('en-PH', TIME_OPTS);
 
   const end = new Date(endsAt);
-  const sameDay = start.toDateString() === end.toDateString();
+  const sameDay = shopLocalDate(start) === shopLocalDate(end);
   return sameDay
-    ? `${start.toLocaleString('en-PH', opts)} – ${end.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}`
-    : `${start.toLocaleString('en-PH', opts)} → ${end.toLocaleString('en-PH', opts)}`;
+    ? `${start.toLocaleString('en-PH', TIME_OPTS)} – ${end.toLocaleTimeString('en-PH', CLOCK_OPTS)}`
+    : `${start.toLocaleString('en-PH', TIME_OPTS)} → ${end.toLocaleString('en-PH', TIME_OPTS)}`;
 }
 
 interface Props {
@@ -59,12 +83,7 @@ interface Props {
     per_page: number;
     total_pages: number;
   };
-  stats: {
-    pending: number;
-    confirmed: number;
-    upcoming: number;
-    total: number;
-  };
+  stats: BookingStats;
   failed: boolean;
 }
 
@@ -79,6 +98,23 @@ export function BookingsContent({
   const searchParams = useSearchParams();
   const vocabulary = useOfferingVocabulary();
   const [pendingId, setPendingId] = React.useState<string | null>(null);
+  // Per-row decision drafts, keyed by booking id so typing in one row can't
+  // bleed into another.
+  const [drafts, setDrafts] = React.useState<
+    Record<string, { quote?: string; note?: string }>
+  >({});
+
+  const setDraft = (id: string, patch: { quote?: string; note?: string }) =>
+    setDrafts((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+
+  const draftFor = (id: string) => {
+    const draft = drafts[id];
+    const parsed = draft?.quote ? Number(draft.quote) : NaN;
+    return {
+      note: draft?.note?.trim() || null,
+      quotedAmount: Number.isFinite(parsed) && parsed >= 0 ? parsed : null,
+    };
+  };
 
   const status = searchParams.get('status') ?? '';
 
@@ -90,12 +126,21 @@ export function BookingsContent({
     router.push(`?${params.toString()}`);
   };
 
-  const decide = async (bookingId: string, decision: BookingDecision) => {
+  const decide = async (
+    bookingId: string,
+    decision: BookingDecision,
+    options: { note?: string | null; quotedAmount?: number | null } = {},
+  ) => {
     setPendingId(bookingId);
     const toastId = `booking-${bookingId}`;
     toast.loading('Updating booking…', { id: toastId });
     try {
-      const result = await decideBookingAction(businessId, bookingId, decision);
+      const result = await decideBookingAction(
+        businessId,
+        bookingId,
+        decision,
+        options,
+      );
       if (!result.ok) {
         toast.error(result.message, { id: toastId });
         return;
@@ -105,6 +150,11 @@ export function BookingsContent({
         { id: toastId },
       );
       router.refresh();
+    } catch (err) {
+      // Without this a rejected Server Action is an unhandled rejection and
+      // the loading toast never resolves.
+      console.error('[decideBooking]', err);
+      toast.error('Something went wrong — please try again.', { id: toastId });
     } finally {
       setPendingId(null);
     }
@@ -119,19 +169,24 @@ export function BookingsContent({
         </span>
       </div>
 
+      {/* A failed count would otherwise read as a real zero — misleading next
+          to a list that is itself reporting an outage. */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard
-          title="Awaiting reply"
-          icon={CalendarClock}
-          value={stats.pending}
-        />
-        <StatCard title="Confirmed" icon={Check} value={stats.confirmed} />
-        <StatCard
-          title="Upcoming"
-          icon={CalendarClock}
-          value={stats.upcoming}
-        />
-        <StatCard title="All time" icon={CalendarClock} value={stats.total} />
+        {(
+          [
+            ['Awaiting reply', stats.pending, CalendarClock],
+            ['Confirmed', stats.confirmed, Check],
+            ['Upcoming', stats.upcoming, CalendarClock],
+            ['All time', stats.total, CalendarClock],
+          ] as const
+        ).map(([title, value, icon]) => (
+          <StatCard
+            key={title}
+            title={title}
+            icon={icon}
+            value={stats.failed ? '—' : value}
+          />
+        ))}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -196,32 +251,67 @@ export function BookingsContent({
                   </div>
 
                   {booking.status === 'pending' && (
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={busy}
-                        onClick={() => decide(booking.id, 'declined')}
-                      >
-                        {busy ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <X className="size-4" />
-                        )}
-                        Decline
-                      </Button>
-                      <Button
-                        size="sm"
-                        disabled={busy}
-                        onClick={() => decide(booking.id, 'confirmed')}
-                      >
-                        {busy ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <Check className="size-4" />
-                        )}
-                        Confirm
-                      </Button>
+                    <div className="flex w-full flex-col gap-2 sm:w-auto">
+                      {/* Quoting is the whole point of an `on_request`
+                          offering, and a decline the customer can't interpret
+                          is worse than none. Both surface on the customer's
+                          bookings page, which already renders them. */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          placeholder="Quote ₱ (optional)"
+                          className="h-8 w-36 text-sm"
+                          value={drafts[booking.id]?.quote ?? ''}
+                          onChange={(e) =>
+                            setDraft(booking.id, { quote: e.target.value })
+                          }
+                        />
+                        <Input
+                          placeholder="Note to customer (optional)"
+                          className="h-8 w-52 text-sm"
+                          value={drafts[booking.id]?.note ?? ''}
+                          onChange={(e) =>
+                            setDraft(booking.id, { note: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy}
+                          onClick={() =>
+                            decide(booking.id, 'declined', draftFor(booking.id))
+                          }
+                        >
+                          {busy ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <X className="size-4" />
+                          )}
+                          Decline
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={busy}
+                          onClick={() =>
+                            decide(
+                              booking.id,
+                              'confirmed',
+                              draftFor(booking.id),
+                            )
+                          }
+                        >
+                          {busy ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <Check className="size-4" />
+                          )}
+                          Confirm
+                        </Button>
+                      </div>
                     </div>
                   )}
 
@@ -245,12 +335,9 @@ export function BookingsContent({
         </div>
       )}
 
-      {metadata.total_pages > 1 && (
-        <p className="text-muted-foreground text-xs">
-          Page {metadata.page} of {metadata.total_pages} · {metadata.total}{' '}
-          total
-        </p>
-      )}
+      {/* Real controls, not just a counter — nothing else writes ?page=, so
+          without this every booking past the first page is unreachable. */}
+      <PaginationBar metadata={metadata} noun="booking" />
     </div>
   );
 }

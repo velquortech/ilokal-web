@@ -17,7 +17,9 @@ import {
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import { getOfferingVocabulary } from '@/lib/api/offerings/offeringQuery';
 import { getBookingsEnabled } from '@/lib/api/appSettings';
+import { BusinessInfoPanel } from './components/business-info-panel';
 import { CouponCard } from './components/coupon-card';
+import { InteriorGallery } from './components/interior-gallery';
 import { ProductCard } from './components/product-card';
 import type { PublicProduct } from '@/lib/types';
 
@@ -264,29 +266,15 @@ export default async function PublicBusinessPage({
             </ul>
           </section>
 
-          {business.interior_images.length > 0 && (
-            <section className="space-y-3">
-              <h2 className="text-lg font-semibold tracking-tight">
-                Inside the shop
-              </h2>
-              <div className="grid grid-cols-2 gap-2">
-                {business.interior_images.slice(0, 4).map((src, i) => (
-                  <div
-                    key={src}
-                    className="bg-muted relative aspect-square overflow-hidden rounded-lg"
-                  >
-                    <Image
-                      src={src}
-                      alt={`${business.shop_name} interior ${i + 1}`}
-                      fill
-                      sizes="(max-width: 1024px) 50vw, 200px"
-                      className="object-cover"
-                    />
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+          <InteriorGallery
+            images={business.interior_images}
+            shopName={business.shop_name}
+          />
+
+          {/* Hours / contact / socials. Renders nothing when the shop has
+              published none of them — a settings row only exists once the
+              owner saves. */}
+          <BusinessInfoPanel info={business.info} />
         </div>
       </div>
     </div>

@@ -298,6 +298,7 @@ export type {
   PublicBranch,
   PublicProduct,
   PublicCoupon,
+  PublicBusinessInfo,
   PublicBusinessProfile,
   WalletRedemption,
   WalletFilter,

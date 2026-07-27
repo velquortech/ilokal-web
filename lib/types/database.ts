@@ -1992,6 +1992,15 @@ export type Database = {
         Args: { p_default: boolean; p_key: string }
         Returns: boolean
       }
+      get_business_public_info: {
+        Args: { p_business_id: string }
+        Returns: {
+          contact_phone_public: string
+          contact_website: string
+          operating_hours: Json
+          social_links: Json
+        }[]
+      }
       get_business_rating_summary: {
         Args: { p_business_ids: string[] }
         Returns: {

@@ -43,9 +43,27 @@ export type UpdateNotificationPreferencesInput = z.infer<
   typeof updateNotificationPreferencesSchema
 >;
 
+/**
+ * `z.url()` alone is NOT enough: it is backed by `new URL()`, which accepts
+ * `javascript:alert(1)` as a valid URL. These columns are rendered as links on
+ * the public shop page, so an unrestricted scheme is stored XSS. Restrict to
+ * http(s) here, and keep the render-side `safeExternalUrl` guard for rows
+ * written before this rule (and for admin edits that bypass Zod).
+ */
 const urlOrEmpty = z
   .string()
   .url('Must be a valid URL')
+  .refine(
+    (value) => {
+      try {
+        const { protocol } = new URL(value);
+        return protocol === 'http:' || protocol === 'https:';
+      } catch {
+        return false;
+      }
+    },
+    { message: 'Link must start with http:// or https://' },
+  )
   .optional()
   .or(z.literal(''))
   .or(z.null())

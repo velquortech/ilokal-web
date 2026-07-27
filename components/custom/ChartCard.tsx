@@ -39,7 +39,15 @@ export function ChartCard({
         </div>
         {headerAction}
       </CardHeader>
-      <CardContent>{children}</CardContent>
+      {/*
+        `flex-1 min-h-0` so a chart can opt into filling the card with
+        `h-full`. Cards in a grid row stretch to the tallest sibling, and a
+        fixed-height chart left that extra space empty. Charts that keep a
+        fixed height are unaffected — the content box just grows around them.
+      */}
+      <CardContent className="flex min-h-0 flex-1 flex-col">
+        {children}
+      </CardContent>
     </Card>
   );
 }

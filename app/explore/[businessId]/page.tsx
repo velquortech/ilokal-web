@@ -15,7 +15,11 @@ import {
   isFollowingBusiness,
 } from '@/lib/api/customer/customerQuery';
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
+import { getOfferingVocabulary } from '@/lib/api/offerings/offeringQuery';
+import { getBookingsEnabled } from '@/lib/api/appSettings';
+import { BusinessInfoPanel } from './components/business-info-panel';
 import { CouponCard } from './components/coupon-card';
+import { InteriorGallery } from './components/interior-gallery';
 import { ProductCard } from './components/product-card';
 import type { PublicProduct } from '@/lib/types';
 
@@ -72,10 +76,19 @@ export default async function PublicBusinessPage({
 
   const isCustomer = user ? user.role === 'app_user' : null;
 
-  const [productsResult, couponsResult, following] = await Promise.all([
+  const [
+    productsResult,
+    couponsResult,
+    following,
+    vocabulary,
+    bookingsEnabled,
+  ] = await Promise.all([
     getPublicMenu(business.id, menuPage, 8),
     getPublicCoupons(business.id),
     user && isCustomer ? isFollowingBusiness(user.id, business.id) : false,
+    // A salon's public page should read "Service Menu", not "Menu".
+    getOfferingVocabulary(business.id),
+    getBookingsEnabled(),
   ]);
 
   const products =
@@ -192,20 +205,30 @@ export default async function PublicBusinessPage({
             )}
           </section>
 
-          {/* Menu / products */}
+          {/* Menu / products / services — heading follows the vertical */}
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold tracking-tight">Menu</h2>
+            <h2 className="text-lg font-semibold tracking-tight">
+              {vocabulary.catalogue}
+            </h2>
             {products.products.length === 0 ? (
               <p className="text-muted-foreground rounded-xl border border-dashed p-6 text-center text-sm">
                 {menuFailed
-                  ? 'Couldn’t load the menu right now — please refresh to try again.'
-                  : "This shop hasn't published its menu yet."}
+                  ? `Couldn’t load the ${vocabulary.plural.toLowerCase()} right now — please refresh to try again.`
+                  : `This shop hasn't published its ${vocabulary.plural.toLowerCase()} yet.`}
               </p>
             ) : (
               <>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {products.products.map((product) => (
-                    <ProductCard key={product.id} product={product} />
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      bookingsEnabled={bookingsEnabled}
+                      // Owners/admins/anon don't get a booking CTA, matching
+                      // how FollowButton and Redeem are gated.
+                      canBook={isCustomer === true}
+                      branches={business.branches}
+                    />
                   ))}
                 </div>
                 <PaginationBar
@@ -243,29 +266,15 @@ export default async function PublicBusinessPage({
             </ul>
           </section>
 
-          {business.interior_images.length > 0 && (
-            <section className="space-y-3">
-              <h2 className="text-lg font-semibold tracking-tight">
-                Inside the shop
-              </h2>
-              <div className="grid grid-cols-2 gap-2">
-                {business.interior_images.slice(0, 4).map((src, i) => (
-                  <div
-                    key={src}
-                    className="bg-muted relative aspect-square overflow-hidden rounded-lg"
-                  >
-                    <Image
-                      src={src}
-                      alt={`${business.shop_name} interior ${i + 1}`}
-                      fill
-                      sizes="(max-width: 1024px) 50vw, 200px"
-                      className="object-cover"
-                    />
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+          <InteriorGallery
+            images={business.interior_images}
+            shopName={business.shop_name}
+          />
+
+          {/* Hours / contact / socials. Renders nothing when the shop has
+              published none of them — a settings row only exists once the
+              owner saves. */}
+          <BusinessInfoPanel info={business.info} />
         </div>
       </div>
     </div>

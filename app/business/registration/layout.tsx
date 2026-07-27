@@ -27,8 +27,18 @@ export default async function RegistrationLayout({
       rawBusinessTypes={rawBusinessTypes}
       requireDocuments={requireBusinessDocuments}
     >
-      <div className="font-giest flex h-screen flex-col overflow-hidden">
-        <main className="flex min-h-0 flex-1 flex-row overflow-hidden p-3">
+      {/*
+        Single scroll container: the page scrolls, nothing nests a second
+        scroller. The previous shell was `h-screen overflow-hidden` with an
+        inner `overflow-y-auto`, which relied on an unbroken definite-height
+        chain (h-screen → flex-1 main → h-full sidebar). When any link in that
+        chain resolves to `auto` the sidebar collapses to its content height
+        and the short last step leaves a large empty band below the form.
+        `min-h-dvh` needs no such chain, and dvh (not vh) keeps it correct
+        under a mobile browser's collapsing toolbar.
+      */}
+      <div className="font-giest flex min-h-dvh flex-col">
+        <main className="flex flex-1 flex-row items-stretch gap-3 p-3">
           {children}
         </main>
       </div>

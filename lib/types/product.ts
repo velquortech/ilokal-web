@@ -3,6 +3,8 @@
  * All product-related TypeScript types and interfaces
  */
 
+import type { OfferingAttributes, OfferingKind } from './offering';
+
 export type ProductStatus = 'active' | 'unlisted' | 'disabled';
 
 export type PriceType =
@@ -11,7 +13,20 @@ export type PriceType =
   | 'per_hour'
   | 'per_day'
   | 'per_person'
-  | 'per_event';
+  | 'per_event'
+  /** Quote-based: `price` is NULL and the UI reads "Price on request". */
+  | 'on_request';
+
+/** Runtime mirror of `PriceType` — pins the DB enum, drives pickers. */
+export const PRICE_TYPES = [
+  'fixed',
+  'from',
+  'per_hour',
+  'per_day',
+  'per_person',
+  'per_event',
+  'on_request',
+] as const satisfies readonly PriceType[];
 
 export type ProductSortOrder =
   | 'newest'
@@ -37,9 +52,12 @@ export type Product = {
   business_id: string;
   branch_id: string | null;
   category_id: string | null;
+  /** Product vs service — see `lib/types/offering.ts`. Defaults to `'product'`. */
+  kind: OfferingKind;
   name: string;
   description: string | null;
-  price: number;
+  /** NULL only when `price_type === 'on_request'` (DB CHECK enforces it). */
+  price: number | null;
   sale_price: number | null;
   sale_starts_at: string | null;
   sale_ends_at: string | null;
@@ -51,14 +69,20 @@ export type Product = {
   archived_at: string | null;
   created_at: string;
   updated_at: string;
-};
+} & OfferingAttributes;
 
 // ===== Request/Response Types =====
 
 export type CreateProductRequest = {
   name: string;
+  /**
+   * Set explicitly by the form from `defaultKindForMode(offering_mode)`.
+   * Omitted ⇒ the DB default `'product'`.
+   */
+  kind?: OfferingKind;
   description?: string;
-  price: number;
+  /** Omit / null only for `price_type: 'on_request'`. */
+  price?: number | null;
   sale_price?: number | null;
   price_type?: PriceType;
   price_unit?: string | null;
@@ -66,7 +90,7 @@ export type CreateProductRequest = {
   image_url?: string | null;
   is_available?: boolean;
   branch_id?: string | null;
-};
+} & Partial<OfferingAttributes>;
 
 export type UpdateProductRequest = Partial<CreateProductRequest> & {
   status?: ProductStatus;

@@ -26,6 +26,69 @@ BEGIN
     ON CONFLICT (name) DO NOTHING;
     SELECT id INTO tourism_id FROM business_types WHERE name = 'Tourism & Leisure';
 
+    -- 1b. Offering vocabulary per vertical (see 20260727000001).
+    --
+    -- The migration seeds this too, but on a FRESH database it matches zero
+    -- rows: business_types are created here, and seeds run AFTER migrations.
+    -- Without this block a `make migrate-reset` leaves every profile NULL and
+    -- the whole feature silently falls back to retail copy locally. Applied
+    -- with COALESCE so an admin edit on an existing environment is preserved.
+    UPDATE business_types SET offering_profile = COALESCE(offering_profile, jsonb_build_object(
+      'products', jsonb_build_object(
+        'singular', 'Menu Item', 'plural', 'Menu Items', 'catalogue', 'Menu'),
+      'services', jsonb_build_object(
+        'singular', 'Service', 'plural', 'Services', 'catalogue', 'Services'),
+      'both', jsonb_build_object(
+        'singular', 'Item', 'plural', 'Items', 'catalogue', 'Menu & Services'),
+      'icon', 'Coffee',
+      'fields', jsonb_build_array(),
+      'allowed_price_types', jsonb_build_array('fixed', 'from', 'per_person', 'on_request'),
+      'default_booking_mode', 'none'
+    )) WHERE id = food_id;
+
+    UPDATE business_types SET offering_profile = COALESCE(offering_profile, jsonb_build_object(
+      'products', jsonb_build_object(
+        'singular', 'Product', 'plural', 'Products', 'catalogue', 'Product Catalogue'),
+      'services', jsonb_build_object(
+        'singular', 'Service', 'plural', 'Services', 'catalogue', 'Services'),
+      'both', jsonb_build_object(
+        'singular', 'Item', 'plural', 'Items', 'catalogue', 'Catalogue'),
+      'icon', 'Store',
+      'fields', jsonb_build_array(),
+      'allowed_price_types', jsonb_build_array('fixed', 'from', 'on_request'),
+      'default_booking_mode', 'none'
+    )) WHERE id = retail_id;
+
+    UPDATE business_types SET offering_profile = COALESCE(offering_profile, jsonb_build_object(
+      'products', jsonb_build_object(
+        'singular', 'Product', 'plural', 'Products', 'catalogue', 'Products'),
+      'services', jsonb_build_object(
+        'singular', 'Service', 'plural', 'Services', 'catalogue', 'Service Menu'),
+      'both', jsonb_build_object(
+        'singular', 'Offering', 'plural', 'Offerings', 'catalogue', 'Products & Services'),
+      'icon', 'Scissors',
+      'fields', jsonb_build_array('duration_minutes', 'lead_time_minutes', 'service_location'),
+      'allowed_price_types', jsonb_build_array(
+        'fixed', 'from', 'per_hour', 'per_person', 'on_request'),
+      'default_booking_mode', 'request'
+    )) WHERE id = services_id;
+
+    UPDATE business_types SET offering_profile = COALESCE(offering_profile, jsonb_build_object(
+      'products', jsonb_build_object(
+        'singular', 'Item', 'plural', 'Items', 'catalogue', 'Shop'),
+      'services', jsonb_build_object(
+        'singular', 'Package', 'plural', 'Packages', 'catalogue', 'Packages'),
+      'both', jsonb_build_object(
+        'singular', 'Offering', 'plural', 'Offerings', 'catalogue', 'Offerings'),
+      'icon', 'Plane',
+      'fields', jsonb_build_array(
+        'duration_minutes', 'capacity', 'inventory_count', 'deposit_amount',
+        'min_duration_units', 'max_duration_units'),
+      'allowed_price_types', jsonb_build_array(
+        'fixed', 'from', 'per_day', 'per_person', 'per_event', 'on_request'),
+      'default_booking_mode', 'request'
+    )) WHERE id = tourism_id;
+
     -- 2. Insert Categories for Food & Beverage (skip if already seeded)
     IF NOT EXISTS (SELECT 1 FROM business_categories WHERE business_type_id = food_id) THEN
     INSERT INTO business_categories (business_type_id, name, description, image_url) VALUES

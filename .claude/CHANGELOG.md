@@ -1,5 +1,432 @@
 # Changelog
 
+## 2026-07-27 — PR #18 review hardening (feat/dynamic-product-service-listing)
+
+> Fixes from the react-doctor + api-doctor review. **Edits the seven unmerged
+> migrations in place** (none is on cloud) and re-verified with a full
+> `make migrate-reset` — so what reviewers read is what will apply.
+> **All seven still need human approval + `make migrate-cloud` + ledger
+> reconcile before merge.**
+
+- **🔴 Owner `UPDATE` policy on `booking_requests` removed.** It had no
+  `WITH CHECK`, so Postgres reused its `USING` clause — which only proved
+  business ownership. A direct PostgREST `PATCH` could rewrite `user_id` /
+  `product_id` / `starts_at`, or reset a decided booking to `pending` for a
+  second decision. The customer "may cancel" policy went too: it let a
+  `completed`/`no_show` row be flipped to `cancelled` (erasing a no-show) and
+  `quoted_amount`/`decision_note` rewritten in the same statement. **All
+  non-admin writes now go through the SECURITY DEFINER RPCs**, which bypass
+  RLS anyway — matching the INSERT side, which never had a policy.
+- **🔴 `inventory_count` was bypassable.** The availability check was skipped
+  when `ends_at` resolved to NULL, so an offering with stock but no
+  `duration_minutes` could be overbooked by simply omitting the end date — and
+  those NULL-end rows stored an EMPTY `tstzrange` that never overlapped
+  anything, so they never counted against the cap either. `v_end` now falls
+  back to a one-hour window whenever `inventory_count` is set, on both the
+  insert and the overlap scan.
+- **Active-dupe guard on `request_booking`.** The RPC is granted straight to
+  `authenticated`, so `/rest/v1/rpc/request_booking` bypassed the Server
+  Action's per-user rate limit entirely — unbounded pending rows, one owner
+  notification each.
+- **Private SQLSTATE class for RPC errors.** `22023` is raised by built-ins
+  too (`make_interval` on an out-of-range value), so forwarding its message
+  could leak Postgres internals. The RPCs now raise `IL001`/`IL002`; anything
+  else gets generic copy.
+- **`ENABLE ALWAYS` on `trg_businesses_sync_business_type`.** Seeds run under
+  `session_replication_role = replica`, which skips normal triggers — so
+  after `migrate-reset` every seeded business had `business_type_id = NULL`
+  and silently fell back to retail vocabulary. Same gotcha as
+  `trg_set_redemption_code`.
+- **`offering_mode` now has a write path.** It was set only by the one-time
+  backfill, so every business registered after the migration would have been
+  stuck on `'products'` forever. The trigger seeds it from the vertical **on
+  INSERT only** — changing category later must not overwrite an owner's
+  choice.
+- **The quote CHECK can no longer abort a cloud apply.** `products.price` has
+  always been nullable and "0 NULL rows" was verified on local only; the
+  migration now reclassifies any NULL-price row to `on_request` before adding
+  the constraint.
+- **Found by the clean reset, not by review:** migration `20260727000001`
+  seeds `offering_profile` with `UPDATE … WHERE name = …`, but
+  `business_types` rows are created by the *seed*, which runs **after**
+  migrations — so on a fresh database it matched zero rows and every vertical
+  fell back to retail copy. The profiles are now seeded in
+  `business_categories.sql` too (COALESCE, so an admin edit survives).
+- **App-layer:** booking times pinned to `Asia/Manila` (they rendered in UTC
+  during SSR and the device zone after hydration — a mismatch on every row);
+  a **branch picker** in the booking dialog (bookings were pinned to
+  `branches[0]`, wrong for multi-branch shops and a hard RPC failure for
+  branch-scoped offerings); `booking_mode` and `price_type` are now editable
+  in the update dialog (an offering could never leave `on_request`, and a
+  salon's shampoo was stuck showing "Request booking"); the owner's decline
+  note + quote amount are wired to the inputs the customer page already
+  rendered; `catch` on all three booking handlers (a rejected Server Action
+  left the loading toast spinning forever); real `PaginationBar` on both
+  booking lists; `sticky bottom-0` on the registration nav; `shopLocalDayKey`
+  for the "today" hours highlight; `loading.tsx` for both new routes;
+  `safeExternalUrl` accepts `unknown` (a non-string JSONB social link crashed
+  the server-rendered public page); `getBookingStats` reports failure instead
+  of showing four confident zeros.
+- **Not taken:** wrapping `getBookingsEnabled` in `React.cache` — the module
+  is `'use server'`, where every export must be a plain async function;
+  wrapping it collapsed inference at the call sites.
+- **Tests 1505 → 1508**, plus new SQL regressions for the duplicate guard, the
+  no-`ends_at` inventory bypass, and "no non-admin UPDATE policy". One test
+  was itself wrong and was rewritten: it asserted every product of a Services
+  business is `kind='service'`, but that flip is a point-in-time backfill, not
+  an invariant — a salon must still be able to list shampoo. Verified after a
+  full `make migrate-reset`: `yarn lint` + **1508** tests + `yarn build` green
+  + all three SQL suites passing.
+
+## 2026-07-27 — Explore: shop info (hours / contact / socials) + gallery lightbox (feat/dynamic-product-service-listing)
+
+> **One schema migration** (`20260727000006_business_public_info_rpc.sql`) —
+> **HIGH risk by nature: it opens four columns of an owner-only table to
+> anon.** Applied + red-teamed on LOCAL only. Plan kept local (not committed).
+
+- **`business_settings` was invisible to the public page.** Its only policy is
+  owner-scoped `FOR ALL`, so the explore page read *nothing* — and it would
+  have failed silently, rendering empty sections that look like "this shop has
+  no hours".
+- **Opened via an RPC, not a public SELECT policy.** The table also holds
+  `allow_reviews` and `coupon_default_expiry_days` — internal config. A broad
+  `USING (true)` read is exactly what leaked the whole follow graph
+  (`20260607000000`, dropped in `20260608000001`). With
+  `get_business_public_info` the **returned column list is the contract**: it
+  cannot over-expose, and a future column on the table stays private by
+  default. Gated on `status='verified' AND archived_at IS NULL`, so an
+  unverified or soft-deleted shop's phone number isn't reachable by id.
+- **🔴 Fixed a latent stored-XSS vector before rendering these columns.**
+  `urlOrEmpty` was `z.string().url()`, and Zod's `url()` is backed by
+  `new URL()` — which **accepts `javascript:alert(1)`** as a valid URL. It was
+  inert only because nothing rendered the links. Now: an http(s) scheme
+  allowlist in the schema **and** a render-side `safeExternalUrl()` guard
+  (rows written before the schema change, and admin edits, bypass Zod
+  entirely). Plus `safeTelHref()` — `contact_phone_public` is free text and
+  can't go into a `tel:` href raw — and `rel="noopener noreferrer"` on every
+  external link.
+- **New `BusinessInfoPanel`** on the shop page: 7-day opening hours with today
+  emphasized, an **Open now / Closed** badge, phone + website, and Facebook /
+  Instagram / TikTok links. Each block hides itself and the whole panel
+  disappears when all three are empty — a settings row only exists once the
+  owner saves, so most shops currently have nothing. `contact_website` wins
+  over `social_links.website` (the two columns hold the same idea).
+- **`lib/utils/operatingHours.ts`** — pure, and deliberately explicit about
+  two traps: **timezone** (pinned to `Asia/Manila`; the server is UTC and a
+  visiting tourist could be anywhere, so ambient zone is always wrong) and
+  **overnight spans** (`22:00–02:00` closes the *next* day — a naive
+  `open <= now < close` reports it closed all evening). `isOpenNow` returns
+  `null` for unusable hours so the UI renders no badge rather than claiming
+  "Closed".
+- **"Inside the shop" images now open.** Extracted `ImageLightbox` from
+  `Masonry` and refactored `Masonry` onto it, so there is one dialog rather
+  than two. `Masonry` itself was unusable here — it hard-returns *"Minimum 4
+  images required."* and shops routinely have 1–3 interiors. The new
+  `InteriorGallery` keeps the 4-tile grid and adds a **"+N more"** overlay that
+  opens at the first *hidden* image, so extra photos are no longer silently
+  dropped by `.slice(0, 4)`. Tiles are `<button>`s with
+  "Open photo N of M" labels; Radix restores focus on close.
+- **Tests (+59 vitest, +1 SQL suite):** URL/phone guards (27 — `javascript:`,
+  `data:`, `vbscript:`, tab/CR/LF-embedded schemes, protocol-relative, plus
+  the schema-level rejection), operating hours (19 — overnight, Sunday→Monday
+  spill, malformed times, UTC-vs-Manila boundary), gallery render (8 — opens
+  at the clicked index, overlay jumps to the first hidden image, <4 images,
+  a11y labels), profile info block (5 — degrades to `null` when the RPC
+  fails). SQL suite asserts the RPC exposes **exactly 4 columns**, returns
+  nothing for hidden businesses, and that `business_settings` gained no
+  anon-readable policy. Verified: `yarn lint` + **1505** tests +
+  `yarn build` green; "ALL PUBLIC INFO TESTS PASSED".
+- **Not done:** mobile business-detail parity for the info block (additive
+  follow-up), per-branch hours, holiday exceptions.
+
+## 2026-07-27 — Offerings model phase 4: booking requests (feat/dynamic-product-service-listing)
+
+> **One schema migration** (`20260727000005_booking_requests.sql`) — **HIGH
+> risk: new table + RLS + three SECURITY DEFINER RPCs + a widened
+> notifications CHECK.** Applied, red-teamed, and concurrency-proven on LOCAL
+> only. **Ships DARK** behind `app_settings.enable_bookings` (default false),
+> so it can reach cloud without changing user-visible behavior. Plan kept local (not committed).
+
+- **Request-based bookings, deliberately not slot-based:** the customer
+  proposes a time (or a date range for rentals), the owner confirms or
+  declines. No calendar UI, no staff scheduling, no availability engine. This
+  is what makes a **coupon-less services business viable** — their dashboard
+  was otherwise all zeros, which is churn (plan doc §5).
+- **🔴 The availability check is genuinely atomic.** `request_booking` takes a
+  transaction-scoped advisory lock on the product before counting overlapping
+  `pending`/`confirmed` rows against `inventory_count`. **Proven under real
+  concurrency**: two sessions raced for the last unit of a 1-unit rental — the
+  second blocked on the lock, then failed with "no availability", and exactly
+  one row was booked. Deliberately stronger than the per-user coupon cap's
+  known TOCTOU: overbooking a physical asset is a real-world failure, not a
+  counter drifting.
+- **The table has NO INSERT policy.** `request_booking()` is the only insert
+  path, so a direct PostgREST write fails closed instead of skipping the gate
+  matrix. Asserted in the SQL suite, along with "every policy wraps its
+  `auth.uid()`" (perf standard P1).
+- **Three RPCs, each authorizing its own caller:** `request_booking`
+  (customer), `decide_booking` (owner/admin — re-derives ownership from the
+  booking's business, so a forged id can't reach another shop),
+  `cancel_booking` (the row's own user). State machine enforced server-side: a
+  cancelled booking can't be confirmed out from under the customer, a decided
+  one can't be re-decided, and only a confirmed one can be closed out.
+- **Notifications are emitted inside the RPCs** — the existing
+  `create_notification` authorizes admin-or-self only, and here the actor is
+  the customer while the recipient is the owner (the same reason
+  `notify_coupon_redemption` exists). Wrapped in `EXCEPTION WHEN OTHERS` so a
+  notification failure can never roll back a booking. Four new notification
+  types added to the CHECK.
+- **Gate matrix red-teamed in SQL** (`supabase/tests/booking_requests.test.sql`,
+  17 assertions): flag off, `booking_mode='none'`, past start, inverted range,
+  party > capacity, cross-business branch, double-booking, customer deciding
+  their own, stranger cancelling, re-deciding, confirming a cancelled booking,
+  and cancellation freeing the slot.
+- **App layer:** `bookingService` (RPC boundary — maps SQLSTATE to hand-written
+  copy; a raw driver message never reaches the client), `bookingQuery`
+  (`.range()`d lists with piggybacked exact counts, head-only stat counts —
+  never fetch-all-then-reduce), customer actions on the existing
+  `requireCustomer` guard (role + account state + per-user rate limit), and an
+  owner decide action behind `verifyBusinessOwner`.
+- **UI:** owner inbox at `/business/[id]/bookings` (status filter, confirm /
+  decline / mark-completed, distinct "couldn't load" vs "none yet"), customer
+  request dialog on the public shop page (hidden for anon/owners/admins,
+  matching FollowButton), and `/customer/bookings` with cancel. The flag hides
+  the nav entry and 404s both routes when off.
+- **Tests (+17 vitest, +1 SQL suite):** SQLSTATE mapping incl. constraint-name
+  non-leakage, RPC parameter mapping, never-throws behavior, and the kill
+  switch failing closed on missing row / query error / throwing client /
+  truthy-but-not-boolean value. Verified: `yarn lint` + **1446** tests +
+  `yarn build` green; "ALL BOOKING TESTS PASSED".
+- **Still open:** folding the booking counters into the business **home**
+  dashboard (OF9 — the page has them, the dashboard doesn't yet), mobile
+  booking routes, and a `user_redemptions.booking_id` link.
+
+## 2026-07-27 — Offerings model phase 3: service/rental attributes + quote pricing (feat/dynamic-product-service-listing)
+
+> **Three schema migrations** (`20260727000002` enum, `20260727000003` columns
+> + profile policy, `20260727000004` RPC) — **MED risk**, applied + red-teamed
+> on LOCAL only. Needs human approval + cloud apply with phases 1–2. Mobile
+> contract stays additive; no auth/RLS change. Plan kept local (not committed).
+
+- **Van rental is now expressible.** Nine columns on `products`:
+  `booking_mode`, `duration_minutes`, `lead_time_minutes`, `inventory_count`,
+  `capacity`, `deposit_amount`, `min_duration_units`, `max_duration_units`,
+  `service_location`. All nullable/defaulted — every existing row and query is
+  unaffected.
+- **`booking_mode` is a SECOND AXIS, not more `kind` values**
+  (`none|inquiry|request|timeslot|date_range`). A haircut and a van hire are
+  both `kind='service'`; their availability math is not the same. Keeping the
+  axes apart is what stops `kind` sprawling into
+  `product|service|rental|room|tour|…`. Van rental = `kind:'service'` +
+  `booking_mode:'date_range'` + `inventory_count:3` + `capacity:12`.
+  `inventory_count` (concurrently bookable units) is deliberately distinct
+  from `capacity` (people per unit) — phase 4 counts overlaps against the
+  former. Nothing schedules anything yet.
+- **Quote-based pricing (`price_type: 'on_request'`)** — shipped as its own
+  migration file because Postgres forbids USING a new enum value in the
+  transaction that adds it, and the CHECK references it. Guarded at three
+  layers, each for a different caller: Zod (readable form message),
+  `createProduct`/`applySale` (Server-Action path), and the DB CHECK
+  `price_type = 'on_request' OR price IS NOT NULL` (direct PostgREST).
+- **`on_request` beats a stale price.** The CHECK only *requires* a price for
+  non-quote types, so switching an offering to quote-based leaves the old
+  figure on the row. `formatOfferingPrice` short-circuits on the type — the UI
+  can never quote a price the business withdrew — and the update dialog omits
+  `price` entirely for those rows.
+- **Sales are impossible on quote-priced offerings** (a percentage off an
+  unknown number): the menu action is hidden, the dialog self-guards (it is
+  exported and reachable from anywhere), `applySale` rejects with a friendly
+  message, and `formatOfferingPricePair` returns `sale: null` so it can't
+  render "Price on request" struck through beside "Price on request".
+- **🔴 The phase-1 decay is CLOSED.** The resolved vocabulary now carries
+  `defaultKind`, derived from `offering_mode` — **not** from the profile — and
+  the add form sends `kind` explicitly on every create. A services business
+  now mints services instead of silently reverting to the DB's `'product'`
+  default.
+- **Profile gained a field policy** (`fields`, `allowed_price_types`,
+  `default_booking_mode`) so the form renders only what a vertical needs:
+  Services → duration/notice/location, Tourism → capacity/inventory/deposit/
+  duration bounds, Retail & F&B → none (byte-identical to the pre-phase-3
+  form). Unrecognized field names and an all-invalid price-type list fall back
+  rather than producing an empty picker.
+- **`price` is `number | null` end-to-end** (`Product`, `PublicProduct`, form
+  state). The type change surfaced every remaining raw
+  `price.toLocaleString()` — coupon table, product picker, both cards — all now
+  route through `formatOfferingPrice`.
+- **Mobile:** `business_products` RPC projects all ten offering columns and the
+  route returns them; `price` and every pre-existing key keep their exact name,
+  type, and meaning (D6). Documented why `nullsFirst: false` now matters in
+  BOTH sort directions — Postgres defaults to NULLS FIRST on DESC, which would
+  have put every "price on request" item at the top of a price-high sort.
+- **Tests (+31 vitest, +5 SQL):** quote-pricing + attribute suite (24 — Zod
+  create/update branches, service-layer guards incl. "omits keys it wasn't
+  given so DB defaults hold", `applySale` refusal), field-policy resolution (7
+  — `defaultKind` from mode not profile, unknown-field dropping, empty-picker
+  fallback), formatter quote cases (4), plus SQL assertions for the NULL-price
+  CHECK, the duration-range CHECK, `booking_mode`, a van-rental round-trip, and
+  the column count. Verified: `yarn lint` + **1429** tests + `yarn build`
+  green; SQL suite "ALL SQL TESTS PASSED".
+
+## 2026-07-27 — Offerings model phase 2: type-driven vocabulary (feat/dynamic-product-service-listing)
+
+> **One schema migration** (`20260727000001_business_type_offering_profile.sql`)
+> — additive column + seed data, **LOW risk**, applied to LOCAL only. Needs
+> human approval + cloud apply with the phase-1 migration. No API-contract,
+> auth, or RLS change; presentation only. Plan kept local (not committed).
+
+- **Fixed: a salon owner read "Product Catalogue / Add Product".** The words
+  were hardcoded to retail across ~9 surfaces. They now come from
+  `business_types.offering_profile`, keyed by the business's `offering_mode`.
+- **The profile is keyed BY MODE**, not one flat noun set —
+  `{ products: {singular,plural,catalogue}, services: {...}, both: {...},
+  icon }`. A single set would have forced a concatenation guess for `'both'`
+  businesses; each mode states its own wording and the resolver never invents
+  copy. Seeded: F&B → "Menu Item / Menu", Retail → "Product / Product
+  Catalogue", Services → "Service / **Service Menu**", Tourism → "Package /
+  Packages" (mode `both` → "Offerings").
+- **Derived labels are computed, not stored** (`addLabel`, `saveLabel`,
+  `updateLabel`, `emptyLabel`, `totalLabel`, `imageLabel`,
+  `nameRequiredLabel`) — a vertical can't half-define itself into "Add
+  Service" + "Update Product", and the JSON stays small.
+- **Fallback contract is the point of the pure resolver**
+  (`lib/utils/offeringVocabulary.ts`): `offering_profile` is admin-editable
+  JSONB, so a Studio typo reaches production. NULL / non-object / partial /
+  blank / wrong-typed input degrades **per field** to exactly the pre-phase-2
+  retail copy. It can never render `undefined` or blank a heading. Unknown
+  `offering_mode` reads as `products` (the pre-phase-1 behavior).
+- **Plumbing:** `getOfferingVocabulary(businessId)` (`React.cache`d, one join,
+  **never throws** — a failed read is not worth 500ing a dashboard over) is
+  resolved in the business layout and handed to
+  `OfferingVocabularyProvider` → `useOfferingVocabulary()`. No client fetch,
+  no flash of "Product" before "Service". Reading the hook outside a provider
+  returns the retail default instead of throwing, so shared
+  `components/custom/*` stay usable from admin/landing surfaces. Also
+  normalizes the array-shaped PostgREST to-one embed — reading
+  `.offering_profile` off the array would have silently given every service
+  business retail copy.
+- **Swept:** sidebar nav entry, catalogue header/subtitle/Add button, stats
+  card, add + update dialogs (title, description, name label, required
+  message, placeholder, image label, save button, failure toasts), the view
+  dialog's screen-reader label, `/business/[id]/shop` heading + both empty
+  states, and the public `/explore/[businessId]` menu heading + empty/error
+  copy. Route path `/product-catalogues` deliberately unchanged (renaming
+  needs redirects — separate change).
+- **Versatility check:** onboarding the van-rental partner as a new
+  "Transport & Rental" type is a single row edit — `{services: {singular:
+  "Vehicle", plural: "Fleet", catalogue: "Our Fleet"}}` yields "Our Fleet",
+  "Add Vehicle", "Total Fleet" with no deploy. Asserted in the test suite.
+- **Tests (+23 vitest, +2 SQL):** resolver suite (17 — mode selection, the
+  unknown-vertical case, and every fallback branch incl. a property-style
+  sweep asserting no label is ever empty for any junk input), query suite (7 —
+  array-embed normalization, no-id short circuit, DB error / missing row /
+  throwing client / profile-less type all degrading), plus SQL assertions that
+  every seeded vertical defines all 3 modes × 3 nouns and that Services reads
+  "Service Menu". Verified: `yarn lint` + **1398** tests + `yarn build` green;
+  SQL suite "ALL SQL TESTS PASSED".
+
+## 2026-07-27 — Offerings model phase 1: product/service discriminators (feat/dynamic-product-service-listing)
+
+> **One schema migration** (`20260727000000_offerings_discriminators.sql`) —
+> **HIGH risk by policy (schema), applied + red-teamed on LOCAL only. Needs
+> human approval before merge, then `make migrate-cloud` + ledger reconcile.**
+> Fully additive and defaulted: no RLS change, no API-contract change, every
+> existing query returns identical results. Plan kept local (not committed).
+
+- **The model, in three layers** (each a distinct job — do not collapse them):
+  `business_types.offering_profile` = vertical template (phase 2) →
+  `businesses.offering_mode` (`products|services|both`) = declared intent,
+  drives UI vocabulary and the explore filter → `products.kind`
+  (`product|service`) = ground truth per row, what queries filter on.
+  `'both'` is not an edge case — a salon sells shampoo, a café rents its
+  function room.
+- **`products.kind`** + index `(business_id, kind, status)`. Deliberately
+  coarse: *how* an offering transacts (inquiry / appointment / date-range
+  rental) is a **separate axis** (`booking_mode`, phase 3) — keeping them
+  apart is what stops `kind` sprawling into
+  `product|service|rental|room|tour|…`. Van rental = `kind:'service'` +
+  `booking_mode:'date_range'` + `inventory_count`.
+- **`businesses.offering_mode` + denormalized `business_type_id`** (FK +
+  index). The type was previously reachable only via
+  `businesses → business_categories → business_types`; denormalizing makes
+  phase 2's per-render vocabulary lookup a single column read.
+  `offering_mode` is **stored, never derived** by scanning `products` — a
+  business with zero rows would read as "unknown", and deriving costs a scan
+  on every render.
+- **New `sync_business_type_id()` trigger** (`BEFORE INSERT OR UPDATE OF
+  category_id`, SECURITY DEFINER, pinned search_path, REVOKE'd from
+  PUBLIC/anon/authenticated) keeps the denormalized column honest — without
+  it, changing a category strands the old type and every phase-2 label goes
+  wrong with no visible cause. Clearing `category_id` clears the type.
+- **Backfill (best-effort, matched on the admin-editable type name; a rename
+  on cloud simply means no match and the defaults hold):** Services →
+  `'services'`, **Tourism & Leisure → `'both'`** (a B&B sells rooms *and*
+  breakfast), F&B/Retail → `'products'`. `products.kind` flipped to
+  `'service'` for **pure-Services businesses only** — they cannot be selling
+  goods, so it is safe and spares hand-editing every row; `'both'` businesses
+  are ambiguous per row and stay `'product'`. Local: 64 businesses typed
+  (0 NULL), 134/613 rows flipped.
+- **`categories.business_type_id`** (nullable + index) so the offering-category
+  picker can be scoped to a vertical — today a salon's dropdown lists
+  "Pastries" next to "Haircut". Every existing row stays NULL = global, so the
+  current picker is unchanged until categories are deliberately assigned.
+- **Types:** new `lib/types/offering.ts` (`OfferingKind`, `OfferingMode`,
+  `OFFERING_*` constants mirroring the DB CHECKs, `modeAllowsProducts/Services`,
+  `defaultKindForMode`), `Product.kind` required + `CreateProductRequest.kind`
+  optional, re-exported from `lib/types/index.ts`; `make generate-types` run.
+- **⚠️ Known decay, deliberately not fixed:** a NEW offering created by a
+  services business still defaults to `kind='product'` — the DB can't tell
+  "field omitted" from "explicitly 'product'", and a force-flip trigger would
+  make a services business unable to ever list a real product. **Phase 3's
+  form must set `kind` explicitly** from `defaultKindForMode(offering_mode)`.
+- **Tests (+9 vitest, +1 SQL suite):** `lib/types/__tests__/offering.test.ts`
+  (constants pinned against the DB CHECKs, mode helpers, `defaultKindForMode`
+  never returning an invalid kind) and
+  `supabase/tests/offerings_discriminators.test.sql` (backfill completeness,
+  mode↔type agreement, kind flip, trigger resync on category change + clear,
+  both CHECKs rejecting junk, default-kind on a legacy-shaped INSERT,
+  categories left global) — run against the local stack, "ALL SQL TESTS
+  PASSED". Verified: `yarn lint` + **1375** tests + `yarn build` green.
+
+## 2026-07-27 — Offerings model phase 0: unit-aware price display (feat/dynamic-product-service-listing)
+
+> **No schema, API-contract, or auth change — presentational bug fix + one
+> additive mobile response field.** LOW risk. Plan for the whole model
+> (services/rentals: van rental, salon, tours) kept local (not committed).
+
+- **Fixed: every customer-facing surface dropped `price_type`/`price_unit`.**
+  `products` has carried `price_type` (`fixed | from | per_hour | per_day |
+  per_person | per_event`) and a free-text `price_unit` override since
+  `20260511000001`, but only the mobile products route and the owner's
+  add-product form ever read them. A ₱500/hr service rendered as a flat
+  "₱500"; a ₱3,500/day van rental as "₱3,500". Wrong price, not cosmetic.
+- **New `lib/utils/formatOfferingPrice.ts`** — pure, no React/Supabase (the
+  mobile route needs it server-side too). `formatOfferingPrice()` →
+  `"₱500/hr"`, `"From ₱12,000"`, `"₱350/person"`; `price_unit` overrides the
+  enum suffix space-separated (`"₱800 per table"`); unknown/absent
+  `price_type` degrades to `fixed` rather than breaking; null/non-finite price
+  → `"Price on request"` (forward-compat with the phase-3 `on_request` type).
+  `formatOfferingPricePair()` returns `{ base, sale }` so a discounted unit
+  price can't render as `"₱400 ₱500/hr"`. Kept the existing `₱1,234` style
+  (no forced decimals) — deliberately NOT `phFormat`, which would have added
+  `.00` to every product card in the app.
+- **Wired into all four render sites:** `PublicProduct` gained
+  `price_type`/`price_unit` and `getPublicMenu` maps them through (the
+  underlying `getProductsPaginated` already selected `*` — only the mapper
+  dropped them); explore menu card, the shared `components/custom/ProductCard`
+  (business shop + view-product), and the owner's product-table price column.
+- **Mobile:** additive `price_display` string alongside the untouched `price`
+  number — old clients ignore the unknown key, new ones get correct copy
+  without an APK release (the additive-only mobile contract rule).
+- **Also:** cleaned two stale `CLAUDE.md` active-work pointers
+  (`.claude/ADMIN_REWORK.md`, `.claude/REGISTRATION_GATING.md` — both files
+  already deleted) and replaced them with the offerings-model pointer.
+- **Tests (+27, 1339 → 1366):** `formatOfferingPrice` unit suite (21 — all six
+  price types, unit override incl. with the `From` prefix, blank-unit,
+  unknown-type degradation, null/NaN/zero, sale-pair suffix parity),
+  `getPublicMenu` passthrough + fixed-default + error branch (4), mobile route
+  `price_display` incl. unit override (2). Verified: `yarn lint` + **1366**
+  tests + `yarn build` green.
+
 ## 2026-07-25 — Anonymous /explore now renders the LANDING's nav (feat/explore-public-nav)
 
 > Presentational. No schema, API, or auth change.

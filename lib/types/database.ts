@@ -96,6 +96,89 @@ export type Database = {
           },
         ]
       }
+      booking_requests: {
+        Row: {
+          branch_id: string | null
+          business_id: string
+          created_at: string
+          decided_at: string | null
+          decision_note: string | null
+          ends_at: string | null
+          id: string
+          notes: string | null
+          party_size: number | null
+          product_id: string
+          quoted_amount: number | null
+          starts_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          branch_id?: string | null
+          business_id: string
+          created_at?: string
+          decided_at?: string | null
+          decision_note?: string | null
+          ends_at?: string | null
+          id?: string
+          notes?: string | null
+          party_size?: number | null
+          product_id: string
+          quoted_amount?: number | null
+          starts_at: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          branch_id?: string | null
+          business_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decision_note?: string | null
+          ends_at?: string | null
+          id?: string
+          notes?: string | null
+          party_size?: number | null
+          product_id?: string
+          quoted_amount?: number | null
+          starts_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_requests_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_requests_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_dashboard_stats"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "booking_requests_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branch_documents: {
         Row: {
           branch_id: string
@@ -493,6 +576,7 @@ export type Database = {
           icon: string | null
           id: string
           name: string
+          offering_profile: Json | null
         }
         Insert: {
           created_at?: string | null
@@ -501,6 +585,7 @@ export type Database = {
           icon?: string | null
           id?: string
           name: string
+          offering_profile?: Json | null
         }
         Update: {
           created_at?: string | null
@@ -509,6 +594,7 @@ export type Database = {
           icon?: string | null
           id?: string
           name?: string
+          offering_profile?: Json | null
         }
         Relationships: []
       }
@@ -517,6 +603,7 @@ export type Database = {
           archived_at: string | null
           banner_url: string | null
           business_category: Json | null
+          business_type_id: string | null
           category_id: string | null
           created_at: string | null
           description: string | null
@@ -524,6 +611,7 @@ export type Database = {
           interior_images: string[] | null
           location: Json | null
           logo_url: string | null
+          offering_mode: string
           owner_id: string
           shop_name: string
           status: Database["public"]["Enums"]["verification_status"] | null
@@ -535,6 +623,7 @@ export type Database = {
           archived_at?: string | null
           banner_url?: string | null
           business_category?: Json | null
+          business_type_id?: string | null
           category_id?: string | null
           created_at?: string | null
           description?: string | null
@@ -542,6 +631,7 @@ export type Database = {
           interior_images?: string[] | null
           location?: Json | null
           logo_url?: string | null
+          offering_mode?: string
           owner_id: string
           shop_name: string
           status?: Database["public"]["Enums"]["verification_status"] | null
@@ -553,6 +643,7 @@ export type Database = {
           archived_at?: string | null
           banner_url?: string | null
           business_category?: Json | null
+          business_type_id?: string | null
           category_id?: string | null
           created_at?: string | null
           description?: string | null
@@ -560,6 +651,7 @@ export type Database = {
           interior_images?: string[] | null
           location?: Json | null
           logo_url?: string | null
+          offering_mode?: string
           owner_id?: string
           shop_name?: string
           status?: Database["public"]["Enums"]["verification_status"] | null
@@ -568,6 +660,13 @@ export type Database = {
           weekly_view_count?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "businesses_business_type_id_fkey"
+            columns: ["business_type_id"]
+            isOneToOne: false
+            referencedRelation: "business_types"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "businesses_category_id_fkey"
             columns: ["category_id"]
@@ -586,6 +685,7 @@ export type Database = {
       }
       categories: {
         Row: {
+          business_type_id: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -594,6 +694,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          business_type_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -602,6 +703,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          business_type_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -609,7 +711,15 @@ export type Database = {
           slug?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "categories_business_type_id_fkey"
+            columns: ["business_type_id"]
+            isOneToOne: false
+            referencedRelation: "business_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       coupon_redemptions: {
         Row: {
@@ -962,14 +1072,23 @@ export type Database = {
       products: {
         Row: {
           archived_at: string | null
+          booking_mode: string
           branch_id: string | null
           business_id: string
+          capacity: number | null
           category_id: string | null
           created_at: string | null
+          deposit_amount: number | null
           description: string | null
+          duration_minutes: number | null
           id: string
           image_url: string | null
+          inventory_count: number | null
           is_available: boolean | null
+          kind: string
+          lead_time_minutes: number | null
+          max_duration_units: number | null
+          min_duration_units: number | null
           name: string
           price: number | null
           price_type: Database["public"]["Enums"]["price_type"]
@@ -977,20 +1096,30 @@ export type Database = {
           sale_ends_at: string | null
           sale_price: number | null
           sale_starts_at: string | null
+          service_location: string
           status: string
           updated_at: string | null
           weekly_view_count: number
         }
         Insert: {
           archived_at?: string | null
+          booking_mode?: string
           branch_id?: string | null
           business_id: string
+          capacity?: number | null
           category_id?: string | null
           created_at?: string | null
+          deposit_amount?: number | null
           description?: string | null
+          duration_minutes?: number | null
           id?: string
           image_url?: string | null
+          inventory_count?: number | null
           is_available?: boolean | null
+          kind?: string
+          lead_time_minutes?: number | null
+          max_duration_units?: number | null
+          min_duration_units?: number | null
           name: string
           price?: number | null
           price_type?: Database["public"]["Enums"]["price_type"]
@@ -998,20 +1127,30 @@ export type Database = {
           sale_ends_at?: string | null
           sale_price?: number | null
           sale_starts_at?: string | null
+          service_location?: string
           status?: string
           updated_at?: string | null
           weekly_view_count?: number
         }
         Update: {
           archived_at?: string | null
+          booking_mode?: string
           branch_id?: string | null
           business_id?: string
+          capacity?: number | null
           category_id?: string | null
           created_at?: string | null
+          deposit_amount?: number | null
           description?: string | null
+          duration_minutes?: number | null
           id?: string
           image_url?: string | null
+          inventory_count?: number | null
           is_available?: boolean | null
+          kind?: string
+          lead_time_minutes?: number | null
+          max_duration_units?: number | null
+          min_duration_units?: number | null
           name?: string
           price?: number | null
           price_type?: Database["public"]["Enums"]["price_type"]
@@ -1019,6 +1158,7 @@ export type Database = {
           sale_ends_at?: string | null
           sale_price?: number | null
           sale_starts_at?: string | null
+          service_location?: string
           status?: string
           updated_at?: string | null
           weekly_view_count?: number
@@ -1623,11 +1763,20 @@ export type Database = {
         Args: { p_business_id: string }
         Returns: {
           average_rating: number
+          booking_mode: string
+          capacity: number
           category: Json
+          deposit_amount: number
           description: string
+          duration_minutes: number
           id: string
           image_url: string
+          inventory_count: number
           is_available: boolean
+          kind: string
+          lead_time_minutes: number
+          max_duration_units: number
+          min_duration_units: number
           name: string
           popularity: number
           price: number
@@ -1635,8 +1784,34 @@ export type Database = {
           price_unit: string
           rating_count: number
           sale_price: number
-          weekly_view_count: number
+          service_location: string
         }[]
+      }
+      cancel_booking: {
+        Args: { p_booking_id: string }
+        Returns: {
+          branch_id: string | null
+          business_id: string
+          created_at: string
+          decided_at: string | null
+          decision_note: string | null
+          ends_at: string | null
+          id: string
+          notes: string | null
+          party_size: number | null
+          product_id: string
+          quoted_amount: number | null
+          starts_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "booking_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       create_notification: {
         Args: {
@@ -1649,6 +1824,37 @@ export type Database = {
           p_user_id: string
         }
         Returns: string
+      }
+      decide_booking: {
+        Args: {
+          p_booking_id: string
+          p_decision_note?: string
+          p_quoted_amount?: number
+          p_status: string
+        }
+        Returns: {
+          branch_id: string | null
+          business_id: string
+          created_at: string
+          decided_at: string | null
+          decision_note: string | null
+          ends_at: string | null
+          id: string
+          notes: string | null
+          party_size: number | null
+          product_id: string
+          quoted_amount: number | null
+          starts_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "booking_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
@@ -1786,6 +1992,15 @@ export type Database = {
         Args: { p_default: boolean; p_key: string }
         Returns: boolean
       }
+      get_business_public_info: {
+        Args: { p_business_id: string }
+        Returns: {
+          contact_phone_public: string
+          contact_website: string
+          operating_hours: Json
+          social_links: Json
+        }[]
+      }
       get_business_rating_summary: {
         Args: { p_business_ids: string[] }
         Returns: {
@@ -1910,6 +2125,39 @@ export type Database = {
       record_view: {
         Args: { p_business_id?: string; p_product_id?: string }
         Returns: undefined
+      }
+      request_booking: {
+        Args: {
+          p_branch_id?: string
+          p_ends_at?: string
+          p_notes?: string
+          p_party_size?: number
+          p_product_id: string
+          p_starts_at: string
+        }
+        Returns: {
+          branch_id: string | null
+          business_id: string
+          created_at: string
+          decided_at: string | null
+          decision_note: string | null
+          ends_at: string | null
+          id: string
+          notes: string | null
+          party_size: number | null
+          product_id: string
+          quoted_amount: number | null
+          starts_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "booking_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       rollup_weekly_view_counts: { Args: never; Returns: undefined }
       show_limit: { Args: never; Returns: number }
@@ -2518,6 +2766,7 @@ export type Database = {
         | "per_day"
         | "per_person"
         | "per_event"
+        | "on_request"
       sub_status: "active" | "canceled" | "expired" | "past_due"
       user_role: "admin" | "business_owner" | "app_user"
       verification_status: "pending" | "verified" | "suspended" | "rejected"
@@ -2669,6 +2918,7 @@ export const Constants = {
         "per_day",
         "per_person",
         "per_event",
+        "on_request",
       ],
       sub_status: ["active", "canceled", "expired", "past_due"],
       user_role: ["admin", "business_owner", "app_user"],

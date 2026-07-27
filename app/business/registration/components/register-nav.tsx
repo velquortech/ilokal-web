@@ -29,7 +29,11 @@ export function RegistrationNav({
   };
 
   return (
-    <div className="border-border px-auto mt-auto flex justify-between border-t px-4 py-4 sm:px-10">
+    // `sticky bottom-0` because the shell no longer viewport-locks with an
+    // inner scroller — without it the Back/Next/Submit bar scrolls out of view
+    // on the tall steps (gallery, documents). `mt-auto` still pins it to the
+    // bottom on short steps.
+    <div className="border-border bg-background px-auto sticky bottom-0 z-10 mt-auto flex justify-between border-t px-4 py-4 sm:px-10">
       <div className="inline-flex w-full items-center justify-between">
         {step > 1 ? (
           <Button variant="outline" onClick={prevStep} disabled={isSubmitting}>

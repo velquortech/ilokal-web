@@ -1,13 +1,28 @@
 import Image from 'next/image';
+import { CalendarClock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import type { PublicProduct } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { BookOfferingDialog } from './book-offering-dialog';
+import { formatOfferingPricePair } from '@/lib/utils/formatOfferingPrice';
+import type { PublicBranch, PublicProduct } from '@/lib/types';
 
-function peso(value: number): string {
-  return `₱${Number(value).toLocaleString('en-PH')}`;
-}
-
-export function ProductCard({ product }: { product: PublicProduct }) {
+export function ProductCard({
+  product,
+  bookingsEnabled = false,
+  canBook = false,
+  branches = [],
+}: {
+  product: PublicProduct;
+  /** Platform kill switch (`app_settings.enable_bookings`). */
+  bookingsEnabled?: boolean;
+  /** False for anon visitors, owners, and admins — matching FollowButton. */
+  canBook?: boolean;
+  /** All the shop's branches; the dialog lets the customer pick. */
+  branches?: PublicBranch[];
+}) {
   const onSale = product.sale_price != null;
+  const { base, sale } = formatOfferingPricePair(product);
+  const bookable = bookingsEnabled && product.booking_mode !== 'none';
   return (
     <div className="bg-card flex gap-3 rounded-xl border p-3">
       <div className="bg-muted relative size-20 shrink-0 overflow-hidden rounded-lg">
@@ -32,17 +47,29 @@ export function ProductCard({ product }: { product: PublicProduct }) {
           </p>
         )}
         <p className="mt-1 text-sm font-semibold">
-          {onSale ? (
+          {onSale && sale ? (
             <>
-              <span className="text-primary">{peso(product.sale_price!)}</span>{' '}
+              <span className="text-primary">{sale}</span>{' '}
               <span className="text-muted-foreground text-xs font-normal line-through">
-                {peso(product.price)}
+                {base}
               </span>
             </>
           ) : (
-            peso(product.price)
+            base
           )}
         </p>
+        {bookable && canBook && (
+          <BookOfferingDialog
+            product={product}
+            branches={branches}
+            needsRange={product.booking_mode === 'date_range'}
+          >
+            <Button size="sm" variant="outline" className="mt-2 h-7 text-xs">
+              <CalendarClock className="size-3.5" />
+              Request booking
+            </Button>
+          </BookOfferingDialog>
+        )}
       </div>
     </div>
   );

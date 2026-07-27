@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Check, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ProductResponse } from '@/lib/types';
+import { formatOfferingPrice } from '@/lib/utils/formatOfferingPrice';
 
 interface ProductPickerProps {
   products: ProductResponse[];
@@ -120,7 +121,7 @@ export function ProductPicker({
                   {product.name}
                 </span>
                 <span className="text-muted-foreground text-xs">
-                  ₱{product.price.toLocaleString()}
+                  {formatOfferingPrice(product)}
                 </span>
               </div>
             );

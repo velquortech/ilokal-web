@@ -6,6 +6,7 @@ import { BadgePercent, Newspaper, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FollowButton } from '@/components/customer/FollowButton';
 import { FeedPager } from '@/components/customer/FeedPager';
+import { PageHeader } from '@/components/custom/PageHeader';
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import {
   getFollowedBusinesses,
@@ -62,12 +63,11 @@ export default async function FollowingPage({
 
   return (
     <div className="flex flex-1 flex-col space-y-8">
-      <div className="flex flex-col">
-        <h1 className="text-2xl font-bold tracking-tight">Following</h1>
-        <p className="text-muted-foreground text-sm">
-          Shops you follow, and everything new from them in one feed.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Your shops"
+        title="Following"
+        lede="Shops you follow, and everything new from them in one feed."
+      />
 
       {!followedFailed && followed.length === 0 ? (
         <div className="text-muted-foreground space-y-3 rounded-xl border border-dashed p-12 text-center text-sm">
@@ -80,7 +80,9 @@ export default async function FollowingPage({
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           {/* Updates feed */}
           <section className="space-y-3 lg:col-span-2">
-            <h2 className="text-lg font-semibold tracking-tight">Updates</h2>
+            <h2 className="font-display text-xl font-bold tracking-tight">
+              Updates
+            </h2>
             {feed.updates.length === 0 ? (
               <p className="text-muted-foreground rounded-xl border border-dashed p-8 text-center text-sm">
                 {feedFailed
@@ -161,7 +163,7 @@ export default async function FollowingPage({
 
           {/* Followed shops */}
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold tracking-tight">
+            <h2 className="font-display text-xl font-bold tracking-tight">
               Your shops{followedFailed ? '' : ` (${followedTotal})`}
             </h2>
             {followedFailed && (

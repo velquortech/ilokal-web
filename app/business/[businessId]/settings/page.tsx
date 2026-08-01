@@ -7,6 +7,7 @@ import {
 } from '@/lib/api/settings/settingsQuery';
 import { listMFAFactorsAction } from '@/app/business/[businessId]/actions/mfaActions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PageHeader } from '@/components/custom/PageHeader';
 import { SecurityTab } from './components/SecurityTab';
 import { NotificationsTab } from './components/NotificationsTab';
 import { BusinessPreferencesTab } from './components/BusinessPreferencesTab';
@@ -45,12 +46,10 @@ export default async function SettingsPage({ params }: { params: Params }) {
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-xl font-semibold">Settings</h1>
-        <p className="text-muted-foreground text-sm">
-          Manage your account security, notifications, and business preferences.
-        </p>
-      </div>
+      <PageHeader
+        title="Settings"
+        lede="Manage your account security, notifications, and business preferences."
+      />
 
       <Tabs defaultValue="security" className="flex flex-col gap-0">
         <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0">

@@ -4,6 +4,7 @@ import { Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { explorePath } from '@/config/routeConfig';
 import type { FeedDeal } from '@/lib/api/customer/customerQuery';
+import { brandToneIndex } from '@/lib/utils/brandTone';
 
 /**
  * A deal, as a card you would actually want to tap.
@@ -26,11 +27,13 @@ const TONES = [
   'bg-[#FEF8D6] text-[#1A1A1A] [--rule:rgba(26,26,26,.16)] [--dim:rgba(26,26,26,.64)]',
 ] as const;
 
-/** Stable per-deal tone: sum of the id's char codes, not Math.random(). */
+/**
+ * Stable per-deal tone. Shares `brandToneIndex` with the directory card and the
+ * shop hero so the same id lands on the same colour everywhere — these classes
+ * carry extra custom properties (rules, dimmed text) the other surfaces don't.
+ */
 function toneFor(id: string): string {
-  let sum = 0;
-  for (let i = 0; i < id.length; i++) sum += id.charCodeAt(i);
-  return TONES[sum % TONES.length];
+  return TONES[brandToneIndex(id, TONES.length)];
 }
 
 function discountLabel(discount: FeedDeal['discount']): string {

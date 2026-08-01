@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import { BranchSelector } from './BranchSelector';
 import { ThemeToggle } from '@/components/custom/ThemeTogge';
 import { NotificationBell } from './NotificationBell';
@@ -28,6 +28,7 @@ export function BusinessHeader({ branches = [] }: BusinessHeaderProps) {
   const searchParams = useSearchParams();
   // const { setIsAIChatOpen } = useAIContext(); // TODO: re-enable with AI assistant
   const { business, setSelectedBranchId } = useBusinessShop();
+  const { state } = useSidebar();
 
   const branchParam = searchParams.get('branch');
 
@@ -66,8 +67,17 @@ export function BusinessHeader({ branches = [] }: BusinessHeaderProps) {
   return (
     <header className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky top-0 z-40 w-full border-b backdrop-blur">
       <div className="flex h-16 items-center gap-4 px-4">
-        <div className="flex flex-1 items-center gap-4">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <SidebarTrigger className="h-9 w-9" />
+          {/* The sidebar starts collapsed (`defaultOpen={false}`), so without
+              this the owner's own shop name appears nowhere on the screen they
+              use all day. It shows only while the sidebar is collapsed —
+              printing it twice would just be chrome. */}
+          {business?.shop_name && state === 'collapsed' && (
+            <span className="font-display hidden truncate text-base leading-none font-bold tracking-tight sm:inline">
+              {business.shop_name}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center">

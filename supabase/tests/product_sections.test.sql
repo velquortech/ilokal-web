@@ -118,6 +118,21 @@ BEGIN
    WHERE business_id = v_biz AND name = 'Cap 1';
   INSERT INTO product_sections (business_id, name) VALUES (v_biz, 'After Archive');
 
+  -- ...and un-archiving must not walk past it either. The cap trigger covers
+  -- UPDATE OF archived_at precisely so clearing the flag cannot smuggle a
+  -- 31st live section in.
+  v_failed := FALSE;
+  BEGIN
+    UPDATE product_sections SET archived_at = NULL
+     WHERE business_id = v_biz AND name = 'Cap 1';
+  EXCEPTION WHEN SQLSTATE 'IL003' THEN v_failed := TRUE;
+  END;
+  ASSERT v_failed, 'un-archiving a section bypassed the 30-section cap';
+
+  -- Archiving is always allowed, cap or no cap.
+  UPDATE product_sections SET archived_at = now()
+   WHERE business_id = v_biz AND name = 'After Archive';
+
   RAISE NOTICE 'constraint + lifecycle assertions passed';
 
   -- ──────────────────────────── counts RPC ────────────────────────────────
@@ -136,6 +151,17 @@ BEGIN
     FROM section_product_counts(v_biz) WHERE section_id = v_section;
   ASSERT v_count = 0, 'archived products still counted';
   UPDATE products SET archived_at = NULL WHERE id = v_prod;
+
+  -- Branch scoping: the catalogue table is branch-filterable, so shop-wide
+  -- counts beside a branch-filtered table would be two numbers for one thing.
+  SELECT coalesce(sum(product_count), 0) INTO v_count
+    FROM section_product_counts(v_biz, '00000000-0000-0000-0000-000000000000');
+  ASSERT v_count = 0,
+    'counts ignored p_branch_id (a branch with no products should read 0)';
+
+  SELECT coalesce(sum(product_count), 0) INTO v_count
+    FROM section_product_counts(v_biz, NULL);
+  ASSERT v_count > 0, 'NULL p_branch_id should mean every branch';
 
   RAISE NOTICE 'counts RPC assertions passed';
 END $$;
@@ -261,6 +287,27 @@ BEGIN
   ASSERT v_bad = 0, 'a product_sections write policy has no WITH CHECK';
 
   RAISE NOTICE 'policy-shape assertions passed';
+END $$;
+
+-- ─────────────────── the FK is actually indexed ────────────────────────────
+-- The release-on-archive trigger and the FK's ON DELETE SET NULL both start
+-- from section_id, and neither can use a (business_id, section_id) composite.
+DO $$
+DECLARE
+  v_count INTEGER;
+BEGIN
+  SELECT count(*) INTO v_count
+  FROM pg_index i
+  JOIN pg_class c ON c.oid = i.indexrelid
+  JOIN pg_attribute a
+    ON a.attrelid = i.indrelid AND a.attnum = i.indkey[0]
+  WHERE i.indrelid = 'public.products'::regclass
+    AND a.attname = 'section_id';
+
+  ASSERT v_count >= 1,
+    'products.section_id has no index leading with it — the archive trigger and the FK check both seq-scan products';
+
+  RAISE NOTICE 'index assertions passed';
 END $$;
 
 DO $$ BEGIN RAISE NOTICE 'ALL SECTION TESTS PASSED'; END $$;

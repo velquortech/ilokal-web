@@ -20,6 +20,7 @@ import {
   createSectionSchema,
   updateSectionSchema,
   reorderSectionsSchema,
+  sectionIdSchema,
 } from '@/lib/validation/sections';
 import * as sectionService from '@/lib/api/sections/sectionService';
 import type { ApiError, ApiResponse, ProductSection } from '@/lib/types';
@@ -28,6 +29,19 @@ const UNAUTHORIZED: ApiError = {
   code: 'UNAUTHORIZED',
   message: 'You do not have access to this shop.',
 };
+
+const INVALID_SECTION: ApiError = {
+  code: 'VALIDATION_ERROR',
+  message: 'That section no longer exists.',
+};
+
+/**
+ * A malformed id would otherwise reach Postgres as a 22P02 and map to the
+ * generic INTERNAL_ERROR — a refusal dressed as a server fault.
+ */
+function validSectionId(sectionId: string): boolean {
+  return sectionIdSchema.safeParse(sectionId).success;
+}
 
 async function ownerOf(
   businessId: string,
@@ -82,6 +96,8 @@ export async function renameSectionAction(
 ): Promise<ApiResponse<ProductSection>> {
   const owner = await ownerOf(businessId);
   if ('error' in owner) return { success: false, error: owner.error };
+  if (!validSectionId(sectionId))
+    return { success: false, error: INVALID_SECTION };
 
   const parsed = updateSectionSchema.safeParse({ name });
   if (!parsed.success) {
@@ -109,6 +125,8 @@ export async function archiveSectionAction(
 ): Promise<ApiResponse<{ id: string }>> {
   const owner = await ownerOf(businessId);
   if ('error' in owner) return { success: false, error: owner.error };
+  if (!validSectionId(sectionId))
+    return { success: false, error: INVALID_SECTION };
 
   const result = await sectionService.archiveSection(owner.id, sectionId);
   if (result.success) revalidateSectionSurfaces(owner.id);

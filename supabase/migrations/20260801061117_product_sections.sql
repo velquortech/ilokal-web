@@ -130,10 +130,18 @@ AS $$
 DECLARE
   v_count INTEGER;
 BEGIN
+  -- Only rows that are (or are becoming) LIVE count. Archiving is always
+  -- allowed, and an UPDATE that leaves the row archived is a no-op here.
+  IF NEW.archived_at IS NOT NULL THEN
+    RETURN NEW;
+  END IF;
+
   SELECT count(*) INTO v_count
   FROM public.product_sections
   WHERE business_id = NEW.business_id
-    AND archived_at IS NULL;
+    AND archived_at IS NULL
+    -- On UPDATE the row may already be counted; exclude itself.
+    AND id IS DISTINCT FROM NEW.id;
 
   IF v_count >= 30 THEN
     -- Private SQLSTATE class, like the booking RPCs: 22023 and its neighbours
@@ -150,8 +158,10 @@ $$;
 REVOKE ALL ON FUNCTION public.enforce_product_section_cap()
   FROM PUBLIC, anon, authenticated;
 
+-- INSERT **and** un-archive: without the UPDATE arm, clearing `archived_at` on
+-- old rows walks a shop straight past 30 live sections.
 CREATE TRIGGER trg_product_sections_cap
-BEFORE INSERT ON public.product_sections
+BEFORE INSERT OR UPDATE OF archived_at ON public.product_sections
 FOR EACH ROW EXECUTE FUNCTION public.enforce_product_section_cap();
 
 -- ------------------------------------------------------------
@@ -164,11 +174,22 @@ COMMENT ON COLUMN public.products.section_id IS
   'Optional shop-local grouping. NULL = Uncategorised. Independent of '
   'category_id, which is the platform taxonomy used for discovery.';
 
--- Postgres does not auto-index foreign keys; this one is read on every
--- catalogue page load and every public shop page render.
+-- Postgres does not auto-index foreign keys. TWO indexes, because they serve
+-- different readers:
+--   * (business_id, section_id) — the catalogue page's "this shop, this
+--     section" filter.
+--   * (section_id) — everything that starts from the SECTION: the
+--     release-on-archive trigger's `WHERE section_id = NEW.id`, and the FK's
+--     own ON DELETE SET NULL referential check. Neither can use the composite
+--     index above, because section_id is not its leading column — both were
+--     seq-scanning `products`.
 CREATE INDEX idx_products_business_section
   ON public.products (business_id, section_id)
   WHERE archived_at IS NULL;
+
+CREATE INDEX idx_products_section_id
+  ON public.products (section_id)
+  WHERE section_id IS NOT NULL;
 
 -- Archiving a section must never take inventory with it. A soft delete would
 -- leave `section_id` pointing at a hidden row, which every future query would
@@ -213,7 +234,13 @@ FOR EACH ROW EXECUTE FUNCTION public.release_products_from_archived_section();
 -- DEFINER function would have to re-implement that check and could get it
 -- wrong.
 -- ------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.section_product_counts(p_business_id UUID)
+-- `p_branch_id` exists because the catalogue table is branch-filterable: with a
+-- branch selected, shop-wide counts on the chips contradict the rows beneath
+-- them. NULL = every branch.
+CREATE OR REPLACE FUNCTION public.section_product_counts(
+  p_business_id UUID,
+  p_branch_id UUID DEFAULT NULL
+)
 RETURNS TABLE (
   section_id UUID,
   product_count BIGINT
@@ -227,13 +254,15 @@ AS $$
   FROM public.products p
   WHERE p.business_id = p_business_id
     AND p.archived_at IS NULL
+    AND (p_branch_id IS NULL OR p.branch_id = p_branch_id)
   GROUP BY p.section_id;
 $$;
 
-COMMENT ON FUNCTION public.section_product_counts(UUID) IS
+COMMENT ON FUNCTION public.section_product_counts(UUID, UUID) IS
   'Live product counts per section for one business, including a NULL '
   'section_id row for Uncategorised. Runs as the caller, so RLS decides what '
   'is counted.';
 
-REVOKE ALL ON FUNCTION public.section_product_counts(UUID) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.section_product_counts(UUID) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.section_product_counts(UUID, UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.section_product_counts(UUID, UUID)
+  TO anon, authenticated;

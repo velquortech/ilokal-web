@@ -168,12 +168,32 @@ export async function reorderSections(
         .update({ position: index })
         .eq('id', id)
         .eq('business_id', businessId)
-        .is('archived_at', null),
+        .is('archived_at', null)
+        // Returning the row is what makes "did it apply?" answerable: a
+        // stale, foreign or already-archived id matches nothing, and without
+        // this the caller would toast "Order saved" over a write that did not
+        // happen.
+        .select('id'),
     ),
   );
 
   const failed = results.find((r) => r.error);
   if (failed?.error) return failure(failed.error, 'reorderSections');
 
-  return { success: true, data: { updated: sectionIds.length } };
+  const updated = results.reduce((n, r) => n + (r.data?.length ?? 0), 0);
+  if (updated < sectionIds.length) {
+    console.error('[reorderSections] partial apply', {
+      requested: sectionIds.length,
+      updated,
+    });
+    return {
+      success: false,
+      error: {
+        code: 'NOT_FOUND',
+        message: 'Some sections have changed. Refresh and try again.',
+      },
+    };
+  }
+
+  return { success: true, data: { updated } };
 }

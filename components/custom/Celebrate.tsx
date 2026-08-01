@@ -3,6 +3,7 @@
 import {
   createContext,
   useCallback,
+  useMemo,
   useContext,
   useEffect,
   useRef,
@@ -68,6 +69,8 @@ export function CelebrateProvider({ children }: { children: ReactNode }) {
   const raf = useRef(0);
   const startedAt = useRef(0);
 
+  // A fresh object here would re-render every consumer under the whole
+  // business layout each time `armed` flips true and back.
   const celebrate = useCallback(() => {
     if (prefersReducedMotion()) return;
     startedAt.current = 0;
@@ -146,8 +149,10 @@ export function CelebrateProvider({ children }: { children: ReactNode }) {
     return () => cancelAnimationFrame(raf.current);
   }, [armed]);
 
+  const value = useMemo(() => ({ celebrate }), [celebrate]);
+
   return (
-    <Ctx.Provider value={{ celebrate }}>
+    <Ctx.Provider value={value}>
       {children}
       {armed && (
         <canvas

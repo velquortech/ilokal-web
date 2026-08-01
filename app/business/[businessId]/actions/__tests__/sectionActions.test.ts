@@ -125,6 +125,42 @@ describe('section actions — validation', () => {
     expect(res.success).toBe(false);
     expect(service.reorderSections).not.toHaveBeenCalled();
   });
+
+  it('rejects a duplicated id in a reorder', async () => {
+    // A repeated id writes two positions to one row and leaves another
+    // section's position unwritten — the order silently collapses.
+    const id = '11111111-1111-1111-1111-111111111111';
+    const res = await reorderSectionsAction('biz', [id, id]);
+    expect(res.success).toBe(false);
+    expect(service.reorderSections).not.toHaveBeenCalled();
+  });
+
+  it('rejects more ids than a shop can hold', async () => {
+    const ids = Array.from(
+      { length: 31 },
+      (_, i) =>
+        `1111111${i.toString().padStart(1, '0')}-1111-1111-1111-111111111111`,
+    );
+    const res = await reorderSectionsAction('biz', ids);
+    expect(res.success).toBe(false);
+    expect(service.reorderSections).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['rename', () => renameSectionAction('biz', 'not-a-uuid', 'X')],
+    ['archive', () => archiveSectionAction('biz', 'not-a-uuid')],
+  ])(
+    '%s refuses a malformed section id before touching the DB',
+    async (_n, call) => {
+      // Otherwise it reaches Postgres as a 22P02 and maps to INTERNAL_ERROR — a
+      // refusal dressed up as a server fault.
+      const res = await call();
+      expect(res.success).toBe(false);
+      expect(res.error?.code).toBe('VALIDATION_ERROR');
+      expect(service.renameSection).not.toHaveBeenCalled();
+      expect(service.archiveSection).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe('section actions — cache', () => {

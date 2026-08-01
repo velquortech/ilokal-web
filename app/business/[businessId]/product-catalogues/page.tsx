@@ -51,7 +51,11 @@ export default async function ProductCataloguesPage({
     ),
   );
   const search = typeof sp.search === 'string' ? sp.search : undefined;
-  const categoryId = typeof sp.category === 'string' ? sp.category : undefined;
+  // NOTE: there is deliberately no `category` filter here any more. The chip
+  // strip writes `section`, and `updateParams` preserves unknown params — so a
+  // bookmarked `?category=` would keep filtering the table with no control able
+  // to show or clear it.
+  //
   // '' (All) and 'none' (Uncategorised) are both meaningful; the query layer
   // maps 'none' to `section_id IS NULL`.
   const sectionId = typeof sp.section === 'string' ? sp.section : undefined;
@@ -60,11 +64,6 @@ export default async function ProductCataloguesPage({
     PRODUCT_STATUSES.includes(sp.status as ProductStatus)
       ? (sp.status as ProductStatus)
       : ('' as const); // '' = all statuses (owner view); omitting would default to 'active'
-
-  // The picker offers this vertical's categories plus the global ones, so a
-  // salon is not asked to file a haircut under "Pastries". A null type (or a
-  // failed read) falls back to every category — the pre-phase-5 behaviour.
-  const businessTypeId = await getBusinessTypeId(businessId);
 
   const [productsResult, stats, categoriesResult, sectionsResult] =
     await Promise.all([
@@ -75,7 +74,6 @@ export default async function ProductCataloguesPage({
             page,
             per_page: perPage,
             search,
-            category_id: categoryId,
             section_id: sectionId,
             status,
           })
@@ -95,13 +93,20 @@ export default async function ProductCataloguesPage({
             disabled: 0,
             on_sale: 0,
           }),
-      getCategoriesPaginated({
-        page: 1,
-        per_page: 100,
-        business_type_id: businessTypeId,
-      }),
+      // Chained rather than awaited ahead of the batch (P7): only the
+      // categories read depends on the vertical, so the other three should not
+      // wait for it. The picker offers this vertical's categories plus the
+      // global ones — a null type or a failed read falls back to every
+      // category, the pre-phase-5 behaviour.
+      getBusinessTypeId(businessId).then((businessTypeId) =>
+        getCategoriesPaginated({
+          page: 1,
+          per_page: 100,
+          business_type_id: businessTypeId,
+        }),
+      ),
       businessId
-        ? getSectionsWithCounts(businessId)
+        ? getSectionsWithCounts(businessId, branchId)
         : Promise.resolve({ sections: [], uncategorised_count: 0 }),
     ]);
 
@@ -125,6 +130,9 @@ export default async function ProductCataloguesPage({
       sections={sectionsResult.sections}
       uncategorisedCount={sectionsResult.uncategorised_count}
       sectionsFailed={'error' in sectionsResult && !!sectionsResult.error}
+      countsFailed={
+        'counts_failed' in sectionsResult && !!sectionsResult.counts_failed
+      }
     />
   );
 }

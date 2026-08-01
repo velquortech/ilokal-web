@@ -2,16 +2,18 @@
 
 import * as React from 'react';
 import { DataTable } from '@/components/custom/data-table/DataTable';
-import { columns } from './columns';
+import { getColumns } from './columns';
 import {
   SortingState,
   PaginationState,
   OnChangeFn,
 } from '@tanstack/react-table';
-import type { ProductResponse } from '@/lib/types';
+import type { ProductResponse, ProductSectionWithCount } from '@/lib/types';
 
 interface ProductTableProps {
   products: ProductResponse[];
+  /** Passed through to the row actions so "Update" can offer a section. */
+  sections?: ProductSectionWithCount[];
   page: number;
   pageSize: number;
   totalPages: number;
@@ -21,12 +23,17 @@ interface ProductTableProps {
 
 export function ProductTable({
   products,
+  sections,
   page,
   pageSize,
   totalPages,
   onPaginationChange,
 }: ProductTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
+
+  // New column identities on every render make TanStack rebuild the table; the
+  // factory only depends on the sections list.
+  const columns = React.useMemo(() => getColumns(sections), [sections]);
 
   const pagination: PaginationState = {
     pageIndex: page - 1,

@@ -332,14 +332,24 @@ export async function getBusinessProductStatsAction(): Promise<
 }
 
 /**
- * Get all categories for product creation
+ * Offering categories for the product dialogs.
+ *
+ * `business_type_id` scopes the list to one vertical PLUS the global rows, so
+ * a salon is not offered "Pastries". Omit it for every category.
+ *
+ * NOTE: these are OFFERING categories (`public.categories`). The shop's own
+ * category is a different table (`business_categories`) — see
+ * `getBusinessCategoriesAction`.
  */
-export async function getCategoriesAction(): Promise<ApiResponse<Category[]>> {
+export async function getCategoriesAction(
+  businessTypeId?: string | null,
+): Promise<ApiResponse<Category[]>> {
   try {
     const result = await productQuery.getCategoriesPaginated({
       page: 1,
       per_page: 200, // Get all categories
       sort_by: 'name_asc',
+      business_type_id: businessTypeId ?? undefined,
     });
 
     return {

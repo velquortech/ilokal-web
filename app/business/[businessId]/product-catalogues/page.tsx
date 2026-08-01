@@ -6,6 +6,8 @@ import {
   getProductStatsByBusinessId,
   getCategoriesPaginated,
 } from '@/lib/api/products/productQuery';
+import { getSectionsWithCounts } from '@/lib/api/sections/sectionQuery';
+import { getBusinessTypeId } from '@/lib/api/offerings/offeringQuery';
 import { ProductCataloguesContent } from './components/product-catalogues-content';
 import type { ProductStatus } from '@/lib/types';
 
@@ -50,41 +52,58 @@ export default async function ProductCataloguesPage({
   );
   const search = typeof sp.search === 'string' ? sp.search : undefined;
   const categoryId = typeof sp.category === 'string' ? sp.category : undefined;
+  // '' (All) and 'none' (Uncategorised) are both meaningful; the query layer
+  // maps 'none' to `section_id IS NULL`.
+  const sectionId = typeof sp.section === 'string' ? sp.section : undefined;
   const status =
     typeof sp.status === 'string' &&
     PRODUCT_STATUSES.includes(sp.status as ProductStatus)
       ? (sp.status as ProductStatus)
       : ('' as const); // '' = all statuses (owner view); omitting would default to 'active'
 
-  const [productsResult, stats, categoriesResult] = await Promise.all([
-    businessId
-      ? getProductsPaginated({
-          business_id: businessId,
-          branch_id: branchId,
-          page,
-          per_page: perPage,
-          search,
-          category_id: categoryId,
-          status,
-        })
-      : Promise.resolve({
-          products: [],
-          total: 0,
-          page: 1,
-          per_page: perPage,
-          total_pages: 0,
-        }),
-    businessId
-      ? getProductStatsByBusinessId(businessId, branchId)
-      : Promise.resolve({
-          total: 0,
-          active: 0,
-          unlisted: 0,
-          disabled: 0,
-          on_sale: 0,
-        }),
-    getCategoriesPaginated({ page: 1, per_page: 100 }),
-  ]);
+  // The picker offers this vertical's categories plus the global ones, so a
+  // salon is not asked to file a haircut under "Pastries". A null type (or a
+  // failed read) falls back to every category — the pre-phase-5 behaviour.
+  const businessTypeId = await getBusinessTypeId(businessId);
+
+  const [productsResult, stats, categoriesResult, sectionsResult] =
+    await Promise.all([
+      businessId
+        ? getProductsPaginated({
+            business_id: businessId,
+            branch_id: branchId,
+            page,
+            per_page: perPage,
+            search,
+            category_id: categoryId,
+            section_id: sectionId,
+            status,
+          })
+        : Promise.resolve({
+            products: [],
+            total: 0,
+            page: 1,
+            per_page: perPage,
+            total_pages: 0,
+          }),
+      businessId
+        ? getProductStatsByBusinessId(businessId, branchId)
+        : Promise.resolve({
+            total: 0,
+            active: 0,
+            unlisted: 0,
+            disabled: 0,
+            on_sale: 0,
+          }),
+      getCategoriesPaginated({
+        page: 1,
+        per_page: 100,
+        business_type_id: businessTypeId,
+      }),
+      businessId
+        ? getSectionsWithCounts(businessId)
+        : Promise.resolve({ sections: [], uncategorised_count: 0 }),
+    ]);
 
   const paginatedData =
     'error' in productsResult
@@ -102,6 +121,10 @@ export default async function ProductCataloguesPage({
       }}
       categories={categoriesResult.categories}
       stats={stats}
+      businessId={businessId ?? ''}
+      sections={sectionsResult.sections}
+      uncategorisedCount={sectionsResult.uncategorised_count}
+      sectionsFailed={'error' in sectionsResult && !!sectionsResult.error}
     />
   );
 }

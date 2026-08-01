@@ -1069,6 +1069,51 @@ export type Database = {
           },
         ]
       }
+      product_sections: {
+        Row: {
+          archived_at: string | null
+          business_id: string
+          created_at: string
+          id: string
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          business_id: string
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          business_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_sections_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_dashboard_stats"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "product_sections_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           archived_at: string | null
@@ -1096,6 +1141,7 @@ export type Database = {
           sale_ends_at: string | null
           sale_price: number | null
           sale_starts_at: string | null
+          section_id: string | null
           service_location: string
           status: string
           updated_at: string | null
@@ -1127,6 +1173,7 @@ export type Database = {
           sale_ends_at?: string | null
           sale_price?: number | null
           sale_starts_at?: string | null
+          section_id?: string | null
           service_location?: string
           status?: string
           updated_at?: string | null
@@ -1158,6 +1205,7 @@ export type Database = {
           sale_ends_at?: string | null
           sale_price?: number | null
           sale_starts_at?: string | null
+          section_id?: string | null
           service_location?: string
           status?: string
           updated_at?: string | null
@@ -1190,6 +1238,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "product_sections"
             referencedColumns: ["id"]
           },
         ]
@@ -2160,6 +2215,13 @@ export type Database = {
         }
       }
       rollup_weekly_view_counts: { Args: never; Returns: undefined }
+      section_product_counts: {
+        Args: { p_business_id: string }
+        Returns: {
+          product_count: number
+          section_id: string
+        }[]
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       st_3dclosestpoint: {

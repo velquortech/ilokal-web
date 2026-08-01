@@ -99,7 +99,10 @@ describe('applySaleToProduct()', () => {
 
     expect('error' in result).toBe(true);
     if ('error' in result) {
-      expect(result.error).toContain('update failed');
+      // Generic copy on purpose: a driver message names tables, columns
+      // and constraints, and this value is rendered to the client.
+      expect(result.error).toBe('Failed to apply sale');
+      expect(result.error).not.toContain('update failed');
     }
   });
 
@@ -189,7 +192,8 @@ describe('removeSaleFromProduct()', () => {
 
     expect('error' in result).toBe(true);
     if ('error' in result) {
-      expect(result.error).toContain('connection reset');
+      expect(result.error).toBe('Failed to remove sale');
+      expect(result.error).not.toContain('connection reset');
     }
   });
 });

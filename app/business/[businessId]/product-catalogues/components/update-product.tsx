@@ -27,7 +27,7 @@ import {
 import { ImageUploadField } from '@/components/custom/upload/image-upload';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { ProductResponse } from '@/lib/types';
+import type { ProductResponse, ProductSectionWithCount } from '@/lib/types';
 import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
 import { cn } from '@/lib/utils';
 import { BOOKING_MODE_LABELS, PRICE_TYPE_LABELS } from './offering-labels';
@@ -40,8 +40,16 @@ import {
 
 interface UpdateProductDialogProps {
   product: ProductResponse;
+  /** The shop's own groupings. Absent until the shop has made one. */
+  sections?: ProductSectionWithCount[];
   children: React.ReactNode;
 }
+
+/**
+ * Radix Select forbids an empty-string item value, so "no section" needs a
+ * sentinel. Mapped back to NULL on submit — Uncategorised is a real state.
+ */
+const NO_SECTION = '__none__';
 
 type ProductFormValues = {
   name: string;
@@ -51,11 +59,13 @@ type ProductFormValues = {
   price_type: PriceType;
   status: 'active' | 'unlisted' | 'disabled';
   booking_mode: BookingMode;
+  section_id: string;
   image_url: File | string | null;
 };
 
 export function UpdateProductDialog({
   product,
+  sections,
   children,
 }: UpdateProductDialogProps) {
   const router = useRouter();
@@ -75,6 +85,7 @@ export function UpdateProductDialog({
       status: product.status,
       image_url: product.image_url,
       booking_mode: product.booking_mode,
+      section_id: product.section_id ?? NO_SECTION,
     }),
     [product],
   );
@@ -134,6 +145,9 @@ export function UpdateProductDialog({
         price_type: data.price_type,
         status: data.status,
         booking_mode: data.booking_mode,
+        // Always sent, so an owner can move an offering back to
+        // Uncategorised — omitting it would make that impossible.
+        section_id: data.section_id === NO_SECTION ? null : data.section_id,
         image_url,
       });
 
@@ -197,6 +211,47 @@ export function UpdateProductDialog({
               <FieldLabel>Description</FieldLabel>
               <Textarea {...register('description')} className="resize-none" />
             </Field>
+
+            {/* The shop's own grouping. Hidden until the shop has sections —
+                except when this row already sits in one, or an owner could
+                never move it out. */}
+            {((sections && sections.length > 0) || product.section_id) && (
+              <Field>
+                <FieldLabel>Section</FieldLabel>
+                <Controller
+                  control={control}
+                  name="section_id"
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Uncategorised" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_SECTION}>
+                          Uncategorised
+                        </SelectItem>
+                        {(sections ?? []).map((section) => (
+                          <SelectItem key={section.id} value={section.id}>
+                            {section.name}
+                          </SelectItem>
+                        ))}
+                        {/* The row's current section may be missing from the
+                            list (archived while this dialog was open); keep it
+                            selectable so the Select is never blank. */}
+                        {product.section_id &&
+                          !(sections ?? []).some(
+                            (s) => s.id === product.section_id,
+                          ) && (
+                            <SelectItem value={product.section_id}>
+                              {product.section?.name ?? 'Current section'}
+                            </SelectItem>
+                          )}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </Field>
+            )}
 
             <Field>
               <FieldLabel>Price Type</FieldLabel>

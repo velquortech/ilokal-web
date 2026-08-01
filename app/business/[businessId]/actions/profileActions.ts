@@ -135,3 +135,48 @@ export async function updateBusinessProfileAction(
     };
   }
 }
+
+/**
+ * The shop's own category, for the profile form's picker.
+ *
+ * 🔴 This exists because that picker was filled from `getCategoriesAction()` —
+ * the OFFERING categories ("Food & Beverages", "Home & Living"). But
+ * `businesses.category_id` has an FK to `business_categories`, so every option
+ * the form offered was an id from the wrong table: saving raised a foreign-key
+ * violation and a shop could never change its category from this page.
+ *
+ * Soft-deleted rows are filtered (`deleted_at`), per the embedded-relation
+ * convention. Never throws — a failed read renders an empty picker, not a
+ * broken form.
+ */
+export async function getBusinessCategoriesAction(): Promise<
+  ApiResponse<{ id: string; name: string }[]>
+> {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('business_categories')
+      .select('id, name')
+      .is('deleted_at', null)
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('[getBusinessCategoriesAction]', error);
+      return {
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Failed to load categories',
+        },
+      };
+    }
+
+    return { success: true, data: data ?? [] };
+  } catch (err) {
+    console.error('[getBusinessCategoriesAction]', err);
+    return {
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'Failed to load categories' },
+    };
+  }
+}

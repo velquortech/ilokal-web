@@ -205,7 +205,7 @@ export function LandingPage() {
                       )}
                     >
                       Discover{' '}
-                      <span style={s('color:#4ADE80;')}>Hidden Gems.</span>
+                      <span style={s('color:#FEE87B;')}>Hidden Gems.</span>
                     </h3>
                     <p
                       style={s(
@@ -247,7 +247,7 @@ export function LandingPage() {
                     </div>
                     <button
                       style={s(
-                        'width:100%;background:#15803D;color:#fff;font-size:15px;font-weight:700;padding:14px;border-radius:999px;margin-bottom:10px;',
+                        'width:100%;background:#D70005;color:#fff;font-size:15px;font-weight:700;padding:14px;border-radius:999px;margin-bottom:10px;',
                       )}
                     >
                       Get Started
@@ -448,7 +448,7 @@ export function LandingPage() {
                 <div style={s('display:flex;align-items:center;gap:10px;')}>
                   <span
                     style={s(
-                      'width:34px;height:34px;border-radius:9px;background:#16A34A;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;',
+                      'width:34px;height:34px;border-radius:9px;background:#D70005;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;',
                     )}
                   >
                     KC
@@ -540,7 +540,7 @@ export function LandingPage() {
                     <polyline
                       points="0,48 40,40 80,44 120,26 160,30 200,14 260,6"
                       fill="none"
-                      stroke="#65A30D"
+                      stroke="#D70005"
                       strokeWidth="3"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -922,7 +922,7 @@ export function LandingPage() {
         <div className="wrap">
           <motion.div
             style={s(
-              'background:linear-gradient(135deg,#65A30D,#15803D);border-radius:24px;padding:56px 40px;text-align:center;position:relative;overflow:hidden;',
+              'background:linear-gradient(135deg,#D70005,#A80004);border-radius:24px;padding:56px 40px;text-align:center;position:relative;overflow:hidden;',
             )}
             variants={fadeUp}
             {...inViewOnce}

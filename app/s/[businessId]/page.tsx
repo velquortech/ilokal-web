@@ -90,7 +90,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { businessId } = await params;
   const biz = await getSharedBusiness(businessId);
 
-  if (!biz) return { title: 'Business not found · iLokal' };
+  if (!biz) return { title: 'Business not found' };
 
   const title = `${biz.name} · iLokal`;
   const description = biz.description || `Discover ${biz.name} on iLokal.`;

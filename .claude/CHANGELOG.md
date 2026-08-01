@@ -1,5 +1,82 @@
 # Changelog
 
+## 2026-08-01 — Brand v1.0: the presented red/yellow identity, app-wide (feat/rebranding)
+
+> Presentational + design tokens. **No schema, API, or auth change.** Plan,
+> parity table and measured contrast ledger in `.claude/BRAND_ROLLOUT.md`
+> (delete with its `CLAUDE.md` note when merged).
+
+- **This was a rebrand, not a palette tweak.** The app shipped the v0.2
+  "Hablon Weave" identity — lime `#65A30D`, a woven-strip tile mark, a Geist
+  800 wordmark. The presented deck replaces every part of it: **Brick Ember
+  `#D70005`** primary, Jasmine/Cornsilk/Petal Frost/Porcelain/Charcoal, a
+  drawn `ilokal` wordmark with the two-people `ilo` ligature, and **two new
+  typefaces**. Nothing green survives as brand.
+- **Assets built from the supplied raster.** The identity arrived as PNG only,
+  so both marks were matted out (flat two-colour art projected onto the
+  background→foreground colour line, giving true antialiased alpha) and
+  re-tinted per colourway — not screenshot-cropped. Wordmark 1128×244, submark
+  1036×507, plus a square app mark (rounded tile + `ilo`), the store icon set,
+  and regenerated `app/icon.png` / `apple-icon.png` / `favicon.ico`. The green
+  `public/brand/{svg,png}` and `app/icon.svg` are deleted. **No vector source
+  exists** — 1128px covers every web use (~9× headroom in the nav) but not
+  large print; the Illustrator/Figma file is still needed.
+- **Typography is now two faces.** Pally (display) + Inter (body), per the
+  deck. Pally is not on Google Fonts, so the three `.woff2` were pulled once
+  from Fontshare (free personal + commercial licence) into `public/fonts` and
+  wired through `next/font/local` — **no runtime third-party font request**,
+  and Next still emits the preload + `size-adjust` fallback metrics. `h1`–`h6`
+  pick up Pally from `@layer base` rather than a ~200-file sweep, which is
+  also the only way Radix's own titles (DialogTitle, AlertDialogTitle) get it.
+- **Three tokens the deck does not specify, derived and flagged for designer
+  sign-off:**
+  - **Dark-mode primary.** Brick Ember on Charcoal measures **3.23:1** and
+    fails AA. Lifted to `oklch(0.58 0.215 28.8)` (`#DD2920`): label 4.56:1,
+    fill-vs-background 3.66:1. `--brand` switches under `.dark`, and
+    `BrandMark`/`BrandWordmark` ship a matching "flame" tile + Porcelain
+    wordmark rather than reusing the light cuts.
+  - **Destructive.** The brand red *is* `--primary` now, so the stock red
+    destructive would make Delete look like Save. Deepened to `#8E0B14`
+    (light) and hue-shifted to crimson `#BD3855` (dark).
+  - **Chart ramp.** Jasmine and Petal Frost at native lightness are ~1.8:1 on
+    white and unusable as data marks; the ramp keeps the hue and drops the
+    lightness.
+- **Contrast measured, not assumed.** White/Porcelain on Brick Ember 5.40:1 ✅,
+  Brick on Porcelain 5.17:1 ✅, Charcoal on Jasmine 14.12:1 ✅. **Jasmine on
+  Brick Ember is 4.38:1 — large text only**; that covers the logo lockup, and
+  it is called out in `DESIGN.md` and the brand README so nobody sets body
+  copy in it.
+- **Green kept where it means success, not brand.** `StatusBadge`,
+  verification badges, active pills, trend-up indicators (25 files) were
+  reviewed and deliberately left green — success-green beside brand-red is the
+  signal. Same for the macOS traffic-light dots in the landing's browser mock
+  and the third-party Google Play mark.
+- **Two latent bugs fixed on the way through.** (1) `--font-display` was
+  initially both the Tailwind theme token and the `next/font` variable name, a
+  **self-reference** that is invalid at computed-value time on `:root` — it
+  only worked because `<body>` shadowed it. The font binding is now
+  `--font-pally`. (2) `font-geist` (2 call sites) and `font-font-giest-mono`
+  (1) never matched a declared token and silently resolved to nothing; the
+  aliases are declared and the typo fixed.
+- **Metadata.** Root layout gained a `title.template`, a real description, OG
+  fields, and per-scheme `themeColor` (`#D70005` / `#1A1A1A`); the 14 page
+  titles that carried their own "- iLokal" suffix were stripped so it isn't
+  rendered twice.
+- **Tests (+20, 1508 → 1528):** `BrandLogo.test.tsx`
+  reworked to the asset-based lockup (8 — palette pinning, the em-scaled
+  wordmark, single accessible name across the auto pair), plus a new
+  `brand.contract.test.ts` (17) that sweeps `app`/`components`/`lib`/`config`
+  for any reintroduced v0.2 green, pins the asset + font-file surface
+  `BrandLogo` references by literal path, asserts destructive ≠ primary in
+  both modes, and fails on a self-referential `--font-display`.
+- Verified: `yarn lint` + **1528** tests + `yarn build` green; production
+  server smoke — `/home` `/sign-in` `/signup` `/forgot-password` all 200,
+  brand PNGs 200 both direct and through `/_next/image`, favicons 200, Pally
+  preloaded, and `/home` renders 14× `#D70005` with zero brand-green left.
+- **Not verified — needs a human:** the browser sweep (320/768/1280 × light +
+  dark × landing/explore/auth/business/admin; no headless browser in this env
+  and the stack is frozen), designer sign-off on the three derived tokens
+  above, and the vector logo source.
 ## 2026-07-27 — PR #18 review hardening (feat/dynamic-product-service-listing)
 
 > Fixes from the react-doctor + api-doctor review. **Edits the seven unmerged

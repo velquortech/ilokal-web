@@ -18,30 +18,43 @@ import type { CSSProperties } from 'react';
  * app's `.dark` class — a visual-diff-reviewed branch of its own.
  */
 
-export const BRAND = '#65A30D';
-export const BRAND_HOVER = '#15803D';
+/**
+ * Brand v1.0 — Brick Ember. `--brand` is NOT constant across modes any more:
+ * Brick Ember on the dark `--bg` (#1A1A1A) measures 3.23:1, so dark mode uses
+ * the lifted #DD2920. Read the mode-correct value from `themeTokens`, and use
+ * `BRAND` only where the surface is known to be light.
+ */
+export const BRAND = '#D70005';
+export const BRAND_HOVER = '#A80004';
+export const BRAND_DARK = '#DD2920';
+export const BRAND_DARK_HOVER = '#EF5143';
+
+/** Secondary brand colours, for accents inside landing sections. */
+export const JASMINE = '#FEE87B';
+export const CORNSILK = '#FEF8D6';
+export const PETAL = '#FCD9F7';
 
 type Tokens = Record<string, string>;
 
 export const lightTokens: Tokens = {
-  '--bg': '#FFFFFF',
+  '--bg': '#FBFAF6',
   '--text': '#1A1A1A',
-  '--muted': '#6B7280',
+  '--muted': '#716664',
   '--surface': '#FFFFFF',
-  '--border': '#E5E7EB',
-  '--chip': '#F3F4F6',
-  '--tint': 'rgba(101,163,13,0.08)',
-  '--shadow': '0 1px 3px rgba(16,24,40,0.06),0 10px 30px rgba(16,24,40,0.06)',
+  '--border': '#E4DEDA',
+  '--chip': '#FEF8D6',
+  '--tint': 'rgba(215,0,5,0.07)',
+  '--shadow': '0 1px 3px rgba(26,10,10,0.06),0 10px 30px rgba(26,10,10,0.06)',
 };
 
 export const darkTokens: Tokens = {
   '--bg': '#1A1A1A',
-  '--text': '#F5F5F5',
-  '--muted': '#9CA3AF',
-  '--surface': '#242424',
-  '--border': '#353535',
-  '--chip': '#2C2C2C',
-  '--tint': 'rgba(101,163,13,0.13)',
+  '--text': '#F7F5EF',
+  '--muted': '#A9A49B',
+  '--surface': '#272422',
+  '--border': '#3A3532',
+  '--chip': '#322E2B',
+  '--tint': 'rgba(221,41,32,0.16)',
   '--shadow': '0 1px 3px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35)',
 };
 
@@ -55,8 +68,11 @@ export const darkTokens: Tokens = {
  */
 export function themeTokens(dark: boolean): CSSProperties {
   return {
-    '--brand': BRAND,
-    '--brandhover': BRAND_HOVER,
+    '--brand': dark ? BRAND_DARK : BRAND,
+    '--brandhover': dark ? BRAND_DARK_HOVER : BRAND_HOVER,
+    '--jasmine': JASMINE,
+    '--cornsilk': CORNSILK,
+    '--petal': PETAL,
     ...(dark ? darkTokens : lightTokens),
   } as CSSProperties;
 }
@@ -67,7 +83,7 @@ export function rootStyle(dark: boolean): CSSProperties {
     ...themeTokens(dark),
     background: 'var(--bg)',
     color: 'var(--text)',
-    fontFamily: 'var(--font-geist-sans), Geist, system-ui, sans-serif',
+    fontFamily: 'var(--font-sans-brand), Inter, system-ui, sans-serif',
     minHeight: '100vh',
     transition: 'background .35s ease, color .35s ease',
     overflowX: 'hidden',

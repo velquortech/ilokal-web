@@ -14,7 +14,7 @@ import {
 import { ROUTES, explorePath } from '@/config/routeConfig';
 
 export const metadata: Metadata = {
-  title: 'Following - iLokal',
+  title: 'Following',
   description: 'Shops you follow and their latest updates',
 };
 

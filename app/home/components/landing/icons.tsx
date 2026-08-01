@@ -111,7 +111,7 @@ export const CheckIcon = ({
   <StrokeIcon size={size} width={width} paths={['M20 6 9 17l-5-5']} />
 );
 export const VerifiedSeal = ({ size = 14 }: Sz) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="#65A30D">
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="#D70005">
     <path d="M12 2 9.2 4.6 5.5 4l-.6 3.7L2 9.2 3.4 12 2 14.8l2.9 1.5.6 3.7 3.7-.6L12 22l2.8-2.6 3.7.6.6-3.7 2.9-1.5L20.6 12 22 9.2l-2.9-1.5-.6-3.7-3.7.6z" />
     <path
       d="m9 12 2 2 4-4"
@@ -143,13 +143,13 @@ export const BrowserLock = ({ size = 13 }: Sz) => (
   </svg>
 );
 
-/* ---- phone-mock chips (green stroke) ---- */
+/* ---- phone-mock chips (Jasmine stroke, on the dark device UI) ---- */
 const phone = (size: number): React.SVGProps<SVGSVGElement> => ({
   width: size,
   height: size,
   viewBox: '0 0 24 24',
   fill: 'none',
-  stroke: '#4ADE80',
+  stroke: '#FEE87B',
   strokeWidth: 2,
   strokeLinecap: 'round',
   strokeLinejoin: 'round',
@@ -163,7 +163,7 @@ export const PhonePin = ({ size = 12 }: Sz) => (
 export const PhoneTicket = ({ size = 12 }: Sz) => (
   <svg {...phone(size)}>
     <path d="M20.6 13.4 12 22l-9-9V3h10l7.6 7.6a2 2 0 0 1 0 2.8z" />
-    <circle cx="7.5" cy="7.5" r="1.2" fill="#4ADE80" stroke="none" />
+    <circle cx="7.5" cy="7.5" r="1.2" fill="#FEE87B" stroke="none" />
   </svg>
 );
 export const PhoneStore = ({ size = 12 }: Sz) => (

@@ -8,7 +8,7 @@ import { getDealsFeed, type FeedDeal } from '@/lib/api/customer/customerQuery';
 import { explorePath } from '@/config/routeConfig';
 
 export const metadata: Metadata = {
-  title: 'Deals & Coupons - iLokal',
+  title: 'Deals & coupons',
   description: 'Live deals and coupons from local shops around Iloilo City.',
 };
 

@@ -11,7 +11,7 @@ import { RedemptionCard } from './components/redemption-card';
 import type { WalletFilter } from '@/lib/types';
 
 export const metadata: Metadata = {
-  title: 'My Wallet - iLokal',
+  title: 'My wallet',
   description: 'Your redeemed deals and coupons',
 };
 

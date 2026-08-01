@@ -135,7 +135,7 @@ export function BusinessMap({ branches }: BusinessMapProps) {
                   key={`line-${branch.id}`}
                   positions={[userPos, branch.latLng]}
                   pathOptions={{
-                    color: '#65A30D',
+                    color: '#D70005',
                     weight: 3,
                     dashArray: '6 8',
                   }}

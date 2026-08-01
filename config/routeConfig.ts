@@ -123,14 +123,20 @@ export function explorePath(businessId: string): string {
   return ['/explore', businessId].join('/');
 }
 
-/** Section anchors rendered by the landing page (`app/home/components/landing`). */
+/**
+ * Section anchors rendered by the landing page (`app/home/components/landing`).
+ *
+ * Keep this in lockstep with the `id`s the sections actually render — it is the
+ * only thing stopping a cross-surface link from pointing at a section that was
+ * renamed or deleted, which is exactly what happened to `/explore` when the
+ * landing was redesigned.
+ */
 export type LandingSection =
   | 'top'
-  | 'shoppers'
-  | 'businesses'
-  | 'how'
+  | 'near-you'
   | 'deals'
-  | 'about';
+  | 'voices'
+  | 'businesses';
 
 /**
  * Link to a section of the landing page from anywhere.

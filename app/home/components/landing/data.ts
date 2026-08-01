@@ -1,6 +1,9 @@
 /**
- * iLokal landing content — copied 1:1 from the design export.
- * TODO(real-data): replace copy, mock numbers, and `#` links with real values.
+ * iLokal landing content. Fixtures, deliberately — the landing does not read
+ * live data — a marketing page that 500s when the DB blips is a bad trade.
+ *
+ * TODO(real-data): the remaining `#` links (Contact, Careers, Privacy, Terms)
+ * still need real destinations.
  *
  * Route links come from `config/routeConfig` — never hardcode a path here.
  * `LandingNav` renders `#`-prefixed entries as `<a>` and everything else as
@@ -8,12 +11,6 @@
  */
 
 import { ROUTES } from '@/config/routeConfig';
-
-export type Feature = {
-  title: string;
-  desc: string;
-  icon: 'pin' | 'ticket' | 'heart' | 'trip';
-};
 
 export type Step = { num: string; text: string };
 
@@ -47,13 +44,14 @@ export type NavLink = { href: string; label: string };
 export type FooterColumn = { title: string; links: NavLink[] };
 
 /** Primary nav + mobile-menu links (shared by LandingNav). */
+// Order matches scroll order — a jump nav that disagrees with the page is
+// disorienting.
 export const navLinks: NavLink[] = [
   { href: ROUTES.EXPLORE.HOME, label: 'Explore Shops' },
-  { href: '#shoppers', label: 'For Shoppers' },
-  { href: '#businesses', label: 'For Businesses' },
-  { href: '#how', label: 'How It Works' },
+  { href: '#near-you', label: 'Near You' },
   { href: '#deals', label: 'Deals' },
-  { href: '#about', label: 'About' },
+  { href: '#voices', label: 'Voices' },
+  { href: '#businesses', label: 'For Businesses' },
 ];
 
 /** Footer link columns (shared by LandingFooter). */
@@ -71,7 +69,7 @@ export const footerColumns: FooterColumn[] = [
   {
     title: 'Company',
     links: [
-      { href: '#about', label: 'About' },
+      { href: '#voices', label: 'Voices' },
       { href: '#', label: 'Contact' },
       { href: '#', label: 'Careers' },
     ],
@@ -85,35 +83,166 @@ export const footerColumns: FooterColumn[] = [
   },
 ];
 
-/** "Trusted by" hero avatar stack (verbatim from markup). */
-export const avatarStack: { initials: string; bg: string; fg: string }[] = [
-  { initials: 'KC', bg: '#D70005', fg: '#fff' },
-  { initials: 'TB', bg: '#DD2920', fg: '#fff' },
-  { initials: 'PM', bg: '#FEE87B', fg: '#1A1A1A' },
-  { initials: 'KC', bg: '#D70005', fg: '#fff' },
+/**
+ * The hero's craving switcher — the page's signature.
+ *
+ * Shop names are invented but plausible (the established pattern in this file);
+ * the districts are real Iloilo City ones, which is what makes the spread read
+ * as a place rather than as filler. Replace wholesale when the landing is
+ * allowed to read live data.
+ */
+export type CardTone = 'brick' | 'jasmine' | 'petal' | 'cornsilk';
+
+export type CravingResult = {
+  name: string;
+  /** Iloilo City district — the thing that makes this feel local. */
+  area: string;
+  /** What the place is known for. One clause, no marketing. */
+  note: string;
+  walk: string;
+  tone: CardTone;
+};
+
+export type Craving = { query: string; results: CravingResult[] };
+
+export const cravings: Craving[] = [
+  {
+    query: 'batchoy',
+    results: [
+      {
+        name: "Ted's Batchoy Haus",
+        area: 'La Paz',
+        note: 'Extra chicharrón, no asking',
+        walk: '4 min',
+        tone: 'brick',
+      },
+      {
+        name: 'Sunburst Corner',
+        area: 'Jaro',
+        note: 'Open before the market does',
+        walk: '9 min',
+        tone: 'jasmine',
+      },
+      {
+        name: 'Molo Mainit',
+        area: 'Molo',
+        note: 'Bowl bigger than your head',
+        walk: '12 min',
+        tone: 'petal',
+      },
+    ],
+  },
+  {
+    query: 'kape',
+    results: [
+      {
+        name: "Kap Ising's Café",
+        area: 'Molo',
+        note: 'Single-origin from Antique',
+        walk: '3 min',
+        tone: 'cornsilk',
+      },
+      {
+        name: 'Hablon Coffee',
+        area: 'City Proper',
+        note: 'Weaves sold at the counter',
+        walk: '7 min',
+        tone: 'brick',
+      },
+      {
+        name: 'Dungon Roasters',
+        area: 'Jaro',
+        note: 'Roasts on Tuesdays, sells out',
+        walk: '11 min',
+        tone: 'jasmine',
+      },
+    ],
+  },
+  {
+    query: 'pan de sal',
+    results: [
+      {
+        name: 'Panadería Molo',
+        area: 'Molo',
+        note: 'Out of the oven at 5am',
+        walk: '6 min',
+        tone: 'jasmine',
+      },
+      {
+        name: 'Tinapay Jaro',
+        area: 'Jaro',
+        note: 'Buy five, take one',
+        walk: '8 min',
+        tone: 'petal',
+      },
+      {
+        name: 'La Paz Bakehouse',
+        area: 'La Paz',
+        note: 'Still warm at 6pm',
+        walk: '10 min',
+        tone: 'brick',
+      },
+    ],
+  },
+  {
+    query: 'pasalubong',
+    results: [
+      {
+        name: 'Kultura Crafts',
+        area: 'City Proper',
+        note: 'Hablon by the metre',
+        walk: '5 min',
+        tone: 'petal',
+      },
+      {
+        name: 'Barotac Weave',
+        area: 'Arevalo',
+        note: 'Looms you can watch',
+        walk: '14 min',
+        tone: 'cornsilk',
+      },
+      {
+        name: 'Iloilo Sweets Co.',
+        area: 'Jaro',
+        note: 'Barquillos, boxed to fly',
+        walk: '9 min',
+        tone: 'brick',
+      },
+    ],
+  },
+  {
+    query: 'sunset spot',
+    results: [
+      {
+        name: 'Esplanade Kiosks',
+        area: 'Mandurriao',
+        note: 'River on one side, food on the other',
+        walk: '8 min',
+        tone: 'brick',
+      },
+      {
+        name: 'Villa Beachfront',
+        area: 'Arevalo',
+        note: 'Grilled, salted, eaten standing',
+        walk: '16 min',
+        tone: 'jasmine',
+      },
+      {
+        name: 'Riverside Grill',
+        area: 'Mandurriao',
+        note: 'Last orders when the light goes',
+        walk: '11 min',
+        tone: 'petal',
+      },
+    ],
+  },
 ];
 
-export const features: Feature[] = [
-  {
-    icon: 'pin',
-    title: 'Shops Near Me',
-    desc: 'See verified local businesses sorted by distance on a live map.',
-  },
-  {
-    icon: 'ticket',
-    title: 'Exclusive Deals & Coupons',
-    desc: 'Claim coupons and show a 6-digit code at the counter.',
-  },
-  {
-    icon: 'heart',
-    title: 'Follow Your Favorites',
-    desc: 'Get updates when shops post news, new products, or fresh deals.',
-  },
-  {
-    icon: 'trip',
-    title: 'Trip Planner',
-    desc: 'Bundle your active deals and followed shops into one plan for the day.',
-  },
+/** Proximity block — the claim, and what backs it. */
+export const nearYouFacts: { figure: string; label: string }[] = [
+  { figure: '7', label: 'districts covered, from La Paz to Arevalo' },
+  { figure: '6', label: 'characters to show at the counter' },
+  { figure: '0', label: 'delivery fees, because you walk there' },
 ];
 
 export const bizPoints: string[] = [
@@ -122,12 +251,6 @@ export const bizPoints: string[] = [
   'Create coupons and limited-time deals',
   'Track redemptions and follower analytics',
   'Get a "Verified" badge after document review',
-];
-
-export const shopperSteps: Step[] = [
-  { num: 'STEP 1', text: 'Open the app & allow location' },
-  { num: 'STEP 2', text: 'Browse shops & claim a deal' },
-  { num: 'STEP 3', text: 'Show your code at the shop' },
 ];
 
 export const bizSteps: Step[] = [
@@ -286,12 +409,13 @@ export const testimonials: Testimonial[] = [
   },
 ];
 
-/** Scroll count-up targets (Shops → 120, Deals → 500). */
-export const COUNTER_TARGETS = { shops: 120, deals: 500 } as const;
-
-/** Deal badge label by discount type (from `decorate()`). */
-export function dealBadgeLabel(type: Deal['type']): string {
-  return type === 'pct' ? '% Percentage off' : '₱ Fixed amount off';
+/**
+ * Category filter for the deals wall. Lives here rather than inline in the
+ * component so the rule is testable without rendering through AnimatePresence,
+ * which keeps exiting cards mounted until a frame it never gets in jsdom.
+ */
+export function filterDeals(category: string): Deal[] {
+  return category === 'All' ? deals : deals.filter((d) => d.cat === category);
 }
 
 /** Petal Frost is too light for a white-text avatar tile — swap it for flame. */

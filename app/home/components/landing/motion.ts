@@ -1,27 +1,17 @@
-import type { Variants } from 'motion/react';
-
 /**
- * Shared reveal variants — the `motion` equivalent of the export's `fadeUp`
- * keyframe, extended with a stagger container for the card grids.
+ * Easing shared by the landing's remaining JS animations.
+ *
+ * The scroll-reveal variants that used to live here (`fadeUp`,
+ * `staggerContainer`, `inViewOnce`) are gone. Motion writes `initial` into the
+ * SERVER HTML, so every revealed element shipped `style="opacity:0"` — with JS
+ * blocked, slow, or broken the whole page rendered blank. Screenshots of the
+ * first build showed exactly that. Reveals are CSS view-timeline animations
+ * now (`.il-reveal` / `.il-rise` in `landing.css`), which cannot fail that way
+ * and let most sections be server components.
+ *
+ * What is left in JS is only what genuinely needs state: the craving spread and
+ * the deals filter (AnimatePresence) and the sky's scroll link.
  */
 
-export const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 18 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
-  },
-};
-
-export const staggerContainer: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.09, delayChildren: 0.05 } },
-};
-
-/** Standard in-view trigger props (fires once, a bit before fully on screen). */
-export const inViewOnce = {
-  initial: 'hidden' as const,
-  whileInView: 'show' as const,
-  viewport: { once: true, amount: 0.25 },
-};
+/** `as const` matters: a plain array widens to number[], which motion rejects. */
+export const EASE = [0.22, 1, 0.36, 1] as const;

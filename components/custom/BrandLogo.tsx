@@ -37,6 +37,12 @@ const WORDMARK_INTRINSIC = { width: 1128, height: 244 };
 interface BrandMarkProps {
   size?: number;
   /**
+   * Skip lazy-loading. Set it wherever the lockup sits in the first viewport —
+   * the nav wordmark is the LCP element on the landing, and lazy-loading the
+   * thing the metric is measured on is a self-inflicted wound.
+   */
+  eager?: boolean;
+  /**
    * 'auto' follows the app theme via the Tailwind `dark:` class. Pin 'light'
    * or 'dark' on surfaces with their own theming (e.g. the landing page's
    * data-ilokal-root toggle, which never sets the `.dark` class).
@@ -49,6 +55,7 @@ interface BrandMarkProps {
 export function BrandMark({
   size = 28,
   palette = 'auto',
+  eager = false,
   className,
 }: BrandMarkProps) {
   const shared = {
@@ -57,6 +64,7 @@ export function BrandMark({
     alt: 'iLokal',
     style: { width: size, height: size },
     className: cn('shrink-0', className),
+    ...(eager ? { priority: true } : {}),
   };
 
   if (palette !== 'auto') {
@@ -88,15 +96,19 @@ export function BrandMark({
  */
 export function BrandWordmark({
   palette = 'auto',
+  eager = false,
   className,
 }: {
   palette?: BrandPalette;
+  /** See `BrandMarkProps.eager`. */
+  eager?: boolean;
   className?: string;
 }) {
   const shared = {
     ...WORDMARK_INTRINSIC,
     alt: 'iLokal',
     className: cn('h-[1.15em] w-auto', className),
+    ...(eager ? { priority: true } : {}),
   };
 
   if (palette !== 'auto') {
@@ -124,6 +136,8 @@ export function BrandWordmark({
 interface BrandLogoProps {
   markSize?: number;
   palette?: BrandPalette;
+  /** See `BrandMarkProps.eager`. */
+  eager?: boolean;
   className?: string;
   wordmarkClassName?: string;
 }
@@ -132,14 +146,16 @@ interface BrandLogoProps {
 export function BrandLogo({
   markSize = 28,
   palette = 'auto',
+  eager = false,
   className,
   wordmarkClassName,
 }: BrandLogoProps) {
   return (
     <span className={cn('inline-flex items-center gap-2', className)}>
-      <BrandMark size={markSize} palette={palette} />
+      <BrandMark size={markSize} palette={palette} eager={eager} />
       <BrandWordmark
         palette={palette}
+        eager={eager}
         className={cn('text-xl', wordmarkClassName)}
       />
     </span>

@@ -164,8 +164,8 @@
 ## 2026-08-01 — Brand v1.0: the presented red/yellow identity, app-wide (feat/rebranding)
 
 > Presentational + design tokens. **No schema, API, or auth change.** Plan,
-> parity table and measured contrast ledger in `.claude/BRAND_ROLLOUT.md`
-> (delete with its `CLAUDE.md` note when merged).
+> (Parity table and measured contrast ledger kept local, not committed; the
+> palette, contrast ledger and type system live in `.claude/docs/DESIGN.md`.)
 
 - **This was a rebrand, not a palette tweak.** The app shipped the v0.2
   "Hablon Weave" identity — lime `#65A30D`, a woven-strip tile mark, a Geist

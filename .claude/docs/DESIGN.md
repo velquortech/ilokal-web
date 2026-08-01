@@ -3,8 +3,8 @@
 Derived from `app/globals.css` (Tailwind CSS v4, OKLCH color space, shadcn/ui New York style).
 
 Brand: **identity v1.0**, "Presented Brand Identity" (2026-08-01). It replaced
-the v0.2 green "Hablon Weave" in full — see `.claude/BRAND_ROLLOUT.md` for the
-parity table and `public/brand/README.md` for the asset rules.
+the v0.2 green "Hablon Weave" in full — see `public/brand/README.md` for the
+asset rules.
 
 ---
 

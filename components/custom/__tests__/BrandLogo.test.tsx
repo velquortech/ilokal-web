@@ -1,7 +1,7 @@
 /**
- * BrandLogo — iLokal identity v1.0 lockup (see `.claude/BRAND_ROLLOUT.md` and
- * public/brand/README.md). Pure presentational server components, so
- * react-dom/server static markup is enough — no DOM environment needed.
+ * BrandLogo — iLokal identity v1.0 lockup (see `public/brand/README.md`).
+ * Pure presentational server components, so react-dom/server static markup is
+ * enough — no DOM environment needed.
  */
 
 import { describe, it, expect } from 'vitest';

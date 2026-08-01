@@ -12,10 +12,11 @@
 <!-- TEMP: remove when the brand v1.0 rollout is merged -->
 > **Active work:** Brand v1.0 rollout — the presented red/yellow identity
 > replaces the green "Hablon Weave" everywhere (palette, both typefaces, mark,
-> wordmark, favicons). See [`.claude/BRAND_ROLLOUT.md`](.claude/BRAND_ROLLOUT.md)
-> for the parity table, the measured contrast ledger, the derived tokens the
-> deck does **not** specify, and what still needs a human. Presentational only.
-> Delete that file and this note when finished.
+> wordmark, favicons). Palette, contrast ledger and type system are documented
+> in [`.claude/docs/DESIGN.md`](.claude/docs/DESIGN.md); asset rules in
+> [`public/brand/README.md`](public/brand/README.md). Parity table and action
+> items kept local (not committed). Presentational only; delete this note when
+> finished.
 
 <!-- TEMP: remove when the offerings model is merged -->
 > **Active work:** Offerings model — generalizing the product-only catalogue to

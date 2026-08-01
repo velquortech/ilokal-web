@@ -1,5 +1,5 @@
 /**
- * Brand contract — guards the v1.0 identity rollout (`.claude/BRAND_ROLLOUT.md`).
+ * Brand contract — guards the v1.0 identity rollout.
  *
  * The v0.2 "Hablon Weave" green was scattered across the landing, the email
  * template, the map and the logo component. This sweep fails the build if any

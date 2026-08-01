@@ -23,8 +23,13 @@ describe('BetaBanner', () => {
     expect(html).toContain('role="status"');
   });
 
-  it('uses landing CSS variables so it tracks the dark-mode toggle', () => {
-    expect(html).toContain('background:var(--tint)');
-    expect(html).toContain('color:var(--brandhover)');
+  it('holds its own contrast on the gradient sky', () => {
+    // It used to be `--tint` on `--brandhover` — pale text on a pale strip,
+    // which over the gradient read as a rendering fault rather than a notice.
+    // Fixed Charcoal/Cornsilk instead, so it does not depend on where the
+    // blooms happen to sit behind it.
+    expect(html).toContain('background:#1A1A1A');
+    expect(html).toContain('color:#FEF8D6');
+    expect(html).not.toContain('var(--tint)');
   });
 });

@@ -67,7 +67,7 @@ describe('CustomerFooter', () => {
   });
 
   it('makes landing-section anchors absolute, never bare hashes', () => {
-    expect(hrefs()).toContain(landingSectionPath('about'));
+    expect(hrefs()).toContain(landingSectionPath('voices'));
     expect(hrefs().some((h) => h?.startsWith('#'))).toBe(false);
   });
 

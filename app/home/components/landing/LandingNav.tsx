@@ -6,7 +6,7 @@ import { styleFromString as s } from '@/lib/utils/cssStyle';
 import { ROUTES } from '@/config/routeConfig';
 import { navLinks, type NavLink } from './data';
 import { CloseIcon, MenuIcon, MoonIcon, SunIcon } from './icons';
-import { BrandMark } from '@/components/custom/BrandLogo';
+import { BrandMark, BrandWordmark } from '@/components/custom/BrandLogo';
 
 export type LandingNavProps = {
   /**
@@ -40,7 +40,7 @@ const overlayCtaStyle =
   'display:block;margin-top:16px;text-align:center;background:var(--brand);color:#fff;font-size:17px;font-weight:600;padding:15px;border-radius:12px;';
 
 const brandStyle =
-  'display:inline-flex;align-items:center;gap:9px;font-size:24px;font-weight:800;letter-spacing:-0.035em;color:var(--brand);';
+  'display:inline-flex;align-items:center;gap:9px;font-size:24px;';
 
 const defaultActions = (
   <>
@@ -56,7 +56,7 @@ const defaultActions = (
       href={ROUTES.BUSINESS.registration}
       className="il-btn-primary"
       style={s(
-        'background:var(--brand);color:#fff;font-size:15px;font-weight:600;padding:11px 18px;border-radius:10px;box-shadow:0 2px 8px rgba(101,163,13,.28);',
+        'background:var(--brand);color:#fff;font-size:15px;font-weight:600;padding:11px 18px;border-radius:10px;box-shadow:0 2px 10px rgba(215,0,5,.28);',
       )}
     >
       List Your Business
@@ -109,18 +109,21 @@ export function LandingNav({
             'height:72px;display:flex;align-items:center;justify-content:space-between;gap:20px;',
           )}
         >
-          <div style={s('display:flex;align-items:center;gap:14px;')}>
+          <div
+            className="brandlockup"
+            style={s('display:flex;align-items:center;gap:14px;')}
+          >
             {/* Hash targets stay <a> (same-page scroll); a route needs <Link>
                 or the click forces a full document reload. */}
             {logoHref.startsWith('#') ? (
-              <a href={logoHref} style={s(brandStyle)}>
-                <BrandMark size={30} palette={dark ? 'dark' : 'light'} />
-                iLokal
+              <a href={logoHref} style={s(brandStyle)} aria-label="iLokal">
+                <BrandMark size={30} palette={dark ? 'dark' : 'light'} eager />
+                <BrandWordmark palette={dark ? 'dark' : 'light'} eager />
               </a>
             ) : (
-              <Link href={logoHref} style={s(brandStyle)}>
-                <BrandMark size={30} palette={dark ? 'dark' : 'light'} />
-                iLokal
+              <Link href={logoHref} style={s(brandStyle)} aria-label="iLokal">
+                <BrandMark size={30} palette={dark ? 'dark' : 'light'} eager />
+                <BrandWordmark palette={dark ? 'dark' : 'light'} eager />
               </Link>
             )}
             {/* "Made for Iloilo City" pill removed from the nav row: with the
@@ -169,6 +172,7 @@ export function LandingNav({
 
       {menuOpen && (
         <div
+          className="il-overlay"
           style={s(
             'position:fixed;inset:72px 0 0 0;z-index:49;background:var(--bg);padding:24px;display:flex;flex-direction:column;gap:6px;',
           )}

@@ -26,11 +26,11 @@ const FOOTER_LINKS: FooterLink[] = [
   { href: ROUTES.EXPLORE.HOME, label: 'Explore' },
   { href: ROUTES.EXPLORE.NEARBY, label: 'Nearby' },
   { href: ROUTES.EXPLORE.DEALS, label: 'Deals' },
-  // Cross-surface anchors go through the helper — a bare `#about` scrolls
+  // Cross-surface anchors go through the helper — a bare `#voices` scrolls
   // nowhere from /explore.
   {
-    href: landingSectionPath('about' satisfies LandingSection),
-    label: 'About',
+    href: landingSectionPath('voices' satisfies LandingSection),
+    label: 'Voices',
   },
   { href: ROUTES.BUSINESS.registration, label: 'List your business' },
 ];

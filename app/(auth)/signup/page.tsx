@@ -1,7 +1,7 @@
 import SignupForm from '@/components/auth/SignupForm';
 
 export const metadata = {
-  title: 'Sign Up - Ilokal',
+  title: 'Sign up',
   description: 'Create a new Ilokal account and join our local community',
 };
 

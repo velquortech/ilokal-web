@@ -50,6 +50,88 @@ package, stop and propose it (name, why existing deps can't do it, size/risk) �
 don't install speculatively. Same rule for new external services, CDNs, fonts,
 or APIs.
 
+## Design system — brand v1.0 (standing direction)
+
+The **"Presented Brand Identity"** (2026-08-01) is the identity, not a phase.
+It replaced the v0.2 green "Hablon Weave" in full. Full palette, measured
+contrast ledger, OKLCH token tables and type system:
+[`.claude/docs/DESIGN.md`](.claude/docs/DESIGN.md). Asset rules:
+[`public/brand/README.md`](public/brand/README.md). The rules below are the
+ones that cause real defects when unknown — read DESIGN.md before any
+significant visual work.
+
+**Palette.** Brick Ember `#D70005` (primary) · Jasmine `#FEE87B` · Cornsilk
+`#FEF8D6` · Petal Frost `#FCD9F7` · Porcelain `#FBFAF6` · Charcoal `#1A1A1A`.
+Use semantic tokens (`bg-primary`, `text-muted-foreground`) — raw hex only for
+brand moments that genuinely have no token.
+
+- **Nothing green is brand.** `#65A30D` / `#84CC16` are retired;
+  `brand.contract.test.ts` sweeps `app`/`components`/`lib`/`config` and fails
+  on any reintroduction. It matches hex, so watch `rgba()` — five green shadows
+  survived the rebrand precisely because `rgba(101,163,13,…)` isn't a hex.
+- **Green is still correct for *success*.** `StatusBadge`, verification badges,
+  active pills, trend-up arrows stay green. Success-green beside brand-red is
+  the signal; repainting them destroys it.
+- **Never hardcode `#D70005` on a dark surface** — it measures 3.23:1 and fails
+  AA. `--brand` / `--primary` already switch to the lifted `#DD2920` under
+  `.dark`; hardcoding bypasses that.
+- **Jasmine on Brick Ember is 4.38:1 — large display type only.** Fine for the
+  logo lockup, never for body copy.
+- **Destructive is deliberately maroon** (`#8E0B14` / dark `#BD3855`), because
+  the brand red *is* `--primary` and stock red would make Delete read as Save.
+
+**Type.** Pally (display) + Inter (body) + Geist Mono. `h1`–`h6` get Pally
+automatically from `@layer base` — do not add `font-display` to headings. Pally
+has no 800; `font-extrabold` resolves to Bold. Sources live in `assets/fonts/`,
+**not** `public/` — `next/font/local` reads them at build time and re-emits them
+hashed, so a copy under `public/` just ships every face twice.
+
+**The wordmark is drawn lettering, not a typeface setting.** Never render the
+literal text "iLokal" as a logo — use `BrandMark` / `BrandWordmark` /
+`BrandLogo` from `components/custom/BrandLogo.tsx`. Assets are matted PNGs;
+**there is no vector source**, so 1128px is the ceiling (fine for web, not for
+large print). `palette="auto"` renders both cuts and lets CSS pick, so `eager`
+sets `priority` on the light cut only — priming both preloads images that never
+paint. Both marks carry `sizes`; without it next/image preloads the 1128px
+wordmark into a ~120px box.
+
+### Landing invariants (`app/home/components/landing/`)
+
+The landing is "the walk": one ambient gradient sky (`GradientField`) warming as
+you descend, broken twice by a solid Brick section, with the craving switcher as
+its signature. These are the rules it is built on — breaking one has already
+shipped a blank page once:
+
+- **Reveals are CSS view-timeline animations (`.il-reveal` / `.il-rise` /
+  `.il-settle`), NEVER motion's `whileInView`.** Motion writes `initial` into
+  the SERVER HTML, so `whileInView` shipped `style="opacity:0"` on everything
+  and the page rendered blank without JS. `sections.test.tsx` guards this.
+- **Nothing may be invisible in the server HTML — and the guard only greps
+  `opacity:0`.** Empty text passes it. Any state seeded from a client-only
+  value (`useReducedMotion()`, `resolvedTheme`, `mounted`) is `false`/unset
+  during SSR: seed from the real content and correct after mount, never the
+  other way round.
+- **Scroll-driven animations ignore `animation-delay`.** Progress comes from
+  scroll position, not time. Stagger with a shifted `animation-range`
+  (`.il-settle` uses `--i`).
+- **The client boundary belongs on `LandingShell`** (theme, nav, footer,
+  gradient), not on `LandingPage`. `'use client'` on the composition root drags
+  every section into the client bundle regardless of its own directive.
+- **Landing dark mode is `next-themes`**, not page-local `useState` — one
+  toggle has to move both the custom properties the shared chrome reads and the
+  `.dark` class the sections read.
+- **`landing.css` rules must stay scoped to the chrome.** A blanket
+  `[data-ilokal-root] a` is specificity (0,1,1) and beats every Tailwind
+  utility (0,1,0), so new sections silently get red links and stripped buttons
+  no class can override.
+- **`LandingSection` in `config/routeConfig.ts` is the cross-surface anchor
+  contract.** Renaming a section id without updating it turns `/explore`'s nav
+  into dead links — which has happened. Keep it in lockstep with the ids the
+  sections render; `sections.test.tsx` asserts both directions.
+- Decorative fixture cards are **not** focusable. A `tabIndex={0}` on something
+  with nothing to activate is a dead keyboard stop; make it a link or leave it
+  out.
+
 ## Architecture
 
 - **Routing:** App Router only. Server Actions for internal mutations, API routes for external/mobile integrations.
@@ -202,7 +284,7 @@ Load on request (read when topic is relevant):
 - `.claude/docs/coupon-rules.md` — coupon claim rules, redeem gates, error codes
 - `.claude/docs/testing.md` — untested routes matrix, test templates
 - `.claude/docs/analytics-dashboard.md` — analytics panel ideas, RFM segments, retention queries, automation nudges
-- `.claude/docs/DESIGN.md` — color system, OKLCH tokens, visual language from globals.css
+- `.claude/docs/DESIGN.md` — **brand v1.0**: palette, measured contrast ledger, OKLCH token tables (light/dark/sidebar/chart), type system, radius scale. Read before any significant visual work — the "Design system" section above is only the trap list.
 - `.claude/docs/caching-strategy.md` — Next.js App Router caching layers, Supabase data-fetching rules
 - `.claude/docs/code-principles.md` — TypeScript rules, naming conventions, anti-patterns
 - `.claude/docs/component-standards.md` — file structure, naming, shadcn/ui usage rules

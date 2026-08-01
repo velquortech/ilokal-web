@@ -27,21 +27,30 @@ import { ROUTES, landingSectionPath } from '@/config/routeConfig';
  *     from /explore.
  */
 
-const PUBLIC_LINKS: NavLink[] = [
+/**
+ * Mirrors the landing's own nav, in the same order and with the same labels —
+ * these are one design, and a visitor moving between the two surfaces should
+ * not see the menu change out from under them.
+ *
+ * Every entry is absolute: a bare `#near-you` scrolls nowhere from /explore.
+ * The hash targets are typed as `LandingSection`, so a section renamed on the
+ * landing breaks this file at build time rather than silently shipping a link
+ * that goes nowhere.
+ */
+export const PUBLIC_NAV_LINKS: NavLink[] = [
   { href: ROUTES.EXPLORE.HOME, label: 'Explore Shops' },
-  { href: landingSectionPath('shoppers'), label: 'For Shoppers' },
-  { href: landingSectionPath('businesses'), label: 'For Businesses' },
-  { href: landingSectionPath('how'), label: 'How It Works' },
+  { href: landingSectionPath('near-you'), label: 'Near You' },
   // The real feed, not the landing's `#deals` teaser — same call as the footer.
   { href: ROUTES.EXPLORE.DEALS, label: 'Deals' },
-  { href: landingSectionPath('about'), label: 'About' },
+  { href: landingSectionPath('voices'), label: 'Voices' },
+  { href: landingSectionPath('businesses'), label: 'For Businesses' },
 ];
 
 const linkAction =
   'color:var(--text);font-size:15px;font-weight:600;padding:9px 8px;';
 
 const primaryAction =
-  'background:var(--brand);color:#fff;font-size:15px;font-weight:600;padding:11px 18px;border-radius:10px;box-shadow:0 2px 8px rgba(101,163,13,.28);';
+  'background:var(--brand);color:#fff;font-size:15px;font-weight:600;padding:11px 18px;border-radius:10px;box-shadow:0 2px 10px rgba(215,0,5,.28);';
 
 export function PublicNav() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -56,7 +65,7 @@ export function PublicNav() {
       <LandingNav
         dark={dark}
         onToggleDark={() => setTheme(dark ? 'light' : 'dark')}
-        links={PUBLIC_LINKS}
+        links={PUBLIC_NAV_LINKS}
         logoHref={ROUTES.PUBLIC.LANDING}
         actions={
           <>

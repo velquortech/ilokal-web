@@ -7,7 +7,7 @@ export function AuthHeader({ className, ...props }: ComponentProps<'div'>) {
   return (
     <Link href="/home">
       <div {...props} className={cn('inline-flex', className)}>
-        <BrandLogo markSize={28} />
+        <BrandLogo markSize={28} eager />
       </div>
     </Link>
   );

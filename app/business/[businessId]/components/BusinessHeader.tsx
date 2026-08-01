@@ -75,7 +75,7 @@ export function BusinessHeader({ branches = [] }: BusinessHeaderProps) {
             {/* TODO: re-enable once the AI assistant is functional */}
             {/* <button
               onClick={() => setIsAIChatOpen((prev) => !prev)}
-              className="font-font-giest-mono inline-flex cursor-pointer items-center gap-1 rounded-full bg-linear-to-r from-fuchsia-600 to-pink-600 px-3 py-1.5 text-xs font-medium text-white"
+              className="font-giest-mono inline-flex cursor-pointer items-center gap-1 rounded-full bg-linear-to-r from-fuchsia-600 to-pink-600 px-3 py-1.5 text-xs font-medium text-white"
             >
               <Sparkles className="size-4" />
               Ask (BETA)

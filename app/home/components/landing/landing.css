@@ -7,9 +7,19 @@
 
 /* the scrolling element is <html>, not the wrapper — scope via :has() */
 html:has([data-ilokal-root]) { scroll-behavior: smooth; }
-[data-ilokal-root] a { color: var(--brand); text-decoration: none; }
-[data-ilokal-root] a:hover { color: var(--brandhover); }
-[data-ilokal-root] button {
+/* Scoped to the chrome, NOT to every element under the wrapper. As blanket
+   `[data-ilokal-root] a` / `button` rules these were specificity (0,1,1) and
+   silently beat every Tailwind utility (0,1,0) in the page sections — red
+   links and background-stripped buttons that no class could override. */
+[data-ilokal-root] :is(.navlinks, .navactions, .footgrid, .il-overlay) a {
+  color: var(--brand);
+  text-decoration: none;
+}
+[data-ilokal-root] :is(.navlinks, .navactions, .footgrid, .il-overlay) a:hover {
+  color: var(--brandhover);
+}
+[data-ilokal-root] :is(.navactions, .hamb) button,
+[data-ilokal-root] button.hamb {
   font-family: inherit;
   cursor: pointer;
   border: none;
@@ -20,8 +30,78 @@ html:has([data-ilokal-root]) { scroll-behavior: smooth; }
 @keyframes il-fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 @keyframes il-floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
 
+
+/* ---------------------------------------------------------------------------
+ * Reveals, in CSS rather than JS.
+ *
+ * These replaced motion's `initial="hidden" whileInView="show"`, which emits
+ * `style="opacity:0"` into the SERVER HTML: with JS blocked, slow, or broken,
+ * the entire page rendered blank. Screenshotting the first build showed exactly
+ * that — the headline, the stats and half the business list never appeared.
+ *
+ * A view-timeline animation has none of that failure mode. Browsers without
+ * `animation-timeline` (Safari, Firefox today) simply skip the @supports block
+ * and get the content, visible, immediately — the correct fallback. So does
+ * anyone who prefers reduced motion.
+ * ------------------------------------------------------------------------- */
+
+@keyframes il-reveal {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes il-rise {
+  from { opacity: 0; transform: translateY(22px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Hero entrance. Runs on paint, so it does not wait for hydration. */
+  [data-ilokal-root] .il-rise {
+    animation: il-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+    /* `both` holds the from-state through the delay, so every step of stagger
+       is time the content is invisible. Capped at 5 steps: the hero has 7
+       elements, and an un-capped 90ms step put the craving switcher — the
+       thing the page is FOR — 1.2s from being readable. */
+    animation-delay: calc(min(var(--i, 0), 5) * 70ms);
+  }
+
+  @supports (animation-timeline: view()) {
+    [data-ilokal-root] .il-reveal {
+      animation: il-reveal linear both;
+      animation-timeline: view();
+      /* Ends while the element is still entering, so it is fully readable well
+         before it reaches the middle of the screen. An element already on
+         screen at load is past the range, so it renders at the `to` state. */
+      animation-range: entry 10% entry 65%;
+    }
+    [data-ilokal-root] .il-reveal-stagger > * {
+      animation: il-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 10% entry 70%;
+    }
+
+    /* Sequenced along the SAME entry range, offset per child by `--i`, so a
+       row of siblings settles left to right instead of together.
+       `animation-delay` is not an option: a scroll-driven animation is
+       progressed by scroll position, not by time, so a time delay does
+       nothing — the stagger has to be a shifted range. */
+    [data-ilokal-root] .il-settle > * {
+      animation: il-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry calc(12% + var(--i, 0) * 4%) entry
+        calc(58% + var(--i, 0) * 4%);
+    }
+  }
+}
+
 [data-ilokal-root] .wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
-[data-ilokal-root] .navlinks { display: flex; gap: 22px; align-items: center; }
+/* The lockup is a real drawn wordmark now, not the 6-character text it
+   replaced, so the row is wider than it used to be. Without these the brand
+   and the first nav link overlapped on /explore, which carries an extra
+   action button. */
+[data-ilokal-root] .brandlockup { flex: 0 0 auto; min-width: 0; }
+[data-ilokal-root] .navlinks { display: flex; gap: 22px; align-items: center; min-width: 0; flex-wrap: nowrap; }
 [data-ilokal-root] .navlinks a { white-space: nowrap; }
 [data-ilokal-root] .navactions { display: flex; gap: 14px; align-items: center; }
 [data-ilokal-root] .navactions a { white-space: nowrap; }
@@ -49,14 +129,15 @@ html:has([data-ilokal-root]) { scroll-behavior: smooth; }
 [data-ilokal-root] .il-btn-outline:hover { border-color: var(--brand) !important; }
 [data-ilokal-root] .il-card { transition: transform .2s, box-shadow .2s; }
 [data-ilokal-root] .il-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(16, 24, 40, .1); }
-[data-ilokal-root] .il-cta-light:hover { background: #F0FDF4 !important; }
+[data-ilokal-root] .il-cta-light:hover { background: #FEF8D6 !important; }
 [data-ilokal-root] .il-cta-ghost:hover { border-color: #fff !important; background: rgba(255, 255, 255, .1) !important; }
 [data-ilokal-root] .il-floaty { animation: il-floaty 6s ease-in-out infinite; }
 
-/* The desktop nav row (logo + 6 links + actions) needs ~1100px — collapse to
+/* The desktop nav row (lockup + 5 links + actions) needs ~1180px — collapse to
    the hamburger below that, independent of the 960px grid breakpoint, or the
-   row wraps into a broken two-line header. */
-@media (max-width: 1100px) {
+   row wraps into a broken two-line header. /explore carries one action more
+   than the landing, so the threshold is set for the wider of the two. */
+@media (max-width: 1180px) {
   [data-ilokal-root] .navlinks,
   [data-ilokal-root] .navactions { display: none; }
   [data-ilokal-root] .hamb { display: flex; }

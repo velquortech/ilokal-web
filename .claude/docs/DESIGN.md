@@ -2,6 +2,52 @@
 
 Derived from `app/globals.css` (Tailwind CSS v4, OKLCH color space, shadcn/ui New York style).
 
+Brand: **identity v1.0**, "Presented Brand Identity" (2026-08-01). It replaced
+the v0.2 green "Hablon Weave" in full — see `public/brand/README.md` for the
+asset rules. This is the standing direction, not a phase; `CLAUDE.md` carries
+the short list of rules that cause defects when unknown.
+
+### Open items
+
+Three tokens below are **derived, not specified by the deck** — the deck gives
+no dark-mode value, no destructive, and no chart ramp. They are reasoned and
+measured, but they still want designer sign-off:
+
+- dark-mode primary `#DD2920` (the deck red fails AA on Charcoal),
+- destructive `#8E0B14` / `#BD3855` (the brand red occupies `--primary`),
+- the five-step chart ramp (Jasmine and Petal are ~1.8:1 on white).
+
+Also outstanding: **no vector logo source exists.** Both marks were matted from
+the supplied raster, so 1128px is the ceiling — enough for every web use, not
+enough for large print. The Illustrator/Figma file is still needed.
+
+---
+
+## Brand Colors
+
+The six colours off the deck, exposed as raw tokens (`--brand`, `bg-brand`,
+`text-brand-jasmine`, …). Use them for brand moments; use the semantic tokens
+below for everything else.
+
+| Name | Hex | Token | Role |
+| --- | --- | --- | --- |
+| Brick Ember | `#D70005` | `--brand` | Primary. Buttons, links, focus ring, mark tile. |
+| Jasmine | `#FEE87B` | `--brand-jasmine` | Accent. Highlights, the `ilo` inside the mark. |
+| Cornsilk | `#FEF8D6` | `--brand-cornsilk` | Tint surfaces, secondary fills. |
+| Petal Frost | `#FCD9F7` | `--brand-petal` | Secondary accent. |
+| Porcelain | `#FBFAF6` | `--brand-porcelain` | App background. |
+| Charcoal | `#1A1A1A` | `--brand-charcoal` | Text, dark-mode background. |
+
+### Contrast rules that are NOT optional
+
+- **Brick Ember on Charcoal is 3.23:1 — never use it on a dark surface.** Dark
+  mode lifts the same red to `oklch(0.58 0.215 28.8)` (`#DD2920`, "flame").
+  `--brand` already switches under `.dark`; hardcoding `#D70005` bypasses that.
+- **Jasmine on Brick Ember is 4.38:1** — large text only (≥24px, or ≥18.7px
+  bold). That covers the logo lockup, not body copy.
+- White / Porcelain on Brick Ember is 5.4:1 ✅, Brick Ember on Porcelain 5.2:1 ✅,
+  Charcoal on Jasmine 14.1:1 ✅.
+
 ---
 
 ## Color Tokens
@@ -13,80 +59,114 @@ Use the semantic token names (`text-primary`, `bg-muted`, etc.) — never hardco
 
 | Token                    | OKLCH                        | Role                                            |
 | ------------------------ | ---------------------------- | ----------------------------------------------- |
-| `--background`           | `oklch(1 0 0)`               | Page / panel background (pure white)            |
-| `--foreground`           | `oklch(0.141 0.005 285.823)` | Primary body text (near-black)                  |
-| `--card`                 | `oklch(1 0 0)`               | Card / surface background                       |
-| `--card-foreground`      | `oklch(0.141 0.005 285.823)` | Text on cards                                   |
-| `--primary`              | `oklch(0.648 0.2 131.684)`   | **Brand green** — buttons, active states, links |
-| `--primary-foreground`   | `oklch(0.986 0.031 120.757)` | Text on primary (light sage)                    |
-| `--secondary`            | `oklch(0.967 0.001 286.375)` | Light grey surface (tabs, chips)                |
-| `--secondary-foreground` | `oklch(0.21 0.006 285.885)`  | Text on secondary                               |
-| `--muted`                | `oklch(0.967 0.001 286.375)` | Disabled / subdued backgrounds                  |
-| `--muted-foreground`     | `oklch(0.552 0.016 285.938)` | Placeholder text, captions                      |
-| `--accent`               | `oklch(0.967 0.001 286.375)` | Hover highlights, selected rows                 |
-| `--accent-foreground`    | `oklch(0.21 0.006 285.885)`  | Text on accent                                  |
-| `--destructive`          | `oklch(0.577 0.245 27.325)`  | Error / delete states (red)                     |
-| `--border`               | `oklch(0.92 0.004 286.32)`   | Dividers, input outlines                        |
-| `--input`                | `oklch(0.92 0.004 286.32)`   | Input border                                    |
-| `--ring`                 | `oklch(0.841 0.238 128.85)`  | Focus ring (light green)                        |
+| `--background`           | `oklch(0.985 0.005 95.098)`  | Page background (Porcelain)                     |
+| `--foreground`           | `oklch(0.218 0 90)`          | Primary body text (Charcoal)                    |
+| `--card`                 | `oklch(1 0 0)`               | Card surface — white, one step above Porcelain  |
+| `--card-foreground`      | `oklch(0.218 0 90)`          | Text on cards                                   |
+| `--primary`              | `oklch(0.552 0.226 28.828)`  | **Brick Ember** — buttons, active states, links |
+| `--primary-foreground`   | `oklch(0.985 0.005 95.098)`  | Text on primary (Porcelain, 5.2:1)              |
+| `--secondary`            | `oklch(0.975 0.045 98.909)`  | Cornsilk surface (tabs, chips)                  |
+| `--secondary-foreground` | `oklch(0.218 0 90)`          | Text on secondary                               |
+| `--muted`                | `oklch(0.962 0.008 95)`      | Disabled / subdued backgrounds                  |
+| `--muted-foreground`     | `oklch(0.52 0.015 30)`       | Placeholder text, captions (5.3:1)              |
+| `--accent`               | `oklch(0.927 0.132 98.148)`  | Jasmine — hover highlights, selected rows       |
+| `--accent-foreground`    | `oklch(0.218 0 90)`          | Text on accent (14.1:1)                         |
+| `--destructive`          | `oklch(0.412 0.161 26)`      | Error / delete — deep maroon, see note below    |
+| `--border`               | `oklch(0.905 0.008 60)`      | Dividers, input outlines                        |
+| `--input`                | `oklch(0.905 0.008 60)`      | Input border                                    |
+| `--ring`                 | `oklch(0.552 0.226 28.828)`  | Focus ring (Brick Ember)                        |
+
+> **Why destructive is maroon, not red.** The brand red *is* `--primary` now, so
+> the stock destructive would make Delete read as a brand CTA. `--destructive`
+> is deepened to `#8E0B14` (light) and hue-shifted to a crimson `#BD3855`
+> (dark) so it stays distinguishable from the primary in both modes.
 
 ### Dark Mode (`.dark`)
 
-| Token           | OKLCH                        | Notes                                         |
-| --------------- | ---------------------------- | --------------------------------------------- |
-| `--background`  | `oklch(0.141 0.005 285.823)` | Deep charcoal                                 |
-| `--foreground`  | `oklch(0.985 0 0)`           | Near-white text                               |
-| `--card`        | `oklch(0.21 0.006 285.885)`  | Slightly lifted surface                       |
-| `--primary`     | `oklch(0.648 0.2 131.684)`   | Same brand green — maintains identity in dark |
-| `--muted`       | `oklch(0.274 0.006 286.033)` | Darker grey                                   |
-| `--destructive` | `oklch(0.704 0.191 22.216)`  | Lighter red for dark contrast                 |
-| `--border`      | `oklch(1 0 0 / 10%)`         | Translucent white border                      |
-| `--input`       | `oklch(1 0 0 / 15%)`         | Translucent white input                       |
-| `--ring`        | `oklch(0.405 0.101 131.063)` | Darker green ring                             |
+| Token           | OKLCH                       | Notes                                                |
+| --------------- | --------------------------- | ---------------------------------------------------- |
+| `--background`  | `oklch(0.218 0 90)`         | Charcoal                                             |
+| `--foreground`  | `oklch(0.97 0.008 95)`      | Warm off-white                                       |
+| `--card`        | `oklch(0.262 0.006 60)`     | Slightly lifted surface                              |
+| `--primary`     | `oklch(0.58 0.215 28.8)`    | **Lifted** Brick Ember — the deck value fails AA here |
+| `--muted`       | `oklch(0.305 0.008 60)`     | Darker warm grey                                     |
+| `--accent`      | `oklch(0.34 0.028 90)`      | Warm hover surface                                   |
+| `--destructive` | `oklch(0.545 0.17 12)`      | Crimson — hue-separated from the lifted primary      |
+| `--border`      | `oklch(1 0 0 / 12%)`        | Translucent white border                             |
+| `--input`       | `oklch(1 0 0 / 16%)`        | Translucent white input                              |
+| `--ring`        | `oklch(0.58 0.215 28.8)`    | Matches dark primary                                 |
 
 ### Sidebar Tokens
 
 The sidebar carries its own token set to allow independent theming.
 
-| Token               | Light               | Dark                                           |
-| ------------------- | ------------------- | ---------------------------------------------- |
-| `--sidebar`         | `oklch(0.985 0 0)`  | `oklch(0.21 0.006 285.885)`                    |
-| `--sidebar-primary` | same as `--primary` | `oklch(0.768 0.233 130.85)` (brighter in dark) |
-| `--sidebar-border`  | same as `--border`  | `oklch(1 0 0 / 10%)`                           |
+| Token               | Light                       | Dark                     |
+| ------------------- | --------------------------- | ------------------------ |
+| `--sidebar`         | `oklch(0.972 0.008 95)`     | `oklch(0.262 0.006 60)`  |
+| `--sidebar-primary` | same as `--primary`         | same as dark `--primary` |
+| `--sidebar-accent`  | Cornsilk                    | warm hover surface       |
+| `--sidebar-border`  | same as `--border`          | `oklch(1 0 0 / 12%)`     |
 
 ### Chart Palette
 
-Five-step green ramp used exclusively for data visualisations (Recharts).
-Always use in order — chart-1 is lightest, chart-5 is darkest.
+Five-step **categorical** ramp derived from the brand hues (Recharts). It is
+not a light→dark sequence — each step is a distinct series colour, so pick by
+series index, not by intensity.
 
-| Token       | OKLCH                        | Approx hex              |
-| ----------- | ---------------------------- | ----------------------- |
-| `--chart-1` | `oklch(0.871 0.15 154.449)`  | `#86efac` (light green) |
-| `--chart-2` | `oklch(0.723 0.219 149.579)` | `#4ade80`               |
-| `--chart-3` | `oklch(0.627 0.194 149.214)` | `#22c55e`               |
-| `--chart-4` | `oklch(0.527 0.154 150.069)` | `#16a34a`               |
-| `--chart-5` | `oklch(0.448 0.119 151.328)` | `#15803d` (deep green)  |
+Jasmine and Petal Frost at their native lightness measure ~1.8:1 on white and
+are unusable as data marks, so the ramp keeps the hue and drops the lightness.
+
+| Token       | Light OKLCH                 | Approx hex | Family              |
+| ----------- | --------------------------- | ---------- | ------------------- |
+| `--chart-1` | `oklch(0.552 0.226 28.828)` | `#D70005`  | Brick Ember         |
+| `--chart-2` | `oklch(0.68 0.18 52)`       | `#EB7000`  | warm orange         |
+| `--chart-3` | `oklch(0.72 0.145 92)`      | `#C8A32C`  | deepened Jasmine    |
+| `--chart-4` | `oklch(0.66 0.145 335)`     | `#C76DB5`  | deepened Petal      |
+| `--chart-5` | `oklch(0.43 0.1 20)`        | `#7E3638`  | oxblood             |
+
+Dark mode lifts each step by ~0.1 L (see `.dark` in `globals.css`).
+
+### Green is still correct — for success
+
+Brand red does **not** replace semantic green. `StatusBadge`, verification
+badges, "active" pills and trend-up indicators stay green: success-green beside
+brand-red is the signal, and repainting them destroys it.
 
 ### Semantic Utility Classes
 
 Defined in `@layer base` — use these instead of raw color classes.
 
 ```css
-.bg-app-color   /* gradient: red-500 → orange-500, text clip — brand accent */
-.text-title     /* bold, responsive size: sm:3xl → xl:6xl */
-.text-description /* max-w-1/2, text-xl, text-gray-500 */
+.bg-app-color     /* gradient: Brick Ember → Jasmine, text clip */
+.text-title       /* Pally, bold, tight tracking, responsive sm:3xl → xl:6xl */
+.text-description /* max-w-1/2, text-xl, text-muted-foreground */
 ```
 
 ---
 
 ## Typography
 
-| Token                               | Value                     |
-| ----------------------------------- | ------------------------- |
-| `--font-sans` (`--font-giest`)      | Geist Sans (Next.js font) |
-| `--font-mono` (`--font-giest-mono`) | Geist Mono                |
+Two faces, per the identity deck.
 
-Apply font via `font-giest` class (defined in `@theme inline`).
+| Slot | Token | Face | Source |
+| --- | --- | --- | --- |
+| Display / headings | `--font-display` → `font-display` | **Pally** 400/500/700 | self-hosted, `assets/fonts/Pally-*.woff2` (build-time only, not served) |
+| Body / UI | `--font-sans` → `font-sans` | **Inter** | `next/font/google` |
+| Mono | `--font-mono` → `font-mono` | Geist Mono | `next/font/google` |
+
+Wired in `app/fonts.ts`; the variables are mounted on `<body>` by the root
+layout. Inter is the document default (Tailwind's `--default-font-family`
+resolves to `--font-sans`), and **`h1`–`h6` get Pally automatically** from
+`@layer base` — do not add `font-display` to individual headings.
+
+Pally has no 800 weight; `font-extrabold` on a heading resolves to Bold.
+
+`--font-giest` (sic) and `--font-geist` are kept as deprecated aliases of the
+body face so the ~14 existing call sites keep working. New code should use
+`font-sans` / `font-display`.
+
+The wordmark is **drawn lettering**, not a Pally setting — never re-set it as
+text. Use `components/custom/BrandLogo.tsx`.
 
 ---
 

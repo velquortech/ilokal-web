@@ -79,7 +79,7 @@ export function renderResetPasswordEmail({
   table,td{mso-table-lspace:0pt;mso-table-rspace:0pt;}
   img{-ms-interpolation-mode:bicubic;border:0;height:auto;line-height:100%;outline:none;text-decoration:none;}
   body{margin:0;padding:0;width:100%!important;background:#F3F4F6;}
-  a{color:#15803D;}
+  a{color:#A80004;}
   @media only screen and (max-width:600px){
     .container{width:100%!important;}
     .px{padding-left:22px!important;padding-right:22px!important;}
@@ -101,9 +101,9 @@ export function renderResetPasswordEmail({
     <tbody><tr><td class="px" style="padding:20px 32px;border-bottom:1px solid #E5E7EB;" bgcolor="#FFFFFF">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
         <tbody><tr>
-          <td align="left" style="font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:bold;color:#65A30D;letter-spacing:-0.5px;">${safeApp}</td>
-          <td align="right" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:bold;color:#15803D;">
-            <span style="background:#ECFCCB;padding:6px 12px;border-radius:999px;display:inline-block;">📍 Made for Iloilo City</span>
+          <td align="left" style="font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:bold;color:#D70005;letter-spacing:-0.5px;">${safeApp}</td>
+          <td align="right" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:bold;color:#A80004;">
+            <span style="background:#FEF8D6;padding:6px 12px;border-radius:999px;display:inline-block;">📍 Made for Iloilo City</span>
           </td>
         </tr>
       </tbody></table>
@@ -120,10 +120,10 @@ export function renderResetPasswordEmail({
         <tr><td align="center" class="h1" style="font-family:Arial,Helvetica,sans-serif;font-size:28px;line-height:34px;font-weight:bold;color:#1A1A1A;letter-spacing:-0.5px;padding-bottom:14px;">Reset your password</td></tr>
         <tr><td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:26px;color:#6B7280;padding-bottom:28px;">Hi ${safeName}, we got a request to reset the password for your ${safeApp} account. Tap the button below to choose a new one.</td></tr>
         <tr><td align="center" style="padding-bottom:24px;">
-          <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeUrl}" style="height:50px;v-text-anchor:middle;width:220px;" arcsize="20%" strokecolor="#65A30D" fillcolor="#65A30D"><w:anchorlock/><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">Reset Password</center></v:roundrect><![endif]-->
+          <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeUrl}" style="height:50px;v-text-anchor:middle;width:220px;" arcsize="20%" strokecolor="#D70005" fillcolor="#D70005"><w:anchorlock/><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">Reset Password</center></v:roundrect><![endif]-->
           <!--[if !mso]><!-- -->
           <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"><tbody><tr>
-            <td bgcolor="#65A30D" style="border-radius:10px;" align="center"><a href="${safeUrl}" target="_blank" style="display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#FFFFFF;text-decoration:none;padding:15px 40px;border-radius:10px;">Reset Password</a></td>
+            <td bgcolor="#D70005" style="border-radius:10px;" align="center"><a href="${safeUrl}" target="_blank" style="display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#FFFFFF;text-decoration:none;padding:15px 40px;border-radius:10px;">Reset Password</a></td>
           </tr></tbody></table>
           <!--<![endif]-->
         </td></tr>
@@ -136,7 +136,7 @@ export function renderResetPasswordEmail({
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#F9FAFB" style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:12px;">
         <tbody><tr><td style="padding:16px 18px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:20px;color:#6B7280;">
           Button not working? Copy and paste this link into your browser:<br>
-          <a href="${safeUrl}" target="_blank" style="color:#15803D;word-break:break-all;">${safeUrl}</a>
+          <a href="${safeUrl}" target="_blank" style="color:#A80004;word-break:break-all;">${safeUrl}</a>
         </td></tr>
       </tbody></table>
     </td></tr>
@@ -153,7 +153,7 @@ export function renderResetPasswordEmail({
     <!-- FOOTER -->
     <tr><td class="px" style="padding:24px 32px 32px;border-top:1px solid #E5E7EB;" bgcolor="#FAFAFA">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-        <tbody><tr><td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#65A30D;">${safeApp}</td></tr>
+        <tbody><tr><td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#D70005;">${safeApp}</td></tr>
         <tr><td align="center" style="padding-top:6px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#6B7280;">This is an automated security message from ${safeApp}.</td></tr>
         <tr><td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:18px;color:#9CA3AF;padding-top:14px;">
           iLokal Inc. · Iznart Street, Iloilo City Proper, 5000 Iloilo, Philippines<br>

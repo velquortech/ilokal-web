@@ -1,5 +1,43 @@
 # Changelog
 
+## 2026-08-01 — Link previews: the share card that was missing (feat/rebranding)
+
+> Presentational + metadata. No schema, API, or auth change.
+
+- **Sharing any page to Facebook or Messenger produced a bare text card.**
+  Title, description, `og:site_name` and `og:type` were there; **`og:image`
+  was not**, and neither was `metadataBase` — without which Next cannot turn a
+  relative image path into the absolute URL every crawler requires. The
+  per-business pages (`/s/[id]`, `/explore/[id]`) did set images, so only they
+  previewed with a picture.
+- **New `app/opengraph-image.png` + `app/twitter-image.png`** (1200×630, 69 KB)
+  built from the brand assets: Brick Ember field, Jasmine wordmark, the
+  jasmine/petal blooms from the landing's gradient, grain. Uses Next's file
+  convention, so `og:image`, `:type`, `:width` and `:height` are emitted
+  automatically. `.alt.txt` alongside each, for screen readers on the post.
+- **Root metadata now carries** `metadataBase`, `alternates.canonical: './'`
+  and `openGraph.url: './'` — both resolve per-route, so every page advertises
+  itself instead of every page claiming to be the home page — plus
+  `og:locale: en_PH` and `twitter:card: summary_large_image`.
+- **The base URL is configuration, not the request.** A crawler can be pointed
+  at any host and the `Host` header is attacker-controlled, so it comes from
+  `NEXT_PUBLIC_APP_URL` with a localhost fallback for dev.
+- **⚠️ Deployment note: `NEXT_PUBLIC_APP_URL` must be set at BUILD time.**
+  `NEXT_PUBLIC_*` is inlined during the build, so setting it only in the
+  runtime environment leaves every share card pointing at
+  `http://localhost:3000`. Verified both ways: a default build emits localhost
+  URLs; `NEXT_PUBLIC_APP_URL=https://ilokal.shop yarn build` emits
+  `https://ilokal.shop/opengraph-image.png`.
+- **Tests (+9):** `app/__tests__/social-preview.contract.test.ts` — asserted at
+  the source level because `app/layout.tsx` pulls in `next/font/local` and
+  `globals.css`, neither of which loads under the node test environment. Guards
+  `metadataBase`, that the origin comes from config and never from headers, and
+  that both cards exist at 1200×630, under Facebook's size ceiling, with alt
+  text.
+- Verified: `yarn lint` + **1560** tests + `yarn build` green; tags confirmed
+  in the served HTML on `/home`, `/explore` and `/sign-in`, and the image
+  fetched back 200 `image/png`.
+
 ## 2026-08-01 — Landing redesign: "the walk" (feat/rebranding)
 
 > Presentational. **No schema, API, or auth change.** Built against

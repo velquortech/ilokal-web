@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { MapPin, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { explorePath } from '@/config/routeConfig';
+import { brandToneFor } from '@/lib/utils/brandTone';
 import type { DirectoryBusiness } from '@/lib/types';
 
 /**
@@ -15,22 +16,9 @@ import type { DirectoryBusiness } from '@/lib/types';
  * its own initial at display size: deliberate, and it makes the grid read as a
  * wall of colour the way the landing does.
  *
- * The tone is derived from the shop id, so a shop keeps its colour across
- * renders, pages and pagination instead of reshuffling under you.
+ * The tone is derived from the shop id (`brandToneFor`), so a shop keeps its
+ * colour across renders, pages, pagination — and on its own page.
  */
-
-const TONES = [
-  'bg-[#D70005] text-[#FEF8D6]',
-  'bg-[#FEE87B] text-[#1A1A1A]',
-  'bg-[#FCD9F7] text-[#1A1A1A]',
-  'bg-[#FEF8D6] text-[#1A1A1A]',
-] as const;
-
-function toneFor(id: string): string {
-  let sum = 0;
-  for (let i = 0; i < id.length; i++) sum += id.charCodeAt(i);
-  return TONES[sum % TONES.length];
-}
 
 export function BusinessCard({ business }: { business: DirectoryBusiness }) {
   const initial = business.shop_name[0]?.toUpperCase() ?? '?';
@@ -60,7 +48,7 @@ export function BusinessCard({ business }: { business: DirectoryBusiness }) {
           <div
             className={cn(
               'flex h-full items-center justify-center',
-              toneFor(business.id),
+              brandToneFor(business.id),
             )}
           >
             <span

@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistance, DEFAULT_MAP_CENTER } from '@/lib/utils/geo';
 import { explorePath } from '@/config/routeConfig';
+import { brandToneFor } from '@/lib/utils/brandTone';
+import { cn } from '@/lib/utils';
 
 interface NearbyBusiness {
   branch_id: string;
@@ -140,35 +142,53 @@ export function NearbyContent() {
       )}
 
       {businesses !== null && businesses.length > 0 && (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {businesses.map((b) => (
             <Link
               key={b.branch_id}
               href={explorePath(b.business_id)}
-              className="bg-card hover:border-primary/40 flex items-center gap-3 rounded-xl border p-4 transition-colors"
+              className="group bg-card hover:border-primary/40 flex items-stretch gap-4 overflow-hidden rounded-2xl border transition-[transform,box-shadow,border-color] duration-300 ease-out hover:shadow-[0_18px_40px_-24px_rgba(60,10,10,.45)] motion-safe:hover:-translate-y-0.5"
             >
-              <div className="bg-muted relative size-11 shrink-0 overflow-hidden rounded-full border">
-                {b.logo_url && (
-                  <Image
-                    src={b.logo_url}
-                    alt=""
-                    fill
-                    sizes="44px"
-                    className="object-cover"
-                  />
+              {/* Distance is the whole question this page answers, so it is the
+                  largest thing in the card — it used to be 12px meta pinned to
+                  the right edge of a 44px row. */}
+              <div
+                className={cn(
+                  'flex w-24 shrink-0 flex-col items-center justify-center px-2 text-center',
+                  brandToneFor(b.business_id),
                 )}
+              >
+                <span className="font-display text-2xl leading-none font-bold tracking-tight">
+                  {formatDistance(b.distance_meters / 1000)}
+                </span>
+                <span className="mt-1 text-[0.625rem] font-semibold tracking-[0.14em] uppercase opacity-75">
+                  away
+                </span>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{b.business_name}</p>
-                <p className="text-muted-foreground flex items-center gap-1 truncate text-xs">
-                  <MapPin className="h-3 w-3 shrink-0" />
-                  {b.branch_name}
-                  {b.address ? ` · ${b.address}` : ''}
-                </p>
+
+              <div className="flex min-w-0 flex-1 items-center gap-3 py-4 pr-4">
+                <div className="bg-muted relative size-11 shrink-0 overflow-hidden rounded-full border">
+                  {b.logo_url && (
+                    <Image
+                      src={b.logo_url}
+                      alt=""
+                      fill
+                      sizes="44px"
+                      className="object-cover"
+                    />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-display group-hover:text-primary truncate text-base leading-tight font-bold tracking-tight transition-colors">
+                    {b.business_name}
+                  </p>
+                  <p className="text-muted-foreground flex items-center gap-1 truncate text-xs">
+                    <MapPin className="h-3 w-3 shrink-0" />
+                    {b.branch_name}
+                    {b.address ? ` · ${b.address}` : ''}
+                  </p>
+                </div>
               </div>
-              <span className="text-primary shrink-0 text-sm font-semibold">
-                {formatDistance(b.distance_meters / 1000)}
-              </span>
             </Link>
           ))}
         </div>

@@ -6,6 +6,7 @@ import { getBusinessProfileData } from '@/lib/api/business/businessQuery';
 import { PersonalInfoForm } from './components/PersonalInfoForm';
 import { BusinessInfoForm } from './components/BusinessInfoForm';
 import { AccountStatusCard } from './components/AccountStatusCard';
+import { PageHeader } from '@/components/custom/PageHeader';
 
 type Params = Promise<{ businessId: string }>;
 
@@ -38,12 +39,10 @@ export default async function ProfilePage({ params }: { params: Params }) {
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-xl font-semibold">Profile</h1>
-        <p className="text-muted-foreground text-sm">
-          Manage your personal and business information.
-        </p>
-      </div>
+      <PageHeader
+        title="Profile"
+        lede="Manage your personal and business information."
+      />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">

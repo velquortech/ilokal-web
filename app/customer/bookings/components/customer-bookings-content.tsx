@@ -12,6 +12,7 @@ import { cancelBookingAction } from '@/app/customer/actions/customerActions';
 import { formatPeso } from '@/lib/utils/formatOfferingPrice';
 import { BUSINESS_TIME_ZONE } from '@/lib/utils/operatingHours';
 import { PaginationBar } from '@/components/customer/PaginationBar';
+import { PageHeader } from '@/components/custom/PageHeader';
 import type { BookingStatus, BookingWithContext } from '@/lib/types/booking';
 import type { DirectoryMetadata } from '@/lib/types';
 
@@ -69,12 +70,11 @@ export function CustomerBookingsContent({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-lg font-semibold tracking-tight">My bookings</h1>
-        <p className="text-muted-foreground text-sm">
-          Requests you’ve sent to shops.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Your requests"
+        title="My bookings"
+        lede="Requests you’ve sent to shops — a shop confirms, declines or quotes you back."
+      />
 
       {failed ? (
         <Card>

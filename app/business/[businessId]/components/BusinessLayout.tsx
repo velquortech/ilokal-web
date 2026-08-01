@@ -13,6 +13,7 @@ import { ShopPendingBanner } from '../home/components/PendingBanner';
 import { ActiveBranchBanner } from './ActiveBranchBanner';
 import { OfferingVocabularyProvider } from '@/providers/OfferingVocabularyProvider';
 import { CelebrateProvider } from '@/components/custom/Celebrate';
+import { VerifiedCelebration } from './VerifiedCelebration';
 import type { OfferingVocabulary } from '@/lib/types/offering';
 
 export default function BusinessLayout({
@@ -49,6 +50,10 @@ export default function BusinessLayout({
                   <BusinessSidebar bookingsEnabled={bookingsEnabled} />
                   <SidebarInset className="flex flex-1 flex-col overflow-hidden">
                     <BusinessHeader branches={branches} />
+                    <VerifiedCelebration
+                      businessId={shop?.id}
+                      status={shop?.status}
+                    />
                     <ActiveBranchBanner branches={branches} />
                     {shop?.status === 'pending' && (
                       <div className="px-3 pt-3 pb-1">

@@ -1,3 +1,4 @@
+export { FirstAnswerCard } from './FirstAnswerCard';
 export { HealthScoreCard } from './HealthScoreCard';
 export { MonthlyTrendChart } from './MonthlyTrendChart';
 export { CustomerSegmentsChart } from './CustomerSegmentsChart';

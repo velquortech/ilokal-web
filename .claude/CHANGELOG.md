@@ -1,5 +1,109 @@
 # Changelog
 
+## 2026-08-01 — Product Catalogues: shop sections, and the taxonomy split (feat/rebranding)
+
+> **TWO schema migrations — HIGH risk by policy: new table + 4 RLS policies + 2
+> SECURITY DEFINER triggers + an anon/authenticated-granted RPC.** Applied,
+> red-teamed and `migrate-reset`-verified on **LOCAL ONLY**. ⚠️ **Needs human
+> approval before merge, then `make migrate-cloud` + a
+> `supabase_migrations.schema_migrations` ledger reconcile** (the Supabase MCP
+> records its own timestamp as the version). They queue behind the 10
+> migrations cloud is already missing — 12 total. Plan kept local
+> (`.claude/CATALOGUES.md`, not committed).
+
+- **The "Manage Catalogues" drawer was a mock, and could never have been
+  anything else.** Add and rename were `console.info`, delete had no handler,
+  **Save Changes had no handler**, the search box was unbound, every row read a
+  hardcoded "99 Products", and the copy claimed "changes are saved locally"
+  when nothing was saved anywhere. It also could not have worked: it wrote to
+  `categories`, whose RLS is admin-only, so an owner INSERT is a 42501 whatever
+  the UI does. Deleted rather than hidden — a hidden mock is an invitation to
+  re-enable it.
+- **The fix is a taxonomy split, not a repair.** `categories` stays the
+  PLATFORM axis (admin-curated: explore filters, facets, SEO slugs, cross-shop
+  analytics). New **`product_sections`** is one shop's own merchandising —
+  "Hot drinks", "Pasalubong" — where a bad row embarrasses one shop instead of
+  landing in the platform's navigation. A product carries BOTH `category_id`
+  (how strangers find it) and `section_id` (how this shop arranges it).
+  Deliberately **not** a nullable `business_id` on `categories`: that shortcut
+  makes every read depend on remembering a filter, and the one query that
+  forgets leaks a shop's private naming into the global picker — the class of
+  mistake that exposed the whole follow graph in `20260607000000`.
+- **Schema (`20260801061117`):** `product_sections` (`business_id`, `name`
+  CHECK 1–40, `position`, `archived_at`), a partial unique index on
+  `(business_id, lower(btrim(name)))` over live rows so "Hot Drinks" and "hot
+  drinks" collide, public-read policy matching the `business_posts` gate, owner
+  `FOR ALL` with an **explicit `WITH CHECK`** (a FOR ALL policy silently reuses
+  USING for writes — the PR #18 lesson), admin policy, `(select auth.uid())`
+  throughout, a 30-section cap trigger raising private **`IL003`**, and
+  `products.section_id` (`ON DELETE SET NULL`) whose archive path **clears the
+  pointer via trigger** so a soft-deleted section can never take inventory with
+  it. Counts come from `section_product_counts(business_id, branch_id)` —
+  **SECURITY INVOKER**, unlike the analytics RPCs, because RLS already
+  expresses exactly the right scope and a DEFINER function would have to
+  re-implement that check.
+- **Schema (`20260801064656`):** `categories.business_type_id` populated —
+  F&B → Food & Beverage, Clothing/Electronics/Home → Retail. **Health & Beauty
+  stays global on purpose**: it belongs to a salon's services and a pharmacy's
+  shelves alike. The picker reads *"my vertical OR global"*, so NULL means
+  *offered everywhere* and an unmapped or renamed row degrades to
+  visible-everywhere rather than vanishing. The seed repeats the mapping
+  (COALESCE'd) because `business_types` are created by the SEED, which runs
+  **after** migrations — the same trap that blanked every `offering_profile`.
+- **App layer:** `product_sections` types/Zod/query/service, four Server
+  Actions behind `verifyBusinessOwner` (each passing the **verified** id, never
+  the client's), a real drawer where **every edit saves on the spot** (the
+  staged Cancel/Save could only ever lose work), chips switched to sections
+  plus **All** and **Uncategorised** (85 products had no grouping and were
+  reachable from no chip at all), a section picker in both product dialogs, and
+  the public shop page grouped under the shop's own headings with ungrouped
+  offerings last under "More".
+- **🔴 Cross-shop hole closed:** a `section_id` from the client is not proof of
+  ownership — the FK only says the row exists. `sectionBelongsToBusiness()`
+  now runs before every product write.
+- **🔴 Separate live bug found and fixed:** the business **profile** form's
+  Category picker was filled from the OFFERING categories, but
+  `businesses.category_id` FKs to **`business_categories`** — every option was
+  an id from the wrong table, so saving raised a foreign-key violation and a
+  shop could never change its category. Now read server-side from the right
+  table and passed as a prop.
+- **Pre-existing, fixed because it blocked typecheck:**
+  `getProductStatsByBusiness` counted `'inactive'`/`'archived'`, values
+  `products.status` cannot hold (the CHECK is `active|unlisted|disabled`), so
+  both buckets were always zero wherever rendered.
+- **Also in this pass:** explore + dashboard visual revamp — `PageHeader`
+  across every business and customer page, id-derived brand tones shared by the
+  directory card, deals wall and shop hero (`brandTone.ts`), distance-forward
+  nearby cards, a dashboard "first answer" replacing equal-weight cards, the
+  `Celebrate` success moment (product added, promo **published**, shop
+  verified — never on a delete), and `ProCard` removed (an empty `<Progress />`
+  and a button to nowhere, advertising billing that does not exist).
+- **PR #21 review (react-doctor + api-doctor) — fixed in-branch:** the **All
+  chip could never render selected** (Radix computes `value ? [value] : []`, so
+  an empty-string item value is never in the pressed set); **reorder could
+  silently revert itself** (payload rebuilt from props that `router.refresh()`
+  had not yet updated — now optimistic local order); `products.section_id`
+  gained an index **leading with it** (the archive trigger and the FK's RI
+  check were both seq-scanning `products`); the cap trigger now covers
+  **un-archive**; a failed counts RPC reports `counts_failed` instead of
+  letting placeholder zeroes make the archive dialog say "this section is
+  empty" before moving real offerings; `reorderSections` verifies rows-affected
+  instead of toasting success it never confirmed; `business_type_id` is
+  guid-validated before reaching a PostgREST `.or()` filter string; the profile
+  picker moved off a client effect with no `.catch()`; counts are branch-scoped
+  so the chips agree with the filtered table; `Celebrate`'s context value is
+  memoised; the deal card pins `Asia/Manila`; `outline-none` → `outline-hidden`
+  (Tailwind v4 drops the ring in forced-colors mode).
+- **Tests:** +~90 across the branch (**1674** total, plus 3 SQL suites —
+  `product_sections`, `category_scoping`, and the existing sets). Verified:
+  `yarn lint` + `yarn test:run` + a clean `yarn build` (`.next` removed, no dev
+  server running) + `make migrate-reset` re-applying both migrations from
+  scratch.
+- **Not done:** cloud apply (needs approval), a pre-flight run of the
+  `category_scoping` orphan query against cloud data, and the dashboard browser
+  sweep — those surfaces are behind auth and this environment has no login
+  path.
+
 ## 2026-08-01 — Link previews: the share card that was missing (feat/rebranding)
 
 > Presentational + metadata. No schema, API, or auth change.

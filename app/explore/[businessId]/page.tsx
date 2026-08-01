@@ -3,7 +3,6 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { MapPin, Star, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { BrandMark } from '@/components/custom/BrandLogo';
 import { BusinessMapLazy } from '@/components/customer/BusinessMapLazy';
 import { FollowButton } from '@/components/customer/FollowButton';
 import { PaginationBar } from '@/components/customer/PaginationBar';
@@ -16,8 +15,12 @@ import {
 } from '@/lib/api/customer/customerQuery';
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import { businessSocialCard } from '@/lib/utils/socialCard';
+import { brandToneFor } from '@/lib/utils/brandTone';
+import { cn } from '@/lib/utils';
 import { getOfferingVocabulary } from '@/lib/api/offerings/offeringQuery';
 import { getBookingsEnabled } from '@/lib/api/appSettings';
+import { getSectionsForDisplay } from '@/lib/api/sections/sectionQuery';
+import { groupOfferingsBySection } from '@/lib/utils/groupOfferings';
 import { BusinessInfoPanel } from './components/business-info-panel';
 import { CouponCard } from './components/coupon-card';
 import { InteriorGallery } from './components/interior-gallery';
@@ -91,6 +94,7 @@ export default async function PublicBusinessPage({
     following,
     vocabulary,
     bookingsEnabled,
+    sections,
   ] = await Promise.all([
     getPublicMenu(business.id, menuPage, 8),
     getPublicCoupons(business.id),
@@ -98,6 +102,10 @@ export default async function PublicBusinessPage({
     // A salon's public page should read "Service Menu", not "Menu".
     getOfferingVocabulary(business.id),
     getBookingsEnabled(),
+    // Names and order only — this page renders no counts, and the aggregate
+    // RPC is not worth a per-request cost on the busiest anonymous route.
+    // Public read: RLS exposes sections of verified, non-archived shops only.
+    getSectionsForDisplay(business.id),
   ]);
 
   const products =
@@ -110,11 +118,20 @@ export default async function PublicBusinessPage({
   const coupons = 'error' in couponsResult ? [] : couponsResult.coupons;
   const couponsFailed = 'error' in couponsResult;
   const menuFailed = 'error' in productsResult;
+  const initial = business.shop_name[0]?.toUpperCase() ?? '?';
+  // Grouping is per PAGE of the menu, not per shop: the menu is paginated, so a
+  // section spanning a boundary is headed again on the next page — the way a
+  // printed menu reads. Fetching every offering to group globally is the
+  // unbounded read the perf standard forbids.
+  const menuGroups = groupOfferingsBySection(products.products, sections);
 
   return (
     <div className="flex flex-1 flex-col space-y-6">
-      {/* Hero */}
-      <div className="bg-primary/10 relative h-40 w-full overflow-hidden rounded-xl sm:h-56">
+      {/* Hero. A shop with no banner gets the SAME id-derived brand tone it had
+          in the directory grid — colour is this shop's identity, so it has to
+          survive the click. The washed `bg-primary/10` block with a faint mark
+          floating in it that used to live here read as a broken image. */}
+      <div className="relative h-40 w-full overflow-hidden rounded-2xl sm:h-56">
         {business.banner_url ? (
           <Image
             src={business.banner_url}
@@ -125,15 +142,30 @@ export default async function PublicBusinessPage({
             priority
           />
         ) : (
-          <div className="flex h-full items-center justify-center opacity-30">
-            <BrandMark size={72} />
+          <div
+            className={cn(
+              'flex h-full items-center justify-center',
+              brandToneFor(business.id),
+            )}
+          >
+            <span
+              aria-hidden
+              className="font-display text-7xl leading-none font-bold tracking-tight opacity-90 sm:text-8xl"
+            >
+              {initial}
+            </span>
           </div>
         )}
       </div>
 
       {/* Identity row */}
       <div className="flex flex-wrap items-center gap-4">
-        <div className="bg-muted relative size-16 shrink-0 overflow-hidden rounded-full border">
+        <div
+          className={cn(
+            'relative size-16 shrink-0 overflow-hidden rounded-full border',
+            business.logo_url ? 'bg-muted' : brandToneFor(business.id),
+          )}
+        >
           {business.logo_url ? (
             <Image
               src={business.logo_url}
@@ -143,14 +175,14 @@ export default async function PublicBusinessPage({
               className="object-cover"
             />
           ) : (
-            <div className="text-muted-foreground flex h-full items-center justify-center text-xl font-bold">
-              {business.shop_name[0]?.toUpperCase()}
+            <div className="font-display flex h-full items-center justify-center text-2xl font-bold">
+              {initial}
             </div>
           )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">
+            <h1 className="font-display text-[clamp(1.875rem,3vw,2.75rem)] leading-tight font-bold tracking-tight">
               {business.shop_name}
             </h1>
             {business.category_name && (
@@ -191,7 +223,7 @@ export default async function PublicBusinessPage({
         <div className="space-y-8 lg:col-span-2">
           {/* Deals & coupons */}
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold tracking-tight">
+            <h2 className="font-display text-xl font-bold tracking-tight">
               Deals & coupons
             </h2>
             {coupons.length === 0 ? (
@@ -216,7 +248,7 @@ export default async function PublicBusinessPage({
 
           {/* Menu / products / services — heading follows the vertical */}
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold tracking-tight">
+            <h2 className="font-display text-xl font-bold tracking-tight">
               {vocabulary.catalogue}
             </h2>
             {products.products.length === 0 ? (
@@ -227,19 +259,32 @@ export default async function PublicBusinessPage({
               </p>
             ) : (
               <>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {products.products.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      bookingsEnabled={bookingsEnabled}
-                      // Owners/admins/anon don't get a booking CTA, matching
-                      // how FollowButton and Redeem are gated.
-                      canBook={isCustomer === true}
-                      branches={business.branches}
-                    />
-                  ))}
-                </div>
+                {/* Grouped under the shop's own headings, in the shop's own
+                    order. A shop that has never made a section gets ONE
+                    unnamed group, which renders as the plain grid it has
+                    always been. */}
+                {menuGroups.map((group) => (
+                  <div key={group.id ?? 'more'} className="space-y-3">
+                    {group.name && (
+                      <h3 className="font-display text-muted-foreground text-sm font-bold tracking-[0.14em] uppercase">
+                        {group.name}
+                      </h3>
+                    )}
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {group.products.map((product) => (
+                        <ProductCard
+                          key={product.id}
+                          product={product}
+                          bookingsEnabled={bookingsEnabled}
+                          // Owners/admins/anon don't get a booking CTA,
+                          // matching how FollowButton and Redeem are gated.
+                          canBook={isCustomer === true}
+                          branches={business.branches}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
                 <PaginationBar
                   metadata={products.metadata}
                   param="menuPage"
@@ -253,7 +298,9 @@ export default async function PublicBusinessPage({
         {/* Sidebar: map + branches + interiors */}
         <div className="space-y-6">
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold tracking-tight">Find us</h2>
+            <h2 className="font-display text-xl font-bold tracking-tight">
+              Find us
+            </h2>
             <BusinessMapLazy branches={business.branches} />
             <ul className="space-y-2">
               {business.branches.map((branch) => (

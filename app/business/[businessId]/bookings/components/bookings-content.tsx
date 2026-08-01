@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { PaginationBar } from '@/components/customer/PaginationBar';
 import { StatCard } from '@/components/custom/StatCard';
+import { PageHeader } from '@/components/custom/PageHeader';
 import {
   Select,
   SelectContent,
@@ -162,12 +163,10 @@ export function BookingsContent({
 
   return (
     <div className="flex h-max flex-1 flex-col space-y-6 pb-8">
-      <div className="flex flex-col">
-        <span className="text-lg font-medium">Bookings</span>
-        <span className="text-muted-foreground text-sm">
-          Requests for your {vocabulary.plural.toLowerCase()}
-        </span>
-      </div>
+      <PageHeader
+        title="Bookings"
+        lede={`Requests for your ${vocabulary.plural.toLowerCase()} — confirm, decline or quote a price back.`}
+      />
 
       {/* A failed count would otherwise read as a real zero — misleading next
           to a list that is itself reporting an outage. */}

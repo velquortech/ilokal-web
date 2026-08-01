@@ -169,7 +169,10 @@ describe('productQuery', () => {
       });
 
       expect(result.categories).toHaveLength(0);
-      expect(result.error).toContain('DB error');
+      // Generic copy on purpose (SEC-5): the raw Supabase message names
+      // tables, columns and constraints, and this reaches a client component.
+      expect(result.error).toBe('Failed to fetch categories');
+      expect(result.error).not.toContain('DB error');
     });
   });
 
@@ -393,7 +396,8 @@ describe('productQuery', () => {
       });
 
       if ('error' in result && typeof result.error === 'string') {
-        expect(result.error).toContain('DB connection error');
+        expect(result.error).toBe('Failed to fetch products');
+        expect(result.error).not.toContain('DB connection error');
       } else if ('products' in result) {
         expect(result.products).toHaveLength(0);
       }

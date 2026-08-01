@@ -3,19 +3,21 @@
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/custom/PageHeader';
 import { Plus } from 'lucide-react';
 import { Catalogues } from './catalogues';
 import { SearchBar } from '@/components/custom/Searchbar';
 import { FilterProducts } from './filter-products';
-import { ManageCatalogues } from './manage-catalogue';
 import { ProductTable } from './product-table/products-table';
 import { AddProductDialog } from './add-product';
 import { ProductStats } from './product-stats';
+import { ManageSections } from './manage-sections';
 import { Card, CardContent } from '@/components/ui/card';
 import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
 import type {
   ProductResponse,
   Category,
+  ProductSectionWithCount,
   ProductStats as ProductStatsType,
 } from '@/lib/types';
 
@@ -29,6 +31,13 @@ interface ProductCataloguesContentProps {
   };
   categories: Category[];
   stats: ProductStatsType;
+  businessId: string;
+  /** The shop's OWN groupings — not the platform taxonomy in `categories`. */
+  sections: ProductSectionWithCount[];
+  uncategorisedCount: number;
+  sectionsFailed?: boolean;
+  /** Counts RPC failed — every `product_count` is a placeholder zero. */
+  countsFailed?: boolean;
 }
 
 export function ProductCataloguesContent({
@@ -36,6 +45,11 @@ export function ProductCataloguesContent({
   metadata,
   categories,
   stats,
+  businessId,
+  sections,
+  uncategorisedCount,
+  sectionsFailed = false,
+  countsFailed = false,
 }: ProductCataloguesContentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -75,9 +89,9 @@ export function ProductCataloguesContent({
     return () => clearTimeout(timeout);
   }, [searchInput]);
 
-  const handleCategoryChange = React.useCallback(
-    (categoryId: string) => {
-      updateParams({ category: categoryId || null, page: '1' });
+  const handleSectionChange = React.useCallback(
+    (sectionId: string) => {
+      updateParams({ section: sectionId || null, page: '1' });
     },
     [updateParams],
   );
@@ -99,28 +113,29 @@ export function ProductCataloguesContent({
     [updateParams],
   );
 
-  const selectedCategory = searchParams.get('category') ?? '';
+  const selectedSection = searchParams.get('section') ?? '';
   const selectedStatus = searchParams.get('status') ?? '';
 
   return (
     <div className="font-giest flex h-max flex-1 flex-col space-y-6 pb-8">
-      <div className="inline-flex w-full items-end justify-between">
-        <div className="flex flex-col">
-          <span className="text-lg font-medium">{vocabulary.catalogue}</span>
-          <span className="text-muted-foreground text-sm">
-            Manage your {vocabulary.plural.toLowerCase()}
-          </span>
-        </div>
-        <AddProductDialog
-          categories={categories}
-          onSuccess={() => router.refresh()}
-        >
-          <Button>
-            <Plus />
-            {vocabulary.addLabel}
-          </Button>
-        </AddProductDialog>
-      </div>
+      <PageHeader
+        title={vocabulary.catalogue}
+        lede={`Manage your ${vocabulary.plural.toLowerCase()}`}
+        action={
+          <>
+            <AddProductDialog
+              categories={categories}
+              sections={sections}
+              onSuccess={() => router.refresh()}
+            >
+              <Button>
+                <Plus />
+                {vocabulary.addLabel}
+              </Button>
+            </AddProductDialog>
+          </>
+        }
+      />
 
       <ProductStats stats={stats} />
 
@@ -128,12 +143,23 @@ export function ProductCataloguesContent({
         <CardContent className="space-y-2">
           <div className="flex w-full flex-wrap items-center justify-between gap-2">
             <Catalogues
-              categories={categories}
-              selectedCategory={selectedCategory}
-              onCategoryChange={handleCategoryChange}
+              sections={sections}
+              uncategorisedCount={uncategorisedCount}
+              countsFailed={countsFailed}
+              selectedSection={selectedSection}
+              onSectionChange={handleSectionChange}
             />
             <div className="flex flex-wrap items-center gap-2">
-              <ManageCatalogues categories={categories} />
+              {/* Sections are the owner's own grouping. The platform
+                  taxonomy in `categories` stays admin-curated — see
+                  .claude/CATALOGUES.md for why they are two tables. */}
+              <ManageSections
+                businessId={businessId}
+                sections={sections}
+                uncategorisedCount={uncategorisedCount}
+                loadFailed={sectionsFailed}
+                countsFailed={countsFailed}
+              />
               <FilterProducts
                 selectedStatus={selectedStatus}
                 onStatusChange={handleStatusChange}
@@ -146,6 +172,7 @@ export function ProductCataloguesContent({
           </div>
           <ProductTable
             products={products}
+            sections={sections}
             page={metadata.page}
             pageSize={metadata.per_page}
             totalPages={metadata.total_pages}

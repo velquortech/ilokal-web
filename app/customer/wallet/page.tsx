@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import { getWalletRedemptions } from '@/lib/api/customer/customerQuery';
 import { PaginationBar } from '@/components/customer/PaginationBar';
+import { PageHeader } from '@/components/custom/PageHeader';
 import { ROUTES } from '@/config/routeConfig';
 import { cn } from '@/lib/utils';
 import { RedemptionCard } from './components/redemption-card';
@@ -45,13 +46,11 @@ export default async function WalletPage({
 
   return (
     <div className="flex flex-1 flex-col space-y-6">
-      <div className="flex flex-col">
-        <h1 className="text-2xl font-bold tracking-tight">My wallet</h1>
-        <p className="text-muted-foreground text-sm">
-          Redeemed deals and coupons — show the code at the store before the
-          timer runs out.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Your codes"
+        title="My wallet"
+        lede="Redeemed deals and coupons — show the code at the store before the timer runs out."
+      />
 
       <div className="flex flex-wrap items-center gap-1 rounded-lg border p-1 sm:w-fit">
         {TABS.map((tab) => (

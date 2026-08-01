@@ -60,3 +60,36 @@ export const getOfferingVocabulary = cache(
     }
   },
 );
+
+/**
+ * The vertical a shop belongs to, for scoping the offering-category picker.
+ *
+ * Reads the DENORMALIZED `businesses.business_type_id` (kept honest by the
+ * `sync_business_type_id` trigger from 20260727000000), so this is one column
+ * read rather than a two-hop join through business_categories.
+ *
+ * Never throws and returns null on any failure — a missing vertical means the
+ * picker falls back to every category, which is the pre-phase-5 behaviour.
+ */
+export const getBusinessTypeId = cache(
+  async (businessId: string | null | undefined): Promise<string | null> => {
+    if (!businessId) return null;
+    try {
+      const supabase = await createServerSupabaseClient();
+      const { data, error } = await supabase
+        .from('businesses')
+        .select('business_type_id')
+        .eq('id', businessId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('[getBusinessTypeId]', error);
+        return null;
+      }
+      return data?.business_type_id ?? null;
+    } catch (err) {
+      console.error('[getBusinessTypeId]', err);
+      return null;
+    }
+  },
+);

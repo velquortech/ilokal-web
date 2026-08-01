@@ -15,6 +15,7 @@ import type {
   UpdateCategoryRequest,
 } from '@/lib/types';
 import * as productQuery from './productQuery';
+import { sectionBelongsToBusiness } from '@/lib/api/sections/sectionQuery';
 
 // ===== Category Service =====
 
@@ -274,12 +275,29 @@ export async function createProduct(
       }
     }
 
+    // A section id is only valid for THIS shop. The FK proves the row exists,
+    // not that it is yours — without this an owner could attach another shop's
+    // section and surface its naming on their own page.
+    if (input.section_id) {
+      const owned = await sectionBelongsToBusiness(
+        input.section_id,
+        business_id,
+      );
+      if (!owned) {
+        return {
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Section not found' },
+        };
+      }
+    }
+
     const { data, error } = await supabase
       .from('products')
       .insert({
         business_id,
         branch_id: input.branch_id ?? null,
         category_id: input.category_id ?? null,
+        section_id: input.section_id ?? null,
         name: input.name,
         description: input.description ?? null,
         // NULL only survives the DB CHECK when price_type is 'on_request'.
@@ -439,6 +457,21 @@ export async function updateProduct(
       }
     }
 
+    // Same ownership rule as create. `null` is always allowed — that is the
+    // owner moving the product back to Uncategorised.
+    if (input.section_id) {
+      const owned = await sectionBelongsToBusiness(
+        input.section_id,
+        business_id,
+      );
+      if (!owned) {
+        return {
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Section not found' },
+        };
+      }
+    }
+
     const { data, error } = await supabase
       .from('products')
       .update({
@@ -452,6 +485,9 @@ export async function updateProduct(
         ...(input.price_unit !== undefined && { price_unit: input.price_unit }),
         ...(input.category_id !== undefined && {
           category_id: input.category_id,
+        }),
+        ...(input.section_id !== undefined && {
+          section_id: input.section_id,
         }),
         ...(input.image_url !== undefined && { image_url: input.image_url }),
         ...(input.status !== undefined && { status: input.status }),

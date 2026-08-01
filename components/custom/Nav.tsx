@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AlertTriangle, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { brandToneFor } from '@/lib/utils/brandTone';
 import { Badge } from '@/components/ui/badge';
 import {
   Collapsible,
@@ -80,15 +81,31 @@ export function NavSectionHeader({ title }: SectionHeaderProps) {
   );
 }
 
+/**
+ * The shop's own identity, at the top of its dashboard.
+ *
+ * A shop with no logo used to get a grey **warning triangle** — the icon this
+ * app uses for "something is wrong" — so most shops opened their dashboard to
+ * what looked like an error next to their name. A missing logo is not a fault;
+ * it now gets the same id-derived brand tone and initial the shop wears on
+ * `/explore`, which also means the owner sees their public colour here.
+ *
+ * The triangle is kept for the genuinely broken case: no shop at all
+ * (registration unfinished), where a warning is the correct signal.
+ */
 export function SidebarLogo({
   shopName,
   logo,
+  businessId,
 }: {
   shopName?: string;
   logo?: string;
+  businessId?: string;
 }) {
+  const initial = shopName?.trim()[0]?.toUpperCase();
+
   return (
-    <div className="font-giest flex items-center gap-3">
+    <div className="flex items-center gap-3">
       {logo ? (
         <div className="relative size-8 shrink-0 overflow-hidden rounded-lg group-data-[collapsible=icon]:size-7">
           <Image
@@ -100,14 +117,28 @@ export function SidebarLogo({
             unoptimized
           />
         </div>
+      ) : shopName ? (
+        <div
+          className={cn(
+            'flex size-8 shrink-0 items-center justify-center rounded-lg group-data-[collapsible=icon]:size-7',
+            brandToneFor(businessId ?? shopName),
+          )}
+        >
+          <span className="font-display text-sm leading-none font-bold">
+            {initial}
+          </span>
+        </div>
       ) : (
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-zinc-700/20 text-zinc-600 group-data-[collapsible=icon]:size-7 dark:text-zinc-400">
+        <div className="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-lg group-data-[collapsible=icon]:size-7">
           <AlertTriangle className="size-4" />
         </div>
       )}
-      <div className="flex flex-col capitalize group-data-[collapsible=icon]:hidden">
+      <div className="flex flex-col group-data-[collapsible=icon]:hidden">
         <span
-          className={cn('font-semibold', !shopName && 'font-normal opacity-60')}
+          className={cn(
+            'font-display truncate leading-tight font-bold tracking-tight',
+            !shopName && 'text-muted-foreground font-normal',
+          )}
         >
           {shopName ?? 'Unregistered'}
         </span>

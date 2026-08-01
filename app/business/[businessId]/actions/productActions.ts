@@ -1,5 +1,6 @@
 'use server';
 
+import { z } from 'zod';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import { createServerSupabaseClient } from '@/supabase/server';
 import type {
@@ -306,11 +307,13 @@ export async function getBusinessProductsPaginatedAction(
  * Get product status counts for the authenticated business owner
  */
 export async function getBusinessProductStatsAction(): Promise<
+  // Follows the real CHECK on products.status (active|unlisted|disabled); the
+  // previous inactive/archived shape described values the column cannot hold.
   ApiResponse<{
     total: number;
     active: number;
-    inactive: number;
-    archived: number;
+    unlisted: number;
+    disabled: number;
   }>
 > {
   try {
@@ -332,14 +335,34 @@ export async function getBusinessProductStatsAction(): Promise<
 }
 
 /**
- * Get all categories for product creation
+ * Offering categories for the product dialogs.
+ *
+ * `business_type_id` scopes the list to one vertical PLUS the global rows, so
+ * a salon is not offered "Pastries". Omit it for every category.
+ *
+ * NOTE: these are OFFERING categories (`public.categories`). The shop's own
+ * category is a different table (`business_categories`) — see
+ * `getBusinessCategoriesAction`.
  */
-export async function getCategoriesAction(): Promise<ApiResponse<Category[]>> {
+export async function getCategoriesAction(
+  businessTypeId?: string | null,
+): Promise<ApiResponse<Category[]>> {
   try {
+    // The id is interpolated into a PostgREST `.or()` filter downstream, and
+    // this action is publicly invocable — a non-guid value would inject extra
+    // filter terms. Anything unparseable falls back to the unscoped list
+    // rather than failing the page.
+    const scoped = businessTypeId
+      ? z.guid().safeParse(businessTypeId).success
+        ? businessTypeId
+        : undefined
+      : undefined;
+
     const result = await productQuery.getCategoriesPaginated({
       page: 1,
       per_page: 200, // Get all categories
       sort_by: 'name_asc',
+      business_type_id: scoped,
     });
 
     return {

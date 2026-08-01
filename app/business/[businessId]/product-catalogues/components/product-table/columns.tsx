@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { calculatePercentage } from '@/lib/product-helper';
 import { formatOfferingPricePair } from '@/lib/utils/formatOfferingPrice';
-import type { ProductResponse } from '@/lib/types';
+import type { ProductResponse, ProductSectionWithCount } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ViewProduct } from '../view-product';
 import { ProductActions } from './product-actions';
@@ -39,93 +39,117 @@ function ProductImageCell({ product }: { product: ProductResponse }) {
   );
 }
 
-export const columns: ColumnDef<ProductResponse>[] = [
-  {
-    id: 'select',
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && 'indeterminate')
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: 'image_url',
-    header: 'Image',
-    cell: ({ row }) => <ProductImageCell product={row.original} />,
-  },
-  {
-    accessorKey: 'name',
-    header: 'Name',
-    cell: ({ row }) => (
-      <div>
-        <div className="font-medium">{row.original.name}</div>
-        <p className="text-muted-foreground line-clamp-1 text-xs">
-          {row.original.description}
-        </p>
-      </div>
-    ),
-  },
-  {
-    accessorKey: 'category',
-    header: 'Catalogue',
-    cell: ({ row }) => (
-      <Badge variant="outline">{row.original.category?.name ?? '—'}</Badge>
-    ),
-  },
-  {
-    accessorKey: 'price',
-    header: 'Price',
-    cell: ({ row }) => {
-      const { price, sale_price } = row.original;
-      const { base, sale } = formatOfferingPricePair(row.original);
-      // `sale` is null for quote-based rows, which have nothing to discount.
-      if (sale && price != null && sale_price != null) {
-        return (
-          <div className="flex flex-col gap-0.5">
-            <span className="text-primary font-semibold">{sale}</span>
-            <span className="text-muted-foreground text-xs line-through">
-              {base} (-{calculatePercentage(price, sale_price)}%)
-            </span>
-          </div>
-        );
-      }
-      return <span>{base}</span>;
+/**
+ * A factory rather than a constant: the row actions need the shop's sections
+ * so "Update" can offer a section picker, and TanStack has no other channel
+ * for passing them to a cell.
+ */
+export function getColumns(
+  sections?: ProductSectionWithCount[],
+): ColumnDef<ProductResponse>[] {
+  return [
+    {
+      id: 'select',
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && 'indeterminate')
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
     },
-  },
-  {
-    accessorKey: 'status',
-    header: 'Status',
-    cell: ({ row }) => (
-      <div
-        className={cn(
-          'inline-flex h-max items-center rounded-sm px-2 py-0.5 text-xs capitalize',
-          row.original.status === 'active' && 'bg-green-600/10 text-green-700',
-          row.original.status === 'unlisted' && 'bg-red-600/10 text-red-700',
-          row.original.status === 'disabled' &&
-            'bg-muted text-muted-foreground',
-        )}
-      >
-        {row.original.status}
-      </div>
-    ),
-  },
-  {
-    id: 'actions',
-    header: () => <div className="text-center">Actions</div>,
-    cell: ({ row: { original: product } }) => <ProductActions {...product} />,
-  },
-];
+    {
+      accessorKey: 'image_url',
+      header: 'Image',
+      cell: ({ row }) => <ProductImageCell product={row.original} />,
+    },
+    {
+      accessorKey: 'name',
+      header: 'Name',
+      cell: ({ row }) => (
+        <div>
+          <div className="font-medium">{row.original.name}</div>
+          <p className="text-muted-foreground line-clamp-1 text-xs">
+            {row.original.description}
+          </p>
+        </div>
+      ),
+    },
+    {
+      // The shop's OWN grouping. Distinct from `category`, which is the platform
+      // taxonomy customers filter by on /explore — see .claude/CATALOGUES.md.
+      accessorKey: 'section',
+      header: 'Section',
+      cell: ({ row }) =>
+        row.original.section?.name ? (
+          <Badge variant="outline">{row.original.section.name}</Badge>
+        ) : (
+          <span className="text-muted-foreground text-xs">Uncategorised</span>
+        ),
+    },
+    {
+      accessorKey: 'category',
+      header: 'Category',
+      cell: ({ row }) => (
+        <Badge variant="secondary">{row.original.category?.name ?? '—'}</Badge>
+      ),
+    },
+    {
+      accessorKey: 'price',
+      header: 'Price',
+      cell: ({ row }) => {
+        const { price, sale_price } = row.original;
+        const { base, sale } = formatOfferingPricePair(row.original);
+        // `sale` is null for quote-based rows, which have nothing to discount.
+        if (sale && price != null && sale_price != null) {
+          return (
+            <div className="flex flex-col gap-0.5">
+              <span className="text-primary font-semibold">{sale}</span>
+              <span className="text-muted-foreground text-xs line-through">
+                {base} (-{calculatePercentage(price, sale_price)}%)
+              </span>
+            </div>
+          );
+        }
+        return <span>{base}</span>;
+      },
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }) => (
+        <div
+          className={cn(
+            'inline-flex h-max items-center rounded-sm px-2 py-0.5 text-xs capitalize',
+            row.original.status === 'active' &&
+              'bg-green-600/10 text-green-700',
+            row.original.status === 'unlisted' && 'bg-red-600/10 text-red-700',
+            row.original.status === 'disabled' &&
+              'bg-muted text-muted-foreground',
+          )}
+        >
+          {row.original.status}
+        </div>
+      ),
+    },
+    {
+      id: 'actions',
+      header: () => <div className="text-center">Actions</div>,
+      cell: ({ row: { original: product } }) => (
+        <ProductActions product={product} sections={sections} />
+      ),
+    },
+  ];
+}

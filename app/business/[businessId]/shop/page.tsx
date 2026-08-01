@@ -7,6 +7,7 @@ import { ShopBanner } from './components/shop-banner';
 import { ShopGallery } from './components/shop-gallery';
 import { ShopItems } from './components/shop-items';
 import { ShopLegitimacy } from './components/shop-legitimacy';
+import { PageHeader } from '@/components/custom/PageHeader';
 import type { Branch, ProductResponse } from '@/lib/types';
 
 type Params = Promise<{ businessId: string }>;
@@ -40,6 +41,12 @@ export default async function ShopPage({
 
   return (
     <div className="font-giest flex h-max flex-1 flex-col pb-8">
+      <PageHeader
+        className="mb-6"
+        eyebrow={branch ? branch.name : undefined}
+        title="Your shop page"
+        lede="What customers see when they open your shop on iLokal."
+      />
       <ShopBanner business={business} branch={branch} />
       <div className="mt-8 flex flex-1 flex-col space-y-20">
         <ShopGallery business={business} branch={branch} />

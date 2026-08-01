@@ -411,3 +411,42 @@ export async function getBusinessProfileData(
     return null;
   }
 }
+
+/**
+ * The shop's own categories, for the profile form's picker.
+ *
+ * 🔴 This exists because that picker was filled from `getCategoriesAction()` —
+ * the OFFERING categories ("Food & Beverages", "Home & Living"). But
+ * `businesses.category_id` has an FK to `business_categories`, so every option
+ * the form offered was an id from the wrong table: saving raised a foreign-key
+ * violation and a shop could never change its category from this page.
+ *
+ * Read on the SERVER and passed down as a prop rather than fetched from an
+ * effect: an unguarded `'use server'` export is a public endpoint, and a
+ * client fetch here had no `.catch()` (silent empty picker, unhandled
+ * rejection, setState after unmount).
+ *
+ * Soft-deleted rows are filtered, per the embedded-relation convention. Never
+ * throws — a failed read renders an empty picker, not a broken page.
+ */
+export async function getBusinessCategoryOptions(): Promise<
+  { id: string; name: string }[]
+> {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('business_categories')
+      .select('id, name')
+      .is('deleted_at', null)
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('[getBusinessCategoryOptions]', error);
+      return [];
+    }
+    return data ?? [];
+  } catch (err) {
+    console.error('[getBusinessCategoryOptions]', err);
+    return [];
+  }
+}

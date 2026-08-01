@@ -15,7 +15,7 @@ export default function AdminLayout({
 }) {
   return (
     <UserProvider user={user}>
-      <div className="bg-background font-geist flex h-screen overflow-hidden">
+      <div className="bg-background flex h-screen overflow-hidden">
         <SidebarProvider
           defaultOpen={false}
           style={

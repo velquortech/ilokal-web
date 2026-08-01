@@ -11,6 +11,7 @@ import { getPublicMenu } from '@/lib/api/customer/customerQuery';
 import { getProductsPaginated } from '@/lib/api/products/productQuery';
 import { createServerSupabaseClient } from '@/supabase/server';
 import type { ProductResponse } from '@/lib/types';
+import { DEFAULT_OFFERING_ATTRIBUTES } from '@/lib/types/offering';
 
 vi.mock('@/supabase/server', () => ({
   createServerSupabaseClient: vi.fn(),
@@ -37,6 +38,12 @@ function makeProduct(
     business_id: BUSINESS_ID,
     branch_id: null,
     category_id: null,
+    section_id: null,
+    kind: 'product',
+    // The full offering-attribute set, so this factory actually satisfies
+    // ProductResponse instead of relying on the object literal being
+    // structurally close enough.
+    ...DEFAULT_OFFERING_ATTRIBUTES,
     name: 'Hair Color Treatment',
     description: 'Full-length color',
     price: 500,

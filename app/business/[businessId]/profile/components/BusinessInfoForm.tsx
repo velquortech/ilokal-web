@@ -22,9 +22,11 @@ import {
   updateBusinessProfileSchema,
   type UpdateBusinessProfileInput,
 } from '@/lib/validation/business';
-import { updateBusinessProfileAction } from '../../actions/profileActions';
-import { getCategoriesAction } from '../../actions/productActions';
-import type { BusinessProfileData, Category } from '@/lib/types';
+import {
+  getBusinessCategoriesAction,
+  updateBusinessProfileAction,
+} from '../../actions/profileActions';
+import type { BusinessProfileData } from '@/lib/types';
 import { LogoUploader } from './LogoUploader';
 import { GalleryUploader } from './GalleryUploader';
 
@@ -38,10 +40,15 @@ export function BusinessInfoForm({
   business,
 }: BusinessInfoFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>(
+    [],
+  );
 
   useEffect(() => {
-    getCategoriesAction().then((res) => {
+    // business_categories, NOT the offering categories this used to read:
+    // `businesses.category_id` FKs to that table, so the old list made every
+    // save a foreign-key violation.
+    getBusinessCategoriesAction().then((res) => {
       if (res.success && res.data) setCategories(res.data);
     });
   }, []);

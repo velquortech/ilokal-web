@@ -28,7 +28,14 @@ import { ImageUploadField } from '@/components/custom/upload/image-upload';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCelebrate } from '@/components/custom/Celebrate';
-import type { Category, PriceType } from '@/lib/types';
+import type { Category, PriceType, ProductSectionWithCount } from '@/lib/types';
+
+/**
+ * Radix Select forbids an empty-string item value, so "no section" needs a
+ * sentinel in the UI. It is mapped back to '' (then to NULL) on submit —
+ * Uncategorised is a real state, not a missing one.
+ */
+const NO_SECTION = '__none__';
 import type {
   BookingMode,
   OfferingAttributeField,
@@ -49,6 +56,8 @@ import {
 interface AddProductDialogProps {
   children: React.ReactNode;
   categories: Category[];
+  /** The shop's own groupings. Optional — a shop may have none yet. */
+  sections?: ProductSectionWithCount[];
   onSuccess?: () => void;
 }
 
@@ -59,6 +68,7 @@ type ProductFormValues = {
   price_type: PriceType;
   price_unit: string;
   category_id: string | undefined;
+  section_id: string;
   image: File | null;
   is_available: boolean;
   // Service/rental attributes — only the ones the vertical's profile asks for
@@ -98,6 +108,7 @@ const ATTRIBUTE_LABELS: Record<
 export function AddProductDialog({
   children,
   categories,
+  sections,
   onSuccess,
 }: AddProductDialogProps) {
   const { selectedBranchId } = useBusinessShop();
@@ -132,6 +143,7 @@ export function AddProductDialog({
       price_type: priceTypeOptions[0] ?? 'fixed',
       price_unit: '',
       category_id: undefined,
+      section_id: '',
       image: null,
       is_available: true,
       duration_minutes: null,
@@ -192,6 +204,12 @@ export function AddProductDialog({
         price_type: data.price_type,
         price_unit: data.price_unit || undefined,
         category_id: data.category_id!,
+        // '' is the "no section" choice — Uncategorised, which is a real
+        // state, not a missing value.
+        section_id:
+          !data.section_id || data.section_id === NO_SECTION
+            ? null
+            : data.section_id,
         image_url,
         is_available: data.is_available,
         branch_id: selectedBranchId ?? null,
@@ -323,6 +341,41 @@ export function AddProductDialog({
                 <FieldError>{errors.category_id.message}</FieldError>
               )}
             </Field>
+
+            {/* Section — the shop's own grouping, optional by design. It
+                changes where the offering appears on the shop's own page;
+                Category above is the platform taxonomy customers filter by.
+                Hidden entirely until the shop has made a section, so a brand
+                new catalogue is not asking a question with one answer. */}
+            {sections && sections.length > 0 && (
+              <Field>
+                <FieldLabel>Section (Optional)</FieldLabel>
+                <Controller
+                  control={control}
+                  name="section_id"
+                  render={({ field }) => (
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || NO_SECTION}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Uncategorised" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_SECTION}>
+                          Uncategorised
+                        </SelectItem>
+                        {sections.map((section) => (
+                          <SelectItem key={section.id} value={section.id}>
+                            {section.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </Field>
+            )}
 
             {/* Price — hidden entirely for quote-based offerings, which have
                 no figure to enter (the DB CHECK requires NULL there). */}

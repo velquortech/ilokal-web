@@ -82,6 +82,13 @@ clean:
 	@rm -f .env
 	@echo "[$(TIMESTAMP)] .env file removed" | tee -a $(LOG_FILE)
 
+# Taxonomy backlog: which section names shops actually type, ranked by how many
+# DISTINCT businesses use them (.claude/CATALOGUES.md phase 6). Read-only.
+# Defaults to the local DB; pass SUPABASE_DB_URL to point it at cloud.
+report-backlog:
+	@psql "$${SUPABASE_DB_URL:-postgresql://postgres:postgres@127.0.0.1:54322/postgres}" \
+		-f supabase/reports/section_name_backlog.sql
+
 migrate-new:
 	@yarn supabase migration new $(name)
 
@@ -185,4 +192,4 @@ review:
 	yarn test:run
 	@echo "Review complete: lint, build, and tests passed"
 
-.PHONY: all init-log setup-supabase clean migrate-new migrate-up migrate-diff migrate-reset stop-db run-dev test test-run test-ui test-coverage review seed-storage seed-db seed seed-cloud migrate-cloud deploy-cloud
+.PHONY: all init-log setup-supabase clean report-backlog migrate-new migrate-up migrate-diff migrate-reset stop-db run-dev test test-run test-ui test-coverage review seed-storage seed-db seed seed-cloud migrate-cloud deploy-cloud

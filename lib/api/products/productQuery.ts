@@ -23,7 +23,13 @@ import type {
  */
 export async function getCategoriesPaginated(filters: CategoryFilters) {
   try {
-    const { page = 1, per_page = 10, search, sort_by = 'name_asc' } = filters;
+    const {
+      page = 1,
+      per_page = 10,
+      search,
+      sort_by = 'name_asc',
+      business_type_id,
+    } = filters;
     const offset = (page - 1) * per_page;
 
     const supabase = await createServerSupabaseClient();
@@ -32,6 +38,17 @@ export async function getCategoriesPaginated(filters: CategoryFilters) {
 
     if (search) {
       query = query.or(`name.ilike.%${search}%,slug.ilike.%${search}%`);
+    }
+
+    // "This vertical OR global". NULL is not an unset value here — it means
+    // the category is offered everywhere, which is why an unmapped or renamed
+    // row degrades to visible-everywhere instead of vanishing from every
+    // picker. A salon stops being offered "Pastries"; it keeps "Health &
+    // Beauty", which is global on purpose.
+    if (business_type_id) {
+      query = query.or(
+        `business_type_id.eq.${business_type_id},business_type_id.is.null`,
+      );
     }
 
     // Apply sorting
@@ -52,10 +69,14 @@ export async function getCategoriesPaginated(filters: CategoryFilters) {
     );
 
     if (error) {
+      // Never interpolate a driver message into a returned error: it names
+      // tables, columns and constraints, and this value reaches a client
+      // component. Log it server-side, return generic copy.
+      console.error('[getCategoriesPaginated]', error);
       return {
         categories: [] as Category[],
         total: 0,
-        error: `Failed to fetch categories: ${error.message}` as const,
+        error: 'Failed to fetch categories' as const,
       };
     }
 
@@ -138,6 +159,7 @@ export async function getProductsPaginated(
       per_page = 10,
       search,
       category_id,
+      section_id,
       status = 'active',
       business_id,
       branch_id,
@@ -154,6 +176,7 @@ export async function getProductsPaginated(
       .select(
         `*,
         category:category_id (id, name, slug, description),
+        section:section_id (id, name),
         business:business_id (id, shop_name)`,
         { count: 'exact' },
       )
@@ -165,6 +188,15 @@ export async function getProductsPaginated(
 
     if (category_id) {
       query = query.eq('category_id', category_id);
+    }
+
+    // 'none' is the Uncategorised chip. Without it the products with no
+    // section are reachable from no filter at all — which is how 85 rows
+    // became invisible on this page.
+    if (section_id === 'none') {
+      query = query.is('section_id', null);
+    } else if (section_id) {
+      query = query.eq('section_id', section_id);
     }
 
     if (status) {
@@ -209,7 +241,8 @@ export async function getProductsPaginated(
     );
 
     if (error) {
-      return { error: `Failed to fetch products: ${error.message}` };
+      console.error('[getProductsPaginated]', error);
+      return { error: 'Failed to fetch products' };
     }
 
     return {
@@ -383,7 +416,10 @@ export async function applySaleToProduct(
       .select()
       .single();
 
-    if (error) return { error: `Failed to apply sale: ${error.message}` };
+    if (error) {
+      console.error('[applySaleToProduct]', error);
+      return { error: 'Failed to apply sale' };
+    }
     return { product: updated };
   } catch (err) {
     console.error('[applySaleToProduct]', err);
@@ -410,7 +446,10 @@ export async function removeSaleFromProduct(id: string) {
       .select()
       .single();
 
-    if (error) return { error: `Failed to remove sale: ${error.message}` };
+    if (error) {
+      console.error('[removeSaleFromProduct]', error);
+      return { error: 'Failed to remove sale' };
+    }
     return { product: updated };
   } catch (err) {
     console.error('[removeSaleFromProduct]', err);

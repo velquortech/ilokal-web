@@ -1,4 +1,8 @@
-import type { ProductResponse, ProductStatus } from '@/lib/types';
+import type {
+  ProductResponse,
+  ProductSectionWithCount,
+  ProductStatus,
+} from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2, Ellipsis, Eye, Tag, BadgePercent } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -21,7 +25,17 @@ import { ViewProduct } from '../view-product';
 import { ApplySale } from '../apply-sale';
 import { updateProductStatusAction } from '@/app/business/[businessId]/actions/productActions';
 
-export function ProductActions(product: ProductResponse) {
+/**
+ * Row actions. Takes the product plus the shop's sections, so "Update" can
+ * offer a section picker — the table is where an owner actually assigns them.
+ */
+export function ProductActions({
+  product,
+  sections,
+}: {
+  product: ProductResponse;
+  sections?: ProductSectionWithCount[];
+}) {
   const router = useRouter();
 
   const handleStatusChange = async (status: string) => {
@@ -50,7 +64,7 @@ export function ProductActions(product: ProductResponse) {
               View Card
             </DropdownMenuItem>
           </ViewProduct>
-          <UpdateProductDialog product={product}>
+          <UpdateProductDialog product={product} sections={sections}>
             <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
               <Pencil />
               Edit Product

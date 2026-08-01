@@ -305,5 +305,14 @@ export type {
   FollowedBusiness,
 } from './customer';
 
+// Shop sections (owner-editable grouping; distinct from platform categories)
+export type {
+  ProductSection,
+  ProductSectionWithCount,
+  CreateSectionRequest,
+  UpdateSectionRequest,
+} from './section';
+export { MAX_SECTIONS_PER_SHOP, MAX_SECTION_NAME_LENGTH } from './section';
+
 // Test helpers (used by unit/integration tests)
 export type { TestNextRequest } from './test';

@@ -119,6 +119,9 @@ const createProductShape = z.object({
   price_type: priceTypeSchema.optional(),
   price_unit: z.string().nullable().optional(),
   category_id: z.guid('Invalid category ID').nullable().optional(),
+  // The shop's own grouping — independent of category_id, which is the
+  // platform taxonomy. Ownership of the section is checked in the service.
+  section_id: z.guid('Invalid section ID').nullable().optional(),
   image_url: z.string().url().nullable().optional(),
   branch_id: z.guid().nullable().optional(),
   ...offeringAttributeShape,
@@ -140,6 +143,9 @@ export const productFiltersSchema = z.object({
   per_page: z.number().min(1).max(100).default(10),
   search: z.string().optional(),
   category_id: z.guid().optional(),
+  // 'none' is the Uncategorised filter (section_id IS NULL); anything else
+  // must be a real id.
+  section_id: z.union([z.guid(), z.literal('none')]).optional(),
   status: productStatusSchema.optional(),
   business_id: z.guid().optional(),
   sort_by: z

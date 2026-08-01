@@ -19,6 +19,8 @@ import { brandToneFor } from '@/lib/utils/brandTone';
 import { cn } from '@/lib/utils';
 import { getOfferingVocabulary } from '@/lib/api/offerings/offeringQuery';
 import { getBookingsEnabled } from '@/lib/api/appSettings';
+import { getSectionsWithCounts } from '@/lib/api/sections/sectionQuery';
+import { groupOfferingsBySection } from '@/lib/utils/groupOfferings';
 import { BusinessInfoPanel } from './components/business-info-panel';
 import { CouponCard } from './components/coupon-card';
 import { InteriorGallery } from './components/interior-gallery';
@@ -92,6 +94,7 @@ export default async function PublicBusinessPage({
     following,
     vocabulary,
     bookingsEnabled,
+    sectionsResult,
   ] = await Promise.all([
     getPublicMenu(business.id, menuPage, 8),
     getPublicCoupons(business.id),
@@ -99,6 +102,8 @@ export default async function PublicBusinessPage({
     // A salon's public page should read "Service Menu", not "Menu".
     getOfferingVocabulary(business.id),
     getBookingsEnabled(),
+    // Public read: RLS exposes sections of verified, non-archived shops only.
+    getSectionsWithCounts(business.id),
   ]);
 
   const products =
@@ -112,6 +117,14 @@ export default async function PublicBusinessPage({
   const couponsFailed = 'error' in couponsResult;
   const menuFailed = 'error' in productsResult;
   const initial = business.shop_name[0]?.toUpperCase() ?? '?';
+  // Grouping is per PAGE of the menu, not per shop: the menu is paginated, so a
+  // section spanning a boundary is headed again on the next page — the way a
+  // printed menu reads. Fetching every offering to group globally is the
+  // unbounded read the perf standard forbids.
+  const menuGroups = groupOfferingsBySection(
+    products.products,
+    sectionsResult.sections,
+  );
 
   return (
     <div className="flex flex-1 flex-col space-y-6">
@@ -247,19 +260,32 @@ export default async function PublicBusinessPage({
               </p>
             ) : (
               <>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {products.products.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      bookingsEnabled={bookingsEnabled}
-                      // Owners/admins/anon don't get a booking CTA, matching
-                      // how FollowButton and Redeem are gated.
-                      canBook={isCustomer === true}
-                      branches={business.branches}
-                    />
-                  ))}
-                </div>
+                {/* Grouped under the shop's own headings, in the shop's own
+                    order. A shop that has never made a section gets ONE
+                    unnamed group, which renders as the plain grid it has
+                    always been. */}
+                {menuGroups.map((group) => (
+                  <div key={group.id ?? 'more'} className="space-y-3">
+                    {group.name && (
+                      <h3 className="font-display text-muted-foreground text-sm font-bold tracking-[0.14em] uppercase">
+                        {group.name}
+                      </h3>
+                    )}
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {group.products.map((product) => (
+                        <ProductCard
+                          key={product.id}
+                          product={product}
+                          bookingsEnabled={bookingsEnabled}
+                          // Owners/admins/anon don't get a booking CTA,
+                          // matching how FollowButton and Redeem are gated.
+                          canBook={isCustomer === true}
+                          branches={business.branches}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
                 <PaginationBar
                   metadata={products.metadata}
                   param="menuPage"

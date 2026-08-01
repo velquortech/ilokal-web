@@ -26,6 +26,19 @@ BEGIN
     ON CONFLICT (name) DO NOTHING;
     SELECT id INTO tourism_id FROM business_types WHERE name = 'Tourism & Leisure';
 
+    -- 1a. Scope the offering categories to their vertical (see
+    -- 20260801064656). Repeated here because the migration matches ZERO rows
+    -- on a fresh database — business_types are created above, and seeds run
+    -- AFTER migrations. COALESCE so an admin's reassignment survives a re-seed.
+    --
+    -- Health & Beauty stays global on purpose: it belongs to a salon's
+    -- services and a pharmacy's shelves alike, and pinning it to either takes
+    -- it from the other. NULL means "offered to every vertical".
+    UPDATE categories SET business_type_id = COALESCE(business_type_id, food_id)
+     WHERE slug = 'food-beverages';
+    UPDATE categories SET business_type_id = COALESCE(business_type_id, retail_id)
+     WHERE slug IN ('clothing-apparel', 'electronics-gadgets', 'home-living');
+
     -- 1b. Offering vocabulary per vertical (see 20260727000001).
     --
     -- The migration seeds this too, but on a FRESH database it matches zero

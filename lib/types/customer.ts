@@ -57,6 +57,9 @@ export interface PublicProduct {
   branch_id: string | null;
   image_url: string | null;
   category_name: string | null;
+  /** The shop's own grouping. NULL ⇒ shown under "More". */
+  section_id: string | null;
+  section_name: string | null;
 }
 
 export interface PublicCoupon {

@@ -20,6 +20,18 @@ import { cn } from '@/lib/utils';
 
 type BrandPalette = 'auto' | 'light' | 'dark';
 
+/**
+ * `eager` only ever applies to the LIGHT cut.
+ *
+ * In `auto` mode both cuts render and CSS picks one (`dark:hidden` /
+ * `hidden dark:block`) — the resolved theme is a class, not something the
+ * server can read. Marking both `priority` therefore emitted four preloads for
+ * a lockup that paints two images, half of them into `display:none`, which is
+ * a net LCP loss from the change meant to protect LCP. The dark cut lazy-loads;
+ * it is swapped in by a class change, not by the initial paint.
+ */
+const PRIORITY = { priority: true } as const;
+
 const MARK = {
   light: '/brand/mark/ilokal-mark-brick.png',
   dark: '/brand/mark/ilokal-mark-flame.png',
@@ -33,6 +45,16 @@ const WORDMARK = {
 /** Native pixel size of the matted sources — the intrinsic ratio next/image needs. */
 const MARK_INTRINSIC = 512;
 const WORDMARK_INTRINSIC = { width: 1128, height: 244 };
+
+/**
+ * The wordmark is sized in `em` off the inherited font, so its intrinsic 1128px
+ * says nothing about the slot it lands in. Every call site renders it between
+ * ~90px (a `text-base` footer lockup) and ~120px (the landing nav) wide, so
+ * without this next/image would build a `1128w 1x / 2256w 2x` srcset and
+ * preload a 1128px source into a ~120px box. 128px covers 1x and lets the
+ * browser take the 256px cut on a retina screen.
+ */
+const WORDMARK_SIZES = '128px';
 
 interface BrandMarkProps {
   size?: number;
@@ -62,13 +84,17 @@ export function BrandMark({
     width: MARK_INTRINSIC,
     height: MARK_INTRINSIC,
     alt: 'iLokal',
+    // The source is 512px square and this renders at ~28px. Without `sizes`
+    // next/image would preload the full 512 for it.
+    sizes: `${size}px`,
     style: { width: size, height: size },
     className: cn('shrink-0', className),
-    ...(eager ? { priority: true } : {}),
   };
 
   if (palette !== 'auto') {
-    return <Image src={MARK[palette]} {...shared} />;
+    return (
+      <Image src={MARK[palette]} {...shared} {...(eager ? PRIORITY : {})} />
+    );
   }
 
   return (
@@ -76,6 +102,7 @@ export function BrandMark({
       <Image
         src={MARK.light}
         {...shared}
+        {...(eager ? PRIORITY : {})}
         className={cn(shared.className, 'dark:hidden')}
       />
       <Image
@@ -106,13 +133,15 @@ export function BrandWordmark({
 }) {
   const shared = {
     ...WORDMARK_INTRINSIC,
+    sizes: WORDMARK_SIZES,
     alt: 'iLokal',
     className: cn('h-[1.15em] w-auto', className),
-    ...(eager ? { priority: true } : {}),
   };
 
   if (palette !== 'auto') {
-    return <Image src={WORDMARK[palette]} {...shared} />;
+    return (
+      <Image src={WORDMARK[palette]} {...shared} {...(eager ? PRIORITY : {})} />
+    );
   }
 
   return (
@@ -120,6 +149,7 @@ export function BrandWordmark({
       <Image
         src={WORDMARK.light}
         {...shared}
+        {...(eager ? PRIORITY : {})}
         className={cn(shared.className, 'dark:hidden')}
       />
       <Image

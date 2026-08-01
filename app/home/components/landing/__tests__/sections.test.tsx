@@ -104,7 +104,7 @@ describe('jump-nav targets', () => {
   });
 
   it('every hash link in the nav and footer resolves to one of them', () => {
-    const ids = new Set(SECTIONS.map(([id]) => id));
+    const ids = new Set<string>(SECTIONS.map(([id]) => id));
     const hashes = [...navLinks, ...footerColumns.flatMap((c) => c.links)]
       .map((l) => l.href)
       .filter((h) => h.startsWith('#') && h !== '#');
@@ -118,7 +118,7 @@ describe('jump-nav targets', () => {
     // those sections, so three links scrolled nowhere. `LandingSection` now
     // makes it a build error; this makes it a test failure as well, because
     // the union is only as good as whoever remembers to update it.
-    const ids = new Set(SECTIONS.map(([id]) => id));
+    const ids = new Set<string>(SECTIONS.map(([id]) => id));
     const { PUBLIC_NAV_LINKS } =
       await import('@/components/customer/PublicNav');
     const hashes = PUBLIC_NAV_LINKS.map((l) => l.href)
@@ -232,10 +232,18 @@ describe('deals wall', () => {
     );
   });
 
-  it('cards are reachable and straighten on keyboard focus, not just hover', () => {
-    const card = render(<DealsWall />).querySelector('article')!;
-    expect(card.getAttribute('tabindex')).toBe('0');
-    expect(card.className).toContain('focus-visible:rotate-0');
+  it('cards are not phantom keyboard stops', () => {
+    // They were `tabIndex={0}` with nothing to activate: nine stops on this
+    // wall (three more in the hero fan) whose only effect was to un-tilt a
+    // card, sitting between the filter chips and the "All deals" link. The
+    // real controls stay reachable.
+    const el = render(<DealsWall />);
+    for (const card of el.querySelectorAll('article')) {
+      expect(card.getAttribute('tabindex')).toBeNull();
+    }
+    expect(
+      el.querySelectorAll('button[aria-pressed], a[href]').length,
+    ).toBeGreaterThan(0);
   });
 });
 

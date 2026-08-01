@@ -62,16 +62,26 @@ export function CounterMoment() {
               <p className="text-xs font-semibold tracking-[0.2em] uppercase opacity-60">
                 Your code
               </p>
+              {/* `role="img"`, because ARIA forbids naming a `paragraph` —
+                  without it the aria-label is dropped and, with all six tiles
+                  hidden, the code announces as nothing at all.
+
+                  `.il-settle` and not `.il-rise`: `.il-rise` is the hero's
+                  page-LOAD entrance, so the settle ran on first paint and was
+                  always finished by the time anyone scrolled this far. This is
+                  scroll-linked, which is what "settles as you reach it" needs
+                  to mean. */}
               <p
-                className="mt-3 flex gap-2 sm:gap-3"
+                role="img"
+                className="il-settle mt-3 flex gap-2 sm:gap-3"
                 aria-label="Example claim code K 7 M 2 Q 4"
               >
                 {CODE.map((char, i) => (
                   <span
                     key={i}
                     aria-hidden
-                    style={{ '--i': i + 2 } as React.CSSProperties}
-                    className="il-rise font-display grid h-14 flex-1 place-items-center rounded-xl bg-[#1A1A1A] text-2xl font-bold text-[#FEE87B] tabular-nums sm:text-3xl"
+                    style={{ '--i': i } as React.CSSProperties}
+                    className="font-display grid h-14 flex-1 place-items-center rounded-xl bg-[#1A1A1A] text-2xl font-bold text-[#FEE87B] tabular-nums sm:text-3xl"
                   >
                     {char}
                   </span>

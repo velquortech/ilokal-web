@@ -5,8 +5,13 @@ import type { CardTone, CravingResult } from './data';
  * A shop, as a card you could have pinned to a corkboard.
  *
  * The tilt is deterministic per index, not random — a pinboard is hand-placed,
- * and random rotation reads as noise. Hover and keyboard focus both straighten
- * it, so the "picking one up" gesture is not mouse-only.
+ * and random rotation reads as noise. It straightens on hover.
+ *
+ * NOT focusable. These are a fixture spread demonstrating what search finds,
+ * with nothing behind them to activate; a `tabIndex={0}` here put three (and
+ * nine more on the deals wall) dead stops in the keyboard path whose only
+ * effect was to un-tilt a card. When these become real shops they should be
+ * links, and the focus stop comes back with a destination attached.
  */
 
 const TONE: Record<CardTone, string> = {
@@ -33,15 +38,13 @@ export function ShopCard({
 }) {
   return (
     <article
-      tabIndex={0}
       className={cn(
         'group relative flex flex-col justify-between rounded-2xl',
         tone === 'large' ? 'h-48 p-6' : 'min-h-44 p-5',
-        'shadow-[0_10px_30px_-12px_rgba(60,10,10,.35)] outline-none',
+        'shadow-[0_10px_30px_-12px_rgba(60,10,10,.35)]',
         'transition-[transform,box-shadow] duration-300 ease-out',
-        'hover:rotate-0 hover:shadow-[0_22px_50px_-16px_rgba(60,10,10,.45)] focus-visible:rotate-0',
-        'focus-visible:ring-2 focus-visible:ring-[#1A1A1A] focus-visible:ring-offset-2',
-        'motion-safe:hover:-translate-y-1.5 motion-safe:focus-visible:-translate-y-1.5',
+        'hover:rotate-0 hover:shadow-[0_22px_50px_-16px_rgba(60,10,10,.45)]',
+        'motion-safe:hover:-translate-y-1.5',
         TILT[index % TILT.length],
         TONE[result.tone],
         className,

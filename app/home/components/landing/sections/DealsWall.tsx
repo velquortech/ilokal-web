@@ -15,8 +15,12 @@ import { StrokeIcon } from '../icons';
  * The deals wall — a pinboard, not a table.
  *
  * The tilt is deterministic per index so the wall reads as hand-placed;
- * randomising it would read as noise. Cards straighten on hover AND on
- * keyboard focus, so the gesture is not mouse-only.
+ * randomising it would read as noise. Cards straighten on hover.
+ *
+ * The cards are NOT focusable — see `ShopCard`. They are fixture content with
+ * nothing to activate, and nine dead tab stops between the filter chips and
+ * the "All deals" link is a worse keyboard path than none. The chips and that
+ * link are the real controls here and both are reachable.
  */
 
 const TILT = [
@@ -114,14 +118,12 @@ export function DealsWall() {
 function DealCard({ deal, index }: { deal: Deal; index: number }) {
   return (
     <article
-      tabIndex={0}
       className={cn(
         'group flex h-full flex-col justify-between rounded-2xl bg-white/85 p-6 backdrop-blur-sm',
-        'shadow-[0_10px_30px_-14px_rgba(60,10,10,.3)] ring-1 ring-[#1A1A1A]/8 outline-none',
+        'shadow-[0_10px_30px_-14px_rgba(60,10,10,.3)] ring-1 ring-[#1A1A1A]/8',
         'transition-[transform,box-shadow] duration-300 ease-out',
-        'hover:rotate-0 hover:shadow-[0_24px_50px_-18px_rgba(60,10,10,.42)] focus-visible:rotate-0',
-        'focus-visible:ring-2 focus-visible:ring-[#D70005]',
-        'motion-safe:hover:-translate-y-1.5 motion-safe:focus-visible:-translate-y-1.5',
+        'hover:rotate-0 hover:shadow-[0_24px_50px_-18px_rgba(60,10,10,.42)]',
+        'motion-safe:hover:-translate-y-1.5',
         'dark:bg-[#272422]/85 dark:ring-white/10',
         TILT[index % TILT.length],
       )}

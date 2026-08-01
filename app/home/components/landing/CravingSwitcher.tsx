@@ -51,7 +51,15 @@ export type CravingRotation = {
 export function useCravingRotation(): CravingRotation {
   const reduced = !!useReducedMotion();
   const [index, setIndex] = useState(0);
-  const [typed, setTyped] = useState(reduced ? cravings[0].query : '');
+  /**
+   * Seeded with the FIRST query, never with `''`.
+   *
+   * `useReducedMotion()` is always false during SSR, so seeding off it shipped
+   * an empty pill in the server HTML — the page's signature blank with JS
+   * blocked or slow, which is the exact failure the reveals were rewritten in
+   * CSS to avoid. The sr-only span carried the text but nothing visible did.
+   */
+  const [typed, setTyped] = useState(cravings[0].query);
   const [paused, setPaused] = useState(false);
   const [mounted, setMounted] = useState(false);
   const craving = cravings[index];
@@ -64,8 +72,13 @@ export function useCravingRotation(): CravingRotation {
   }, []);
 
   // Type the current query out one character at a time.
+  const typedOnce = useRef(false);
   useEffect(() => {
-    if (reduced) {
+    // The opening query is already painted from the server HTML. Retyping it
+    // would blank the pill for half a second the moment JS arrives, so the
+    // type-out starts at the first SWITCH, not at hydration.
+    if (reduced || !typedOnce.current) {
+      typedOnce.current = true;
       setTyped(craving.query);
       return;
     }
@@ -80,12 +93,16 @@ export function useCravingRotation(): CravingRotation {
   }, [craving.query, reduced]);
 
   // Advance once the current query has been readable for a beat.
-  const advance = useRef(() => {});
-  advance.current = () => setIndex((i) => (i + 1) % cravings.length);
+  // The updater form already reads the latest index, so there is nothing for a
+  // latest-ref to buy here — and assigning `ref.current` during render, which
+  // is what the ref version did, is a thing React explicitly disallows.
   useEffect(() => {
     if (reduced || paused) return;
     const dwell = craving.query.length * TYPE_MS + HOLD_MS;
-    const id = setTimeout(() => advance.current(), dwell);
+    const id = setTimeout(
+      () => setIndex((i) => (i + 1) % cravings.length),
+      dwell,
+    );
     return () => clearTimeout(id);
   }, [craving.query, reduced, paused]);
 

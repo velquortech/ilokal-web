@@ -1,37 +1,55 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { EASE } from './motion';
-import { cravings } from './data';
+import { cravings, type Craving } from './data';
 import { ShopCard } from './ShopCard';
+import { EASE } from './motion';
 
 /**
  * The page's signature: search, demonstrated rather than described.
  *
- * The pill types out a real Iloilo craving and the spread beneath re-deals,
- * like laying a new hand on a table. Clicking a craving chip jumps straight to
- * it and stops the carousel — once someone has taken control, a page that keeps
- * moving on its own is fighting them.
+ * The bar types out a real Iloilo craving and the spread re-deals, like laying
+ * a new hand on a table. Clicking a chip jumps straight to it and stops the
+ * rotation — once someone has taken control, a page that keeps moving on its
+ * own is fighting them.
  *
  * The type-out steps whole characters through React state rather than
  * animating a CSS width, so it reflows correctly at any font size and the
  * caret never lands mid-glyph.
- */
-/**
- * `mounted` gates the enter animation to *switches*, never the first render.
- * Motion writes `initial` into the server HTML, so hiding the first hand meant
- * shipping `opacity:0` for the page's signature — invisible with JS blocked or
- * slow. The first hand is already brought in by the hero's own CSS entrance.
+ *
+ * Split into a hook plus two views because the hero puts the query on one side
+ * of the fold and the answer on the other, and they have to stay one machine.
  */
 
 const TYPE_MS = 65;
 const HOLD_MS = 2600;
 
-export function CravingSwitcher() {
-  const reduced = useReducedMotion();
+export type CravingRotation = {
+  craving: Craving;
+  index: number;
+  typed: string;
+  pick: (next: number) => void;
+  /**
+   * True only after mount. Motion writes `initial` into the SERVER HTML, so
+   * hiding the first hand would ship `opacity:0` for the page's signature —
+   * invisible with JS blocked or slow. The first hand is already brought in by
+   * the hero's CSS entrance; only switches animate.
+   */
+  mounted: boolean;
+  reduced: boolean;
+};
+
+export function useCravingRotation(): CravingRotation {
+  const reduced = !!useReducedMotion();
   const [index, setIndex] = useState(0);
   const [typed, setTyped] = useState(reduced ? cravings[0].query : '');
   const [paused, setPaused] = useState(false);
@@ -71,10 +89,23 @@ export function CravingSwitcher() {
     return () => clearTimeout(id);
   }, [craving.query, reduced, paused]);
 
+  return { craving, index, typed, pick, mounted, reduced };
+}
+
+/** The bar and the craving chips — the question half. */
+export function CravingSearchBar({
+  craving,
+  index,
+  typed,
+  pick,
+  reduced,
+  className,
+  style,
+}: CravingRotation & { className?: string; style?: CSSProperties }) {
   return (
-    <div className="w-full">
-      {/* The pill. `aria-live` is off: this is a decorative demo, and
-          announcing every keystroke would make the page unusable with AT. */}
+    <div className={className} style={style}>
+      {/* No `aria-live`: this is a demo, and announcing every keystroke would
+          make the page unusable with a screen reader. */}
       <div
         className={cn(
           'flex items-center gap-3 rounded-full bg-white/85 py-4 pr-4 pl-5 backdrop-blur-md',
@@ -86,7 +117,7 @@ export function CravingSwitcher() {
           className="size-5 shrink-0 text-[#D70005] dark:text-[#DD2920]"
           aria-hidden
         />
-        <p className="font-display min-w-0 flex-1 truncate text-lg font-medium sm:text-2xl">
+        <p className="font-display min-w-0 flex-1 truncate text-lg font-medium sm:text-xl">
           <span className="text-[#1A1A1A] dark:text-[#F7F5EF]">{typed}</span>
           {!reduced && (
             <motion.span
@@ -109,7 +140,6 @@ export function CravingSwitcher() {
         </span>
       </div>
 
-      {/* Craving chips — the manual control for the carousel. */}
       <div className="mt-4 flex flex-wrap gap-2">
         {cravings.map((c, i) => (
           <button
@@ -129,28 +159,68 @@ export function CravingSwitcher() {
           </button>
         ))}
       </div>
-
-      {/* The spread. Keyed on the query so the whole hand swaps at once. */}
-      <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <AnimatePresence mode="popLayout" initial={false}>
-          {craving.results.map((result, i) => (
-            <motion.div
-              key={`${craving.query}-${result.name}`}
-              layout
-              initial={mounted && !reduced ? { opacity: 0, y: 26 } : false}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduced ? undefined : { opacity: 0, y: -14 }}
-              transition={{
-                duration: 0.42,
-                delay: reduced ? 0 : i * 0.07,
-                ease: EASE,
-              }}
-            >
-              <ShopCard result={result} index={i} />
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
     </div>
   );
 }
+
+/**
+ * The spread — the answer half.
+ *
+ * `fan` stacks the three overlapping and hand-tilted, the way you would drop
+ * cards on a table; `row` lays them side by side. The hero uses the fan beside
+ * the headline from lg and the row underneath below it, because a fan needs
+ * height a phone does not have.
+ */
+export function CravingSpread({
+  craving,
+  mounted,
+  reduced,
+  layout = 'row',
+  className,
+}: CravingRotation & { layout?: 'row' | 'fan'; className?: string }) {
+  const fan = layout === 'fan';
+
+  return (
+    <div
+      className={cn(
+        fan ? 'relative h-[34rem]' : 'grid grid-cols-1 gap-4 sm:grid-cols-3',
+        className,
+      )}
+    >
+      <AnimatePresence mode="popLayout" initial={false}>
+        {craving.results.map((result, i) => (
+          <motion.div
+            key={`${craving.query}-${result.name}`}
+            layout={!fan}
+            initial={mounted && !reduced ? { opacity: 0, y: 26 } : false}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduced ? undefined : { opacity: 0, y: -14 }}
+            transition={{
+              duration: 0.42,
+              delay: reduced ? 0 : i * 0.08,
+              ease: EASE,
+            }}
+            className={fan ? FAN[i] : undefined}
+          >
+            <ShopCard result={result} index={i} tone={fan ? 'large' : 'base'} />
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * Hand-placed, not generated.
+ *
+ * The step is 11rem against a 12rem card, so each card covers only the last
+ * 1rem of the one behind it. Anything tighter ate the district and the walk
+ * time — the two facts that make the spread worth reading rather than
+ * decoration. Steps are fixed rem, not percentages, because a percentage of
+ * the container does not track the card's own height.
+ */
+const FAN = [
+  'absolute top-0 left-0 z-10 w-[78%]',
+  'absolute top-[11rem] left-[12%] z-20 w-[78%]',
+  'absolute top-[22rem] left-[24%] z-30 w-[78%]',
+] as const;

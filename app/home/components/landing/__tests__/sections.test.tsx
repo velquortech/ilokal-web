@@ -160,15 +160,24 @@ describe('nothing is hidden in the server HTML', () => {
     expect(html.length).toBeGreaterThan(200);
   });
 
-  it('the hero collage is decorative and desktop-only', () => {
+  it('the hero deals a real hand, not a stock photograph', () => {
     const html = renderToStaticMarkup(<Hero />);
-    // The headline and the search demo already state what this section is;
-    // captioning the photographs would say it a third time.
-    expect(html).toContain('/landing/hero-laugh.webp');
-    expect(html).toContain('/landing/hero-phone.webp');
-    expect(html).not.toMatch(/alt="[^"]*(?:laugh|phone|people)/i);
-    // Hidden below lg — the hero is already tall on a phone.
-    expect(html).toMatch(/hidden lg:block/);
+    // The first pass filled this column with the deck's stock frames and it
+    // read as an agency mockup. It carries the live product now, so the shops
+    // the search is finding have to actually be in the markup.
+    // No apostrophes in the fixtures here — React escapes them to &#x27;.
+    for (const shown of ['Batchoy Haus', 'La Paz', '4 min']) {
+      expect(html).toContain(shown);
+    }
+    expect(html).not.toContain('/landing/hero-');
+  });
+
+  it('shows the spread as a fan beside the headline and a row below it', () => {
+    const html = renderToStaticMarkup(<Hero />);
+    // A fan needs height a phone does not have, so both layouts render and
+    // CSS picks one. Losing either breakpoint leaves the hand invisible.
+    expect(html).toContain('hidden lg:block');
+    expect(html).toContain('lg:hidden');
   });
 
   it('the hero ships its copy, not an empty shell', () => {

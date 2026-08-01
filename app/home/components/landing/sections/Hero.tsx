@@ -1,17 +1,32 @@
+'use client';
+
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { ROUTES } from '@/config/routeConfig';
-import { CravingSwitcher } from '../CravingSwitcher';
-import { HeroCollage } from '../HeroCollage';
+import {
+  CravingSearchBar,
+  CravingSpread,
+  useCravingRotation,
+} from '../CravingSwitcher';
 import { Eyebrow, Wrap } from '../primitives';
 
 /**
- * The thesis, stated in the brand's own words, and then demonstrated.
+ * The thesis, in the brand's own words, and then demonstrated.
  *
- * No phone mockup. Every local-discovery landing puts one here, and a phone in
- * a hero asks for an app install — but the button we want pressed is /explore,
- * on the web, now. The deck's mockups are all "a search pill and a result", so
- * the hero IS the search, at page scale.
+ * No photography. The first pass filled the right column with the identity
+ * deck's stock frames — two people laughing on a seamless backdrop, a
+ * black-gloved hand holding a phone — and it read as exactly what it was: an
+ * agency mockup, not Iloilo. The honest options were a real photograph of a
+ * real shop, which nobody has yet, or none at all. So the column carries the
+ * live product instead: the same hand of shops the search is finding, dealt
+ * out and re-dealt every few seconds as the craving changes.
+ *
+ * That also makes the hero ONE idea rather than two competing ones. The
+ * question sits on the left, the answer on the right, and they are the same
+ * machine — see `useCravingRotation`.
+ *
+ * When real photography of real Ilonggo shops exists, it belongs in this
+ * column and the fan moves under the search bar on the left.
  */
 
 const HEADLINE = ['The best spots', 'aren’t always', 'on Google.'];
@@ -19,26 +34,28 @@ const HEADLINE = ['The best spots', 'aren’t always', 'on Google.'];
 /**
  * One orchestrated entrance, driven by CSS (`.il-rise` in landing.css) rather
  * than motion. Motion's `initial` writes `opacity:0` into the SERVER HTML, so
- * the thesis of the page was invisible until JS hydrated — and stayed invisible
- * if it never did. A keyframe runs on first paint and cannot fail that way,
- * which also lets this whole section be a server component.
+ * the thesis of the page was invisible until JS hydrated — and stayed
+ * invisible if it never did. A keyframe runs on first paint and cannot fail
+ * that way.
  */
 const rise = (i: number) => ({ '--i': i }) as React.CSSProperties;
 
 export function Hero() {
+  const rotation = useCravingRotation();
+
   return (
-    <section id="top" className="pt-14 pb-20 sm:pt-20 sm:pb-28">
-      <Wrap className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.82fr)] lg:gap-10">
+    <section id="top" className="pt-14 pb-20 sm:pt-20 sm:pb-24">
+      <Wrap className="grid grid-cols-1 items-center gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.78fr)] lg:gap-12">
         <div>
           <div className="il-rise" style={rise(0)}>
             <Eyebrow>Iloilo City · discover through experience</Eyebrow>
           </div>
 
-          {/* Two ramps on purpose. Below lg the headline owns the full width and
-            can scale with the viewport. From lg it shares the row with the
-            collage AND the wrap caps at 1200px, so the column stops growing
-            while `8.5vw` keeps going — at 1440 that pushed "The best spots"
-            onto its own two lines. The lg ramp is sized off the column. */}
+          {/* Two ramps on purpose. Below lg the headline owns the full width
+              and can scale with the viewport. From lg it shares the row AND
+              the wrap caps at 1200px, so the column stops growing while
+              `8.5vw` keeps going — at 1440 that pushed "The best spots" onto
+              its own two lines. The lg ramp is sized off the column. */}
           <h1 className="font-display mt-5 text-[clamp(2.75rem,8.5vw,6.75rem)] leading-[0.9] font-bold tracking-[-0.045em] text-[#1A1A1A] lg:text-[clamp(3rem,4.4vw,3.75rem)] dark:text-[#F7F5EF]">
             {HEADLINE.map((line, i) => (
               <span key={line} className="il-rise block" style={rise(i + 1)}>
@@ -77,21 +94,23 @@ export function Hero() {
               List your business
             </Link>
           </div>
+
+          <CravingSearchBar
+            {...rotation}
+            className="il-rise mt-10"
+            style={rise(6)}
+          />
         </div>
 
-        {/* `hidden lg:block` on the WRAPPER, not just on the collage: below lg
-            an always-rendered wrapper is still a grid cell, so it became an
-            empty second row and contributed the grid's gap as dead space
-            between the CTAs and the search demo. */}
+        {/* The fan needs height a phone does not have, so below lg the spread
+            drops under the bar as a plain row instead. */}
         <div className="il-rise hidden lg:block" style={rise(3)}>
-          <HeroCollage />
+          <CravingSpread {...rotation} layout="fan" />
         </div>
       </Wrap>
 
-      {/* The search demo spans the full width — it is the signature, and
-          boxing it into the text column would make it read as a form field. */}
-      <Wrap className="il-rise mt-14" style={rise(6)}>
-        <CravingSwitcher />
+      <Wrap className="il-rise mt-10 lg:hidden" style={rise(7)}>
+        <CravingSpread {...rotation} layout="row" />
       </Wrap>
     </section>
   );

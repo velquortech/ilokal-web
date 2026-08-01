@@ -27,6 +27,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ImageUploadField } from '@/components/custom/upload/image-upload';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useCelebrate } from '@/components/custom/Celebrate';
 import type { Category, PriceType } from '@/lib/types';
 import type {
   BookingMode,
@@ -104,6 +105,7 @@ export function AddProductDialog({
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
+  const celebrate = useCelebrate();
 
   // The vertical decides which price types are offered and which service
   // attributes appear. An empty/absent policy resolves to "all types, no
@@ -220,6 +222,7 @@ export function AddProductDialog({
       }
 
       toast.success(`"${data.name}" added to your catalogue`);
+      celebrate();
       setOpen(false);
       reset();
       onSuccess?.();

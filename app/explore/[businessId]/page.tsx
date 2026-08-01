@@ -150,7 +150,7 @@ export default async function PublicBusinessPage({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">
+            <h1 className="font-display text-[clamp(1.875rem,3vw,2.75rem)] leading-tight font-bold tracking-tight">
               {business.shop_name}
             </h1>
             {business.category_name && (

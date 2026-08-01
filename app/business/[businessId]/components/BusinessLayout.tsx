@@ -12,6 +12,7 @@ import {
 import { ShopPendingBanner } from '../home/components/PendingBanner';
 import { ActiveBranchBanner } from './ActiveBranchBanner';
 import { OfferingVocabularyProvider } from '@/providers/OfferingVocabularyProvider';
+import { CelebrateProvider } from '@/components/custom/Celebrate';
 import type { OfferingVocabulary } from '@/lib/types/offering';
 
 export default function BusinessLayout({
@@ -31,38 +32,40 @@ export default function BusinessLayout({
 }) {
   return (
     <UserProvider user={user}>
-      <OfferingVocabularyProvider vocabulary={vocabulary}>
-        <BusinessShopProvider businessShop={shop} branches={branches}>
-          <div className="bg-background font-geist flex h-screen overflow-hidden">
-            <AIChatProvider>
-              <SidebarProvider
-                defaultOpen={false}
-                style={
-                  {
-                    '--sidebar-width': '18rem',
-                    '--sidebar-width-mobile': '18rem',
-                  } as React.CSSProperties
-                }
-              >
-                <BusinessSidebar bookingsEnabled={bookingsEnabled} />
-                <SidebarInset className="flex flex-1 flex-col overflow-hidden">
-                  <BusinessHeader branches={branches} />
-                  <ActiveBranchBanner branches={branches} />
-                  {shop?.status === 'pending' && (
-                    <div className="px-3 pt-3 pb-1">
-                      <ShopPendingBanner />
+      <CelebrateProvider>
+        <OfferingVocabularyProvider vocabulary={vocabulary}>
+          <BusinessShopProvider businessShop={shop} branches={branches}>
+            <div className="bg-background flex h-screen overflow-hidden">
+              <AIChatProvider>
+                <SidebarProvider
+                  defaultOpen={false}
+                  style={
+                    {
+                      '--sidebar-width': '18rem',
+                      '--sidebar-width-mobile': '18rem',
+                    } as React.CSSProperties
+                  }
+                >
+                  <BusinessSidebar bookingsEnabled={bookingsEnabled} />
+                  <SidebarInset className="flex flex-1 flex-col overflow-hidden">
+                    <BusinessHeader branches={branches} />
+                    <ActiveBranchBanner branches={branches} />
+                    {shop?.status === 'pending' && (
+                      <div className="px-3 pt-3 pb-1">
+                        <ShopPendingBanner />
+                      </div>
+                    )}
+                    <div className="flex flex-1 overflow-auto px-10 py-6">
+                      {children}
                     </div>
-                  )}
-                  <div className="flex flex-1 overflow-auto px-10 py-6">
-                    {children}
-                  </div>
-                </SidebarInset>
-              </SidebarProvider>
-              <AIChatSheet />
-            </AIChatProvider>
-          </div>
-        </BusinessShopProvider>
-      </OfferingVocabularyProvider>
+                  </SidebarInset>
+                </SidebarProvider>
+                <AIChatSheet />
+              </AIChatProvider>
+            </div>
+          </BusinessShopProvider>
+        </OfferingVocabularyProvider>
+      </CelebrateProvider>
     </UserProvider>
   );
 }

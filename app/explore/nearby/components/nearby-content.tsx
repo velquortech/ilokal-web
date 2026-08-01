@@ -90,7 +90,9 @@ export function NearbyContent() {
     <div className="flex flex-1 flex-col space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div className="flex flex-col">
-          <h1 className="text-2xl font-bold tracking-tight">Shops near me</h1>
+          <h1 className="font-display text-[clamp(1.875rem,3vw,2.75rem)] leading-tight font-bold tracking-tight">
+            Shops near me
+          </h1>
           <p className="text-muted-foreground text-sm">
             {geo === 'denied'
               ? 'Location unavailable — showing shops around Iloilo City Proper.'

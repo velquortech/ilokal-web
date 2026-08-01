@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/custom/PageHeader';
 import { SearchBar } from '@/components/custom/Searchbar';
 import { Plus } from 'lucide-react';
 import { BranchStatsCards } from './branch-stats';
@@ -81,20 +82,20 @@ export function BranchesContent({
 
   return (
     <div className="font-giest flex h-max flex-1 flex-col space-y-6 pb-8">
-      <div className="inline-flex w-full items-end justify-between">
-        <div className="flex flex-col">
-          <span className="text-lg font-medium">Branch Management</span>
-          <span className="text-muted-foreground text-sm">
-            Manage all branch locations for your business
-          </span>
-        </div>
-        <Button asChild>
-          <Link href={createHref}>
-            <Plus />
-            Add Branch
-          </Link>
-        </Button>
-      </div>
+      <PageHeader
+        title="Branch Management"
+        lede="Manage all branch locations for your business"
+        action={
+          <>
+            <Button asChild>
+              <Link href={createHref}>
+                <Plus />
+                Add Branch
+              </Link>
+            </Button>
+          </>
+        }
+      />
 
       <BranchStatsCards stats={stats} />
 

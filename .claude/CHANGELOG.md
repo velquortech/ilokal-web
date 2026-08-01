@@ -1,5 +1,166 @@
 # Changelog
 
+## 2026-08-01 — Landing redesign: "the walk" (feat/rebranding)
+
+> Presentational. **No schema, API, or auth change.** Built against
+> `.claude/skills/front-end`. (Design plan, parity table and motion budget
+> kept local, not committed.)
+
+- **The brand rollout made the landing a red template.** Repainting the tokens
+  did not change the fact that the page was a textbook B2B2C marketplace
+  layout: hero + phone mock → stats strip → 4 feature cards → business split →
+  dashboard showcase → **two** mirrored 3-step columns → deals grid →
+  testimonials → gradient CTA. It read "we are a platform"; the identity reads
+  "go outside and eat."
+- **The page is now a walk.** Content sits on one ambient gradient sky
+  (`GradientField`) that warms as you descend — Cornsilk and Jasmine at the
+  hero, Petal Frost through the middle, Brick Ember pooling at the bottom —
+  broken twice by a solid Brick section so the rhythm lands. The sky is a
+  single fixed layer of four `radial-gradient` blooms with scroll-linked drift;
+  deliberately **not** `filter: blur()`, which would repaint the viewport every
+  frame. A grain overlay does real work: four wide flats on near-white band
+  visibly on 8-bit displays.
+- **Signature: the craving switcher.** The hero pill types a real Iloilo
+  craving — *batchoy, kape, pan de sal, pasalubong, sunset spot* — and the
+  spread beneath re-deals, like laying a new hand on a table. It is search,
+  demonstrated at page scale, in the first viewport. Shop names are invented
+  (the file's established pattern) but the districts are real, which is what
+  makes it read as a place rather than filler. Clicking a chip stops the
+  carousel: once someone has taken control, a page that keeps moving is
+  fighting them.
+- **The risk taken: the phone mockup is gone.** Every local-discovery landing
+  has one and it owned the right half of the hero. The deck's own mockups are,
+  four times over, *a search pill and a result* — and a phone in a hero asks
+  for an app install, while the button we want pressed is `/explore`, on the
+  web, now.
+- **Cut, with reasons.** The stats strip (counted invented numbers, and
+  "big-number + small-label + gradient accent" is the template answer), the
+  4-feature icon row (the two claims worth keeping became sections with real
+  weight), the fake dashboard showcase (~90 lines aimed at an audience that
+  isn't this page's job), and the shopper 3-step. **Numbering now appears
+  exactly once**, in the business block, because register → verify → post is a
+  real sequence where order is information; the shopper "steps" were a
+  description wearing a sequence's clothes.
+- **New: the counter moment.** The one dark beat, and the one place iLokal is
+  not a website — you are standing in a shop showing six characters to a
+  person. A ticket stub with perforation notches; the code settles on scroll,
+  once. That interaction is the whole difference from a delivery app and the
+  old page never showed it.
+- **Copy now comes from the deck** instead of placeholder marketing: "The best
+  spots aren't always on Google", "Skip the chains. Explore local.", "The city
+  tastes better local.", "Less searching. More eating.", "Local businesses
+  deserve the spotlight."
+- **Motion budget — six moments, all gated on `prefers-reduced-motion`:** hero
+  load sequence, ambient sky drift, the craving switcher, in-view reveals
+  (reusing the existing `fadeUp`/`staggerContainer`), card straighten-on-hover
+  **and on keyboard focus**, and the claim-code settle. Explicitly not doing:
+  parallax, cursor followers, magnetic buttons, count-ups, or a second
+  typewriter on the headline.
+- **Three defects the brand sweep couldn't see, fixed:**
+  - **Five green shadows survived the rebrand** — `rgba(101,163,13,…)`. They
+    are `rgba()`, so the hex sweep never matched them. One was on
+    `components/customer/PublicNav.tsx`, i.e. on `/explore`, not the landing.
+  - **`landing.css` blanket rules beat Tailwind.** `[data-ilokal-root] a` and
+    `… button` are specificity (0,1,1) against a utility class's (0,1,0), so
+    every new section would have got red links and background-stripped buttons
+    that no class could override. Both are now scoped to the chrome.
+  - **Nav and footer set the wordmark as the literal text "iLokal"** — the
+    exact thing the brand README forbids, since the wordmark is drawn
+    lettering. Both now use `BrandWordmark`.
+- **Landing dark mode is real.** It ran on page-local `useState`: it didn't
+  persist, ignored the OS preference, and the nav toggle repainted nothing
+  outside `[data-ilokal-root]`. Now driven by `next-themes`, so one toggle
+  moves both the custom properties the shared chrome reads and the `.dark`
+  class the new sections read. `tokens.ts` has flagged this as debt since the
+  original port.
+- **`LandingPage.tsx`: 1020 lines of inline style strings → 68 lines of
+  composition.** Seven section files plus `GradientField`, `CravingSwitcher`,
+  `ShopCard` and `primitives`. Deleted with the sections that used them:
+  `useCountUp.ts`, two thirds of `icons.tsx` (220 → 93 lines), and the
+  `features` / `shopperSteps` / `avatarStack` / `COUNTER_TARGETS` /
+  `dealBadgeLabel` fixtures.
+- **Section ids renamed to match the page** (`#shoppers` → `#near-you`,
+  `#about` → `#voices`, `#how` deleted with its section), and nav order now
+  equals scroll order — both asserted, because a jump link that scrolls
+  nowhere is the failure mode this work exists to prevent.
+- **Two testability changes that improved the code.** `filterDeals(category)`
+  moved out of `DealsWall` into `data.ts` (the rule is now unit-testable
+  without rendering through `AnimatePresence`, which keeps exiting cards
+  mounted until a frame that never arrives under happy-dom); and `EASE` moved
+  into `motion.ts` — an inline `[0.22, 1, 0.36, 1]` widens to `number[]`,
+  which motion's `Easing` union rejects, so five call sites were each one
+  `as const` from a build error.
+- **Tests (+21, 1528 → 1549):** `landing/__tests__/sections.test.tsx` — every
+  jump-nav target resolves, nav order equals page order, the business block is
+  the only `<ol>` on the page, the claim code announces once rather than six
+  times, the category filter keeps every chip reachable, cards straighten on
+  keyboard focus and not only hover. Everything renders under `MotionConfig
+  reducedMotion="always"`, so the suite doubles as the reduced-motion check.
+- Verified: `yarn lint` + **1549** tests + `yarn build` green. Production
+  smoke — `/home` `/explore` `/sign-in` 200, the five anchors render in DOM
+  order, the gradient field and grain overlay are in the document, **zero**
+  `opacity:0` in the server HTML, and zero retired green.
+- **Then it was screenshotted, and most of the real work started.** A cached
+  Playwright chromium turned out to be on this machine, so the "needs a human"
+  browser sweep happened here. The very first capture showed the nav and the
+  gradient and **nothing else**:
+  - **🔴 The page rendered blank without JS.** Motion writes `initial` into the
+    SERVER HTML, so every `whileInView` element shipped `style="opacity:0"` and
+    only appeared once JS hydrated and IntersectionObserver fired. Headline,
+    stats block, half the business list. Reveals are CSS view-timeline
+    animations now (`.il-reveal` / `.il-rise`): no JS, off the compositor, and
+    browsers without `animation-timeline` skip the `@supports` block and get
+    the content immediately. Five of seven sections went back to being server
+    components; `fadeUp`/`staggerContainer`/`inViewOnce` are gone. The two
+    places that still need JS gate their enter animation behind `mounted`, so
+    the first render is never hidden. A test renders each section with
+    `renderToStaticMarkup` and fails on `opacity:0`.
+  - **🔴 `/explore` had three dead nav links.** It mounts the same
+    `LandingNav`, and `PublicNav` still pointed at `#shoppers`, `#how` and
+    `#about` — two renamed, one deleted. `LandingSection` in `routeConfig.ts`
+    exists to prevent exactly this and hadn't been updated; correcting it
+    turned the dead links into build errors. `PublicNav` now mirrors the
+    landing's list exactly, and a test asserts every `/explore` hash resolves.
+  - **🔴 The logo overlapped the first nav link on `/explore`.** The wordmark
+    is a drawn asset now, wider than the text it replaced, and `/explore`
+    carries an extra action. Lockup got a `flex:0 0 auto` guard; hamburger
+    breakpoint 1100 → 1180px.
+  - **Gradient defects only a render shows:** washed out (opacities too low,
+    paper-lift overlay too strong); a hard circular edge (`transparent` as the
+    final stop interpolates toward transparent-**black**, ringing a saturated
+    bloom in grey — now eases to the same colour at zero alpha); **hard
+    vertical seams at 390px** (default `farthest-corner` sizing pushed the
+    gradient past its box, which then clipped it — now `ellipse closest-side`);
+    and too hot in dark mode, where the red mass cost body copy its contrast
+    (dark runs at 45%).
+  - Beta banner was pale-on-pale over the gradient and read as a rendering
+    fault (now Charcoal/Cornsilk); the final CTA used the Porcelain wordmark
+    where the deck's primary lockup on Brick Ember is **Jasmine**; the eyebrow's
+    dark red sat on the yellow bloom at marginal contrast (now Jasmine).
+- **Swept in the browser:** 390 / 768 / 1280 × light + dark, plus `/explore` at
+  1200 and 1280. **Caveat:** Chromium only. Safari and Firefox have no
+  `animation-timeline: view()` yet, so they get the content with no reveal
+  animation — the intended fallback, and still strictly better than a blank
+  page, but the animated experience is Chromium-only for now.
+- **Follow-up after a report that the page rendered completely unstyled.** Not
+  a code fault: the running `next dev` server was serving a **corrupted
+  Turbopack cache** — the chunk labelled `globals.css` contained the *old*
+  `landing.css` (rules deleted hours earlier) and Tailwind emitted **zero**
+  utilities (10 KB, no `--tw-*`). Cause was `yarn build` being run repeatedly
+  while `next dev` was live; both write under `.next/`. Cleared `.next` and
+  restarted: same chunk is now 229 KB with the full utility set. **Don't run a
+  production build against a live dev server** — it is the second time this
+  session that concurrent writes to `.next/` produced a misleading result.
+- **Above-the-fold lockups are `priority` now.** The dev log flagged the nav
+  wordmark as the LCP element while lazily loaded. `BrandMark` / `BrandWordmark`
+  / `BrandLogo` take an `eager` prop, set on `LandingNav`, `CustomerHeader` and
+  the auth header.
+- **Hero entrance capped at 5 stagger steps.** `animation-fill-mode: both`
+  holds the from-state through the delay, so every step is time the content is
+  invisible; an un-capped 90ms step put the craving switcher — the thing the
+  page exists for — 1.2s from being readable. Now 70ms, capped, 0.55s duration.
+- **Still deferred:** a scrolled state for the nav.
+
 ## 2026-08-01 — Brand v1.0: the presented red/yellow identity, app-wide (feat/rebranding)
 
 > Presentational + design tokens. **No schema, API, or auth change.** Plan,

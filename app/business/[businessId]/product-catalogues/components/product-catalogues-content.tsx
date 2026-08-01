@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/custom/PageHeader';
 import { Plus } from 'lucide-react';
 import { Catalogues } from './catalogues';
 import { SearchBar } from '@/components/custom/Searchbar';
@@ -104,23 +105,23 @@ export function ProductCataloguesContent({
 
   return (
     <div className="font-giest flex h-max flex-1 flex-col space-y-6 pb-8">
-      <div className="inline-flex w-full items-end justify-between">
-        <div className="flex flex-col">
-          <span className="text-lg font-medium">{vocabulary.catalogue}</span>
-          <span className="text-muted-foreground text-sm">
-            Manage your {vocabulary.plural.toLowerCase()}
-          </span>
-        </div>
-        <AddProductDialog
-          categories={categories}
-          onSuccess={() => router.refresh()}
-        >
-          <Button>
-            <Plus />
-            {vocabulary.addLabel}
-          </Button>
-        </AddProductDialog>
-      </div>
+      <PageHeader
+        title="{vocabulary.catalogue}"
+        lede="Manage your {vocabulary.plural.toLowerCase()}"
+        action={
+          <>
+            <AddProductDialog
+              categories={categories}
+              onSuccess={() => router.refresh()}
+            >
+              <Button>
+                <Plus />
+                {vocabulary.addLabel}
+              </Button>
+            </AddProductDialog>
+          </>
+        }
+      />
 
       <ProductStats stats={stats} />
 

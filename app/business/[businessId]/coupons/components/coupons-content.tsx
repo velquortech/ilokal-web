@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/custom/PageHeader';
 import { Plus } from 'lucide-react';
 import { SearchBar } from '@/components/custom/Searchbar';
 import { Card, CardContent } from '@/components/ui/card';
@@ -87,20 +88,23 @@ export function CouponsContent({
 
   return (
     <div className="font-giest flex h-max flex-1 flex-col space-y-6 pb-8">
-      <div className="inline-flex w-full items-end justify-between">
-        <div className="flex flex-col">
-          <span className="text-lg font-medium">Coupons & Deals</span>
-          <span className="text-muted-foreground text-sm">
-            Manage discount coupons for your customers
-          </span>
-        </div>
-        <AddCouponDialog products={products} onSuccess={() => router.refresh()}>
-          <Button>
-            <Plus />
-            Add Coupons or Deals
-          </Button>
-        </AddCouponDialog>
-      </div>
+      <PageHeader
+        title="Coupons & Deals"
+        lede="Manage discount coupons for your customers"
+        action={
+          <>
+            <AddCouponDialog
+              products={products}
+              onSuccess={() => router.refresh()}
+            >
+              <Button>
+                <Plus />
+                Add Coupons or Deals
+              </Button>
+            </AddCouponDialog>
+          </>
+        }
+      />
 
       <CouponStats stats={stats} />
 

@@ -1,11 +1,8 @@
 import type { Metadata } from 'next';
-import Image from 'next/image';
-import Link from 'next/link';
 import { BadgePercent, Zap } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { PaginationBar } from '@/components/customer/PaginationBar';
-import { getDealsFeed, type FeedDeal } from '@/lib/api/customer/customerQuery';
-import { explorePath } from '@/config/routeConfig';
+import { getDealsFeed } from '@/lib/api/customer/customerQuery';
+import { DealCard } from '../components/deal-card';
 
 export const metadata: Metadata = {
   title: 'Deals & coupons',
@@ -13,54 +10,6 @@ export const metadata: Metadata = {
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
-
-function discountLabel(discount: FeedDeal['discount']): string {
-  if (!discount) return 'Deal';
-  return discount.type === 'percentage'
-    ? `${discount.value}% off`
-    : `₱${discount.value} off`;
-}
-
-function DealRow({ deal, flash }: { deal: FeedDeal; flash?: boolean }) {
-  return (
-    <Link
-      href={explorePath(deal.business_id)}
-      className="bg-card hover:border-primary/40 flex items-center gap-3 rounded-xl border p-4 transition-colors"
-    >
-      <div className="bg-muted relative size-11 shrink-0 overflow-hidden rounded-full border">
-        {deal.business_logo_url && (
-          <Image
-            src={deal.business_logo_url}
-            alt=""
-            fill
-            sizes="44px"
-            className="object-cover"
-          />
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{deal.description ?? deal.code}</p>
-        <p className="text-muted-foreground truncate text-xs">
-          {deal.business_name} · ends{' '}
-          {new Date(deal.expiry_date).toLocaleDateString('en-PH', {
-            month: 'short',
-            day: 'numeric',
-          })}
-          {deal.slots_remaining != null && ` · ${deal.slots_remaining} left`}
-        </p>
-      </div>
-      {flash && (
-        <Badge className="shrink-0">
-          <Zap className="h-3 w-3" />
-          Flash
-        </Badge>
-      )}
-      <span className="bg-primary/10 text-primary shrink-0 rounded-full px-3 py-1 text-sm font-bold">
-        {discountLabel(deal.discount)}
-      </span>
-    </Link>
-  );
-}
 
 export default async function DealsPage({
   searchParams,
@@ -78,8 +27,10 @@ export default async function DealsPage({
   return (
     <div className="flex flex-1 flex-col space-y-8">
       <div className="flex flex-col">
-        <h1 className="text-2xl font-bold tracking-tight">Deals & coupons</h1>
-        <p className="text-muted-foreground text-sm">
+        <h1 className="font-display text-[clamp(1.875rem,3vw,2.75rem)] leading-tight font-bold tracking-tight">
+          Deals & coupons
+        </h1>
+        <p className="text-muted-foreground mt-1.5 text-sm">
           Every live offer from local shops — tap one to redeem it on the
           shop&apos;s page.
         </p>
@@ -99,23 +50,23 @@ export default async function DealsPage({
         <>
           {result.featured && (
             <section className="space-y-3">
-              <h2 className="inline-flex items-center gap-2 text-lg font-semibold tracking-tight">
+              <h2 className="font-display inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
                 <BadgePercent className="text-primary h-5 w-5" />
                 Featured
               </h2>
-              <DealRow deal={result.featured} />
+              <DealCard deal={result.featured} featured />
             </section>
           )}
 
           {result.flash.length > 0 && (
             <section className="space-y-3">
-              <h2 className="inline-flex items-center gap-2 text-lg font-semibold tracking-tight">
+              <h2 className="font-display inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
                 <Zap className="text-primary h-5 w-5" />
                 Flash deals
               </h2>
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {result.flash.map((deal) => (
-                  <DealRow key={deal.id} deal={deal} flash />
+                  <DealCard key={deal.id} deal={deal} flash />
                 ))}
               </div>
             </section>
@@ -123,12 +74,12 @@ export default async function DealsPage({
 
           {result.explore.length > 0 && (
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold tracking-tight">
+              <h2 className="font-display text-2xl font-bold tracking-tight">
                 All deals
               </h2>
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {result.explore.map((deal) => (
-                  <DealRow key={deal.id} deal={deal} />
+                  <DealCard key={deal.id} deal={deal} />
                 ))}
               </div>
               <PaginationBar

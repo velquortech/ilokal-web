@@ -90,9 +90,14 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { businessId } = await params;
   const biz = await getSharedBusiness(businessId);
 
-  if (!biz) return { title: 'Business not found · iLokal' };
+  if (!biz) return { title: 'Business not found' };
 
-  const title = `${biz.name} · iLokal`;
+  // `title.template` ('%s · iLokal') from the root layout applies to
+  // `metadata.title` and NOT to the OG/Twitter titles, so the brand is spelled
+  // out only on those two. Suffixing here as well rendered "Name · iLokal ·
+  // iLokal" in the tab.
+  const title = biz.name;
+  const brandedTitle = `${biz.name} · iLokal`;
   const description = biz.description || `Discover ${biz.name} on iLokal.`;
   const images = biz.logoUrl ? [biz.logoUrl] : [];
 
@@ -100,7 +105,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     title,
     description,
     openGraph: {
-      title,
+      title: brandedTitle,
       description,
       type: 'website',
       siteName: 'iLokal',
@@ -109,7 +114,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     twitter: {
       // `summary` (square thumbnail) suits the logo; large-image would crop it.
       card: 'summary',
-      title,
+      title: brandedTitle,
       description,
       images,
     },

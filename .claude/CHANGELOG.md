@@ -1,5 +1,344 @@
 # Changelog
 
+## 2026-08-01 — Landing redesign: "the walk" (feat/rebranding)
+
+> Presentational. **No schema, API, or auth change.** Built against
+> `.claude/skills/front-end`. (Design plan, parity table and motion budget
+> kept local, not committed.)
+
+- **The brand rollout made the landing a red template.** Repainting the tokens
+  did not change the fact that the page was a textbook B2B2C marketplace
+  layout: hero + phone mock → stats strip → 4 feature cards → business split →
+  dashboard showcase → **two** mirrored 3-step columns → deals grid →
+  testimonials → gradient CTA. It read "we are a platform"; the identity reads
+  "go outside and eat."
+- **The page is now a walk.** Content sits on one ambient gradient sky
+  (`GradientField`) that warms as you descend — Cornsilk and Jasmine at the
+  hero, Petal Frost through the middle, Brick Ember pooling at the bottom —
+  broken twice by a solid Brick section so the rhythm lands. The sky is a
+  single fixed layer of four `radial-gradient` blooms with scroll-linked drift;
+  deliberately **not** `filter: blur()`, which would repaint the viewport every
+  frame. A grain overlay does real work: four wide flats on near-white band
+  visibly on 8-bit displays.
+- **Signature: the craving switcher.** The hero pill types a real Iloilo
+  craving — *batchoy, kape, pan de sal, pasalubong, sunset spot* — and the
+  spread beneath re-deals, like laying a new hand on a table. It is search,
+  demonstrated at page scale, in the first viewport. Shop names are invented
+  (the file's established pattern) but the districts are real, which is what
+  makes it read as a place rather than filler. Clicking a chip stops the
+  carousel: once someone has taken control, a page that keeps moving is
+  fighting them.
+- **The risk taken: the phone mockup is gone.** Every local-discovery landing
+  has one and it owned the right half of the hero. The deck's own mockups are,
+  four times over, *a search pill and a result* — and a phone in a hero asks
+  for an app install, while the button we want pressed is `/explore`, on the
+  web, now.
+- **Cut, with reasons.** The stats strip (counted invented numbers, and
+  "big-number + small-label + gradient accent" is the template answer), the
+  4-feature icon row (the two claims worth keeping became sections with real
+  weight), the fake dashboard showcase (~90 lines aimed at an audience that
+  isn't this page's job), and the shopper 3-step. **Numbering now appears
+  exactly once**, in the business block, because register → verify → post is a
+  real sequence where order is information; the shopper "steps" were a
+  description wearing a sequence's clothes.
+- **New: the counter moment.** The one dark beat, and the one place iLokal is
+  not a website — you are standing in a shop showing six characters to a
+  person. A ticket stub with perforation notches; the code settles on scroll,
+  once. That interaction is the whole difference from a delivery app and the
+  old page never showed it.
+- **Copy now comes from the deck** instead of placeholder marketing: "The best
+  spots aren't always on Google", "Skip the chains. Explore local.", "The city
+  tastes better local.", "Less searching. More eating.", "Local businesses
+  deserve the spotlight."
+- **Motion budget — six moments, all gated on `prefers-reduced-motion`:** hero
+  load sequence, ambient sky drift, the craving switcher, in-view reveals
+  (reusing the existing `fadeUp`/`staggerContainer`), card straighten-on-hover
+  **and on keyboard focus**, and the claim-code settle. Explicitly not doing:
+  parallax, cursor followers, magnetic buttons, count-ups, or a second
+  typewriter on the headline.
+- **Three defects the brand sweep couldn't see, fixed:**
+  - **Five green shadows survived the rebrand** — `rgba(101,163,13,…)`. They
+    are `rgba()`, so the hex sweep never matched them. One was on
+    `components/customer/PublicNav.tsx`, i.e. on `/explore`, not the landing.
+  - **`landing.css` blanket rules beat Tailwind.** `[data-ilokal-root] a` and
+    `… button` are specificity (0,1,1) against a utility class's (0,1,0), so
+    every new section would have got red links and background-stripped buttons
+    that no class could override. Both are now scoped to the chrome.
+  - **Nav and footer set the wordmark as the literal text "iLokal"** — the
+    exact thing the brand README forbids, since the wordmark is drawn
+    lettering. Both now use `BrandWordmark`.
+- **Landing dark mode is real.** It ran on page-local `useState`: it didn't
+  persist, ignored the OS preference, and the nav toggle repainted nothing
+  outside `[data-ilokal-root]`. Now driven by `next-themes`, so one toggle
+  moves both the custom properties the shared chrome reads and the `.dark`
+  class the new sections read. `tokens.ts` has flagged this as debt since the
+  original port.
+- **`LandingPage.tsx`: 1020 lines of inline style strings → 68 lines of
+  composition.** Seven section files plus `GradientField`, `CravingSwitcher`,
+  `ShopCard` and `primitives`. Deleted with the sections that used them:
+  `useCountUp.ts`, two thirds of `icons.tsx` (220 → 93 lines), and the
+  `features` / `shopperSteps` / `avatarStack` / `COUNTER_TARGETS` /
+  `dealBadgeLabel` fixtures.
+- **Section ids renamed to match the page** (`#shoppers` → `#near-you`,
+  `#about` → `#voices`, `#how` deleted with its section), and nav order now
+  equals scroll order — both asserted, because a jump link that scrolls
+  nowhere is the failure mode this work exists to prevent.
+- **Two testability changes that improved the code.** `filterDeals(category)`
+  moved out of `DealsWall` into `data.ts` (the rule is now unit-testable
+  without rendering through `AnimatePresence`, which keeps exiting cards
+  mounted until a frame that never arrives under happy-dom); and `EASE` moved
+  into `motion.ts` — an inline `[0.22, 1, 0.36, 1]` widens to `number[]`,
+  which motion's `Easing` union rejects, so five call sites were each one
+  `as const` from a build error.
+- **Tests (+23, 1528 → 1551):** `landing/__tests__/sections.test.tsx` — every
+  jump-nav target resolves, nav order equals page order, the business block is
+  the only `<ol>` on the page, the claim code announces once rather than six
+  times, the category filter keeps every chip reachable, cards straighten on
+  keyboard focus and not only hover. Everything renders under `MotionConfig
+  reducedMotion="always"`, so the suite doubles as the reduced-motion check.
+- Verified: `yarn lint` + **1551** tests + `yarn build` green. Production
+  smoke — `/home` `/explore` `/sign-in` 200, the five anchors render in DOM
+  order, the gradient field and grain overlay are in the document, **zero**
+  `opacity:0` in the server HTML, and zero retired green.
+- **Then it was screenshotted, and most of the real work started.** A cached
+  Playwright chromium turned out to be on this machine, so the "needs a human"
+  browser sweep happened here. The very first capture showed the nav and the
+  gradient and **nothing else**:
+  - **🔴 The page rendered blank without JS.** Motion writes `initial` into the
+    SERVER HTML, so every `whileInView` element shipped `style="opacity:0"` and
+    only appeared once JS hydrated and IntersectionObserver fired. Headline,
+    stats block, half the business list. Reveals are CSS view-timeline
+    animations now (`.il-reveal` / `.il-rise`): no JS, off the compositor, and
+    browsers without `animation-timeline` skip the `@supports` block and get
+    the content immediately. Five of seven sections went back to being server
+    components; `fadeUp`/`staggerContainer`/`inViewOnce` are gone. The two
+    places that still need JS gate their enter animation behind `mounted`, so
+    the first render is never hidden. A test renders each section with
+    `renderToStaticMarkup` and fails on `opacity:0`.
+  - **🔴 `/explore` had three dead nav links.** It mounts the same
+    `LandingNav`, and `PublicNav` still pointed at `#shoppers`, `#how` and
+    `#about` — two renamed, one deleted. `LandingSection` in `routeConfig.ts`
+    exists to prevent exactly this and hadn't been updated; correcting it
+    turned the dead links into build errors. `PublicNav` now mirrors the
+    landing's list exactly, and a test asserts every `/explore` hash resolves.
+  - **🔴 The logo overlapped the first nav link on `/explore`.** The wordmark
+    is a drawn asset now, wider than the text it replaced, and `/explore`
+    carries an extra action. Lockup got a `flex:0 0 auto` guard; hamburger
+    breakpoint 1100 → 1180px.
+  - **Gradient defects only a render shows:** washed out (opacities too low,
+    paper-lift overlay too strong); a hard circular edge (`transparent` as the
+    final stop interpolates toward transparent-**black**, ringing a saturated
+    bloom in grey — now eases to the same colour at zero alpha); **hard
+    vertical seams at 390px** (default `farthest-corner` sizing pushed the
+    gradient past its box, which then clipped it — now `ellipse closest-side`);
+    and too hot in dark mode, where the red mass cost body copy its contrast
+    (dark runs at 45%).
+  - Beta banner was pale-on-pale over the gradient and read as a rendering
+    fault (now Charcoal/Cornsilk); the final CTA used the Porcelain wordmark
+    where the deck's primary lockup on Brick Ember is **Jasmine**; the eyebrow's
+    dark red sat on the yellow bloom at marginal contrast (now Jasmine).
+- **Swept in the browser:** 390 / 768 / 1280 × light + dark, plus `/explore` at
+  1200 and 1280. **Caveat:** Chromium only. Safari and Firefox have no
+  `animation-timeline: view()` yet, so they get the content with no reveal
+  animation — the intended fallback, and still strictly better than a blank
+  page, but the animated experience is Chromium-only for now.
+- **Follow-up after a report that the page rendered completely unstyled.** Not
+  a code fault: the running `next dev` server was serving a **corrupted
+  Turbopack cache** — the chunk labelled `globals.css` contained the *old*
+  `landing.css` (rules deleted hours earlier) and Tailwind emitted **zero**
+  utilities (10 KB, no `--tw-*`). Cause was `yarn build` being run repeatedly
+  while `next dev` was live; both write under `.next/`. Cleared `.next` and
+  restarted: same chunk is now 229 KB with the full utility set. **Don't run a
+  production build against a live dev server** — it is the second time this
+  session that concurrent writes to `.next/` produced a misleading result.
+- **Above-the-fold lockups are `priority` now.** The dev log flagged the nav
+  wordmark as the LCP element while lazily loaded. `BrandMark` / `BrandWordmark`
+  / `BrandLogo` take an `eager` prop, set on `LandingNav`, `CustomerHeader` and
+  the auth header.
+- **Hero entrance capped at 5 stagger steps.** `animation-fill-mode: both`
+  holds the from-state through the delay, so every step is time the content is
+  invisible; an un-capped 90ms step put the craving switcher — the thing the
+  page exists for — 1.2s from being readable. Now 70ms, capped, 0.55s duration.
+- **The hero's right column carries the live product, not photography.** At
+  >=1024px it was empty, which on a page arguing "go outside and eat with
+  people" read as unfinished. A first pass filled it with the identity deck's
+  stock frames — two people laughing on a seamless backdrop, a black-gloved
+  hand holding a phone — and it looked like exactly what it was, an agency
+  mockup rather than Iloilo. **Reverted.** The deck has no candid photography
+  usable here: its one genuinely candid frame is ~435px wide, and the
+  moodboard shots are *other brands'* reference images, not iLokal's to ship.
+  So the column carries the same hand of shops the search is finding, dealt
+  out and re-dealt as the craving changes. That makes the hero one idea
+  instead of two competing ones — the question on the left, the answer on the
+  right, one `useCravingRotation`.
+  `CravingSwitcher` split into that hook plus `CravingSearchBar` and
+  `CravingSpread`; the spread fans (overlapping, hand-tilted) beside the
+  headline from lg and lays out as a row below it, because a fan needs height
+  a phone does not have. Fan steps are fixed rem against a fixed card height —
+  a percentage of the container does not track the card, and anything tighter
+  than an 11rem step against a 12rem card ate the district and walk time, the
+  two facts that make the spread worth reading.
+  The headline needed a second size ramp at lg: the wrap caps at 1200px, so
+  the column stops growing while `8.5vw` does not, which at 1440 pushed "The
+  best spots" onto two lines. NearYou's heading moved to the deck's other
+  proximity line ("Your next craving is closer than you think") and stays
+  there.
+  **Real photography of real Ilonggo shops still belongs in this column** when
+  it exists; the fan would move under the search bar on the left.
+- **Still deferred:** a scrolled state for the nav.
+- **Review hardening (react-doctor + api-doctor, PR #19):**
+  - **🔴 The hero pill still shipped EMPTY in the server HTML.** The whole
+    point of this branch's reveal rewrite was that nothing renders blank
+    without JS — and the page's signature control was the one thing that did.
+    `useState(reduced ? cravings[0].query : '')` seeds off `useReducedMotion()`,
+    which is **always `false` during SSR**, so the visible span was `''` and
+    only the `sr-only` copy carried the text. `sections.test.tsx` couldn't see
+    it: its guard greps for `opacity:0`, and this failure mode is empty text,
+    not a hidden element. Now seeded with the first query unconditionally, and
+    the type-out starts at the first **switch** rather than at hydration — re-
+    typing on mount would have blanked the pill for half a second the moment JS
+    arrived, trading an SSR bug for a hydration flicker. Verified in the built
+    `/home` HTML: `>batchoy</span>` is present.
+  - **The `'use client'` was on the wrong component.** It sat on
+    `LandingPage`, the composition root, so all seven sections compiled into
+    the client bundle regardless of their own directives — the "five of seven
+    are server components" claim above was not true of the shipped build. The
+    boundary now wraps the chrome (`LandingShell`: theme, nav, footer, gradient)
+    and the sections arrive as `children`. Verified: CounterMoment-only copy
+    ("the whole thing", "no printing") appears in **0** client chunks, while
+    Hero's and DealsWall's still do — those two genuinely need the client.
+  - **The lockup preloaded four images to paint two.** In `palette="auto"`
+    both cuts render and CSS picks one, and `eager` was putting `priority` on
+    both — so the nav emitted a preload for two images that land in
+    `display:none`, a net LCP loss from the change made to protect LCP.
+    `priority` is now light-cut only. Neither mark had `sizes` either, so
+    next/image preloaded the 512px mark into a 28px box and the **1128px**
+    wordmark into a ~120px one. Verified on the built `/sign-in`: 2 brand
+    preloads (was 4), `imageSizes="28px"` and `"128px"`.
+  - `FinalCta`'s wordmark was `priority` — a preload of the **last** section on
+    the page, competing with the real LCP resource. Now lazy with a real
+    `sizes`.
+  - **The claim code announced as nothing.** `aria-label` was on a `<p>`, where
+    ARIA prohibits naming, so AT dropped it — and all six character tiles are
+    `aria-hidden`. `role="img"` makes the label take. The test asserted the
+    attribute existed, which it did; that isn't the same as being exposed.
+  - **Twelve keyboard stops that did nothing.** `ShopCard` and `DealCard` were
+    `tabIndex={0}` `<article>`s with nothing to activate — three in the hero
+    fan, nine on the deals wall, sitting between the filter chips and the "All
+    deals" link, and their only effect was to un-tilt a card. Removed with the
+    focus-visible styling; when these become real shops they should be links,
+    and the focus stop returns with a destination. Test inverted to guard it.
+  - **`/s/[businessId]` rendered "Name · iLokal · iLokal".** The new root
+    `title.template` applies to `metadata.title`, and this page still appended
+    the suffix itself — one of the 14 that were meant to be stripped. The
+    template does NOT apply to OG/Twitter titles, so those keep the spelled-out
+    brand (the pattern `/explore/[businessId]` already uses).
+  - **The anchor guard was guarding retired anchors.** `routeConfig.test.ts`
+    still asserted `landingSectionPath('about')` and `('shoppers')` — both
+    deleted from `LandingSection` by this branch. It stayed green (the helper
+    is string concat) while documenting two anchors the page no longer renders,
+    which is the exact regression the union exists to prevent. Retargeted to
+    `voices` / `near-you`.
+  - **The claim code's "settle" was never once seen.** The tiles used
+    `.il-rise` — the hero's page-LOAD entrance — so the animation fired on
+    first paint and was long finished by the time anyone scrolled six sections
+    down to it. New `.il-settle` is scroll-linked like the other reveals.
+    Staggering it needed a **shifted `animation-range`**, not
+    `animation-delay`: a scroll-driven animation is progressed by scroll
+    position, so a time delay does nothing at all. Each tile offsets its entry
+    window by `--i * 4%`, which is what makes the code land left-to-right.
+  - **Pally shipped twice.** `next/font/local` only reads the sources at build
+    time and re-emits them hashed and immutable under `/_next/static/media`, so
+    keeping the originals in `public/` also served every face a second time at
+    `/fonts/Pally-Bold.woff2` — uncache-busted, and requested by nobody. Moved
+    to `assets/fonts/` (`git mv`, so history follows); docs and the brand
+    contract test repointed. Verified: all three still preload from
+    `_next/static/media`, and `public/fonts` no longer exists.
+  - `advance.current = …` in `useCravingRotation` was a **ref write during
+    render**, which React explicitly disallows and which is not
+    concurrent-safe. It also bought nothing — the updater form already reads
+    the latest index. Deleted; the timeout calls `setIndex` directly.
+  - Verified: `yarn lint` + **1551** tests + a clean `yarn build` (`.next`
+    removed first, no dev server running) all green, plus the built-output
+    checks quoted above.
+
+## 2026-08-01 — Brand v1.0: the presented red/yellow identity, app-wide (feat/rebranding)
+
+> Presentational + design tokens. **No schema, API, or auth change.** Plan,
+> (Parity table and measured contrast ledger kept local, not committed; the
+> palette, contrast ledger and type system live in `.claude/docs/DESIGN.md`.)
+
+- **This was a rebrand, not a palette tweak.** The app shipped the v0.2
+  "Hablon Weave" identity — lime `#65A30D`, a woven-strip tile mark, a Geist
+  800 wordmark. The presented deck replaces every part of it: **Brick Ember
+  `#D70005`** primary, Jasmine/Cornsilk/Petal Frost/Porcelain/Charcoal, a
+  drawn `ilokal` wordmark with the two-people `ilo` ligature, and **two new
+  typefaces**. Nothing green survives as brand.
+- **Assets built from the supplied raster.** The identity arrived as PNG only,
+  so both marks were matted out (flat two-colour art projected onto the
+  background→foreground colour line, giving true antialiased alpha) and
+  re-tinted per colourway — not screenshot-cropped. Wordmark 1128×244, submark
+  1036×507, plus a square app mark (rounded tile + `ilo`), the store icon set,
+  and regenerated `app/icon.png` / `apple-icon.png` / `favicon.ico`. The green
+  `public/brand/{svg,png}` and `app/icon.svg` are deleted. **No vector source
+  exists** — 1128px covers every web use (~9× headroom in the nav) but not
+  large print; the Illustrator/Figma file is still needed.
+- **Typography is now two faces.** Pally (display) + Inter (body), per the
+  deck. Pally is not on Google Fonts, so the three `.woff2` were pulled once
+  from Fontshare (free personal + commercial licence) into `public/fonts` and
+  wired through `next/font/local` — **no runtime third-party font request**,
+  and Next still emits the preload + `size-adjust` fallback metrics. `h1`–`h6`
+  pick up Pally from `@layer base` rather than a ~200-file sweep, which is
+  also the only way Radix's own titles (DialogTitle, AlertDialogTitle) get it.
+- **Three tokens the deck does not specify, derived and flagged for designer
+  sign-off:**
+  - **Dark-mode primary.** Brick Ember on Charcoal measures **3.23:1** and
+    fails AA. Lifted to `oklch(0.58 0.215 28.8)` (`#DD2920`): label 4.56:1,
+    fill-vs-background 3.66:1. `--brand` switches under `.dark`, and
+    `BrandMark`/`BrandWordmark` ship a matching "flame" tile + Porcelain
+    wordmark rather than reusing the light cuts.
+  - **Destructive.** The brand red *is* `--primary` now, so the stock red
+    destructive would make Delete look like Save. Deepened to `#8E0B14`
+    (light) and hue-shifted to crimson `#BD3855` (dark).
+  - **Chart ramp.** Jasmine and Petal Frost at native lightness are ~1.8:1 on
+    white and unusable as data marks; the ramp keeps the hue and drops the
+    lightness.
+- **Contrast measured, not assumed.** White/Porcelain on Brick Ember 5.40:1 ✅,
+  Brick on Porcelain 5.17:1 ✅, Charcoal on Jasmine 14.12:1 ✅. **Jasmine on
+  Brick Ember is 4.38:1 — large text only**; that covers the logo lockup, and
+  it is called out in `DESIGN.md` and the brand README so nobody sets body
+  copy in it.
+- **Green kept where it means success, not brand.** `StatusBadge`,
+  verification badges, active pills, trend-up indicators (25 files) were
+  reviewed and deliberately left green — success-green beside brand-red is the
+  signal. Same for the macOS traffic-light dots in the landing's browser mock
+  and the third-party Google Play mark.
+- **Two latent bugs fixed on the way through.** (1) `--font-display` was
+  initially both the Tailwind theme token and the `next/font` variable name, a
+  **self-reference** that is invalid at computed-value time on `:root` — it
+  only worked because `<body>` shadowed it. The font binding is now
+  `--font-pally`. (2) `font-geist` (2 call sites) and `font-font-giest-mono`
+  (1) never matched a declared token and silently resolved to nothing; the
+  aliases are declared and the typo fixed.
+- **Metadata.** Root layout gained a `title.template`, a real description, OG
+  fields, and per-scheme `themeColor` (`#D70005` / `#1A1A1A`); the 14 page
+  titles that carried their own "- iLokal" suffix were stripped so it isn't
+  rendered twice.
+- **Tests (+20, 1508 → 1528):** `BrandLogo.test.tsx`
+  reworked to the asset-based lockup (8 — palette pinning, the em-scaled
+  wordmark, single accessible name across the auto pair), plus a new
+  `brand.contract.test.ts` (17) that sweeps `app`/`components`/`lib`/`config`
+  for any reintroduced v0.2 green, pins the asset + font-file surface
+  `BrandLogo` references by literal path, asserts destructive ≠ primary in
+  both modes, and fails on a self-referential `--font-display`.
+- Verified: `yarn lint` + **1528** tests + `yarn build` green; production
+  server smoke — `/home` `/sign-in` `/signup` `/forgot-password` all 200,
+  brand PNGs 200 both direct and through `/_next/image`, favicons 200, Pally
+  preloaded, and `/home` renders 14× `#D70005` with zero brand-green left.
+- **Not verified — needs a human:** the browser sweep (320/768/1280 × light +
+  dark × landing/explore/auth/business/admin; no headless browser in this env
+  and the stack is frozen), designer sign-off on the three derived tokens
+  above, and the vector logo source.
 ## 2026-07-27 — PR #18 review hardening (feat/dynamic-product-service-listing)
 
 > Fixes from the react-doctor + api-doctor review. **Edits the seven unmerged

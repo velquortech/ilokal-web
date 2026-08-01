@@ -87,8 +87,12 @@ describe('public landing route', () => {
 
 describe('landingSectionPath', () => {
   it('builds an absolute anchor into the landing', () => {
-    expect(landingSectionPath('about')).toBe('/home#about');
-    expect(landingSectionPath('shoppers')).toBe('/home#shoppers');
+    // These must be sections the landing actually renders. The redesign
+    // renamed `#shoppers` → `#near-you` and `#about` → `#voices` and deleted
+    // `#how`; asserting against the retired names kept this green while the
+    // links it exists to protect pointed nowhere.
+    expect(landingSectionPath('voices')).toBe('/home#voices');
+    expect(landingSectionPath('near-you')).toBe('/home#near-you');
   });
 
   it('never emits a bare hash (which no-ops off the landing)', () => {

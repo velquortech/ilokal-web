@@ -1,7 +1,7 @@
 import AdminLoginForm from '@/components/auth/AdminLoginForm';
 
 export const metadata = {
-  title: 'Admin Login - Ilokal',
+  title: 'Admin sign in',
   description: 'Sign in to the Ilokal admin portal',
 };
 

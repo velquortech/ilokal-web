@@ -130,13 +130,14 @@ describe('CustomerHeader — session decides which chrome renders', () => {
     // Delegated to PublicNav, which mounts the real LandingNav inside the
     // landing token wrapper — so /explore and / are one design, not two.
     expect(container.querySelector('[data-ilokal-root]')).not.toBeNull();
+    // Exactly the landing's own list, in the landing's own order — the two
+    // surfaces are one design, so the menu must not change between them.
     expect(navLabels()).toEqual([
       'Explore Shops',
-      'For Shoppers',
-      'For Businesses',
-      'How It Works',
+      'Near You',
       'Deals',
-      'About',
+      'Voices',
+      'For Businesses',
     ]);
   });
 
@@ -158,9 +159,9 @@ describe('CustomerHeader — session decides which chrome renders', () => {
     const hrefs = Array.from(container.querySelectorAll('a')).map((a) =>
       a.getAttribute('href'),
     );
-    expect(hrefs).toContain(landingSectionPath('shoppers'));
+    expect(hrefs).toContain(landingSectionPath('near-you'));
     expect(hrefs).toContain(landingSectionPath('businesses'));
-    expect(hrefs).toContain(landingSectionPath('how'));
+    expect(hrefs).toContain(landingSectionPath('voices'));
     // The landing's own nav uses `#shoppers` etc, which scroll nowhere here.
     expect(hrefs.some((h) => h?.startsWith('#'))).toBe(false);
   });

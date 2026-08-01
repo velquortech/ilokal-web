@@ -90,13 +90,13 @@
   into `motion.ts` — an inline `[0.22, 1, 0.36, 1]` widens to `number[]`,
   which motion's `Easing` union rejects, so five call sites were each one
   `as const` from a build error.
-- **Tests (+21, 1528 → 1549):** `landing/__tests__/sections.test.tsx` — every
+- **Tests (+24, 1528 → 1552):** `landing/__tests__/sections.test.tsx` — every
   jump-nav target resolves, nav order equals page order, the business block is
   the only `<ol>` on the page, the claim code announces once rather than six
   times, the category filter keeps every chip reachable, cards straighten on
   keyboard focus and not only hover. Everything renders under `MotionConfig
   reducedMotion="always"`, so the suite doubles as the reduced-motion check.
-- Verified: `yarn lint` + **1549** tests + `yarn build` green. Production
+- Verified: `yarn lint` + **1552** tests + `yarn build` green. Production
   smoke — `/home` `/explore` `/sign-in` 200, the five anchors render in DOM
   order, the gradient field and grain overlay are in the document, **zero**
   `opacity:0` in the server HTML, and zero retired green.
@@ -159,6 +159,20 @@
   holds the from-state through the delay, so every step is time the content is
   invisible; an un-capped 90ms step put the craving switcher — the thing the
   page exists for — 1.2s from being readable. Now 70ms, capped, 0.55s duration.
+- **People in the hero.** At >=1024px the right half was empty — a page whose
+  argument is "go outside and eat with people" showed none. Two frames from
+  the deck's own photography (the cover shot, and a phone in a hand running
+  the app), tilted against each other, `hidden lg:block`, `alt=""` since the
+  headline and the search demo already say what the section is. The wrapper
+  carries the `hidden` too: an always-rendered wrapper is still a grid cell,
+  and below lg it added the grid's gap as dead space. The headline needed a
+  second size ramp at lg — the wrap caps at 1200px so the column stops
+  growing while `8.5vw` does not, which at 1440 pushed "The best spots" onto
+  two lines. NearYou's heading moved to the deck's other proximity line; the
+  phone carries "…probably 5 minutes away" on its screen and running it twice
+  on one page reads as an accident.
+  **⚠️ These are the deck's stock photographs — confirm the licence covers
+  production web use before this ships publicly.**
 - **Still deferred:** a scrolled state for the nav.
 
 ## 2026-08-01 — Brand v1.0: the presented red/yellow identity, app-wide (feat/rebranding)

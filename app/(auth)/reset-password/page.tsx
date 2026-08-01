@@ -5,7 +5,7 @@ import ResetPasswordForm from '@/components/auth/ResetPasswordForm';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Reset Password - Ilokal',
+  title: 'Reset password',
   description: 'Choose a new password for your Ilokal business account',
 };
 

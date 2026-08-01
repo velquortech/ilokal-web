@@ -1,31 +1,38 @@
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 /**
- * iLokal brand lockup — "Hablon Weave" mark (public/brand, v0.2), inlined.
+ * iLokal brand lockup — identity v1.0 ("Presented Brand Identity", 2026-08-01).
  *
- * Inlined rather than <img src="/brand/svg/…"> on purpose: the lockup SVGs
- * carry live <text> and SVG-as-image cannot load document fonts, so the
- * wordmark would render in a fallback typeface. Here the mark is pure vector
- * and the wordmark is real HTML text in the app's default sans (Geist), which
- * is exactly the brand spec (Geist 800, tracking −3.5%).
+ * The wordmark is DRAWN lettering, not a typeface setting: rounded terminals,
+ * the two-people `ilo` ligature, the 350° `a`. It cannot be reproduced by
+ * setting text in Pally, so both marks ship as matted PNGs from
+ * `public/brand` rather than as inline SVG or live text (which is what the
+ * previous "Hablon Weave" lockup did).
  *
- * Brand colors (README.txt): light surfaces #65A30D tile / white strips; dark
- * surfaces #84CC16 tile / #1A1A1A strips (#65A30D muddies on charcoal).
+ * Palette, by surface — Brick Ember `#D70005` measures only 3.23:1 against
+ * Charcoal, so the dark-surface assets use the lifted `#DD2920` ("flame") tile
+ * and a Porcelain wordmark instead of simply reusing the light ones:
+ *
+ *   light surfaces   Brick tile + Jasmine `ilo`   ·   Brick wordmark
+ *   dark surfaces    Flame tile + Jasmine `ilo`   ·   Porcelain wordmark
  */
 
 type BrandPalette = 'auto' | 'light' | 'dark';
 
-const TILE_CLASS: Record<BrandPalette, string> = {
-  auto: 'fill-[#65A30D] dark:fill-[#84CC16]',
-  light: 'fill-[#65A30D]',
-  dark: 'fill-[#84CC16]',
-};
+const MARK = {
+  light: '/brand/mark/ilokal-mark-brick.png',
+  dark: '/brand/mark/ilokal-mark-flame.png',
+} as const;
 
-const STRIP_CLASS: Record<BrandPalette, string> = {
-  auto: 'fill-white dark:fill-[#1A1A1A]',
-  light: 'fill-white',
-  dark: 'fill-[#1A1A1A]',
-};
+const WORDMARK = {
+  light: '/brand/wordmark/ilokal-wordmark-brick.png',
+  dark: '/brand/wordmark/ilokal-wordmark-porcelain.png',
+} as const;
+
+/** Native pixel size of the matted sources — the intrinsic ratio next/image needs. */
+const MARK_INTRINSIC = 512;
+const WORDMARK_INTRINSIC = { width: 1128, height: 244 };
 
 interface BrandMarkProps {
   size?: number;
@@ -38,40 +45,79 @@ interface BrandMarkProps {
   className?: string;
 }
 
+/** Square app mark: rounded tile + the `ilo` submark. */
 export function BrandMark({
   size = 28,
   palette = 'auto',
   className,
 }: BrandMarkProps) {
+  const shared = {
+    width: MARK_INTRINSIC,
+    height: MARK_INTRINSIC,
+    alt: 'iLokal',
+    style: { width: size, height: size },
+    className: cn('shrink-0', className),
+  };
+
+  if (palette !== 'auto') {
+    return <Image src={MARK[palette]} {...shared} />;
+  }
+
   return (
-    <svg
-      viewBox="0 0 48 48"
-      width={size}
-      height={size}
-      role="img"
-      aria-label="iLokal"
-      className={cn('shrink-0', className)}
-    >
-      <rect width="48" height="48" rx="12" className={TILE_CLASS[palette]} />
-      <g className={STRIP_CLASS[palette]}>
-        <rect x="13" y="6" width="6.5" height="36" rx="2" />
-        <rect x="28.5" y="6" width="6.5" height="36" rx="2" />
-        <rect x="6" y="13" width="21" height="6.5" rx="2" />
-        <rect x="35" y="13" width="7" height="6.5" rx="2" />
-        <rect x="6" y="28.5" width="5" height="6.5" rx="2" />
-        <rect x="19.5" y="28.5" width="22.5" height="6.5" rx="2" />
-      </g>
-    </svg>
+    <>
+      <Image
+        src={MARK.light}
+        {...shared}
+        className={cn(shared.className, 'dark:hidden')}
+      />
+      <Image
+        src={MARK.dark}
+        {...shared}
+        aria-hidden
+        alt=""
+        className={cn(shared.className, 'hidden dark:block')}
+      />
+    </>
   );
 }
 
-export function BrandWordmark({ className }: { className?: string }) {
+/**
+ * The wordmark scales with the inherited font size (height is set in `em`), so
+ * existing call sites that size the lockup with `text-base` / `text-lg` keep
+ * working exactly as they did when this was live text.
+ */
+export function BrandWordmark({
+  palette = 'auto',
+  className,
+}: {
+  palette?: BrandPalette;
+  className?: string;
+}) {
+  const shared = {
+    ...WORDMARK_INTRINSIC,
+    alt: 'iLokal',
+    className: cn('h-[1.15em] w-auto', className),
+  };
+
+  if (palette !== 'auto') {
+    return <Image src={WORDMARK[palette]} {...shared} />;
+  }
+
   return (
-    <span
-      className={cn('font-giest font-extrabold tracking-[-0.035em]', className)}
-    >
-      iLokal
-    </span>
+    <>
+      <Image
+        src={WORDMARK.light}
+        {...shared}
+        className={cn(shared.className, 'dark:hidden')}
+      />
+      <Image
+        src={WORDMARK.dark}
+        {...shared}
+        aria-hidden
+        alt=""
+        className={cn(shared.className, 'hidden dark:block')}
+      />
+    </>
   );
 }
 
@@ -82,7 +128,7 @@ interface BrandLogoProps {
   wordmarkClassName?: string;
 }
 
-/** Horizontal lockup: mark + wordmark (brand green, theme-aware). */
+/** Horizontal lockup: square mark + wordmark. */
 export function BrandLogo({
   markSize = 28,
   palette = 'auto',
@@ -93,7 +139,8 @@ export function BrandLogo({
     <span className={cn('inline-flex items-center gap-2', className)}>
       <BrandMark size={markSize} palette={palette} />
       <BrandWordmark
-        className={cn('text-primary text-xl', wordmarkClassName)}
+        palette={palette}
+        className={cn('text-xl', wordmarkClassName)}
       />
     </span>
   );

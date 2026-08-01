@@ -87,10 +87,10 @@ export const footerColumns: FooterColumn[] = [
 
 /** "Trusted by" hero avatar stack (verbatim from markup). */
 export const avatarStack: { initials: string; bg: string; fg: string }[] = [
-  { initials: 'KC', bg: '#16A34A', fg: '#fff' },
-  { initials: 'TB', bg: '#22C55E', fg: '#fff' },
-  { initials: 'PM', bg: '#4ADE80', fg: '#14532D' },
-  { initials: 'KC', bg: '#65A30D', fg: '#fff' },
+  { initials: 'KC', bg: '#D70005', fg: '#fff' },
+  { initials: 'TB', bg: '#DD2920', fg: '#fff' },
+  { initials: 'PM', bg: '#FEE87B', fg: '#1A1A1A' },
+  { initials: 'KC', bg: '#D70005', fg: '#fff' },
 ];
 
 export const features: Feature[] = [
@@ -198,7 +198,7 @@ export const deals: Deal[] = [
     type: 'pct',
     expiry: 'Ends in 5 days',
     initials: 'KC',
-    color: '#16A34A',
+    color: '#D70005',
     hot: false,
     unlock: true,
   },
@@ -209,7 +209,7 @@ export const deals: Deal[] = [
     type: 'fix',
     expiry: 'Ends in 3 days',
     initials: 'TB',
-    color: '#22C55E',
+    color: '#DD2920',
     hot: true,
     unlock: false,
   },
@@ -220,7 +220,7 @@ export const deals: Deal[] = [
     type: 'pct',
     expiry: 'Ends in 6 days',
     initials: 'PM',
-    color: '#4ADE80',
+    color: '#FEE87B',
     hot: false,
     unlock: false,
   },
@@ -231,7 +231,7 @@ export const deals: Deal[] = [
     type: 'pct',
     expiry: 'Ends in 2 days',
     initials: 'KC',
-    color: '#65A30D',
+    color: '#D70005',
     hot: true,
     unlock: false,
   },
@@ -242,7 +242,7 @@ export const deals: Deal[] = [
     type: 'fix',
     expiry: 'Ends in 8 days',
     initials: 'AJ',
-    color: '#15803D',
+    color: '#A80004',
     hot: false,
     unlock: false,
   },
@@ -253,7 +253,7 @@ export const deals: Deal[] = [
     type: 'pct',
     expiry: 'Ends in 4 days',
     initials: 'FM',
-    color: '#86EFAC',
+    color: '#FCD9F7',
     hot: false,
     unlock: false,
   },
@@ -266,7 +266,7 @@ export const testimonials: Testimonial[] = [
     name: 'Andrea Salcedo',
     role: 'Shopper · Iloilo City',
     initials: 'AS',
-    color: '#16A34A',
+    color: '#D70005',
   },
   {
     quote:
@@ -274,7 +274,7 @@ export const testimonials: Testimonial[] = [
     name: 'Nonoy Tabuada',
     role: 'Owner · Kap Ising’s Café',
     initials: 'NT',
-    color: '#65A30D',
+    color: '#D70005',
   },
   {
     quote:
@@ -282,7 +282,7 @@ export const testimonials: Testimonial[] = [
     name: 'Grace Deocampo',
     role: 'Owner · Kultura Crafts',
     initials: 'GD',
-    color: '#22C55E',
+    color: '#DD2920',
   },
 ];
 
@@ -294,7 +294,7 @@ export function dealBadgeLabel(type: Deal['type']): string {
   return type === 'pct' ? '% Percentage off' : '₱ Fixed amount off';
 }
 
-/** `#86EFAC` is remapped to `#22C55E` for the avatar tile (from `decorate()`). */
+/** Petal Frost is too light for a white-text avatar tile — swap it for flame. */
 export function dealAvatarColor(color: string): string {
-  return color === '#86EFAC' ? '#22C55E' : color;
+  return color === '#FCD9F7' ? '#DD2920' : color;
 }

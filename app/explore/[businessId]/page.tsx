@@ -33,15 +33,17 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { businessId } = await params;
   const result = await getPublicBusinessProfile(businessId);
-  if ('error' in result) return { title: 'Shop - iLokal' };
+  if ('error' in result) return { title: 'Shop' };
   const { business } = result;
   return {
-    title: `${business.shop_name} - iLokal`,
+    title: business.shop_name,
     description:
       business.description ??
       `Deals, coupons, and the menu of ${business.shop_name} on iLokal.`,
     openGraph: {
-      title: `${business.shop_name} - iLokal`,
+      // `title.template` from the root layout applies to `metadata.title`
+      // only, so the brand has to be spelled out on the OG title.
+      title: `${business.shop_name} · iLokal`,
       images: business.banner_url ?? business.logo_url ?? undefined,
     },
   };

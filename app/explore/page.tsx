@@ -6,7 +6,7 @@ import {
 import { ExploreContent } from './components/explore-content';
 
 export const metadata: Metadata = {
-  title: 'Explore Local Shops - iLokal',
+  title: 'Explore local shops',
   description:
     'Discover verified local businesses, deals, and coupons around Iloilo City.',
 };

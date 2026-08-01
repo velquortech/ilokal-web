@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -11,12 +11,17 @@ import { cn } from '@/lib/utils';
 export function Wrap({
   children,
   className,
+  style,
 }: {
   children: ReactNode;
   className?: string;
+  style?: CSSProperties;
 }) {
   return (
-    <div className={cn('mx-auto w-full max-w-[1200px] px-6', className)}>
+    <div
+      className={cn('mx-auto w-full max-w-[1200px] px-6', className)}
+      style={style}
+    >
       {children}
     </div>
   );

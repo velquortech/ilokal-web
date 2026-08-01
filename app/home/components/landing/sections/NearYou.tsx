@@ -18,10 +18,14 @@ export function NearYou() {
             <Eyebrow>Near you</Eyebrow>
           </div>
           <div>
+            {/* Not "…probably five minutes away": the phone in the hero
+                carries that exact line on its screen, and running it twice on
+                one page reads as an accident. This is the deck's other
+                proximity line. */}
             <SectionTitle className="mt-5 max-w-3xl text-[#1A1A1A] dark:text-[#F7F5EF]">
-              Your next favourite café is probably{' '}
+              Your next craving is{' '}
               <span className="text-[#D70005] dark:text-[#EF5143]">
-                five minutes away
+                closer than you think
               </span>
               .
             </SectionTitle>

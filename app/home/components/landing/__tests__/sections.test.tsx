@@ -160,6 +160,17 @@ describe('nothing is hidden in the server HTML', () => {
     expect(html.length).toBeGreaterThan(200);
   });
 
+  it('the hero collage is decorative and desktop-only', () => {
+    const html = renderToStaticMarkup(<Hero />);
+    // The headline and the search demo already state what this section is;
+    // captioning the photographs would say it a third time.
+    expect(html).toContain('/landing/hero-laugh.webp');
+    expect(html).toContain('/landing/hero-phone.webp');
+    expect(html).not.toMatch(/alt="[^"]*(?:laugh|phone|people)/i);
+    // Hidden below lg — the hero is already tall on a phone.
+    expect(html).toMatch(/hidden lg:block/);
+  });
+
   it('the hero ships its copy, not an empty shell', () => {
     const html = renderToStaticMarkup(<Hero />);
     for (const line of ['The best spots', 'on Google.', 'Start exploring']) {

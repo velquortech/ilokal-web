@@ -15,6 +15,7 @@ import {
   isFollowingBusiness,
 } from '@/lib/api/customer/customerQuery';
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
+import { businessSocialCard } from '@/lib/utils/socialCard';
 import { getOfferingVocabulary } from '@/lib/api/offerings/offeringQuery';
 import { getBookingsEnabled } from '@/lib/api/appSettings';
 import { BusinessInfoPanel } from './components/business-info-panel';
@@ -35,17 +36,23 @@ export async function generateMetadata({
   const result = await getPublicBusinessProfile(businessId);
   if ('error' in result) return { title: 'Shop' };
   const { business } = result;
+  const description =
+    business.description ??
+    `Deals, coupons, and the menu of ${business.shop_name} on iLokal.`;
+
   return {
     title: business.shop_name,
-    description:
-      business.description ??
-      `Deals, coupons, and the menu of ${business.shop_name} on iLokal.`,
-    openGraph: {
-      // `title.template` from the root layout applies to `metadata.title`
-      // only, so the brand has to be spelled out on the OG title.
-      title: `${business.shop_name} · iLokal`,
-      images: business.banner_url ?? business.logo_url ?? undefined,
-    },
+    description,
+    // Declaring `openGraph` here REPLACES the root layout's, so site name,
+    // type, locale and url have to be restated — the helper owns that, and
+    // keeps twitter:image on the same picture as og:image.
+    ...businessSocialCard({
+      name: business.shop_name,
+      description,
+      banner: business.banner_url,
+      logo: business.logo_url,
+      url: `/explore/${businessId}`,
+    }),
   };
 }
 

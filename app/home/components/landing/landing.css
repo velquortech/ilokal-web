@@ -80,6 +80,18 @@ html:has([data-ilokal-root]) { scroll-behavior: smooth; }
       animation-timeline: view();
       animation-range: entry 10% entry 70%;
     }
+
+    /* Sequenced along the SAME entry range, offset per child by `--i`, so a
+       row of siblings settles left to right instead of together.
+       `animation-delay` is not an option: a scroll-driven animation is
+       progressed by scroll position, not by time, so a time delay does
+       nothing — the stagger has to be a shifted range. */
+    [data-ilokal-root] .il-settle > * {
+      animation: il-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry calc(12% + var(--i, 0) * 4%) entry
+        calc(58% + var(--i, 0) * 4%);
+    }
   }
 }
 

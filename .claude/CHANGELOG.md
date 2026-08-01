@@ -186,6 +186,81 @@
   **Real photography of real Ilonggo shops still belongs in this column** when
   it exists; the fan would move under the search bar on the left.
 - **Still deferred:** a scrolled state for the nav.
+- **Review hardening (react-doctor + api-doctor, PR #19):**
+  - **🔴 The hero pill still shipped EMPTY in the server HTML.** The whole
+    point of this branch's reveal rewrite was that nothing renders blank
+    without JS — and the page's signature control was the one thing that did.
+    `useState(reduced ? cravings[0].query : '')` seeds off `useReducedMotion()`,
+    which is **always `false` during SSR**, so the visible span was `''` and
+    only the `sr-only` copy carried the text. `sections.test.tsx` couldn't see
+    it: its guard greps for `opacity:0`, and this failure mode is empty text,
+    not a hidden element. Now seeded with the first query unconditionally, and
+    the type-out starts at the first **switch** rather than at hydration — re-
+    typing on mount would have blanked the pill for half a second the moment JS
+    arrived, trading an SSR bug for a hydration flicker. Verified in the built
+    `/home` HTML: `>batchoy</span>` is present.
+  - **The `'use client'` was on the wrong component.** It sat on
+    `LandingPage`, the composition root, so all seven sections compiled into
+    the client bundle regardless of their own directives — the "five of seven
+    are server components" claim above was not true of the shipped build. The
+    boundary now wraps the chrome (`LandingShell`: theme, nav, footer, gradient)
+    and the sections arrive as `children`. Verified: CounterMoment-only copy
+    ("the whole thing", "no printing") appears in **0** client chunks, while
+    Hero's and DealsWall's still do — those two genuinely need the client.
+  - **The lockup preloaded four images to paint two.** In `palette="auto"`
+    both cuts render and CSS picks one, and `eager` was putting `priority` on
+    both — so the nav emitted a preload for two images that land in
+    `display:none`, a net LCP loss from the change made to protect LCP.
+    `priority` is now light-cut only. Neither mark had `sizes` either, so
+    next/image preloaded the 512px mark into a 28px box and the **1128px**
+    wordmark into a ~120px one. Verified on the built `/sign-in`: 2 brand
+    preloads (was 4), `imageSizes="28px"` and `"128px"`.
+  - `FinalCta`'s wordmark was `priority` — a preload of the **last** section on
+    the page, competing with the real LCP resource. Now lazy with a real
+    `sizes`.
+  - **The claim code announced as nothing.** `aria-label` was on a `<p>`, where
+    ARIA prohibits naming, so AT dropped it — and all six character tiles are
+    `aria-hidden`. `role="img"` makes the label take. The test asserted the
+    attribute existed, which it did; that isn't the same as being exposed.
+  - **Twelve keyboard stops that did nothing.** `ShopCard` and `DealCard` were
+    `tabIndex={0}` `<article>`s with nothing to activate — three in the hero
+    fan, nine on the deals wall, sitting between the filter chips and the "All
+    deals" link, and their only effect was to un-tilt a card. Removed with the
+    focus-visible styling; when these become real shops they should be links,
+    and the focus stop returns with a destination. Test inverted to guard it.
+  - **`/s/[businessId]` rendered "Name · iLokal · iLokal".** The new root
+    `title.template` applies to `metadata.title`, and this page still appended
+    the suffix itself — one of the 14 that were meant to be stripped. The
+    template does NOT apply to OG/Twitter titles, so those keep the spelled-out
+    brand (the pattern `/explore/[businessId]` already uses).
+  - **The anchor guard was guarding retired anchors.** `routeConfig.test.ts`
+    still asserted `landingSectionPath('about')` and `('shoppers')` — both
+    deleted from `LandingSection` by this branch. It stayed green (the helper
+    is string concat) while documenting two anchors the page no longer renders,
+    which is the exact regression the union exists to prevent. Retargeted to
+    `voices` / `near-you`.
+  - **The claim code's "settle" was never once seen.** The tiles used
+    `.il-rise` — the hero's page-LOAD entrance — so the animation fired on
+    first paint and was long finished by the time anyone scrolled six sections
+    down to it. New `.il-settle` is scroll-linked like the other reveals.
+    Staggering it needed a **shifted `animation-range`**, not
+    `animation-delay`: a scroll-driven animation is progressed by scroll
+    position, so a time delay does nothing at all. Each tile offsets its entry
+    window by `--i * 4%`, which is what makes the code land left-to-right.
+  - **Pally shipped twice.** `next/font/local` only reads the sources at build
+    time and re-emits them hashed and immutable under `/_next/static/media`, so
+    keeping the originals in `public/` also served every face a second time at
+    `/fonts/Pally-Bold.woff2` — uncache-busted, and requested by nobody. Moved
+    to `assets/fonts/` (`git mv`, so history follows); docs and the brand
+    contract test repointed. Verified: all three still preload from
+    `_next/static/media`, and `public/fonts` no longer exists.
+  - `advance.current = …` in `useCravingRotation` was a **ref write during
+    render**, which React explicitly disallows and which is not
+    concurrent-safe. It also bought nothing — the updater form already reads
+    the latest index. Deleted; the timeout calls `setIndex` directly.
+  - Verified: `yarn lint` + **1551** tests + a clean `yarn build` (`.next`
+    removed first, no dev server running) all green, plus the built-output
+    checks quoted above.
 
 ## 2026-08-01 — Brand v1.0: the presented red/yellow identity, app-wide (feat/rebranding)
 

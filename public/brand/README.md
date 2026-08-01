@@ -68,7 +68,7 @@ Two derived values, not in the deck:
 ## Typeface
 
 - **Pally** — display, headings, brand moments. Self-hosted from
-  `public/fonts/Pally-{Regular,Medium,Bold}.woff2` (Fontshare, free personal +
+  `assets/fonts/Pally-{Regular,Medium,Bold}.woff2` (Fontshare, free personal +
   commercial licence), wired through `app/fonts.ts` as `--font-display`.
 - **Inter** — body and UI, via `next/font/google` as `--font-sans`.
 

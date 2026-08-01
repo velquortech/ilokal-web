@@ -8,11 +8,16 @@ import localFont from 'next/font/local';
  *   Secondary / body   Inter   — every other piece of UI text
  *   Mono               Geist Mono — code, ids, claim codes
  *
- * Pally is not on Google Fonts, so it is self-hosted from `public/fonts`
- * (Fontshare, free personal + commercial licence). Self-hosting via
- * `next/font/local` rather than a CDN <link> keeps the runtime free of
- * third-party requests and lets Next emit the preload + `size-adjust`
- * fallback metrics, which is what keeps CLS at zero.
+ * Pally is not on Google Fonts, so it is self-hosted (Fontshare, free personal
+ * + commercial licence). Self-hosting via `next/font/local` rather than a CDN
+ * <link> keeps the runtime free of third-party requests and lets Next emit the
+ * preload + `size-adjust` fallback metrics, which is what keeps CLS at zero.
+ *
+ * The sources live in `assets/`, NOT `public/`. `next/font/local` only reads
+ * them at build time and re-emits them hashed and immutable under
+ * `/_next/static/media`; keeping the originals in `public/` shipped every face
+ * a second time as a plain, un-cache-busted `/fonts/Pally-Bold.woff2` that
+ * nothing ever requested.
  *
  * Pally ships Regular/Medium/Bold only — there is no 800. The wordmark is a
  * drawn asset (see `components/custom/BrandLogo.tsx`), not live text, so the
@@ -22,17 +27,17 @@ import localFont from 'next/font/local';
 export const pally = localFont({
   src: [
     {
-      path: '../public/fonts/Pally-Regular.woff2',
+      path: '../assets/fonts/Pally-Regular.woff2',
       weight: '400',
       style: 'normal',
     },
     {
-      path: '../public/fonts/Pally-Medium.woff2',
+      path: '../assets/fonts/Pally-Medium.woff2',
       weight: '500',
       style: 'normal',
     },
     {
-      path: '../public/fonts/Pally-Bold.woff2',
+      path: '../assets/fonts/Pally-Bold.woff2',
       weight: '700',
       style: 'normal',
     },

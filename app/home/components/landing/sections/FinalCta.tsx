@@ -24,12 +24,16 @@ export function FinalCta() {
             {/* Jasmine on Brick Ember is the deck's own primary lockup.
                 It measures 4.38:1 — under AA for body copy, fine for display
                 type, which at 7–11rem this certainly is. */}
+            {/* Lazy, deliberately. This is the LAST section on the page, so a
+                `priority` preload here would compete with the real LCP
+                resource for bandwidth to paint something nobody has scrolled
+                to yet. */}
             <Image
               src="/brand/wordmark/ilokal-wordmark-jasmine.png"
               alt="iLokal"
               width={1128}
               height={244}
-              priority
+              sizes="(max-width: 640px) 90vw, 640px"
               className="h-[0.34em] w-auto max-w-full"
             />
           </div>

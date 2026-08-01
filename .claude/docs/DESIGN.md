@@ -4,7 +4,22 @@ Derived from `app/globals.css` (Tailwind CSS v4, OKLCH color space, shadcn/ui Ne
 
 Brand: **identity v1.0**, "Presented Brand Identity" (2026-08-01). It replaced
 the v0.2 green "Hablon Weave" in full — see `public/brand/README.md` for the
-asset rules.
+asset rules. This is the standing direction, not a phase; `CLAUDE.md` carries
+the short list of rules that cause defects when unknown.
+
+### Open items
+
+Three tokens below are **derived, not specified by the deck** — the deck gives
+no dark-mode value, no destructive, and no chart ramp. They are reasoned and
+measured, but they still want designer sign-off:
+
+- dark-mode primary `#DD2920` (the deck red fails AA on Charcoal),
+- destructive `#8E0B14` / `#BD3855` (the brand red occupies `--primary`),
+- the five-step chart ramp (Jasmine and Petal are ~1.8:1 on white).
+
+Also outstanding: **no vector logo source exists.** Both marks were matted from
+the supplied raster, so 1128px is the ceiling — enough for every web use, not
+enough for large print. The Illustrator/Figma file is still needed.
 
 ---
 
@@ -135,7 +150,7 @@ Two faces, per the identity deck.
 
 | Slot | Token | Face | Source |
 | --- | --- | --- | --- |
-| Display / headings | `--font-display` → `font-display` | **Pally** 400/500/700 | self-hosted, `public/fonts/Pally-*.woff2` |
+| Display / headings | `--font-display` → `font-display` | **Pally** 400/500/700 | self-hosted, `assets/fonts/Pally-*.woff2` (build-time only, not served) |
 | Body / UI | `--font-sans` → `font-sans` | **Inter** | `next/font/google` |
 | Mono | `--font-mono` → `font-mono` | Geist Mono | `next/font/google` |
 

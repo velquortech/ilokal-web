@@ -68,9 +68,9 @@ describe('brand assets', () => {
     'app/icon.png',
     'app/apple-icon.png',
     'app/favicon.ico',
-    'public/fonts/Pally-Regular.woff2',
-    'public/fonts/Pally-Medium.woff2',
-    'public/fonts/Pally-Bold.woff2',
+    'assets/fonts/Pally-Regular.woff2',
+    'assets/fonts/Pally-Medium.woff2',
+    'assets/fonts/Pally-Bold.woff2',
   ];
 
   it.each(REQUIRED)('%s exists', (relative) => {

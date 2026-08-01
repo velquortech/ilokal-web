@@ -68,8 +68,6 @@ describe('brand assets', () => {
     'app/icon.png',
     'app/apple-icon.png',
     'app/favicon.ico',
-    'public/landing/hero-laugh.webp',
-    'public/landing/hero-phone.webp',
     'public/fonts/Pally-Regular.woff2',
     'public/fonts/Pally-Medium.woff2',
     'public/fonts/Pally-Bold.woff2',

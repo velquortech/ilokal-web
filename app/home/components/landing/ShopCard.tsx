@@ -22,17 +22,21 @@ const TILT = ['-rotate-2', 'rotate-1', '-rotate-1', 'rotate-2'];
 export function ShopCard({
   result,
   index,
+  tone = 'base',
   className,
 }: {
   result: CravingResult;
   index: number;
+  /** `large` is the hero fan, where each card carries the whole column. */
+  tone?: 'base' | 'large';
   className?: string;
 }) {
   return (
     <article
       tabIndex={0}
       className={cn(
-        'group relative flex min-h-44 flex-col justify-between rounded-2xl p-5',
+        'group relative flex flex-col justify-between rounded-2xl',
+        tone === 'large' ? 'h-48 p-6' : 'min-h-44 p-5',
         'shadow-[0_10px_30px_-12px_rgba(60,10,10,.35)] outline-none',
         'transition-[transform,box-shadow] duration-300 ease-out',
         'hover:rotate-0 hover:shadow-[0_22px_50px_-16px_rgba(60,10,10,.45)] focus-visible:rotate-0',
@@ -44,10 +48,22 @@ export function ShopCard({
       )}
     >
       <div>
-        <p className="font-display text-xl leading-tight font-bold tracking-tight">
+        <p
+          className={cn(
+            'font-display leading-tight font-bold tracking-tight',
+            tone === 'large' ? 'text-2xl' : 'text-xl',
+          )}
+        >
           {result.name}
         </p>
-        <p className="mt-1 text-sm opacity-75">{result.note}</p>
+        <p
+          className={cn(
+            'mt-1 opacity-75',
+            tone === 'large' ? 'text-[0.9375rem]' : 'text-sm',
+          )}
+        >
+          {result.note}
+        </p>
       </div>
       <div className="mt-5 flex items-center justify-between border-t border-[var(--rule)] pt-3 text-xs font-semibold tracking-[0.14em] uppercase">
         <span>{result.area}</span>

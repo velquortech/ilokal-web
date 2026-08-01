@@ -4,6 +4,7 @@ import { cache } from 'react';
 
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { createBearerClient } from '@/supabase/bearer';
+import { businessSocialCard } from '@/lib/utils/socialCard';
 
 import { OpenInApp } from './OpenInApp';
 
@@ -97,27 +98,20 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   // out only on those two. Suffixing here as well rendered "Name · iLokal ·
   // iLokal" in the tab.
   const title = biz.name;
-  const brandedTitle = `${biz.name} · iLokal`;
   const description = biz.description || `Discover ${biz.name} on iLokal.`;
-  const images = biz.logoUrl ? [biz.logoUrl] : [];
 
   return {
     title,
     description,
-    openGraph: {
-      title: brandedTitle,
+    // Shares the card builder with /explore/[businessId] so the two public
+    // business surfaces cannot drift. This one has no banner to offer, so the
+    // helper picks the square `summary` card for the logo.
+    ...businessSocialCard({
+      name: biz.name,
       description,
-      type: 'website',
-      siteName: 'iLokal',
-      images,
-    },
-    twitter: {
-      // `summary` (square thumbnail) suits the logo; large-image would crop it.
-      card: 'summary',
-      title: brandedTitle,
-      description,
-      images,
-    },
+      logo: biz.logoUrl,
+      url: `/s/${businessId}`,
+    }),
   };
 }
 

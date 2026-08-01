@@ -34,9 +34,26 @@
   `metadataBase`, that the origin comes from config and never from headers, and
   that both cards exist at 1200×630, under Facebook's size ceiling, with alt
   text.
-- Verified: `yarn lint` + **1560** tests + `yarn build` green; tags confirmed
-  in the served HTML on `/home`, `/explore` and `/sign-in`, and the image
-  fetched back 200 `image/png`.
+- **Business pages had a card, but a broken one.** `/explore/[businessId]` and
+  `/s/[businessId]` both set `openGraph`, and **Next replaces a parent
+  `openGraph` rather than merging it** — so declaring `{ title, images }` in a
+  route silently dropped `og:site_name`, `og:type`, `og:locale` and `og:url`
+  from the root layout. A Facebook card with no site name reads as a scrape.
+  `/explore/[businessId]` also had **`twitter:image` falling through to the
+  root `twitter-image.png`**, so a shop previewed as its own banner on
+  Facebook and as the generic iLokal card on X.
+- **New `lib/utils/socialCard.ts`** owns the business card for both routes, so
+  the two public business surfaces cannot drift. It restates the replaced
+  fields, keeps `twitter:image` on the same picture as `og:image`, prefers the
+  landscape banner over the square logo, and only gives a real banner
+  `summary_large_image` — a square logo stretched to 1200×630 is pillarboxed
+  with grey bars. With no imagery at all it omits `images` entirely (absent,
+  not empty) so the root card is inherited.
+- **Tests (+6 more):** `lib/utils/__tests__/socialCard.test.ts` covers each of
+  those, including the absent-vs-empty distinction.
+- Verified: `yarn lint` + **1566** tests + `yarn build` green; tags confirmed
+  in the served HTML on `/home`, `/explore`, `/sign-in`, plus a banner shop, a
+  logo-only shop and `/s/[id]`, and the images fetched back 200.
 
 ## 2026-08-01 — Landing redesign: "the walk" (feat/rebranding)
 

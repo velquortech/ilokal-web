@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { styleFromString as s } from '@/lib/utils/cssStyle';
 import { footerColumns } from './data';
 import { FacebookIcon, InstagramIcon, TikTokIcon } from './icons';
-import { BrandMark } from '@/components/custom/BrandLogo';
+import { BrandMark, BrandWordmark } from '@/components/custom/BrandLogo';
 
 const socials: { label: string; href: string; Icon: ComponentType }[] = [
   { label: 'Facebook', href: '#', Icon: FacebookIcon },
@@ -32,11 +32,11 @@ export function LandingFooter({ dark = false }: { dark?: boolean }) {
           <div>
             <div
               style={s(
-                'display:flex;align-items:center;gap:8px;font-size:22px;font-weight:800;letter-spacing:-0.035em;color:var(--brand);margin-bottom:12px;',
+                'display:flex;align-items:center;gap:8px;font-size:22px;margin-bottom:12px;',
               )}
             >
               <BrandMark size={26} palette={dark ? 'dark' : 'light'} />
-              iLokal
+              <BrandWordmark palette={dark ? 'dark' : 'light'} />
             </div>
             <p
               style={s(

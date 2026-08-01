@@ -90,7 +90,7 @@ export function CustomerHeader({
             className="flex shrink-0 items-center"
             aria-label={isCustomer ? 'iLokal — explore shops' : 'iLokal — home'}
           >
-            <BrandLogo markSize={26} wordmarkClassName="text-lg" />
+            <BrandLogo markSize={26} eager wordmarkClassName="text-lg" />
           </Link>
           <nav className="hidden items-center gap-1 md:flex">
             {NAV_LINKS.map(({ href, label, icon: Icon }) => (

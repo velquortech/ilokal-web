@@ -1,5 +1,14 @@
 # CLAUDE.md — iLokal Web
 
+<!-- TEMP: remove when the landing redesign is merged -->
+> **Active work:** Landing redesign ("the walk") — the landing rebuilt on the
+> brand's gradient, with the craving switcher as its signature. Reveals are CSS
+> view-timeline animations, NOT motion: `initial` lands in the server HTML, so
+> `whileInView` shipped `opacity:0` and the page rendered blank without JS.
+> Don't reintroduce it — `sections.test.tsx` guards this. Parity table, design
+> plan and motion budget kept local (not committed). Presentational only;
+> delete this note when finished.
+
 <!-- TEMP: remove when the brand v1.0 rollout is merged -->
 > **Active work:** Brand v1.0 rollout — the presented red/yellow identity
 > replaces the green "Hablon Weave" everywhere (palette, both typefaces, mark,

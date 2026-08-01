@@ -8,7 +8,10 @@
  */
 
 import { z } from 'zod';
-import { MAX_SECTION_NAME_LENGTH } from '@/lib/types/section';
+import {
+  MAX_SECTION_NAME_LENGTH,
+  MAX_SECTIONS_PER_SHOP,
+} from '@/lib/types/section';
 
 /**
  * Trimmed before length checks, matching the DB's `char_length(btrim(name))`.
@@ -36,11 +39,24 @@ export const updateSectionSchema = z
     message: 'Nothing to update',
   });
 
+/** A single section id, for the rename/archive actions. */
+export const sectionIdSchema = z.guid('Invalid section ID');
+
 /** Reorder takes the full ordered list of ids — see `reorderSections`. */
 export const reorderSectionsSchema = z.object({
   // z.guid(), not z.uuid(): Zod 4's uuid() is strict RFC-9562 and rejects this
   // app's Postgres-generated ids (CLAUDE.md).
-  section_ids: z.array(z.guid()).min(1).max(100),
+  //
+  // Capped at the same number the DB allows live per shop, and de-duplicated:
+  // a repeated id silently collapses the order (two positions written to one
+  // row) and leaves another section's position never written at all.
+  section_ids: z
+    .array(z.guid())
+    .min(1)
+    .max(MAX_SECTIONS_PER_SHOP)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: 'Duplicate section in order',
+    }),
 });
 
 export type CreateSectionInput = z.infer<typeof createSectionSchema>;

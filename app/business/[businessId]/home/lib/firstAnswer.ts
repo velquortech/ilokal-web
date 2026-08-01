@@ -25,8 +25,12 @@ export type FirstAnswer = {
   /** The comparison, or what to do about it. */
   detail: string;
   tone: FirstAnswerTone;
-  /** Set when the useful next step is an action, not a number. */
-  cta?: { label: string; href: 'coupons' };
+  /**
+   * Set when the useful next step is an action, not a number. Label only —
+   * the card owns the destination, and a `href` field here would promise a
+   * routing decision this data does not make.
+   */
+  cta?: { label: string };
 };
 
 function plural(n: number, one: string, many: string): string {
@@ -50,7 +54,7 @@ export function buildFirstAnswer(
       detail:
         'Customers can follow your shop, but there is nothing for them to redeem yet.',
       tone: 'attention',
-      cta: { label: 'Create a deal', href: 'coupons' },
+      cta: { label: 'Create a deal' },
     };
   }
 

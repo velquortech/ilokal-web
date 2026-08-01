@@ -202,11 +202,14 @@ describe('removeSaleFromProduct()', () => {
 
 describe('getProductStatsByBusiness()', () => {
   it('returns correct counts for each status', async () => {
+    // The real CHECK is active|unlisted|disabled (20260526000013); this
+    // suite used to feed 'inactive'/'archived', which the DB cannot store, so
+    // it asserted buckets that were always zero in production.
     const rows = [
       { status: 'active' },
       { status: 'active' },
-      { status: 'inactive' },
-      { status: 'archived' },
+      { status: 'unlisted' },
+      { status: 'disabled' },
     ];
     const chain = buildChain();
     chain.eq = vi.fn().mockResolvedValue({ data: rows, error: null });
@@ -216,8 +219,8 @@ describe('getProductStatsByBusiness()', () => {
 
     expect(result.total).toBe(4);
     expect(result.active).toBe(2);
-    expect(result.inactive).toBe(1);
-    expect(result.archived).toBe(1);
+    expect(result.unlisted).toBe(1);
+    expect(result.disabled).toBe(1);
   });
 
   it('returns all zeros when no products exist', async () => {
@@ -227,7 +230,7 @@ describe('getProductStatsByBusiness()', () => {
 
     const result = await productQuery.getProductStatsByBusiness(BUSINESS_ID);
 
-    expect(result).toEqual({ total: 0, active: 0, inactive: 0, archived: 0 });
+    expect(result).toEqual({ total: 0, active: 0, unlisted: 0, disabled: 0 });
   });
 
   it('returns all zeros on DB error', async () => {
@@ -240,22 +243,22 @@ describe('getProductStatsByBusiness()', () => {
 
     const result = await productQuery.getProductStatsByBusiness(BUSINESS_ID);
 
-    expect(result).toEqual({ total: 0, active: 0, inactive: 0, archived: 0 });
+    expect(result).toEqual({ total: 0, active: 0, unlisted: 0, disabled: 0 });
   });
 
-  it('correctly handles a business with only archived products', async () => {
+  it('correctly handles a business with only disabled products', async () => {
     const chain = buildChain();
     chain.eq = vi.fn().mockResolvedValue({
-      data: [{ status: 'archived' }, { status: 'archived' }],
+      data: [{ status: 'disabled' }, { status: 'disabled' }],
       error: null,
     });
     mockSupabase(chain);
 
     const result = await productQuery.getProductStatsByBusiness(BUSINESS_ID);
 
-    expect(result.archived).toBe(2);
+    expect(result.disabled).toBe(2);
     expect(result.active).toBe(0);
-    expect(result.inactive).toBe(0);
+    expect(result.unlisted).toBe(0);
   });
 });
 

@@ -19,7 +19,7 @@ import { brandToneFor } from '@/lib/utils/brandTone';
 import { cn } from '@/lib/utils';
 import { getOfferingVocabulary } from '@/lib/api/offerings/offeringQuery';
 import { getBookingsEnabled } from '@/lib/api/appSettings';
-import { getSectionsWithCounts } from '@/lib/api/sections/sectionQuery';
+import { getSectionsForDisplay } from '@/lib/api/sections/sectionQuery';
 import { groupOfferingsBySection } from '@/lib/utils/groupOfferings';
 import { BusinessInfoPanel } from './components/business-info-panel';
 import { CouponCard } from './components/coupon-card';
@@ -94,7 +94,7 @@ export default async function PublicBusinessPage({
     following,
     vocabulary,
     bookingsEnabled,
-    sectionsResult,
+    sections,
   ] = await Promise.all([
     getPublicMenu(business.id, menuPage, 8),
     getPublicCoupons(business.id),
@@ -102,8 +102,10 @@ export default async function PublicBusinessPage({
     // A salon's public page should read "Service Menu", not "Menu".
     getOfferingVocabulary(business.id),
     getBookingsEnabled(),
+    // Names and order only — this page renders no counts, and the aggregate
+    // RPC is not worth a per-request cost on the busiest anonymous route.
     // Public read: RLS exposes sections of verified, non-archived shops only.
-    getSectionsWithCounts(business.id),
+    getSectionsForDisplay(business.id),
   ]);
 
   const products =
@@ -121,10 +123,7 @@ export default async function PublicBusinessPage({
   // section spanning a boundary is headed again on the next page — the way a
   // printed menu reads. Fetching every offering to group globally is the
   // unbounded read the perf standard forbids.
-  const menuGroups = groupOfferingsBySection(
-    products.products,
-    sectionsResult.sections,
-  );
+  const menuGroups = groupOfferingsBySection(products.products, sections);
 
   return (
     <div className="flex flex-1 flex-col space-y-6">

@@ -36,6 +36,8 @@ interface ProductCataloguesContentProps {
   sections: ProductSectionWithCount[];
   uncategorisedCount: number;
   sectionsFailed?: boolean;
+  /** Counts RPC failed — every `product_count` is a placeholder zero. */
+  countsFailed?: boolean;
 }
 
 export function ProductCataloguesContent({
@@ -47,6 +49,7 @@ export function ProductCataloguesContent({
   sections,
   uncategorisedCount,
   sectionsFailed = false,
+  countsFailed = false,
 }: ProductCataloguesContentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -142,6 +145,7 @@ export function ProductCataloguesContent({
             <Catalogues
               sections={sections}
               uncategorisedCount={uncategorisedCount}
+              countsFailed={countsFailed}
               selectedSection={selectedSection}
               onSectionChange={handleSectionChange}
             />
@@ -154,6 +158,7 @@ export function ProductCataloguesContent({
                 sections={sections}
                 uncategorisedCount={uncategorisedCount}
                 loadFailed={sectionsFailed}
+                countsFailed={countsFailed}
               />
               <FilterProducts
                 selectedStatus={selectedStatus}

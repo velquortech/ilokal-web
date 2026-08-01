@@ -56,6 +56,18 @@ describe('getSectionsWithCounts', () => {
     expect(res.error).toBeUndefined();
   });
 
+  it('scopes the counts to a branch when one is given', async () => {
+    mockClient.from.mockReturnValue(selectChain({ data: [], error: null }));
+    mockClient.rpc.mockResolvedValue({ data: [], error: null });
+
+    await getSectionsWithCounts('biz-1', 'branch-9');
+
+    expect(mockClient.rpc).toHaveBeenCalledWith('section_product_counts', {
+      p_business_id: 'biz-1',
+      p_branch_id: 'branch-9',
+    });
+  });
+
   it('still returns the sections when only the counts RPC fails', async () => {
     mockClient.from.mockReturnValue(
       selectChain({ data: [{ id: 'a', name: 'Hot Drinks' }], error: null }),
@@ -67,11 +79,24 @@ describe('getSectionsWithCounts', () => {
 
     const res = await getSectionsWithCounts('biz-1');
 
-    // Counts are decorative next to the names — an error panel here would be
-    // a worse answer than a zero.
+    // Names still render, but the caller is told the zeroes are placeholders:
+    // the archive dialog used to read them as "this section is empty" right
+    // before moving real offerings to Uncategorised.
     expect(res.sections).toHaveLength(1);
     expect(res.sections[0].product_count).toBe(0);
+    expect(res.counts_failed).toBe(true);
     expect(res.error).toBeUndefined();
+  });
+
+  it('does not flag counts_failed on the happy path', async () => {
+    mockClient.from.mockReturnValue(
+      selectChain({ data: [{ id: 'a', name: 'Hot Drinks' }], error: null }),
+    );
+    mockClient.rpc.mockResolvedValue({ data: [], error: null });
+
+    const res = await getSectionsWithCounts('biz-1');
+
+    expect(res.counts_failed).toBeUndefined();
   });
 
   it('reports LOAD_FAILED when the sections read itself fails', async () => {

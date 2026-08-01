@@ -20,9 +20,23 @@ import type { ProductSectionWithCount } from '@/lib/types';
  */
 export const UNCATEGORISED = 'none';
 
+/**
+ * Radix's single-type ToggleGroup computes its pressed set as
+ * `value ? [value] : []`, so an EMPTY-STRING item value can never be selected —
+ * the All chip rendered permanently unpressed, which is the discoverability
+ * problem this strip exists to fix. It gets a sentinel instead, mapped back to
+ * '' (= no filter) on the way out.
+ */
+const ALL = 'all';
+
 interface CataloguesProps {
   sections: ProductSectionWithCount[];
   uncategorisedCount: number;
+  /**
+   * The counts RPC failed, so `product_count` is a placeholder zero — show the
+   * chips without numbers rather than a confident "0".
+   */
+  countsFailed?: boolean;
   /** `''` = All. */
   selectedSection: string;
   onSectionChange: (value: string) => void;
@@ -31,6 +45,7 @@ interface CataloguesProps {
 export function Catalogues({
   sections,
   uncategorisedCount,
+  countsFailed = false,
   selectedSection,
   onSectionChange,
 }: CataloguesProps) {
@@ -39,31 +54,37 @@ export function Catalogues({
       <ToggleGroup
         type="single"
         variant="outline"
-        value={selectedSection}
-        // ToggleGroup hands back '' when the active item is re-clicked, which
-        // is exactly "All" — so deselecting and pressing All agree.
-        onValueChange={onSectionChange}
+        value={selectedSection || ALL}
+        // Radix also hands back '' when the active chip is re-clicked; both
+        // that and the All chip mean "no filter".
+        onValueChange={(value) =>
+          onSectionChange(value === ALL || value === '' ? '' : value)
+        }
         aria-label="Filter by section"
       >
-        <ToggleGroupItem value="">All</ToggleGroupItem>
+        <ToggleGroupItem value={ALL}>All</ToggleGroupItem>
 
         {sections.map((section) => (
           <ToggleGroupItem key={section.id} value={section.id}>
             {section.name}
-            <span className="text-muted-foreground ml-1.5 text-xs">
-              {section.product_count}
-            </span>
+            {!countsFailed && (
+              <span className="text-muted-foreground ml-1.5 text-xs">
+                {section.product_count}
+              </span>
+            )}
           </ToggleGroupItem>
         ))}
 
         {/* Only worth showing when something is actually in it — a shop that
             has grouped everything should not be nagged by an empty bucket. */}
-        {uncategorisedCount > 0 && (
+        {(uncategorisedCount > 0 || countsFailed) && (
           <ToggleGroupItem value={UNCATEGORISED}>
             Uncategorised
-            <span className="text-muted-foreground ml-1.5 text-xs">
-              {uncategorisedCount}
-            </span>
+            {!countsFailed && (
+              <span className="text-muted-foreground ml-1.5 text-xs">
+                {uncategorisedCount}
+              </span>
+            )}
           </ToggleGroupItem>
         )}
       </ToggleGroup>

@@ -30,12 +30,6 @@ import { toast } from 'sonner';
 import { useCelebrate } from '@/components/custom/Celebrate';
 import type { Category, PriceType, ProductSectionWithCount } from '@/lib/types';
 
-/**
- * Radix Select forbids an empty-string item value, so "no section" needs a
- * sentinel in the UI. It is mapped back to '' (then to NULL) on submit —
- * Uncategorised is a real state, not a missing one.
- */
-const NO_SECTION = '__none__';
 import type {
   BookingMode,
   OfferingAttributeField,
@@ -52,6 +46,13 @@ import {
   createProductAction,
   uploadProductImageAction,
 } from '../../actions/productActions';
+
+/**
+ * Radix Select forbids an empty-string item value, so "no section" needs a
+ * sentinel in the UI. It is mapped back to '' (then to NULL) on submit —
+ * Uncategorised is a real state, not a missing one.
+ */
+const NO_SECTION = '__none__';
 
 interface AddProductDialogProps {
   children: React.ReactNode;

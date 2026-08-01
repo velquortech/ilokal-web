@@ -64,11 +64,19 @@ export function ManageSections({
   sections,
   uncategorisedCount,
   loadFailed = false,
+  countsFailed = false,
 }: {
   businessId: string;
   sections: ProductSectionWithCount[];
   uncategorisedCount: number;
   loadFailed?: boolean;
+  /**
+   * The counts RPC failed, so every `product_count` is a placeholder zero.
+   * Counts are hidden and the archive confirmation stops claiming a section is
+   * empty — telling an owner "nothing else changes" before moving real
+   * offerings to Uncategorised is worse than saying nothing.
+   */
+  countsFailed?: boolean;
 }) {
   const router = useRouter();
   const vocabulary = useOfferingVocabulary();
@@ -82,7 +90,32 @@ export function ManageSections({
     React.useState<ProductSectionWithCount | null>(null);
   const addInputRef = React.useRef<HTMLInputElement>(null);
 
-  const atCap = sections.length >= MAX_SECTIONS_PER_SHOP;
+  /**
+   * The order shown, held locally so two quick reorders cannot fight.
+   *
+   * `router.refresh()` returns void and cannot be awaited, so the `sections`
+   * prop is still the OLD order for a while after a save lands. Rebuilding the
+   * payload from that prop meant a second move recomputed the whole order from
+   * stale data and silently undid the first (A,B,C → move B up → move C up
+   * wrote A,C,B). Local state moves immediately and reconciles when the server
+   * order actually arrives.
+   */
+  const [order, setOrder] = React.useState<ProductSectionWithCount[]>(sections);
+  const serverOrderKey = sections.map((s) => s.id).join(',');
+
+  // Keyed on the id SEQUENCE, not the array identity: every server render
+  // hands down a fresh array, and re-seeding on identity alone would clobber
+  // an optimistic move the moment any unrelated refresh landed.
+  const [seededFrom, setSeededFrom] = React.useState(serverOrderKey);
+  if (seededFrom !== serverOrderKey) {
+    // Render-phase state sync, the documented alternative to an effect for
+    // "reset state when a prop changes" — it avoids the extra paint an effect
+    // would cause.
+    setSeededFrom(serverOrderKey);
+    setOrder(sections);
+  }
+
+  const atCap = order.length >= MAX_SECTIONS_PER_SHOP;
   const busy = pendingId !== null;
 
   React.useEffect(() => {
@@ -157,12 +190,24 @@ export function ManageSections({
 
   const move = async (index: number, direction: -1 | 1) => {
     const target = index + direction;
-    if (target < 0 || target >= sections.length) return;
-    const ids = sections.map((s) => s.id);
-    [ids[index], ids[target]] = [ids[target], ids[index]];
-    await run(sections[index].id, 'Order saved', () =>
-      reorderSectionsAction(businessId, ids),
+    if (target < 0 || target >= order.length) return;
+
+    const next = [...order];
+    [next[index], next[target]] = [next[target], next[index]];
+    const moved = order[index];
+    // Optimistic: the row moves under the cursor, and the NEXT move starts
+    // from this order rather than from whatever the server last sent.
+    setOrder(next);
+
+    const ok = await run(moved.id, 'Order saved', () =>
+      reorderSectionsAction(
+        businessId,
+        next.map((s) => s.id),
+      ),
     );
+    // Put it back if the write was refused; otherwise the list would claim an
+    // order the database does not have.
+    if (!ok) setOrder(order);
   };
 
   return (
@@ -173,6 +218,8 @@ export function ManageSections({
             setIsAdding(false);
             setEditingId(null);
             setNewName('');
+            // Otherwise a confirm staged before closing is still reachable.
+            setConfirmArchive(null);
           }
         }}
       >
@@ -197,7 +244,7 @@ export function ManageSections({
 
           <div className="flex items-center justify-between gap-2 pt-4">
             <p className="text-muted-foreground text-xs">
-              {sections.length} of {MAX_SECTIONS_PER_SHOP} used
+              {order.length} of {MAX_SECTIONS_PER_SHOP} used
             </p>
             <Button
               size="sm"
@@ -271,13 +318,13 @@ export function ManageSections({
                   </p>
                 )}
 
-                {!loadFailed && sections.length === 0 && !isAdding && (
+                {!loadFailed && order.length === 0 && !isAdding && (
                   <p className="text-muted-foreground rounded-md border border-dashed p-6 text-center text-sm">
                     No sections yet. Everything sits under Uncategorised.
                   </p>
                 )}
 
-                {sections.map((section, index) => (
+                {order.map((section, index) => (
                   <div
                     key={section.id}
                     className={`border-border group flex w-full items-center gap-1 rounded-md border py-2 pr-1 transition-colors ${
@@ -329,12 +376,14 @@ export function ManageSections({
                           {section.name}
                         </span>
 
-                        <span className="text-muted-foreground ml-auto shrink-0 px-1 text-xs">
-                          {section.product_count}{' '}
-                          {section.product_count === 1
-                            ? vocabulary.singular.toLowerCase()
-                            : vocabulary.plural.toLowerCase()}
-                        </span>
+                        {!countsFailed && (
+                          <span className="text-muted-foreground ml-auto shrink-0 px-1 text-xs">
+                            {section.product_count}{' '}
+                            {section.product_count === 1
+                              ? vocabulary.singular.toLowerCase()
+                              : vocabulary.plural.toLowerCase()}
+                          </span>
+                        )}
 
                         <div className="flex shrink-0 items-center gap-0.5">
                           <button
@@ -351,14 +400,15 @@ export function ManageSections({
                             aria-label={`Move ${section.name} down`}
                             className="hover:text-primary px-1 transition-colors disabled:opacity-30"
                             onClick={() => void move(index, 1)}
-                            disabled={index === sections.length - 1 || busy}
+                            disabled={index === order.length - 1 || busy}
                           >
                             <ChevronDown className="size-4" />
                           </button>
                           <button
                             type="button"
                             aria-label={`Rename ${section.name}`}
-                            className="hover:text-primary px-1 transition-colors"
+                            className="hover:text-primary px-1 transition-colors disabled:opacity-30"
+                            disabled={busy}
                             onClick={() => {
                               setEditingId(section.id);
                               setEditValue(section.name);
@@ -389,12 +439,14 @@ export function ManageSections({
                     section lives, and the owner needs to know it exists. */}
                 <div className="text-muted-foreground flex w-full items-center justify-between rounded-md border border-dashed px-3 py-2 text-sm">
                   <span>Uncategorised</span>
-                  <span className="text-xs">
-                    {uncategorisedCount}{' '}
-                    {uncategorisedCount === 1
-                      ? vocabulary.singular.toLowerCase()
-                      : vocabulary.plural.toLowerCase()}
-                  </span>
+                  {!countsFailed && (
+                    <span className="text-xs">
+                      {uncategorisedCount}{' '}
+                      {uncategorisedCount === 1
+                        ? vocabulary.singular.toLowerCase()
+                        : vocabulary.plural.toLowerCase()}
+                    </span>
+                  )}
                 </div>
               </div>
             </ScrollArea>
@@ -413,13 +465,15 @@ export function ManageSections({
           <DialogHeader>
             <DialogTitle>Remove “{confirmArchive?.name}”?</DialogTitle>
             <DialogDescription>
-              {confirmArchive?.product_count
-                ? `Its ${confirmArchive.product_count} ${
-                    confirmArchive.product_count === 1
-                      ? vocabulary.singular.toLowerCase()
-                      : vocabulary.plural.toLowerCase()
-                  } stay in your catalogue and move to Uncategorised. Nothing is deleted.`
-                : 'This section is empty, so nothing else changes.'}
+              {countsFailed
+                ? `Anything in this section stays in your catalogue and moves to Uncategorised. Nothing is deleted.`
+                : confirmArchive?.product_count
+                  ? `Its ${confirmArchive.product_count} ${
+                      confirmArchive.product_count === 1
+                        ? vocabulary.singular.toLowerCase()
+                        : vocabulary.plural.toLowerCase()
+                    } stay in your catalogue and move to Uncategorised. Nothing is deleted.`
+                  : 'This section is empty, so nothing else changes.'}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

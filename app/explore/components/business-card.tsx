@@ -27,7 +27,7 @@ export function BusinessCard({ business }: { business: DirectoryBusiness }) {
     <Link
       href={explorePath(business.id)}
       className={cn(
-        'group bg-card overflow-hidden rounded-2xl border outline-none',
+        'group bg-card overflow-hidden rounded-2xl border outline-hidden',
         'shadow-[0_8px_24px_-16px_rgba(60,10,10,.4)]',
         'transition-[transform,box-shadow] duration-300 ease-out',
         'hover:shadow-[0_20px_44px_-20px_rgba(60,10,10,.45)]',

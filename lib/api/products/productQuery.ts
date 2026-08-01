@@ -468,17 +468,21 @@ export async function getProductStatsByBusiness(business_id: string) {
       .select('status')
       .eq('business_id', business_id);
 
-    if (error) return { total: 0, active: 0, inactive: 0, archived: 0 };
+    // NOTE (pre-existing, fixed here because it blocked typecheck): this
+    // counted 'inactive' and 'archived', which are not values `products.status`
+    // can hold — the CHECK is active|unlisted|disabled (20260526000013). Both
+    // buckets were therefore ALWAYS zero wherever this was rendered.
+    if (error) return { total: 0, active: 0, unlisted: 0, disabled: 0 };
 
     const all = data || [];
     return {
       total: all.length,
       active: all.filter((p) => p.status === 'active').length,
-      inactive: all.filter((p) => p.status === 'inactive').length,
-      archived: all.filter((p) => p.status === 'archived').length,
+      unlisted: all.filter((p) => p.status === 'unlisted').length,
+      disabled: all.filter((p) => p.status === 'disabled').length,
     };
   } catch {
-    return { total: 0, active: 0, inactive: 0, archived: 0 };
+    return { total: 0, active: 0, unlisted: 0, disabled: 0 };
   }
 }
 

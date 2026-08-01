@@ -118,6 +118,42 @@ describe('Catalogues chip strip', () => {
     expect(container.textContent).not.toContain('Uncategorised');
   });
 
+  it('shows All as SELECTED when no filter is applied', () => {
+    // Regression: with `value=""` on the item, Radix computes its pressed set
+    // as `value ? [value] : []`, so the default view had no active chip at all
+    // — the exact discoverability problem this strip exists to fix.
+    render({
+      sections: [section('a', 'Hot Drinks', 1)],
+      uncategorisedCount: 0,
+      selectedSection: '',
+      onSectionChange: noop,
+    });
+
+    const pressed = [...container.querySelectorAll('button')].filter(
+      (b) => b.getAttribute('data-state') === 'on',
+    );
+    expect(pressed).toHaveLength(1);
+    expect(pressed[0].textContent).toContain('All');
+  });
+
+  it('hides counts when the counts read failed, rather than showing zeroes', () => {
+    render({
+      sections: [section('a', 'Hot Drinks', 0)],
+      uncategorisedCount: 0,
+      countsFailed: true,
+      selectedSection: '',
+      onSectionChange: noop,
+    });
+
+    const chip = [...container.querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Hot Drinks'),
+    );
+    expect(chip?.textContent?.trim()).toBe('Hot Drinks');
+    // Uncategorised stays reachable: with counts unknown we cannot claim it is
+    // empty, and hiding it would strand any ungrouped offering.
+    expect(container.textContent).toContain('Uncategorised');
+  });
+
   it('marks the active chip, including Uncategorised', () => {
     render({
       sections: [section('a', 'Hot Drinks', 1)],

@@ -61,13 +61,13 @@ function params(sp: Record<string, string | string[] | undefined>) {
 }
 
 describe('ProductCataloguesPage searchParams passthrough', () => {
-  it('forwards page/perPage/search/category/branch to getProductsPaginated', async () => {
+  it('forwards page/perPage/search/section/branch to getProductsPaginated', async () => {
     await ProductCataloguesPage(
       params({
         page: '2',
         perPage: '20',
         search: 'latte',
-        category: 'cat-1',
+        section: 'sec-1',
         branch: 'branch-1',
       }),
     );
@@ -78,9 +78,29 @@ describe('ProductCataloguesPage searchParams passthrough', () => {
       page: 2,
       per_page: 20,
       search: 'latte',
-      category_id: 'cat-1',
+      section_id: 'sec-1',
       status: '',
     });
+  });
+
+  it("maps the Uncategorised chip's 'none' straight through", async () => {
+    await ProductCataloguesPage(params({ section: 'none' }));
+
+    expect(productQuery.getProductsPaginated).toHaveBeenCalledWith(
+      expect.objectContaining({ section_id: 'none' }),
+    );
+  });
+
+  it('ignores a stale ?category= param', async () => {
+    // The chip strip writes `section` now, and updateParams preserves unknown
+    // params — a bookmarked `?category=` would otherwise keep filtering the
+    // table with no control able to show or clear it.
+    await ProductCataloguesPage(params({ category: 'cat-1' }));
+
+    const args = vi
+      .mocked(productQuery.getProductsPaginated)
+      .mock.calls.at(-1)?.[0];
+    expect(args).not.toHaveProperty('category_id');
   });
 
   it("defaults to page 1 / perPage 10 / status '' (all statuses)", async () => {

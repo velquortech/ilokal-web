@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Store } from 'lucide-react';
@@ -22,10 +22,7 @@ import {
   updateBusinessProfileSchema,
   type UpdateBusinessProfileInput,
 } from '@/lib/validation/business';
-import {
-  getBusinessCategoriesAction,
-  updateBusinessProfileAction,
-} from '../../actions/profileActions';
+import { updateBusinessProfileAction } from '../../actions/profileActions';
 import type { BusinessProfileData } from '@/lib/types';
 import { LogoUploader } from './LogoUploader';
 import { GalleryUploader } from './GalleryUploader';
@@ -33,25 +30,21 @@ import { GalleryUploader } from './GalleryUploader';
 interface BusinessInfoFormProps {
   businessId: string;
   business: BusinessProfileData;
+  /**
+   * `business_categories` — the table `businesses.category_id` actually points
+   * at. Fetched by the server page: filling this from a client effect had no
+   * error path (silent empty picker) and made a public Server Action out of
+   * reference data.
+   */
+  categories: { id: string; name: string }[];
 }
 
 export function BusinessInfoForm({
   businessId,
   business,
+  categories,
 }: BusinessInfoFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>(
-    [],
-  );
-
-  useEffect(() => {
-    // business_categories, NOT the offering categories this used to read:
-    // `businesses.category_id` FKs to that table, so the old list made every
-    // save a foreign-key violation.
-    getBusinessCategoriesAction().then((res) => {
-      if (res.success && res.data) setCategories(res.data);
-    });
-  }, []);
 
   const {
     register,

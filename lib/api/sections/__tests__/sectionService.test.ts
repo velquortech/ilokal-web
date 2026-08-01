@@ -33,7 +33,9 @@ function chain(result: Result) {
   }
   c.single = vi.fn(async () => result);
   c.maybeSingle = vi.fn(async () => result);
-  // Reorder awaits the builder itself rather than a terminal call.
+  // Reorder awaits the builder itself (after .select('id')), and now COUNTS
+  // the returned rows — a chain resolving to `data: null` is what a stale or
+  // foreign id looks like.
   c.then = (resolve: (v: Result) => unknown) =>
     Promise.resolve(result).then(resolve);
   return c;
@@ -203,7 +205,7 @@ describe('archiveSection', () => {
 
 describe('reorderSections', () => {
   it('writes each id its index, so a retry converges', async () => {
-    const c = chain({ data: null, error: null });
+    const c = chain({ data: [{ id: 'x' }], error: null });
     mockClient.from.mockReturnValue(c);
 
     const res = await sectionService.reorderSections('biz-1', ['a', 'b', 'c']);
@@ -212,6 +214,20 @@ describe('reorderSections', () => {
     expect(c.update).toHaveBeenNthCalledWith(1, { position: 0 });
     expect(c.update).toHaveBeenNthCalledWith(2, { position: 1 });
     expect(c.update).toHaveBeenNthCalledWith(3, { position: 2 });
+  });
+
+  it('refuses to claim success when a row matched nothing', async () => {
+    // A stale, foreign or already-archived id updates zero rows without
+    // erroring. Reporting that as "Order saved" tells the owner their menu is
+    // in an order the database has never seen.
+    const applied = chain({ data: [{ id: 'a' }], error: null });
+    const missed = chain({ data: [], error: null });
+    mockClient.from.mockReturnValueOnce(applied).mockReturnValueOnce(missed);
+
+    const res = await sectionService.reorderSections('biz-1', ['a', 'gone']);
+
+    expect(res.success).toBe(false);
+    expect(res.error?.code).toBe('NOT_FOUND');
   });
 
   it('reports a failure from any row in the batch', async () => {

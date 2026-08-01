@@ -20,7 +20,7 @@ describe('buildFirstAnswer', () => {
     const answer = buildFirstAnswer([point('Jan', 0)], 0);
     expect(answer.value).toBeNull();
     expect(answer.headline).toBe('No live deals right now');
-    expect(answer.cta).toEqual({ label: 'Create a deal', href: 'coupons' });
+    expect(answer.cta).toEqual({ label: 'Create a deal' });
     expect(answer.tone).toBe('attention');
   });
 

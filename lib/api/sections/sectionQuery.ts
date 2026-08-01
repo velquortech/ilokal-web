@@ -18,6 +18,14 @@ export type SectionListResult = {
   sections: ProductSectionWithCount[];
   /** Live products with no section. Rendered as "Uncategorised". */
   uncategorised_count: number;
+  /**
+   * The counts RPC failed, so every `product_count` here is a placeholder
+   * zero. Callers MUST NOT read those zeroes as "empty" — the archive
+   * confirmation used to say "this section is empty, so nothing else changes"
+   * on the strength of them, which is a lie told just before moving real
+   * offerings to Uncategorised.
+   */
+  counts_failed?: boolean;
   error?: 'LOAD_FAILED';
 };
 
@@ -31,6 +39,12 @@ const EMPTY: SectionListResult = { sections: [], uncategorised_count: 0 };
  */
 export async function getSectionsWithCounts(
   businessId: string,
+  /**
+   * Scope the counts to one branch. The catalogue table is branch-filterable,
+   * and shop-wide chip counts beside a branch-filtered table are two different
+   * numbers describing the same thing.
+   */
+  branchId?: string,
 ): Promise<SectionListResult> {
   if (!businessId) return EMPTY;
 
@@ -48,7 +62,10 @@ export async function getSectionsWithCounts(
         // owner is reordering, and a list that reshuffles between renders is
         // its own bug.
         .order('created_at', { ascending: true }),
-      supabase.rpc('section_product_counts', { p_business_id: businessId }),
+      supabase.rpc('section_product_counts', {
+        p_business_id: businessId,
+        p_branch_id: branchId ?? undefined,
+      }),
     ]);
 
     if (sectionsRes.error) {
@@ -56,8 +73,9 @@ export async function getSectionsWithCounts(
       return { ...EMPTY, error: 'LOAD_FAILED' };
     }
 
-    // Counts are decorative next to the names: if only the RPC fails, show the
-    // sections with zeroes rather than an error panel.
+    // If only the RPC fails, still show the names — but say the counts are
+    // unknown rather than letting placeholder zeroes speak.
+    const countsFailed = !!countsRes.error;
     if (countsRes.error) {
       console.error('[getSectionsWithCounts counts]', countsRes.error);
     }
@@ -77,10 +95,43 @@ export async function getSectionsWithCounts(
     return {
       sections,
       uncategorised_count: counts.get(null) ?? 0,
+      ...(countsFailed && { counts_failed: true }),
     };
   } catch (err) {
     console.error('[getSectionsWithCounts]', err);
     return { ...EMPTY, error: 'LOAD_FAILED' };
+  }
+}
+
+/**
+ * Names and order only — no counts.
+ *
+ * The public shop page groups by section and renders no numbers, so paying for
+ * the aggregate RPC there is a per-request cost on the highest-traffic
+ * anonymous route for data nobody sees.
+ */
+export async function getSectionsForDisplay(
+  businessId: string,
+): Promise<Pick<ProductSection, 'id' | 'name' | 'position'>[]> {
+  if (!businessId) return [];
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('product_sections')
+      .select('id, name, position')
+      .eq('business_id', businessId)
+      .is('archived_at', null)
+      .order('position', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('[getSectionsForDisplay]', error);
+      return [];
+    }
+    return (data ?? []) as Pick<ProductSection, 'id' | 'name' | 'position'>[];
+  } catch (err) {
+    console.error('[getSectionsForDisplay]', err);
+    return [];
   }
 }
 

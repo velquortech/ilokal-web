@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { explorePath } from '@/config/routeConfig';
 import type { FeedDeal } from '@/lib/api/customer/customerQuery';
 import { brandToneIndex } from '@/lib/utils/brandTone';
+import { BUSINESS_TIME_ZONE } from '@/lib/utils/operatingHours';
 
 /**
  * A deal, as a card you would actually want to tap.
@@ -53,6 +54,9 @@ export function DealCard({
   featured?: boolean;
 }) {
   const ends = new Date(deal.expiry_date).toLocaleDateString('en-PH', {
+    // Pinned, like bookings: the server renders in UTC, so a deal expiring on
+    // a Manila evening would otherwise read as ending the day before.
+    timeZone: BUSINESS_TIME_ZONE,
     month: 'short',
     day: 'numeric',
   });
@@ -61,7 +65,7 @@ export function DealCard({
     <Link
       href={explorePath(deal.business_id)}
       className={cn(
-        'group flex flex-col justify-between rounded-2xl p-5 outline-none',
+        'group flex flex-col justify-between rounded-2xl p-5 outline-hidden',
         'shadow-[0_10px_30px_-14px_rgba(60,10,10,.35)]',
         'transition-[transform,box-shadow] duration-300 ease-out',
         'hover:shadow-[0_22px_50px_-18px_rgba(60,10,10,.45)]',

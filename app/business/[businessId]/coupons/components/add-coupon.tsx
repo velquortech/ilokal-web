@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Tag, Ticket } from 'lucide-react';
 import { toast } from 'sonner';
+import { useCelebrate } from '@/components/custom/Celebrate';
 import { cn } from '@/lib/utils';
 import type {
   CouponStatus,
@@ -87,6 +88,7 @@ export function AddCouponDialog({
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
+  const celebrate = useCelebrate();
 
   const {
     register,
@@ -148,9 +150,14 @@ export function AddCouponDialog({
         return;
       }
 
+      const kind = data.promotion_type === 'deal' ? 'Deal' : 'Coupon';
+      const live = data.status === 'published';
       toast.success(
-        `${data.promotion_type === 'deal' ? 'Deal' : 'Coupon'} "${data.code.toUpperCase()}" created`,
+        `${kind} "${data.code.toUpperCase()}" ${live ? 'is live' : 'saved as a draft'}`,
       );
+      // Only a PUBLISHED promo is an outcome — saving a draft is housekeeping,
+      // and confetti on it would make the burst mean nothing.
+      if (live) celebrate();
       setOpen(false);
       reset();
       onSuccess?.();

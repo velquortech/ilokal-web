@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { PageHeader } from '@/components/custom/PageHeader';
 import { Building2 } from 'lucide-react';
 import { SearchBar } from '@/components/custom/Searchbar';
 import { Card, CardContent } from '@/components/ui/card';
@@ -95,13 +96,18 @@ export function RedeemedCouponsContent({
 
   return (
     <div className="font-giest flex h-max flex-1 flex-col space-y-6 pb-8">
-      <div className="flex flex-col">
-        <span className="text-lg font-medium">Redeemed Coupons</span>
-        <span className="text-muted-foreground inline-flex items-center gap-1.5 text-sm">
-          <Building2 className="size-3.5" />
-          {branchName}
-        </span>
-      </div>
+      {/* Branch goes in the eyebrow: which branch you are looking at is the
+          context people lose most often on this page. */}
+      <PageHeader
+        title="Redeemed Coupons"
+        eyebrow={
+          <span className="inline-flex items-center gap-1.5">
+            <Building2 className="size-3" />
+            {branchName}
+          </span>
+        }
+        lede="Every coupon your customers have claimed at the counter."
+      />
 
       <RedemptionStats stats={stats} />
 

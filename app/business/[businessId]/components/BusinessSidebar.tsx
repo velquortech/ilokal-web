@@ -18,7 +18,6 @@ import {
 import { Fragment } from 'react/jsx-runtime';
 import { SIDEBAR_SECTIONS } from '../libs/configs/config';
 import { UserMenu } from './UserMenu';
-import { ProCard } from './ProCard';
 import { GlobalSearch } from '@/components/custom/GlobalSearch';
 import { useBusinessShop } from '@/providers/BusinessProvider';
 import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
@@ -83,7 +82,11 @@ export function BusinessSidebar({
   return (
     <Sidebar collapsible="icon" variant="sidebar" className="border-r">
       <SidebarHeader className="space-y-1 border-b px-4 py-3 group-data-[collapsible=icon]:px-2.5">
-        <SidebarLogo shopName={business?.shop_name} logo={business?.logo_url} />
+        <SidebarLogo
+          shopName={business?.shop_name}
+          logo={business?.logo_url}
+          businessId={business?.id}
+        />
       </SidebarHeader>
 
       <SidebarContent className="overflow-y-auto py-3">
@@ -102,10 +105,11 @@ export function BusinessSidebar({
           </p>
         )}
       </SidebarContent>
-      <div className="mt-auto p-3">
-        <ProCard />
-      </div>
-      <SidebarFooter className="border-t">
+      {/* `ProCard` used to sit here: an "Upgrade to PRO" card with an empty
+          `<Progress />` (no `value`) and a button that went nowhere. There is
+          no billing to upgrade to, so it advertised a product that does not
+          exist and pushed the real nav up. Removed rather than restyled. */}
+      <SidebarFooter className="mt-auto border-t">
         <SidebarMenu>
           <SidebarMenuItem>
             <UserMenu />

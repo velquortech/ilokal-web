@@ -803,6 +803,9 @@ export async function getPublicMenu(
     branch_id: p.branch_id ?? null,
     image_url: resolveStorageUrl(supabase, 'product-images', p.image_url),
     category_name: p.category?.name ?? null,
+    // The shop's own heading for this offering — the public page groups by it.
+    section_id: p.section_id ?? null,
+    section_name: p.section?.name ?? null,
   }));
 
   return {

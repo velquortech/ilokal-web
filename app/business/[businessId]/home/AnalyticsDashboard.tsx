@@ -3,6 +3,7 @@
 import type { BusinessAnalyticsDashboard } from '@/lib/types';
 import type { Branch } from '@/lib/types';
 import {
+  FirstAnswerCard,
   HealthScoreCard,
   MonthlyTrendChart,
   CustomerSegmentsChart,
@@ -33,10 +34,21 @@ export function AnalyticsDashboard({
   const clearHref = `/business/${businessId}`;
 
   return (
-    <div className="-mx-10 -my-6 min-h-full w-full space-y-6 p-6">
+    // The layout already owns the page padding. This used to cancel it with
+    // `-mx-10 -my-6` and re-apply its own, so any change to the shell's padding
+    // silently broke alignment on this page and no other.
+    <div className="w-full space-y-6">
       {isBranchMode && branchName && (
         <BranchContextBanner branchName={branchName} clearHref={clearHref} />
       )}
+
+      {/* One answer first, supporting detail after. */}
+      <FirstAnswerCard
+        trend={data.trend}
+        activeDeals={data.health.active_deals}
+        businessId={businessId}
+        branchId={branchId}
+      />
 
       <HealthScoreCard health={data.health} />
       <AutomationSuggestions suggestions={data.suggestions} />

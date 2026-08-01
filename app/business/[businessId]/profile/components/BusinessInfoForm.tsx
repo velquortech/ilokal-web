@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Store } from 'lucide-react';
@@ -23,28 +23,28 @@ import {
   type UpdateBusinessProfileInput,
 } from '@/lib/validation/business';
 import { updateBusinessProfileAction } from '../../actions/profileActions';
-import { getCategoriesAction } from '../../actions/productActions';
-import type { BusinessProfileData, Category } from '@/lib/types';
+import type { BusinessProfileData } from '@/lib/types';
 import { LogoUploader } from './LogoUploader';
 import { GalleryUploader } from './GalleryUploader';
 
 interface BusinessInfoFormProps {
   businessId: string;
   business: BusinessProfileData;
+  /**
+   * `business_categories` — the table `businesses.category_id` actually points
+   * at. Fetched by the server page: filling this from a client effect had no
+   * error path (silent empty picker) and made a public Server Action out of
+   * reference data.
+   */
+  categories: { id: string; name: string }[];
 }
 
 export function BusinessInfoForm({
   businessId,
   business,
+  categories,
 }: BusinessInfoFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-
-  useEffect(() => {
-    getCategoriesAction().then((res) => {
-      if (res.success && res.data) setCategories(res.data);
-    });
-  }, []);
 
   const {
     register,

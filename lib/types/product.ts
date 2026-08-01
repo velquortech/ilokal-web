@@ -52,6 +52,8 @@ export type Product = {
   business_id: string;
   branch_id: string | null;
   category_id: string | null;
+  /** Owner's own grouping. NULL = Uncategorised. See lib/types/section.ts. */
+  section_id: string | null;
   /** Product vs service — see `lib/types/offering.ts`. Defaults to `'product'`. */
   kind: OfferingKind;
   name: string;
@@ -87,6 +89,7 @@ export type CreateProductRequest = {
   price_type?: PriceType;
   price_unit?: string | null;
   category_id?: string | null;
+  section_id?: string | null;
   image_url?: string | null;
   is_available?: boolean;
   branch_id?: string | null;
@@ -105,6 +108,8 @@ export type ApplySaleRequest = {
 
 export type ProductResponse = Product & {
   category?: Category | null;
+  /** Embedded shop section (id + name only) — see lib/types/section.ts. */
+  section?: { id: string; name: string } | null;
 };
 
 export type PaginatedProductsResponse = {
@@ -138,6 +143,11 @@ export type ProductFilters = {
   per_page?: number;
   search?: string;
   category_id?: string;
+  /**
+   * Filter by the shop's own grouping. `'none'` means Uncategorised — the
+   * products with no section, which are otherwise unreachable from any chip.
+   */
+  section_id?: string | 'none';
   /** Omit for the `'active'` default; pass `''` explicitly to include every status. */
   status?: ProductStatus | '';
   business_id?: string;
@@ -152,6 +162,11 @@ export type CategoryFilters = {
   per_page?: number;
   search?: string;
   sort_by?: 'name_asc' | 'name_desc' | 'newest' | 'oldest';
+  /**
+   * Scope to one vertical: returns that vertical's categories PLUS the global
+   * (NULL) ones. Omit for every category — the admin view.
+   */
+  business_type_id?: string | null;
 };
 
 // ===== Error Types =====

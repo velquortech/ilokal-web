@@ -13,6 +13,7 @@ import type {
   ApplySaleRequest,
   CreateCategoryRequest,
   UpdateCategoryRequest,
+  ProductStatus,
 } from '@/lib/types';
 import * as productQuery from './productQuery';
 import { sectionBelongsToBusiness } from '@/lib/api/sections/sectionQuery';
@@ -400,6 +401,17 @@ export async function updateProduct(
       };
     }
 
+    // A soft-deleted product is not editable. `getProductById` does not filter
+    // archived rows, so without this a status write could flip a deleted
+    // offering back to `active` — the resurrection the bulk path's
+    // `archived_at IS NULL` scope already prevents.
+    if (result.product.archived_at) {
+      return {
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Product not found' },
+      };
+    }
+
     // Quote-pricing rules, resolved against the STORED price_type.
     //
     // `updateProductSchema` can only see the payload, so a partial update that
@@ -521,6 +533,8 @@ export async function updateProduct(
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
+      // Defense in depth against the check above racing a concurrent delete.
+      .is('archived_at', null)
       .select()
       .single();
 
@@ -546,6 +560,75 @@ export async function updateProduct(
       error: {
         code: 'INTERNAL_ERROR',
         message: 'Failed to update product',
+      },
+    };
+  }
+}
+
+/**
+ * Set the status of several products in one statement (business owner only).
+ *
+ * `business_id` is in the WHERE clause, not checked beforehand: it makes the
+ * ownership scope part of the write itself, so an id belonging to another shop
+ * simply doesn't match instead of needing a pre-flight read per row. Archived
+ * rows are excluded — those are soft-deleted, and reviving one through a bulk
+ * status change is not something the table offers.
+ *
+ * `is_available` is kept in sync by the `on_product_status_change` trigger, so
+ * nothing here has to write it.
+ */
+export async function updateProductsStatus(
+  ids: string[],
+  business_id: string,
+  status: ProductStatus,
+): Promise<ApiResponse<{ updated: number }>> {
+  try {
+    const supabase = await createServerSupabaseClient();
+
+    // `count` rather than `.select('id')` — the caller only needs how many rows
+    // moved, and returning a row payload just to read `.length` is the pattern
+    // the repo's count rule exists to prevent.
+    const { count, error } = await supabase
+      .from('products')
+      .update(
+        { status, updated_at: new Date().toISOString() },
+        { count: 'exact' },
+      )
+      .in('id', ids)
+      .eq('business_id', business_id)
+      .is('archived_at', null);
+
+    if (error) {
+      console.error('[updateProductsStatus]', error);
+      return {
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Failed to update product status',
+        },
+      };
+    }
+
+    // Zero rows means every id was someone else's, archived, or gone — report
+    // it rather than letting the UI toast a success it didn't get.
+    if (!count) {
+      return {
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'No matching items were updated',
+        },
+      };
+    }
+
+    return { success: true, data: { updated: count } };
+  } catch (err) {
+    console.error('[updateProductsStatus]', err);
+    return {
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to update product status',
       },
     };
   }

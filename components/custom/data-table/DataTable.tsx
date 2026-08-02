@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import {
   ColumnDef,
   flexRender,
@@ -7,6 +8,7 @@ import {
   useReactTable,
   SortingState,
   PaginationState,
+  RowSelectionState,
   OnChangeFn,
 } from '@tanstack/react-table';
 
@@ -28,6 +30,22 @@ interface DataTableProps<TData, TValue> {
   onPaginationChange: OnChangeFn<PaginationState>;
   sorting: SortingState;
   onSortingChange: OnChangeFn<SortingState>;
+  /**
+   * Lift row selection out of the table. Optional — omit and TanStack keeps it
+   * internally, which is what every table with no bulk action does.
+   *
+   * One object rather than three loose props: state without a handler freezes
+   * the selection, and state without `getRowId` silently falls back to row
+   * INDEX keys, which are meaningless across a server-side page change. Both
+   * are unrepresentable this way.
+   */
+  selection?: {
+    state: RowSelectionState;
+    onChange: OnChangeFn<RowSelectionState>;
+    getRowId: (row: TData, index: number) => string;
+  };
+  /** Rendered above the table — bulk actions for the current selection. */
+  toolbar?: ReactNode;
 }
 
 export function DataTable<TData, TValue>({
@@ -38,6 +56,8 @@ export function DataTable<TData, TValue>({
   onPaginationChange,
   sorting,
   onSortingChange,
+  selection,
+  toolbar,
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
     data,
@@ -46,9 +66,14 @@ export function DataTable<TData, TValue>({
     state: {
       pagination,
       sorting,
+      ...(selection && { rowSelection: selection.state }),
     },
     onPaginationChange,
     onSortingChange,
+    ...(selection && {
+      onRowSelectionChange: selection.onChange,
+      getRowId: selection.getRowId,
+    }),
     getCoreRowModel: getCoreRowModel(),
     manualPagination: true, // Crucial for server-side
     manualSorting: true, // Crucial for server-side
@@ -57,6 +82,7 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
+      {toolbar}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -78,7 +104,10 @@ export function DataTable<TData, TValue>({
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() ? 'selected' : undefined}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(

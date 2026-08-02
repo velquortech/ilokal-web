@@ -209,11 +209,13 @@ describe('updateProduct() — field updates', () => {
       from: vi.fn(() => ({
         update: vi.fn(() => ({
           eq: vi.fn(() => ({
-            select: vi.fn(() => ({
-              single: vi.fn().mockResolvedValue({
-                data: null,
-                error: { message: 'update failed' },
-              }),
+            is: vi.fn(() => ({
+              select: vi.fn(() => ({
+                single: vi.fn().mockResolvedValue({
+                  data: null,
+                  error: { message: 'update failed' },
+                }),
+              })),
             })),
           })),
         })),
@@ -241,11 +243,14 @@ describe('updateProduct() — field updates', () => {
       from: vi.fn(() => ({
         update: vi.fn(() => ({
           eq: vi.fn(() => ({
-            select: vi.fn(() => ({
-              single: vi.fn().mockResolvedValue({
-                data: { ...mockProduct, category_id: mockCategory.id },
-                error: null,
-              }),
+            // `.is('archived_at', null)` — the update refuses archived rows.
+            is: vi.fn(() => ({
+              select: vi.fn(() => ({
+                single: vi.fn().mockResolvedValue({
+                  data: { ...mockProduct, category_id: mockCategory.id },
+                  error: null,
+                }),
+              })),
             })),
           })),
         })),

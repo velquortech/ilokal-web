@@ -6,9 +6,11 @@ import { getColumns } from './columns';
 import {
   SortingState,
   PaginationState,
+  RowSelectionState,
   OnChangeFn,
 } from '@tanstack/react-table';
 import type { ProductResponse, ProductSectionWithCount } from '@/lib/types';
+import { BulkStatusActions } from './bulk-status-actions';
 
 interface ProductTableProps {
   products: ProductResponse[];
@@ -30,6 +32,7 @@ export function ProductTable({
   onPaginationChange,
 }: ProductTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
 
   // New column identities on every render make TanStack rebuild the table; the
   // factory only depends on the sections list.
@@ -39,6 +42,27 @@ export function ProductTable({
     pageIndex: page - 1,
     pageSize,
   };
+
+  // Selection is keyed by product id, not row index — index keys are
+  // meaningless once the server hands back a different page.
+  //
+  // It is also DROPPED whenever the rows change (page, filter, search, or a
+  // refresh after a write). Keeping it would let ticks survive off-screen: the
+  // bar can only act on what is on the page, so the user would see five boxes
+  // ticked, be told "2 selected", and have all five cleared afterwards. What is
+  // ticked is always exactly what will be acted on.
+  const rowsKey = React.useMemo(
+    () => products.map((p) => p.id).join(','),
+    [products],
+  );
+  React.useEffect(() => {
+    setRowSelection({});
+  }, [rowsKey]);
+
+  const selectedIds = React.useMemo(
+    () => Object.keys(rowSelection).filter((id) => rowSelection[id]),
+    [rowSelection],
+  );
 
   const handlePaginationChange: OnChangeFn<PaginationState> = (updater) => {
     const next = typeof updater === 'function' ? updater(pagination) : updater;
@@ -55,6 +79,17 @@ export function ProductTable({
         onPaginationChange={handlePaginationChange}
         sorting={sorting}
         onSortingChange={setSorting}
+        selection={{
+          state: rowSelection,
+          onChange: setRowSelection,
+          getRowId: (row) => row.id,
+        }}
+        toolbar={
+          <BulkStatusActions
+            ids={selectedIds}
+            onDone={() => setRowSelection({})}
+          />
+        }
       />
     </div>
   );

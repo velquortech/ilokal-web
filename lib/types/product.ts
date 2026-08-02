@@ -7,6 +7,50 @@ import type { OfferingAttributes, OfferingKind } from './offering';
 
 export type ProductStatus = 'active' | 'unlisted' | 'disabled';
 
+/**
+ * Runtime mirror of `ProductStatus` — pins the DB CHECK
+ * (`20260526000013_fix_products_status_constraint.sql`).
+ */
+export const PRODUCT_STATUSES = [
+  'active',
+  'unlisted',
+  'disabled',
+] as const satisfies readonly ProductStatus[];
+
+/**
+ * The single source for every status picker: the row-action submenu, the
+ * filter popover and the update dialog. They previously each spelled the trio
+ * out, and the row-action menu drifted to `inactive`/`archived` — values the
+ * CHECK rejects, so every status change from the table silently 23514'd.
+ *
+ * `description` matters because `unlisted` and `disabled` are indistinguishable
+ * from their names alone: `sync_product_availability` sets
+ * `is_available = (status = 'active')`, so BOTH hide the offering from mobile
+ * and the public menu. The difference is intent — unlisted is temporary, and
+ * `deleteProduct` uses `disabled` (plus `archived_at`) as its soft delete.
+ */
+export const PRODUCT_STATUS_OPTIONS: ReadonlyArray<{
+  value: ProductStatus;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: 'active',
+    label: 'Active',
+    description: 'Visible to customers and on the app.',
+  },
+  {
+    value: 'unlisted',
+    label: 'Unlisted',
+    description: 'Hidden from customers. Kept in your catalogue.',
+  },
+  {
+    value: 'disabled',
+    label: 'Disabled',
+    description: 'Switched off. Nothing can be booked or bought.',
+  },
+];
+
 export type PriceType =
   | 'fixed'
   | 'from'

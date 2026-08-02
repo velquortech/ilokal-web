@@ -1,11 +1,16 @@
+'use client';
+
+import * as React from 'react';
 import type {
   ProductResponse,
   ProductSectionWithCount,
   ProductStatus,
 } from '@/lib/types';
+import { PRODUCT_STATUS_OPTIONS } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2, Ellipsis, Eye, Tag, BadgePercent } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 import {
   DropdownMenu,
@@ -37,14 +42,37 @@ export function ProductActions({
   sections?: ProductSectionWithCount[];
 }) {
   const router = useRouter();
+  const [pending, setPending] = React.useState(false);
 
   const handleStatusChange = async (status: string) => {
-    const result = await updateProductStatusAction(
-      product.id,
-      status as ProductStatus,
-    );
-    if (result.success) {
-      router.refresh();
+    if (status === product.status) return;
+    setPending(true);
+    // Stable id per the one-Toaster rule — a fast clicker gets one toast that
+    // resolves, not a stack of them.
+    const toastId = `product-status-${product.id}`;
+    toast.loading('Updating status…', { id: toastId });
+    try {
+      const result = await updateProductStatusAction(
+        product.id,
+        status as ProductStatus,
+      );
+      if (result.success) {
+        const label =
+          PRODUCT_STATUS_OPTIONS.find((o) => o.value === status)?.label ??
+          status;
+        toast.success(`${product.name} is now ${label}`, { id: toastId });
+        router.refresh();
+      } else {
+        toast.error(result.error?.message ?? 'Failed to update status', {
+          id: toastId,
+        });
+      }
+    } catch {
+      // A rejected Server Action (network drop, redeploy) would otherwise
+      // leave the loading toast spinning forever.
+      toast.error('Failed to update status', { id: toastId });
+    } finally {
+      setPending(false);
     }
   };
 
@@ -80,24 +108,33 @@ export function ProductActions({
             </ApplySale>
           )}
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
+            <DropdownMenuSubTrigger disabled={pending}>
               <Tag />
               Set Status
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
+            {/* Options come from PRODUCT_STATUS_OPTIONS, not literals: this
+                menu previously offered `inactive`/`archived`, which the
+                products CHECK rejects, so every change silently failed. */}
+            <DropdownMenuSubContent className="w-60">
               <DropdownMenuRadioGroup
                 value={product.status}
                 onValueChange={handleStatusChange}
               >
-                <DropdownMenuRadioItem value="active" className="capitalize">
-                  Active
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="inactive" className="capitalize">
-                  Inactive
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="archived" className="capitalize">
-                  Archived
-                </DropdownMenuRadioItem>
+                {PRODUCT_STATUS_OPTIONS.map(({ value, label, description }) => (
+                  <DropdownMenuRadioItem
+                    key={value}
+                    value={value}
+                    disabled={pending}
+                    className="items-start"
+                  >
+                    <span className="flex flex-col gap-0.5">
+                      <span>{label}</span>
+                      <span className="text-muted-foreground text-xs">
+                        {description}
+                      </span>
+                    </span>
+                  </DropdownMenuRadioItem>
+                ))}
               </DropdownMenuRadioGroup>
             </DropdownMenuSubContent>
           </DropdownMenuSub>

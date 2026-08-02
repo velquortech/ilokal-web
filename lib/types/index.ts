@@ -64,6 +64,7 @@ export type {
   CategoryFilters,
   ProductError,
 } from './product';
+export { PRODUCT_STATUSES, PRODUCT_STATUS_OPTIONS } from './product';
 
 // Offering Domain Types (product/service discriminators)
 export type { OfferingKind, OfferingMode } from './offering';

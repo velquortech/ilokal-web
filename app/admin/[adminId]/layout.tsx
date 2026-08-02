@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getAdminUserOrRedirect } from '@/lib/api/getCurrentUser';
 import { adminPath } from '@/config/routeConfig';
 import { AdminProvider } from '@/providers/AdminProvider';
+import { getEventsEnabled } from '@/lib/api/appSettings';
 import AdminLayout from './components/AdminLayout';
 
 // This route uses cookies for authentication, must be dynamic
@@ -33,9 +34,13 @@ export default async function AdminIdLayout({
   // The segment must match the authenticated admin's own id
   if (adminId !== user.id) redirect(adminPath(user.id));
 
+  const eventsEnabled = await getEventsEnabled();
+
   return (
     <AdminProvider adminId={user.id}>
-      <AdminLayout user={user}>{children}</AdminLayout>
+      <AdminLayout user={user} flags={{ enable_events: eventsEnabled }}>
+        {children}
+      </AdminLayout>
     </AdminProvider>
   );
 }

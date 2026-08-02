@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { NOTIFICATION_TYPES } from '@/lib/types/notification';
 
 export const paginationSchema = z.object({
   page: z.number().int().min(1).optional(),
@@ -45,14 +46,12 @@ export const markNotificationReadSchema = z.object({
 export type NotificationListQuery = z.infer<typeof notificationListQuerySchema>;
 
 /** Notification type enum (mirrors the DB CHECK + NOTIFICATION_TYPES). */
-export const notificationTypeSchema = z.enum([
-  'business_document_approved',
-  'business_document_rejected',
-  'business_verified',
-  'business_rejected',
-  'coupon_redeemed',
-  'system',
-]);
+/**
+ * Derived from the runtime constant, not restated. The two lists were separate
+ * copies of the same set, which is how a type ends up valid in one layer and
+ * rejected in the next.
+ */
+export const notificationTypeSchema = z.enum(NOTIFICATION_TYPES);
 
 /** Emit a notification (admin/system → recipient). */
 export const emitNotificationSchema = z.object({
@@ -66,10 +65,14 @@ export const emitNotificationSchema = z.object({
 });
 
 /**
- * Admin document decision. Remarks are optional on approve but required on
- * reject (so the business owner always gets a reason).
+ * An admin's approve/reject decision, for ANY review queue.
+ *
+ * Remarks are optional on approve and required on reject, so the person on the
+ * receiving end always gets a reason they can act on. Written once because the
+ * rule is the same whether the thing being reviewed is a document or an event
+ * — forking it is how one queue quietly stops requiring a reason.
  */
-export const documentDecisionSchema = z
+export const reviewDecisionSchema = z
   .object({
     decision: z.enum(['approve', 'reject']),
     remarks: z.string().trim().max(2000).optional(),
@@ -79,9 +82,13 @@ export const documentDecisionSchema = z
       v.decision === 'approve' ||
       (typeof v.remarks === 'string' && v.remarks.length > 0),
     {
-      message: 'Remarks are required when disapproving documents',
+      message: 'A reason is required when rejecting',
       path: ['remarks'],
     },
   );
 
-export type DocumentDecision = z.infer<typeof documentDecisionSchema>;
+/** Original name, kept so existing document-review call sites do not change. */
+export const documentDecisionSchema = reviewDecisionSchema;
+
+export type ReviewDecision = z.infer<typeof reviewDecisionSchema>;
+export type DocumentDecision = ReviewDecision;

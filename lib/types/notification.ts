@@ -12,16 +12,31 @@ export type NotificationType =
   | 'business_verified'
   | 'business_rejected'
   | 'coupon_redeemed'
+  /** To every admin, when a shop submits an event for review. */
+  | 'event_proposal_submitted'
+  /** To the shop owner, carrying the reviewer's note in `metadata.remarks`. */
+  | 'event_proposal_approved'
+  | 'event_proposal_rejected'
+  | 'event_nearby'
   | 'system';
 
-export const NOTIFICATION_TYPES: NotificationType[] = [
+/**
+ * Runtime mirror of the union AND of the `notifications_type_check` CHECK.
+ * `notificationTypeSchema` is derived from this rather than repeating it — the
+ * two lists drifted apart once already.
+ */
+export const NOTIFICATION_TYPES = [
   'business_document_approved',
   'business_document_rejected',
   'business_verified',
   'business_rejected',
   'coupon_redeemed',
+  'event_proposal_submitted',
+  'event_proposal_approved',
+  'event_proposal_rejected',
+  'event_nearby',
   'system',
-];
+] as const satisfies readonly NotificationType[];
 
 /**
  * Free-form, normalized-out metadata. `remarks` carries the admin's

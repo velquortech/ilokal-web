@@ -5,6 +5,7 @@ import {
   Home,
   ShoppingBasket,
   CalendarClock,
+  CalendarDays,
   BadgeCheck,
 } from 'lucide-react';
 import { NavItem } from '@/components/custom/Nav';
@@ -33,6 +34,13 @@ export const storeNavigation: NavItem[] = [
     title: 'Bookings',
     href: '/business/bookings',
     icon: CalendarClock,
+    flag: 'enable_bookings',
+  },
+  {
+    title: 'Events',
+    href: '/business/events',
+    icon: CalendarDays,
+    flag: 'enable_events',
   },
   {
     title: 'Coupons & Deals',

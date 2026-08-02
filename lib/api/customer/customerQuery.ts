@@ -14,6 +14,7 @@ import { cache } from 'react';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { getProductsPaginated } from '@/lib/api/products/productQuery';
+import { describeDbError } from '@/lib/utils/describeDbError';
 import type {
   CustomerCategory,
   DirectoryBusiness,
@@ -49,33 +50,12 @@ interface DirectoryRow {
 }
 
 /**
- * Make a Supabase error readable in a log line.
- *
- * `PostgrestError` carries its fields non-enumerably, so `console.error(err)`
- * renders `{}` — which is exactly how a missing RPC (an unapplied migration,
- * PostgREST code `PGRST202`) surfaced as `[getPublicBusinessProfile rating] {}`:
- * an error report that names no error. Flatten the four fields that identify
- * the fault instead.
+ * Moved to `lib/utils/describeDbError.ts` once a second module needed it (the
+ * events query layer). Imported for use below and re-exported so existing
+ * importers and their tests keep working — there is one implementation, not
+ * two.
  */
-export function describeDbError(error: unknown): {
-  code: string;
-  message: string;
-  details?: string;
-  hint?: string;
-} {
-  const e = error as {
-    code?: string;
-    message?: string;
-    details?: string;
-    hint?: string;
-  } | null;
-  return {
-    code: e?.code ?? 'UNKNOWN',
-    message: e?.message ?? String(error),
-    details: e?.details ?? undefined,
-    hint: e?.hint ?? undefined,
-  };
-}
+export { describeDbError };
 
 async function getFollowerCountMap(
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,

@@ -5,17 +5,31 @@ import { createServerSupabaseClient } from '@/supabase/server';
 import { verifyCurrentUserIsAdmin } from '@/lib/api/admin/adminActionHelpers';
 import { AdminActionResponse } from '@/lib/types/admin';
 
-export type RegistrationSettingKey =
+/**
+ * Every admin-flippable flag in `app_settings`.
+ *
+ * The allowlist is the security boundary: this action is a callable endpoint,
+ * so without it a caller could write ANY settings row. Adding a feature flag
+ * means adding it here — deliberately, not by accident.
+ */
+export type PlatformSettingKey =
   | 'require_business_documents'
-  | 'auto_verify_businesses';
+  | 'auto_verify_businesses'
+  | 'enable_bookings'
+  | 'enable_events';
 
-const ALLOWED_KEYS: RegistrationSettingKey[] = [
+/** Original name, kept so existing registration call sites do not change. */
+export type RegistrationSettingKey = PlatformSettingKey;
+
+const ALLOWED_KEYS: PlatformSettingKey[] = [
   'require_business_documents',
   'auto_verify_businesses',
+  'enable_bookings',
+  'enable_events',
 ];
 
 export async function updateRegistrationSettingAction(
-  key: RegistrationSettingKey,
+  key: PlatformSettingKey,
   value: boolean,
 ): Promise<AdminActionResponse<{ key: string; value: boolean }>> {
   try {

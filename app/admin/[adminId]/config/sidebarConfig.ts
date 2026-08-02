@@ -4,6 +4,7 @@ import {
   Lock,
   MapPin,
   FileCheck,
+  CalendarDays,
   Settings,
 } from 'lucide-react';
 import { NavItem } from '@/components/custom/Nav';
@@ -32,6 +33,12 @@ export const mainNavigation: NavItem[] = [
     title: 'Branch Applications',
     href: '/admin/branches',
     icon: MapPin,
+  },
+  {
+    title: 'Event Proposals',
+    href: '/admin/events',
+    icon: CalendarDays,
+    flag: 'enable_events',
   },
 ];
 

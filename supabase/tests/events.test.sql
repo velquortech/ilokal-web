@@ -495,6 +495,50 @@ BEGIN
 END $$;
 
 -- ============================================================
+-- 6c. An anonymous visitor can read the feature flag
+-- ============================================================
+DO $$
+DECLARE
+  v_flags RECORD;
+  v_rows  INTEGER;
+BEGIN
+  PERFORM pg_temp.act_as_anon();
+  SET LOCAL ROLE anon;
+
+  -- The hole this closes: `app_settings` is readable TO authenticated only, so
+  -- a direct table read returns nothing for anon and the app's flag reader
+  -- fails closed — making the entire public events surface invisible to
+  -- exactly the audience it exists for.
+  SELECT count(*) INTO v_rows FROM public.app_settings;
+  ASSERT v_rows = 0,
+    'app_settings must stay closed to anon — the RPC is the public door';
+
+  SELECT * INTO v_flags FROM public.public_feature_flags();
+  ASSERT v_flags.enable_events IS NOT NULL,
+    'anon must be able to read enable_events through the RPC';
+  ASSERT v_flags.enable_bookings IS NOT NULL,
+    'anon must be able to read enable_bookings through the RPC';
+
+  RESET ROLE;
+
+  -- The return list IS the contract: exactly two columns, so a settings row
+  -- added later stays private unless someone deliberately widens this.
+  -- Read from pg_proc — a RETURNS TABLE function's output columns are its
+  -- 't'-mode arguments, and information_schema.columns does not describe them.
+  SELECT count(*) INTO v_rows
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace,
+       unnest(COALESCE(p.proargmodes, ARRAY[]::"char"[])) AS mode
+  WHERE n.nspname = 'public'
+    AND p.proname = 'public_feature_flags'
+    AND mode = 't';
+  ASSERT v_rows = 2,
+    'public_feature_flags must expose exactly 2 columns, found ' || v_rows;
+
+  RAISE NOTICE 'public flag assertions passed';
+END $$;
+
+-- ============================================================
 -- 7. Structural: policies wrap auth.uid(), indexes exist, functions pinned
 -- ============================================================
 DO $$
@@ -535,12 +579,13 @@ BEGIN
   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
   WHERE n.nspname = 'public'
     AND p.proname IN ('events_nearby', 'notify_event_proposal_submitted',
-                      'set_event_initial_status', 'guard_event_review_columns')
+                      'set_event_initial_status', 'guard_event_review_columns',
+                      'public_feature_flags', 'handle_event_published_notification')
     AND p.prosecdef
     AND EXISTS (SELECT 1 FROM unnest(COALESCE(p.proconfig, ARRAY[]::text[])) c
                 WHERE c LIKE 'search_path=%');
-  ASSERT v_count = 4,
-    'all 4 events SECURITY DEFINER functions must SET search_path, found ' || v_count;
+  ASSERT v_count = 6,
+    'all 6 events SECURITY DEFINER functions must SET search_path, found ' || v_count;
 
   -- Both gate triggers must survive session_replication_role = replica.
   SELECT count(*) INTO v_count FROM pg_trigger

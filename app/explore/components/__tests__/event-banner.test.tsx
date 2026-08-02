@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 /**
- * The dateline banner.
+ * The events banner carousel.
  *
  * Two claims this repo has been burnt by before, so both are asserted against
  * the SERVER render:
@@ -10,7 +10,7 @@
  *    because `initial` styles were written into the server HTML.
  * 2. Zero events renders NOTHING. An empty carousel is worse than no carousel.
  *
- * Plus the signature rule: what is on right now leads, ahead of chronology.
+ * Plus the ordering rule: what is on right now leads, ahead of chronology.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -18,7 +18,7 @@ import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createRoot, type Root } from 'react-dom/client';
 import { act } from 'react';
-import { EventDateline } from '../event-dateline';
+import { EventBanner } from '../event-banner';
 import type { EventWithRefs } from '@/lib/types';
 
 vi.mock('next/link', () => ({
@@ -66,14 +66,14 @@ function makeEvent(overrides: Partial<EventWithRefs>): EventWithRefs {
 describe('server render', () => {
   it('renders nothing at all when there are no events', () => {
     const html = renderToStaticMarkup(
-      React.createElement(EventDateline, { events: [] }),
+      React.createElement(EventBanner, { events: [] }),
     );
     expect(html).toBe('');
   });
 
   it('ships the event visible, not hidden behind hydration', () => {
     const html = renderToStaticMarkup(
-      React.createElement(EventDateline, {
+      React.createElement(EventBanner, {
         events: [makeEvent({ name: 'Kasadyahan parade' })],
       }),
     );
@@ -88,36 +88,71 @@ describe('server render', () => {
 
   it('names the date AND the time, so nobody turns up to a closed venue', () => {
     const html = renderToStaticMarkup(
-      React.createElement(EventDateline, { events: [makeEvent({})] }),
+      React.createElement(EventBanner, { events: [makeEvent({})] }),
     );
     // 2026-08-20T02:00Z is 10:00 in Manila.
     expect(html).toContain('10:00 AM');
     expect(html).toContain('20 Aug');
   });
 
-  it('keeps the strip scrollable in its own container', () => {
+  it('keeps the track scrollable in its own container', () => {
     const html = renderToStaticMarkup(
-      React.createElement(EventDateline, { events: [makeEvent({})] }),
+      React.createElement(EventBanner, { events: [makeEvent({})] }),
     );
     // The page body must never scroll sideways.
     expect(html).toContain('overflow-x-auto');
   });
 
-  it('gives the arrows real labels', () => {
+  it('gives each slide the full track width', () => {
     const html = renderToStaticMarkup(
-      React.createElement(EventDateline, {
+      React.createElement(EventBanner, {
         events: [makeEvent({ id: 'a' }), makeEvent({ id: 'b' })],
       }),
     );
-    expect(html).toContain('aria-label="Previous events"');
-    expect(html).toContain('aria-label="Next events"');
+    // `w-full shrink-0` is what makes this a carousel rather than a strip of
+    // partially-visible cards.
+    expect(html).toContain('w-full shrink-0 snap-start');
+  });
+
+  it('announces itself as a carousel with numbered slides', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(EventBanner, {
+        events: [makeEvent({ id: 'a' }), makeEvent({ id: 'b' })],
+      }),
+    );
+    expect(html).toContain('aria-roledescription="carousel"');
+    expect(html).toContain('aria-label="1 of 2"');
+    expect(html).toContain('aria-label="2 of 2"');
+  });
+
+  it('gives every dot a real label, not a bare span', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(EventBanner, {
+        events: [
+          makeEvent({ id: 'a', name: 'Alpha' }),
+          makeEvent({ id: 'b', name: 'Beta' }),
+        ],
+      }),
+    );
+    expect(html).toContain('aria-label="Go to Alpha"');
+    expect(html).toContain('aria-label="Go to Beta"');
+  });
+
+  it('gives the arrows real labels', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(EventBanner, {
+        events: [makeEvent({ id: 'a' }), makeEvent({ id: 'b' })],
+      }),
+    );
+    expect(html).toContain('aria-label="Previous event"');
+    expect(html).toContain('aria-label="Next event"');
   });
 
   it('hides the arrows when there is nowhere to scroll', () => {
     const html = renderToStaticMarkup(
-      React.createElement(EventDateline, { events: [makeEvent({})] }),
+      React.createElement(EventBanner, { events: [makeEvent({})] }),
     );
-    expect(html).not.toContain('aria-label="Next events"');
+    expect(html).not.toContain('aria-label="Next event"');
   });
 });
 
@@ -156,7 +191,7 @@ describe('ordering after mount', () => {
   });
 
   function names(): string[] {
-    return Array.from(container.querySelectorAll('li p')).map(
+    return Array.from(container.querySelectorAll('li h3')).map(
       (node) => node.textContent ?? '',
     );
   }
@@ -165,7 +200,7 @@ describe('ordering after mount', () => {
     // Server order is by start date, so the live one is second on arrival…
     act(() => {
       root.render(
-        React.createElement(EventDateline, { events: [soon, liveNow] }),
+        React.createElement(EventBanner, { events: [soon, liveNow] }),
       );
     });
 
@@ -180,7 +215,7 @@ describe('ordering after mount', () => {
 
     act(() => {
       root.render(
-        React.createElement(EventDateline, { events: [soon, liveNow] }),
+        React.createElement(EventBanner, { events: [soon, liveNow] }),
       );
     });
 

@@ -5,7 +5,7 @@ import {
 } from '@/lib/api/customer/customerQuery';
 import { getEventsEnabled } from '@/lib/api/appSettings';
 import { getBannerEvents } from '@/lib/api/events/eventQuery';
-import { EventDateline } from './components/event-dateline';
+import { EventBanner, EventBannerHeader } from './components/event-banner';
 import { ExploreContent } from './components/explore-content';
 
 export const metadata: Metadata = {
@@ -62,7 +62,12 @@ export default async function ExplorePage({
 
   return (
     <div className="space-y-8">
-      {bannerEvents.length > 0 && <EventDateline events={bannerEvents} />}
+      {bannerEvents.length > 0 && (
+        <section className="space-y-3">
+          <EventBannerHeader />
+          <EventBanner events={bannerEvents} />
+        </section>
+      )}
       <ExploreContent
         businesses={businesses}
         metadata={metadata}

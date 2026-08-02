@@ -21,9 +21,14 @@ export type NotificationType =
   | 'system';
 
 /**
- * Runtime mirror of the union AND of the `notifications_type_check` CHECK.
- * `notificationTypeSchema` is derived from this rather than repeating it — the
- * two lists drifted apart once already.
+ * Runtime mirror of the union above. `notificationTypeSchema` is derived from
+ * this rather than repeating it — the two lists drifted apart once already.
+ *
+ * NOT a complete mirror of the `notifications_type_check` CHECK: the four
+ * `booking_*` types added in `20260727000005` are accepted by the database and
+ * missing here, so a booking notification cannot be constructed through this
+ * union even though the row is legal. Add them before anything on the web side
+ * needs to read one.
  */
 export const NOTIFICATION_TYPES = [
   'business_document_approved',

@@ -27,6 +27,8 @@
 --   ALTER TABLE public.products DROP CONSTRAINT uq_products_id_business;
 --   DELETE FROM storage.buckets WHERE id = 'event-images';
 --   DELETE FROM public.app_settings WHERE key = 'enable_events';
+--   DROP FUNCTION public.public_feature_flags();
+--   -- and restore notification_outbox_type_check to its pre-events value.
 --   -- and restore notifications_type_check to its pre-events value.
 -- ============================================================
 
@@ -150,11 +152,32 @@ CREATE TABLE public.events (
     CHECK (product_id IS NULL OR business_id IS NOT NULL),
 
   -- The cross-shop gate (see §2).
+  --
+  -- `SET NULL (product_id)` — the COLUMN LIST is load-bearing. A bare
+  -- `ON DELETE SET NULL` nulls every referencing column, so deleting a
+  -- promoted product would also null `business_id`: the row would become a
+  -- PLATFORM event, which the public policy publishes with no verified-shop
+  -- gate and which no owner policy can ever select, edit or archive again.
+  -- Losing the promotion is correct; losing the shop is not.
   CONSTRAINT fk_events_product_same_business
     FOREIGN KEY (product_id, business_id)
     REFERENCES public.products (id, business_id)
-    ON DELETE SET NULL
+    ON DELETE SET NULL (product_id)
 );
+
+-- The point, readable.
+--
+-- PostgREST returns a `geography` column as WKB hex, which is useless to a
+-- form — the same wall the branch map hit, solved there with an RPC. Generated
+-- columns are cheaper here: they keep `location` the single source of truth
+-- (they cannot be written) while letting an edit form read back exactly what
+-- was stored. Without them the form has no way to show existing coordinates,
+-- and a save that omits them silently erases the point.
+ALTER TABLE public.events
+  ADD COLUMN latitude  DOUBLE PRECISION
+    GENERATED ALWAYS AS (ST_Y(location::geometry)) STORED,
+  ADD COLUMN longitude DOUBLE PRECISION
+    GENERATED ALWAYS AS (ST_X(location::geometry)) STORED;
 
 COMMENT ON TABLE public.events IS
   'Featured events. business_id NULL = platform event authored by an admin; '
@@ -315,6 +338,12 @@ BEGIN
   NEW.reviewed_at := OLD.reviewed_at;
   NEW.priority    := OLD.priority;
 
+  -- An event does not change shops. The FOR ALL policy's WITH CHECK only
+  -- proves the owner owns the TARGET, so without this an owner of two shops
+  -- could re-point an approved event from Shop A to Shop B and it would stay
+  -- published under a shop no reviewer ever saw.
+  NEW.business_id := OLD.business_id;
+
   v_content_changed :=
        NEW.name             IS DISTINCT FROM OLD.name
     OR NEW.description      IS DISTINCT FROM OLD.description
@@ -354,9 +383,14 @@ $$;
 REVOKE ALL ON FUNCTION public.guard_event_review_columns()
   FROM PUBLIC, anon, authenticated;
 
--- ENABLE ALWAYS on both: seeds run under session_replication_role = replica,
--- which skips ordinary ("O") triggers. Same gotcha as trg_set_redemption_code
--- and trg_businesses_sync_business_type.
+-- ENABLE ALWAYS on both.
+--
+-- NOT for the trg_set_redemption_code reason: under replica-mode seeding
+-- auth.uid() is NULL, so both of these return NEW untouched and a seed would
+-- be unaffected either way. What it actually buys is that the guard still runs
+-- for writes that bypass ordinary trigger firing — including the referential
+-- action from the composite FK below — which is where an unreviewed change to
+-- a published row would otherwise slip through.
 CREATE TRIGGER trg_set_event_initial_status
   BEFORE INSERT ON public.events
   FOR EACH ROW EXECUTE FUNCTION public.set_event_initial_status();
@@ -376,7 +410,7 @@ CREATE TRIGGER on_update_events
 -- No new table: `notifications` already takes any auth.users id as recipient,
 -- and an admin is a user. Four new types.
 
-ALTER TABLE public.notifications DROP CONSTRAINT notifications_type_check;
+ALTER TABLE public.notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
 ALTER TABLE public.notifications ADD CONSTRAINT notifications_type_check
   CHECK (type IN (
     'business_document_approved',
@@ -463,13 +497,24 @@ REVOKE ALL ON FUNCTION public.notify_event_proposal_submitted(uuid)
   FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.notify_event_proposal_submitted(uuid) TO authenticated;
 
--- The mobile inbox takes a fourth kind. Without this the fan-out below would
--- violate the CHECK, and its EXCEPTION handler would swallow the failure —
--- leaving a feature that silently never notifies anyone.
+-- The mobile inbox takes a fourth kind — in BOTH tables it can land in.
+--
+-- `notify_followers` fans out inline for small audiences and routes anything
+-- over ~500 followers through `notification_outbox`, which carries its own
+-- copy of this CHECK (20260630000001). Widening only one of them leaves the
+-- fan-out violating a constraint for exactly the shops with the most
+-- followers — and the EXCEPTION handler below would swallow it, so the
+-- feature would silently never notify them.
 ALTER TABLE public.business_notifications
-  DROP CONSTRAINT business_notifications_type_check;
+  DROP CONSTRAINT IF EXISTS business_notifications_type_check;
 ALTER TABLE public.business_notifications
   ADD CONSTRAINT business_notifications_type_check
+  CHECK (type IN ('post', 'promo', 'product', 'event'));
+
+ALTER TABLE public.notification_outbox
+  DROP CONSTRAINT IF EXISTS notification_outbox_type_check;
+ALTER TABLE public.notification_outbox
+  ADD CONSTRAINT notification_outbox_type_check
   CHECK (type IN ('post', 'promo', 'product', 'event'));
 
 -- Followers hear about a shop's event the moment it is published.

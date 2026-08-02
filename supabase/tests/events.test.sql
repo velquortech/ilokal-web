@@ -321,8 +321,13 @@ BEGIN
   PERFORM pg_temp.act_as(v_owner);
   SET LOCAL ROLE authenticated;
 
-  -- A draft pings nobody: without this the RPC is a free "notify every admin"
-  -- button that a resubmit loop could hold down.
+  -- A draft pings nobody.
+  --
+  -- NOTE: this bounds WHICH events notify, not HOW MANY TIMES. The RPC is
+  -- granted to `authenticated` and reachable directly at
+  -- /rest/v1/rpc/notify_event_proposal_submitted, so calling it repeatedly on
+  -- one pending_review event still inserts a row per admin per call. Nothing
+  -- below asserts otherwise — do not read this block as proof of a rate limit.
   INSERT INTO public.events (business_id, name, address, starts_at, ends_at, status)
   VALUES (v_biz, 'Notify: draft', 'x', now() + interval '1 day', now() + interval '2 days', 'draft')
   RETURNING id INTO v_event;
@@ -492,6 +497,127 @@ BEGIN
     'republishing must not re-notify; found ' || v_count || ' notifications';
 
   RAISE NOTICE 'follower fan-out assertions passed';
+END $$;
+
+-- ============================================================
+-- 3b. A published row cannot be moved out from under review
+-- ============================================================
+DO $$
+DECLARE
+  v_biz     UUID;
+  v_biz2    UUID;
+  v_owner   UUID;
+  v_admin   UUID;
+  v_product UUID;
+  v_event   UUID;
+  v_status  TEXT;
+  v_bizid   UUID;
+  v_prod    UUID;
+BEGIN
+  -- Two shops with the SAME owner — the case that makes re-pointing possible.
+  SELECT b.id, b.owner_id INTO v_biz, v_owner
+  FROM public.businesses b
+  WHERE b.status = 'verified' AND b.archived_at IS NULL
+    AND EXISTS (SELECT 1 FROM public.products p WHERE p.business_id = b.id)
+  LIMIT 1;
+  SELECT b.id INTO v_biz2
+  FROM public.businesses b
+  WHERE b.owner_id = v_owner AND b.id <> v_biz LIMIT 1;
+  SELECT p.id INTO v_product FROM public.products p WHERE p.business_id = v_biz LIMIT 1;
+  SELECT p.id INTO v_admin FROM public.profiles p WHERE p.role = 'admin' LIMIT 1;
+
+  ASSERT v_biz2 IS NOT NULL, 'fixture: need an owner holding two shops';
+
+  PERFORM pg_temp.act_as(v_owner);
+  SET LOCAL ROLE authenticated;
+  INSERT INTO public.events (business_id, product_id, name, address, starts_at, ends_at)
+  VALUES (v_biz, v_product, 'Move: promoted event', 'x',
+          now() + interval '2 days', now() + interval '3 days')
+  RETURNING id INTO v_event;
+  RESET ROLE;
+
+  PERFORM pg_temp.act_as(v_admin);
+  SET LOCAL ROLE authenticated;
+  UPDATE public.events SET status = 'approved' WHERE id = v_event;
+  RESET ROLE;
+
+  -- (a) An owner must not be able to re-point an APPROVED event at another of
+  -- their shops — the WITH CHECK only proves they own the TARGET, so without
+  -- a trigger freeze it would stay published under a shop nobody reviewed.
+  PERFORM pg_temp.act_as(v_owner);
+  SET LOCAL ROLE authenticated;
+  UPDATE public.events SET business_id = v_biz2 WHERE id = v_event;
+  RESET ROLE;
+
+  SELECT business_id, status INTO v_bizid, v_status
+  FROM public.events WHERE id = v_event;
+  ASSERT v_bizid = v_biz,
+    'an owner must not move an event between their own shops';
+  ASSERT v_status = 'approved',
+    'a refused move must not disturb the status, got ' || v_status;
+
+  -- (b) Deleting the promoted product must drop the PROMOTION, not the shop.
+  -- A bare `ON DELETE SET NULL` nulls every referencing column, which would
+  -- turn this into a platform event: published with no verified-shop gate and
+  -- unreachable by any owner policy.
+  DELETE FROM public.products WHERE id = v_product;
+
+  SELECT business_id, product_id INTO v_bizid, v_prod
+  FROM public.events WHERE id = v_event;
+  ASSERT v_prod IS NULL, 'the promotion should be cleared, got ' || v_prod;
+  ASSERT v_bizid = v_biz,
+    'deleting a product must NOT orphan the event from its shop';
+
+  RAISE NOTICE 'published-row-integrity assertions passed';
+END $$;
+
+-- ============================================================
+-- 3c. Coordinates survive an edit that does not mention them
+-- ============================================================
+DO $$
+DECLARE
+  v_biz   UUID;
+  v_owner UUID;
+  v_event UUID;
+  v_lat   DOUBLE PRECISION;
+  v_lng   DOUBLE PRECISION;
+BEGIN
+  SELECT b.id, b.owner_id INTO v_biz, v_owner
+  FROM public.businesses b
+  WHERE b.status = 'verified' AND b.archived_at IS NULL LIMIT 1;
+
+  PERFORM pg_temp.act_as(v_owner);
+  SET LOCAL ROLE authenticated;
+
+  INSERT INTO public.events (business_id, name, address, starts_at, ends_at, location)
+  VALUES (v_biz, 'Coords: pinned', 'Iznart St',
+          now() + interval '1 day', now() + interval '2 days',
+          ST_MakePoint(122.5649, 10.6973)::geography)
+  RETURNING id INTO v_event;
+
+  -- The generated pair is what the edit form reads back; without it the form
+  -- has nothing to prefill and every save looks like a deliberate clear.
+  SELECT latitude, longitude INTO v_lat, v_lng
+  FROM public.events WHERE id = v_event;
+  ASSERT round(v_lat::numeric, 4) = 10.6973,
+    'latitude must project from location, got ' || coalesce(v_lat::text, '<null>');
+  ASSERT round(v_lng::numeric, 4) = 122.5649,
+    'longitude must project from location, got ' || coalesce(v_lng::text, '<null>');
+
+  -- An edit that never mentions location leaves the pin alone.
+  UPDATE public.events SET name = 'Coords: renamed' WHERE id = v_event;
+  SELECT latitude INTO v_lat FROM public.events WHERE id = v_event;
+  ASSERT v_lat IS NOT NULL, 'an unrelated edit must not clear the point';
+
+  -- And the pair is generated, so a client cannot write it directly.
+  BEGIN
+    UPDATE public.events SET latitude = 0 WHERE id = v_event;
+    ASSERT false, 'latitude must be generated, not writable';
+  EXCEPTION WHEN generated_always THEN NULL;
+  END;
+
+  RESET ROLE;
+  RAISE NOTICE 'coordinate assertions passed';
 END $$;
 
 -- ============================================================

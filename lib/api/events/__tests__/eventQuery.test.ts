@@ -20,6 +20,16 @@ import {
 } from '../eventQuery';
 
 vi.mock('@/supabase/server', () => ({ createServerSupabaseClient: vi.fn() }));
+vi.mock('@/app/api/helpers/storage', () => ({
+  resolveStorageUrl: vi.fn(
+    (_client: unknown, bucket: string, path: string | null) =>
+      !path
+        ? null
+        : path.startsWith('http')
+          ? path
+          : `https://cdn.example/${bucket}/${path}`,
+  ),
+}));
 
 type Result = {
   data: unknown;
@@ -200,6 +210,66 @@ describe('getEventById', () => {
       'Kape Iloilo',
     );
     expect('event' in result && result.event.product).toBeNull();
+  });
+});
+
+describe('storage paths are resolved before rendering', () => {
+  it('turns a raw upload path into a usable URL', async () => {
+    // `uploadWebP` returns `data.path`, so a real upload stores
+    // `<businessId>/<file>.webp`. Handed to next/image that is a RELATIVE url
+    // and 404s — which is exactly how the banner rendered as a bare colour
+    // block after the first event was created through the UI.
+    mockClient({
+      data: {
+        id: 'evt-1',
+        image_url: 'biz-1/1785649417885-poster.webp',
+        business: [
+          { id: 'biz-1', shop_name: 'Kape', logo_url: 'biz-1/l.webp' },
+        ],
+        product: [],
+      },
+      error: null,
+    });
+
+    const result = await getEventById('evt-1');
+
+    expect('event' in result && result.event.image_url).toBe(
+      'https://cdn.example/event-images/biz-1/1785649417885-poster.webp',
+    );
+    expect('event' in result && result.event.business?.logo_url).toBe(
+      'https://cdn.example/shop-logos/biz-1/l.webp',
+    );
+  });
+
+  it('leaves a full URL alone, so seeded rows still work', async () => {
+    mockClient({
+      data: {
+        id: 'evt-1',
+        image_url: 'https://picsum.photos/seed/x/1600/686',
+        business: [],
+        product: [],
+      },
+      error: null,
+    });
+
+    const result = await getEventById('evt-1');
+
+    expect('event' in result && result.event.image_url).toBe(
+      'https://picsum.photos/seed/x/1600/686',
+    );
+  });
+
+  it('resolves the banner list too, not only the detail read', async () => {
+    mockClient({
+      data: [{ id: 'evt-1', image_url: 'biz-1/poster.webp' }],
+      error: null,
+    });
+
+    const [event] = await getBannerEvents();
+
+    expect(event.image_url).toBe(
+      'https://cdn.example/event-images/biz-1/poster.webp',
+    );
   });
 });
 

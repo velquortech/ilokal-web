@@ -857,8 +857,10 @@ export type Database = {
           ends_at: string
           id: string
           image_url: string | null
+          latitude: number | null
           link_url: string | null
           location: unknown
+          longitude: number | null
           name: string
           priority: number
           product_id: string | null
@@ -881,8 +883,10 @@ export type Database = {
           ends_at: string
           id?: string
           image_url?: string | null
+          latitude?: number | null
           link_url?: string | null
           location?: unknown
+          longitude?: number | null
           name: string
           priority?: number
           product_id?: string | null
@@ -905,8 +909,10 @@ export type Database = {
           ends_at?: string
           id?: string
           image_url?: string | null
+          latitude?: number | null
           link_url?: string | null
           location?: unknown
+          longitude?: number | null
           name?: string
           priority?: number
           product_id?: string | null

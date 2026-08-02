@@ -138,6 +138,25 @@ export const updateProductSchema = createProductShape
     refineOfferingPricing(input, ctx, { requirePrice: false }),
   );
 
+/**
+ * Cap on one bulk status change. Matches the largest page size the catalogue
+ * table offers (`PER_PAGE_OPTIONS`), so "select all on this page" always fits —
+ * raise them together or select-all silently starts failing validation.
+ */
+export const MAX_BULK_STATUS_IDS = 50;
+
+/** Payload for the catalogue table's bulk status action. */
+export const bulkProductStatusSchema = z.object({
+  ids: z
+    .array(z.guid())
+    .min(1, 'Select at least one item')
+    .max(MAX_BULK_STATUS_IDS, `Select at most ${MAX_BULK_STATUS_IDS} items`),
+  status: productStatusSchema,
+});
+
+/** A single product id — the row-level actions parse it before any DB call. */
+export const productIdSchema = z.guid();
+
 export const productFiltersSchema = z.object({
   page: z.number().min(1).default(1),
   per_page: z.number().min(1).max(100).default(10),

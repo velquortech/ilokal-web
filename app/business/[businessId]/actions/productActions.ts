@@ -21,7 +21,10 @@ import {
   updateProductSchema,
   applySaleSchema,
   productStatusSchema,
+  productIdSchema,
+  bulkProductStatusSchema,
 } from '@/lib/validation/products';
+import { rateLimit } from '@/app/api/helpers/rateLimit';
 import * as productQuery from '@/lib/api/products/productQuery';
 import * as productService from '@/lib/api/products/productService';
 import {
@@ -32,6 +35,36 @@ import {
 } from '@/lib/api/helpers/image';
 
 // ===== Business Owner Product Actions =====
+
+const WRITE_RATE_LIMIT = Number(process.env.BUSINESS_ACTION_RATE_LIMIT ?? 30);
+const WRITE_RATE_WINDOW_MS = Number(
+  process.env.BUSINESS_ACTION_RATE_WINDOW_MS ?? 60_000,
+);
+
+/**
+ * Per-user flood guard for status writes.
+ *
+ * Server-Action POSTs never enter the proxy's rate limiter, and the bulk action
+ * is a write amplifier — one call, up to 50 rows. Same shape as the customer
+ * actions' guard (`requireCustomer`). Returns the failure to hand back, or
+ * `null` when the caller is within budget.
+ */
+function checkProductWriteLimit(userId?: string): ApiResponse<never> | null {
+  if (!userId) return null;
+  const { allowed } = rateLimit(
+    `business-product-write:${userId}`,
+    WRITE_RATE_LIMIT,
+    WRITE_RATE_WINDOW_MS,
+  );
+  if (allowed) return null;
+  return {
+    success: false,
+    error: {
+      code: 'RATE_LIMITED',
+      message: 'Too many requests — please try again in a moment',
+    },
+  };
+}
 
 /**
  * Create a new product
@@ -163,10 +196,22 @@ export async function updateProductStatusAction(
         error: { code: 'VALIDATION_ERROR', message: 'Invalid product status' },
       };
     }
+    // Guid-check the id too, so a malformed one fails as a validation error
+    // instead of reaching PostgREST and coming back as a 22P02 the caller
+    // would see as a misleading NOT_FOUND.
+    if (!productIdSchema.safeParse(id).success) {
+      return {
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'Invalid product' },
+      };
+    }
 
     const verify = await verifyBusinessOwner();
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
+
+    const limited = checkProductWriteLimit(verify.user?.id);
+    if (limited) return limited;
 
     return await productService.updateProduct(id, verify.business!.id, {
       status: parsed.data,
@@ -183,9 +228,6 @@ export async function updateProductStatusAction(
   }
 }
 
-/** Cap on one bulk status change — the table pages at most 50 rows. */
-const MAX_BULK_STATUS_IDS = 50;
-
 /**
  * Set the status of several offerings at once (the table's selection column).
  *
@@ -198,18 +240,7 @@ export async function updateProductsStatusAction(
   status: ProductStatus,
 ): Promise<ApiResponse<{ updated: number }>> {
   try {
-    const parsed = z
-      .object({
-        ids: z
-          .array(z.guid())
-          .min(1, 'Select at least one item')
-          .max(
-            MAX_BULK_STATUS_IDS,
-            `Select at most ${MAX_BULK_STATUS_IDS} items`,
-          ),
-        status: productStatusSchema,
-      })
-      .safeParse({ ids, status });
+    const parsed = bulkProductStatusSchema.safeParse({ ids, status });
 
     if (!parsed.success) {
       const firstError = parsed.error.issues[0]?.message;
@@ -225,6 +256,9 @@ export async function updateProductsStatusAction(
     const verify = await verifyBusinessOwner();
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
+
+    const limited = checkProductWriteLimit(verify.user?.id);
+    if (limited) return limited;
 
     return await productService.updateProductsStatus(
       parsed.data.ids,

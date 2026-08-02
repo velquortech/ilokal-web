@@ -21,31 +21,34 @@ vi.mock('@/supabase/server', () => ({
 const BUSINESS_ID = 'biz-1';
 const IDS = ['prod-1', 'prod-2'];
 
-type UpdateResult = { data: Array<{ id: string }> | null; error: unknown };
+type UpdateResult = { count: number | null; error: unknown };
+type UpdatePayload = Record<string, unknown>;
+type UpdateOptions = { count?: 'exact' | 'planned' | 'estimated' };
 
 function mockClient(result: UpdateResult) {
-  const select = vi.fn(async () => result);
-  const is = vi.fn(() => ({ select }));
-  const eq = vi.fn(() => ({ is }));
-  const inFn = vi.fn(() => ({ eq }));
-  const update = vi.fn(() => ({ in: inFn }));
-  const from = vi.fn(() => ({ update }));
+  // The chain terminates at `.is()` — the service reads `count`, so there is
+  // no `.select()` to await. Parameters are typed so `mock.calls[0][0]` is a
+  // real payload rather than the empty tuple an argless `vi.fn()` infers.
+  const is = vi.fn(async (_col: string, _val: null) => result);
+  const eq = vi.fn((_col: string, _val: string) => ({ is }));
+  const inFn = vi.fn((_col: string, _vals: string[]) => ({ eq }));
+  const update = vi.fn((_payload: UpdatePayload, _options?: UpdateOptions) => ({
+    in: inFn,
+  }));
+  const from = vi.fn((_table: string) => ({ update }));
 
   (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce({
     from,
   } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>);
 
-  return { from, update, in: inFn, eq, is, select };
+  return { from, update, in: inFn, eq, is };
 }
 
 describe('updateProductsStatus()', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('scopes the UPDATE to the ids, the business, and live rows', async () => {
-    const m = mockClient({
-      data: [{ id: 'prod-1' }, { id: 'prod-2' }],
-      error: null,
-    });
+    const m = mockClient({ count: 2, error: null });
 
     const res = await svc.updateProductsStatus(IDS, BUSINESS_ID, 'unlisted');
 
@@ -54,24 +57,35 @@ describe('updateProductsStatus()', () => {
     expect(m.from).toHaveBeenCalledWith('products');
     expect(m.update).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'unlisted' }),
+      { count: 'exact' },
     );
     expect(m.in).toHaveBeenCalledWith('id', IDS);
     expect(m.eq).toHaveBeenCalledWith('business_id', BUSINESS_ID);
     expect(m.is).toHaveBeenCalledWith('archived_at', null);
   });
 
-  it('never writes is_available — the DB trigger owns it', async () => {
-    const m = mockClient({ data: [{ id: 'prod-1' }], error: null });
+  it('counts rather than returning a row payload', async () => {
+    const m = mockClient({ count: 1, error: null });
 
     await svc.updateProductsStatus(['prod-1'], BUSINESS_ID, 'disabled');
 
-    const payload = m.update.mock.calls[0][0] as Record<string, unknown>;
+    // Repo count rule: a count-only read must not carry rows back.
+    expect(m.update.mock.calls[0][1]).toEqual({ count: 'exact' });
+    expect(m).not.toHaveProperty('select');
+  });
+
+  it('never writes is_available — the DB trigger owns it', async () => {
+    const m = mockClient({ count: 1, error: null });
+
+    await svc.updateProductsStatus(['prod-1'], BUSINESS_ID, 'disabled');
+
+    const payload = m.update.mock.calls[0][0];
     expect(payload).not.toHaveProperty('is_available');
     expect(payload).toHaveProperty('updated_at');
   });
 
   it('reports NOT_FOUND when nothing matched (another shop, or archived)', async () => {
-    mockClient({ data: [], error: null });
+    mockClient({ count: 0, error: null });
 
     const res = await svc.updateProductsStatus(IDS, BUSINESS_ID, 'active');
 
@@ -81,7 +95,7 @@ describe('updateProductsStatus()', () => {
 
   it('returns a generic message on a DB error, not the driver text', async () => {
     mockClient({
-      data: null,
+      count: null,
       error: {
         code: '23514',
         message: 'products_status_check constraint violated',

@@ -12,10 +12,13 @@
   type, `productStatusSchema`, the filter popover, the Edit dialog and the
   status column **all** already used the right trio. The setter was the single
   surface in the page disagreeing with the filter sitting beside it.
-- **Radix made it a total dead end, not a partial one.** `RadioGroup` fires
-  `onValueChange` only on a *change*, so on an Active row the one valid option
-  was already selected and the other two were rejected by the DB — every
-  possible click was a no-op.
+- **So two of the three options were dead and the third was a wasted write.**
+  Radix's `MenuRadioItem` composes `onSelect` into `onValueChange(value)`
+  **unconditionally** — there is no equality check (`@radix-ui/react-menu`,
+  `checkForDefaultPrevented: false`) — so re-picking the current status fired a
+  redundant UPDATE while the other two 23514'd. The new
+  `if (status === product.status) return` guard is what makes the no-op case
+  free; it is load-bearing, not belt-and-braces.
 - **And it failed silently.** The handler was `if (result.success)
   router.refresh()` with no `else`, no toast, no pending state, so a 23514
   came back and was discarded. That is what turned a one-line value bug into
@@ -62,7 +65,51 @@
   bad-status and over-50 selections. `updateProductsStatus.test.ts` — the
   `.in`/`.eq`/`.is` scope chain, `is_available` never written by hand (the
   trigger owns it), NOT_FOUND on zero rows, and no driver text in the error.
-- Verified: `yarn lint` + **1716** tests + a clean `yarn build` green.
+- **PR #22 review (react-doctor + api-doctor) — fixed in-branch:**
+  - **The bulk bar acted on less than it visibly had ticked.** Selection
+    survived a page/filter/search change while the action was narrowed to the
+    current page, so five ticked boxes reported "2 selected", updated 2, and
+    cleared all 5. Selection is now dropped whenever the row set changes — what
+    is ticked is always what will be acted on.
+  - **The single-row path could resurrect a soft-deleted offering.**
+    `getProductById` does not filter archived rows, so
+    `updateProductStatusAction(<deletedId>, 'active')` put it back on the public
+    menu — the exact thing the bulk path's `archived_at IS NULL` scope prevents.
+    `updateProduct` now refuses archived rows, with the same predicate on the
+    write as defense against a concurrent delete.
+  - **Zod schemas moved to `lib/validation/products.ts`** (`bulkProductStatusSchema`,
+    `productIdSchema`, `MAX_BULK_STATUS_IDS`) — they were inline `z.object()` in
+    the Server Action, the one place `code-principles.md` says they must not be.
+    The bulk cap and the page's `perPage` ceiling are now **one constant**, so
+    "select all on this page" cannot outgrow the cap silently. The page was
+    also carrying a **fifth** hand-written copy of the status trio; it reads
+    `PRODUCT_STATUSES` now.
+  - **Both status actions are rate-limited per user** (30/60s, env-tunable,
+    after the auth check). Server-Action POSTs never enter the proxy limiter and
+    the bulk call is a 50-row write amplifier — same guard shape as
+    `requireCustomer`.
+  - **`id` is guid-validated** on the single-row action, matching its bulk
+    sibling; a malformed id was reaching PostgREST and returning as a misleading
+    NOT_FOUND.
+  - **The bulk write counts instead of returning rows** —
+    `.update(payload, { count: 'exact' })` rather than `.select('id')` read for
+    `.length`, per the repo's count rule.
+  - **`DataTable`'s three loose selection props became one `selection` object.**
+    State without a handler froze the selection; state without `getRowId`
+    silently fell back to row-INDEX keys, meaningless across a server-side page
+    change. Both are now unrepresentable.
+  - **a11y:** the bulk bar stays mounted (unmounting it on clear destroyed the
+    focus Radix had just restored, dropping the keyboard user to `<body>`), the
+    count is `aria-live="polite"` — it renders above the table, so tabbing
+    forward from a row checkbox never reaches it — and the container is a
+    labelled `region`.
+  - **Corrected a wrong claim in this entry.** Radix's `MenuRadioItem` calls
+    `onValueChange` unconditionally, with no equality check, so re-picking the
+    current status fired a redundant write rather than being a no-op.
+  - Test mock in `updateProductsStatus.test.ts` was a type error
+    (`mock.calls[0][0]` on an argless `vi.fn()`), invisible because Next 16's
+    build no longer type-checks.
+- Verified: `yarn lint` + **1721** tests + a clean `yarn build` green.
 - **Not verified — needs a browser:** the submenu, the bulk bar and the amber
   badge have not been clicked through; these are dashboard surfaces behind auth
   and this environment has no login path.

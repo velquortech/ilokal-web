@@ -401,6 +401,17 @@ export async function updateProduct(
       };
     }
 
+    // A soft-deleted product is not editable. `getProductById` does not filter
+    // archived rows, so without this a status write could flip a deleted
+    // offering back to `active` — the resurrection the bulk path's
+    // `archived_at IS NULL` scope already prevents.
+    if (result.product.archived_at) {
+      return {
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Product not found' },
+      };
+    }
+
     // Quote-pricing rules, resolved against the STORED price_type.
     //
     // `updateProductSchema` can only see the payload, so a partial update that
@@ -522,6 +533,8 @@ export async function updateProduct(
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
+      // Defense in depth against the check above racing a concurrent delete.
+      .is('archived_at', null)
       .select()
       .single();
 
@@ -572,13 +585,18 @@ export async function updateProductsStatus(
   try {
     const supabase = await createServerSupabaseClient();
 
-    const { data, error } = await supabase
+    // `count` rather than `.select('id')` — the caller only needs how many rows
+    // moved, and returning a row payload just to read `.length` is the pattern
+    // the repo's count rule exists to prevent.
+    const { count, error } = await supabase
       .from('products')
-      .update({ status, updated_at: new Date().toISOString() })
+      .update(
+        { status, updated_at: new Date().toISOString() },
+        { count: 'exact' },
+      )
       .in('id', ids)
       .eq('business_id', business_id)
-      .is('archived_at', null)
-      .select('id');
+      .is('archived_at', null);
 
     if (error) {
       console.error('[updateProductsStatus]', error);
@@ -593,7 +611,7 @@ export async function updateProductsStatus(
 
     // Zero rows means every id was someone else's, archived, or gone — report
     // it rather than letting the UI toast a success it didn't get.
-    if (!data || data.length === 0) {
+    if (!count) {
       return {
         success: false,
         error: {
@@ -603,7 +621,7 @@ export async function updateProductsStatus(
       };
     }
 
-    return { success: true, data: { updated: data.length } };
+    return { success: true, data: { updated: count } };
   } catch (err) {
     console.error('[updateProductsStatus]', err);
     return {

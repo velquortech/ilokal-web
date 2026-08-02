@@ -32,15 +32,18 @@ interface DataTableProps<TData, TValue> {
   onSortingChange: OnChangeFn<SortingState>;
   /**
    * Lift row selection out of the table. Optional — omit and TanStack keeps it
-   * internally, which is what every table that has no bulk action does.
+   * internally, which is what every table with no bulk action does.
+   *
+   * One object rather than three loose props: state without a handler freezes
+   * the selection, and state without `getRowId` silently falls back to row
+   * INDEX keys, which are meaningless across a server-side page change. Both
+   * are unrepresentable this way.
    */
-  rowSelection?: RowSelectionState;
-  onRowSelectionChange?: OnChangeFn<RowSelectionState>;
-  /**
-   * Selection keys default to the row INDEX, which is meaningless across a
-   * server-side page change. Pass this to key by row id instead.
-   */
-  getRowId?: (row: TData, index: number) => string;
+  selection?: {
+    state: RowSelectionState;
+    onChange: OnChangeFn<RowSelectionState>;
+    getRowId: (row: TData, index: number) => string;
+  };
   /** Rendered above the table — bulk actions for the current selection. */
   toolbar?: ReactNode;
 }
@@ -53,9 +56,7 @@ export function DataTable<TData, TValue>({
   onPaginationChange,
   sorting,
   onSortingChange,
-  rowSelection,
-  onRowSelectionChange,
-  getRowId,
+  selection,
   toolbar,
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
@@ -65,12 +66,14 @@ export function DataTable<TData, TValue>({
     state: {
       pagination,
       sorting,
-      ...(rowSelection !== undefined && { rowSelection }),
+      ...(selection && { rowSelection: selection.state }),
     },
     onPaginationChange,
     onSortingChange,
-    ...(onRowSelectionChange && { onRowSelectionChange }),
-    ...(getRowId && { getRowId }),
+    ...(selection && {
+      onRowSelectionChange: selection.onChange,
+      getRowId: selection.getRowId,
+    }),
     getCoreRowModel: getCoreRowModel(),
     manualPagination: true, // Crucial for server-side
     manualSorting: true, // Crucial for server-side

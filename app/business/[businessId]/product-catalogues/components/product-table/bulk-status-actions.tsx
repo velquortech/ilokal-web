@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { PRODUCT_STATUS_OPTIONS } from '@/lib/types';
 import type { ProductStatus } from '@/lib/types';
+import { cn } from '@/lib/utils';
 import { updateProductsStatusAction } from '@/app/business/[businessId]/actions/productActions';
 import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
 
@@ -36,10 +37,10 @@ export function BulkStatusActions({ ids, onDone }: BulkStatusActionsProps) {
   const router = useRouter();
   const vocabulary = useOfferingVocabulary();
   const [pending, setPending] = React.useState(false);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
 
-  if (ids.length === 0) return null;
-
-  const noun = ids.length === 1 ? vocabulary.singular : vocabulary.plural;
+  const selected = ids.length;
+  const noun = selected === 1 ? vocabulary.singular : vocabulary.plural;
 
   const applyStatus = async (status: ProductStatus) => {
     setPending(true);
@@ -71,14 +72,34 @@ export function BulkStatusActions({ ids, onDone }: BulkStatusActionsProps) {
   };
 
   return (
-    <div className="bg-muted/50 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2">
-      <span className="text-sm font-medium">
-        {ids.length} {noun.toLowerCase()} selected
+    // The bar stays MOUNTED with nothing selected — unmounting it on clear
+    // destroys the focus Radix has just restored to the trigger, dropping the
+    // keyboard user back to <body>. `aria-live` is what tells them the bar
+    // appeared at all: it renders above the table, so tabbing forward from a
+    // row checkbox never reaches it.
+    <div
+      role="region"
+      aria-label="Bulk actions"
+      className={cn(
+        'flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 transition-opacity',
+        selected === 0 && 'text-muted-foreground opacity-60',
+        selected > 0 && 'bg-muted/50',
+      )}
+    >
+      <span className="text-sm font-medium" aria-live="polite">
+        {selected === 0
+          ? `Select ${vocabulary.plural.toLowerCase()} to change their status`
+          : `${selected} ${noun.toLowerCase()} selected`}
       </span>
       <div className="ml-auto flex flex-wrap items-center gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" disabled={pending}>
+            <Button
+              ref={triggerRef}
+              size="sm"
+              variant="outline"
+              disabled={pending || selected === 0}
+            >
               {pending ? (
                 <Loader2 className="animate-spin" />
               ) : (
@@ -110,9 +131,13 @@ export function BulkStatusActions({ ids, onDone }: BulkStatusActionsProps) {
         <Button
           size="sm"
           variant="ghost"
-          onClick={onDone}
-          disabled={pending}
-          aria-label="Clear selection"
+          onClick={() => {
+            // Move focus before the buttons go disabled, so it never lands on
+            // an inert element.
+            triggerRef.current?.blur();
+            onDone();
+          }}
+          disabled={pending || selected === 0}
         >
           <X aria-hidden />
           Clear

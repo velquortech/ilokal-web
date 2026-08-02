@@ -15,7 +15,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import * as productService from '@/lib/api/products/productService';
-import { productStatusSchema } from '@/lib/validation/products';
+import {
+  productStatusSchema,
+  MAX_BULK_STATUS_IDS,
+} from '@/lib/validation/products';
 import { PRODUCT_STATUSES, PRODUCT_STATUS_OPTIONS } from '@/lib/types';
 import type { ProductStatus } from '@/lib/types';
 
@@ -142,6 +145,13 @@ describe('updateProductStatusAction', () => {
     expect(res.error?.code).toBe('UNAUTHORIZED');
     expect(productService.updateProduct).not.toHaveBeenCalled();
   });
+
+  it('rejects a malformed id instead of letting PostgREST 22P02', async () => {
+    const res = await updateProductStatusAction('not-a-uuid', 'unlisted');
+
+    expect(res.error?.code).toBe('VALIDATION_ERROR');
+    expect(productService.updateProduct).not.toHaveBeenCalled();
+  });
 });
 
 describe('updateProductsStatusAction', () => {
@@ -193,12 +203,56 @@ describe('updateProductsStatusAction', () => {
 
   it('caps the batch size', async () => {
     const ids = Array.from(
-      { length: 51 },
+      { length: MAX_BULK_STATUS_IDS + 1 },
       (_, i) =>
         `550e8400-e29b-41d4-a716-4466554400${String(i).padStart(2, '0')}`,
     );
     const res = await updateProductsStatusAction(ids, 'active');
     expect(res.error?.code).toBe('VALIDATION_ERROR');
     expect(productService.updateProductsStatus).not.toHaveBeenCalled();
+  });
+
+  it('accepts a full page — the cap and the page-size ceiling agree', async () => {
+    // If the catalogue's largest page ever exceeds the bulk cap, "select all
+    // on this page" starts failing validation with no other symptom.
+    const page = readFileSync(
+      join(
+        __dirname,
+        '../../../../..',
+        'app/business/[businessId]/product-catalogues/page.tsx',
+      ),
+      'utf8',
+    );
+    expect(page).toContain('MAX_BULK_STATUS_IDS');
+    expect(page).not.toMatch(/Math\.min\(\s*\d+\s*,/);
+  });
+});
+
+describe('per-user flood guard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuthorized();
+    vi.mocked(productService.updateProductsStatus).mockResolvedValue({
+      success: true,
+      data: { updated: 1 },
+    });
+    vi.mocked(productService.updateProduct).mockResolvedValue({
+      success: true,
+      data: { id: PRODUCT_ID } as never,
+    });
+  });
+
+  it('rate-limits a burst of status writes', async () => {
+    // Server-Action POSTs never reach the proxy's limiter, and the bulk call
+    // is a 50-row write amplifier — the budget has to live in the action.
+    const results = [];
+    for (let i = 0; i < 40; i++) {
+      results.push(await updateProductStatusAction(PRODUCT_ID, 'unlisted'));
+    }
+
+    expect(results.some((r) => r.error?.code === 'RATE_LIMITED')).toBe(true);
+    // The limiter runs AFTER auth, so an unauthorized caller can't consume a
+    // legitimate owner's budget.
+    expect(verifyBusinessOwner).toHaveBeenCalled();
   });
 });

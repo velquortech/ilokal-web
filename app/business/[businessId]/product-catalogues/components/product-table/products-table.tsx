@@ -43,20 +43,26 @@ export function ProductTable({
     pageSize,
   };
 
-  // Keying selection by product id (not row index) is what makes the ids below
-  // real ids — and stops a page change from carrying a selection over to
-  // whatever now sits at those positions.
+  // Selection is keyed by product id, not row index — index keys are
+  // meaningless once the server hands back a different page.
+  //
+  // It is also DROPPED whenever the rows change (page, filter, search, or a
+  // refresh after a write). Keeping it would let ticks survive off-screen: the
+  // bar can only act on what is on the page, so the user would see five boxes
+  // ticked, be told "2 selected", and have all five cleared afterwards. What is
+  // ticked is always exactly what will be acted on.
+  const rowsKey = React.useMemo(
+    () => products.map((p) => p.id).join(','),
+    [products],
+  );
+  React.useEffect(() => {
+    setRowSelection({});
+  }, [rowsKey]);
+
   const selectedIds = React.useMemo(
     () => Object.keys(rowSelection).filter((id) => rowSelection[id]),
     [rowSelection],
   );
-
-  // The page's rows come from the server, so a stale id can survive a refresh
-  // (deleted elsewhere, filtered out). Only act on what is actually on screen.
-  const visibleSelectedIds = React.useMemo(() => {
-    const onPage = new Set(products.map((p) => p.id));
-    return selectedIds.filter((id) => onPage.has(id));
-  }, [selectedIds, products]);
 
   const handlePaginationChange: OnChangeFn<PaginationState> = (updater) => {
     const next = typeof updater === 'function' ? updater(pagination) : updater;
@@ -73,12 +79,14 @@ export function ProductTable({
         onPaginationChange={handlePaginationChange}
         sorting={sorting}
         onSortingChange={setSorting}
-        rowSelection={rowSelection}
-        onRowSelectionChange={setRowSelection}
-        getRowId={(row) => row.id}
+        selection={{
+          state: rowSelection,
+          onChange: setRowSelection,
+          getRowId: (row) => row.id,
+        }}
         toolbar={
           <BulkStatusActions
-            ids={visibleSelectedIds}
+            ids={selectedIds}
             onDone={() => setRowSelection({})}
           />
         }

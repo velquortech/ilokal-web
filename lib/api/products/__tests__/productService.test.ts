@@ -405,6 +405,31 @@ describe('productService', () => {
       expect(res.error?.code).toBe('NOT_FOUND');
     });
 
+    it('refuses a soft-deleted product — no resurrection by status write', async () => {
+      // `getProductById` does not filter archived rows, so without this guard
+      // `updateProductStatusAction(<deletedId>, 'active')` would put a deleted
+      // offering back on the public menu.
+      const dbRes = {
+        product: {
+          id: 'p1',
+          business_id: 'b1',
+          archived_at: '2026-08-01T00:00:00Z',
+        },
+      };
+      vi.mocked(q.getProductById).mockResolvedValueOnce(
+        dbRes as unknown as Awaited<ReturnType<typeof q.getProductById>>,
+      );
+
+      const res = await svc.updateProduct('p1', 'b1', {
+        status: 'active',
+      } as unknown as Parameters<typeof svc.updateProduct>[2]);
+
+      expect(res.success).toBe(false);
+      expect(res.error?.code).toBe('NOT_FOUND');
+      // No client was queued for this test, so reaching the write at all would
+      // have thrown rather than returned a clean NOT_FOUND.
+    });
+
     it('succeeds when product is authorized and update works', async () => {
       const dbRes = { product: { id: 'p1', business_id: 'b1' } };
       vi.mocked(q.getProductById).mockResolvedValueOnce(
@@ -415,10 +440,14 @@ describe('productService', () => {
         from: vi.fn(() => ({
           update: vi.fn(() => ({
             eq: vi.fn(() => ({
-              select: vi.fn(() => ({
-                single: vi.fn(async () => ({
-                  data: updatedProduct,
-                  error: null,
+              // `.is('archived_at', null)` — a soft-deleted product is not
+              // editable, and the write says so as well as the pre-check.
+              is: vi.fn(() => ({
+                select: vi.fn(() => ({
+                  single: vi.fn(async () => ({
+                    data: updatedProduct,
+                    error: null,
+                  })),
                 })),
               })),
             })),

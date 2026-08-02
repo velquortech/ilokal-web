@@ -10,14 +10,10 @@ import { getSectionsWithCounts } from '@/lib/api/sections/sectionQuery';
 import { getBusinessTypeId } from '@/lib/api/offerings/offeringQuery';
 import { ProductCataloguesContent } from './components/product-catalogues-content';
 import type { ProductStatus } from '@/lib/types';
+import { PRODUCT_STATUSES } from '@/lib/types';
+import { MAX_BULK_STATUS_IDS } from '@/lib/validation/products';
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
-
-const PRODUCT_STATUSES: ReadonlyArray<ProductStatus> = [
-  'active',
-  'unlisted',
-  'disabled',
-];
 
 export default async function ProductCataloguesPage({
   searchParams,
@@ -43,8 +39,10 @@ export default async function ProductCataloguesPage({
     1,
     parseInt(typeof sp.page === 'string' ? sp.page : '1', 10) || 1,
   );
+  // Shares its ceiling with the bulk status action: "select all on this page"
+  // must always fit inside one bulk call.
   const perPage = Math.min(
-    50,
+    MAX_BULK_STATUS_IDS,
     Math.max(
       5,
       parseInt(typeof sp.perPage === 'string' ? sp.perPage : '10', 10) || 10,

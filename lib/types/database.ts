@@ -2295,6 +2295,13 @@ export type Database = {
         Returns: number
       }
       prune_notification_outbox: { Args: never; Returns: number }
+      public_feature_flags: {
+        Args: never
+        Returns: {
+          enable_bookings: boolean
+          enable_events: boolean
+        }[]
+      }
       record_view: {
         Args: { p_business_id?: string; p_product_id?: string }
         Returns: undefined

@@ -59,14 +59,20 @@ export async function getRegistrationSettings(): Promise<RegistrationSettings> {
  * Not exported: `'use server'` makes every export a callable endpoint, and a
  * client-suppliable key would let anyone probe arbitrary settings rows.
  */
-async function readFlag(key: string): Promise<boolean> {
+type PublicFlag = 'enable_events' | 'enable_bookings';
+
+async function readFlag(key: PublicFlag): Promise<boolean> {
   try {
     const supabase = await createServerSupabaseClient();
 
+    // Via the RPC, NOT a table read: `app_settings` is readable `TO
+    // authenticated` only, so selecting it directly returns zero rows for an
+    // anonymous visitor — and this reader fails closed, which made the whole
+    // public events surface invisible to logged-out users. The function is
+    // SECURITY DEFINER with a fixed return list, so it exposes these two flags
+    // and nothing else.
     const { data, error } = await supabase
-      .from('app_settings')
-      .select('value')
-      .eq('key', key)
+      .rpc('public_feature_flags')
       .maybeSingle();
 
     if (error || !data) {
@@ -74,7 +80,7 @@ async function readFlag(key: string): Promise<boolean> {
       return false;
     }
 
-    return data.value === true;
+    return (data as Record<PublicFlag, boolean>)[key] === true;
   } catch (err) {
     // Next signals "this route cannot be static" by THROWING from `cookies()`.
     // Swallowing that would answer `false` and let the route prerender with

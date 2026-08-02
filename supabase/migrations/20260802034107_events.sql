@@ -36,6 +36,41 @@ INSERT INTO public.app_settings (key, value)
 VALUES ('enable_events', 'false'::jsonb)
 ON CONFLICT (key) DO NOTHING;
 
+-- 1b. Public feature flags ------------------------------------------------
+--
+-- `app_settings` is readable `TO authenticated` only (20260723000000), which
+-- is right for the registration gates — every reader of those is signed in.
+-- It is WRONG for a flag that gates a PUBLIC surface: an anonymous visitor on
+-- /explore or /events reads zero rows, the reader fails closed, and the whole
+-- feature is invisible to exactly the audience it was built for.
+--
+-- Fixed via a function rather than a broad anon SELECT policy on the table:
+-- the RETURNED COLUMN LIST is the contract, so it cannot over-expose, and a
+-- settings row added later stays private by default. Same reasoning as
+-- `get_business_public_info` (20260727000006) — and the opposite of the
+-- `USING (true)` policy that leaked the whole follow graph in 20260607000000.
+--
+-- Deliberately NOT a grant on `get_app_setting_bool(key, default)`: that takes
+-- the key from the caller, so granting it would let anyone read any settings
+-- row by name. This reuses it internally, where the key is ours.
+CREATE OR REPLACE FUNCTION public.public_feature_flags()
+RETURNS TABLE (
+  enable_events   BOOLEAN,
+  enable_bookings BOOLEAN
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT
+    public.get_app_setting_bool('enable_events', false),
+    public.get_app_setting_bool('enable_bookings', false);
+$$;
+
+REVOKE ALL ON FUNCTION public.public_feature_flags() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.public_feature_flags() TO anon, authenticated;
+
 -- 2. Make the cross-shop product hole unrepresentable ---------------------
 --
 -- An event may promote ONE offering. A `product_id` from the client is not

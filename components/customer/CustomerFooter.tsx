@@ -19,13 +19,19 @@ import {
  * Server component — pure links, no interactivity.
  */
 
-type FooterLink = { href: string; label: string };
+type FooterLink = {
+  href: string;
+  label: string;
+  /** The `app_settings` kill switch this entry needs, if any. */
+  flag?: string;
+};
 
 const FOOTER_LINKS: FooterLink[] = [
   { href: ROUTES.PUBLIC.LANDING, label: 'Home' },
   { href: ROUTES.EXPLORE.HOME, label: 'Explore' },
   { href: ROUTES.EXPLORE.NEARBY, label: 'Nearby' },
   { href: ROUTES.EXPLORE.DEALS, label: 'Deals' },
+  { href: ROUTES.EVENTS.HOME, label: 'Events', flag: 'enable_events' },
   // Cross-surface anchors go through the helper — a bare `#voices` scrolls
   // nowhere from /explore.
   {
@@ -35,7 +41,16 @@ const FOOTER_LINKS: FooterLink[] = [
   { href: ROUTES.BUSINESS.registration, label: 'List your business' },
 ];
 
-export function CustomerFooter() {
+export function CustomerFooter({
+  flags = {},
+}: {
+  /** `app_settings` kill switches — a flagged route 404s while it is off. */
+  flags?: Record<string, boolean>;
+} = {}) {
+  const links = FOOTER_LINKS.filter(
+    (link) => !link.flag || flags[link.flag] === true,
+  );
+
   return (
     <footer className="bg-background mt-8 border-t">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6">
@@ -54,7 +69,7 @@ export function CustomerFooter() {
             aria-label="Footer"
             className="flex flex-wrap items-center gap-x-5 gap-y-2"
           >
-            {FOOTER_LINKS.map(({ href, label }) => (
+            {links.map(({ href, label }) => (
               <Link
                 key={href}
                 href={href}

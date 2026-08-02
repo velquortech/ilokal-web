@@ -845,6 +845,103 @@ export type Database = {
           },
         ]
       }
+      events: {
+        Row: {
+          address: string
+          archived_at: string | null
+          business_id: string | null
+          created_at: string
+          daily_end_time: string | null
+          daily_start_time: string | null
+          description: string | null
+          ends_at: string
+          id: string
+          image_url: string | null
+          link_url: string | null
+          location: unknown
+          name: string
+          priority: number
+          product_id: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          starts_at: string
+          status: string
+          ticket_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          archived_at?: string | null
+          business_id?: string | null
+          created_at?: string
+          daily_end_time?: string | null
+          daily_start_time?: string | null
+          description?: string | null
+          ends_at: string
+          id?: string
+          image_url?: string | null
+          link_url?: string | null
+          location?: unknown
+          name: string
+          priority?: number
+          product_id?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          starts_at: string
+          status?: string
+          ticket_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          archived_at?: string | null
+          business_id?: string | null
+          created_at?: string
+          daily_end_time?: string | null
+          daily_start_time?: string | null
+          description?: string | null
+          ends_at?: string
+          id?: string
+          image_url?: string | null
+          link_url?: string | null
+          location?: unknown
+          name?: string
+          priority?: number
+          product_id?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          starts_at?: string
+          status?: string
+          ticket_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_dashboard_stats"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "events_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_events_product_same_business"
+            columns: ["product_id", "business_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id", "business_id"]
+          },
+        ]
+      }
       follows: {
         Row: {
           business_id: string
@@ -1944,6 +2041,23 @@ export type Database = {
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      events_nearby: {
+        Args: { lat: number; lng: number; radius_meters?: number }
+        Returns: {
+          address: string
+          business_id: string
+          business_name: string
+          daily_end_time: string
+          daily_start_time: string
+          description: string
+          distance_meters: number
+          ends_at: string
+          id: string
+          image_url: string
+          name: string
+          starts_at: string
+        }[]
+      }
       gen_redemption_code: { Args: never; Returns: string }
       geometry: { Args: { "": string }; Returns: unknown }
       geometry_above: {
@@ -2118,6 +2232,10 @@ export type Database = {
         Args: { p_redemption_id: string }
         Returns: string
       }
+      notify_event_proposal_submitted: {
+        Args: { p_event_id: string }
+        Returns: number
+      }
       notify_followers: {
         Args: {
           p_body: string
@@ -2216,7 +2334,7 @@ export type Database = {
       }
       rollup_weekly_view_counts: { Args: never; Returns: undefined }
       section_product_counts: {
-        Args: { p_business_id: string }
+        Args: { p_branch_id?: string; p_business_id: string }
         Returns: {
           product_count: number
           section_id: string

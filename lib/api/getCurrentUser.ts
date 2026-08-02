@@ -12,6 +12,7 @@ import { isRedirectError } from 'next/dist/client/components/redirect-error';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { User } from '@/lib/types/user';
 import { ROUTES } from '@/config/routeConfig';
+import { isDynamicUsageError } from '@/lib/utils/dynamicUsage';
 
 /**
  * Fetch the current user from the server session
@@ -54,6 +55,9 @@ export async function getCurrentUser(): Promise<User | null> {
       archived_at: profile.archived_at,
     };
   } catch (error) {
+    // `cookies()` throws to say "this route must be dynamic". Answering `null`
+    // there would prerender the page as SIGNED OUT and bake that in.
+    if (isDynamicUsageError(error)) throw error;
     console.error('[getCurrentUser] Error:', error);
     return null;
   }
@@ -112,7 +116,7 @@ export async function getAdminUserOrRedirect(): Promise<User> {
       avatar_url: profile.avatar_url,
     };
   } catch (error) {
-    if (isRedirectError(error)) throw error;
+    if (isRedirectError(error) || isDynamicUsageError(error)) throw error;
     console.error('[getAdminUserOrRedirect] Error:', error);
     redirect(ROUTES.AUTH.SIGN_IN);
   }
@@ -172,7 +176,7 @@ export async function getBusinessUserOrRedirect(): Promise<User> {
       avatar_url: profile.avatar_url,
     };
   } catch (error) {
-    if (isRedirectError(error)) throw error;
+    if (isRedirectError(error) || isDynamicUsageError(error)) throw error;
     console.error('[getBusinessUserOrRedirect] Error:', error);
     redirect(ROUTES.AUTH.SIGN_IN);
   }

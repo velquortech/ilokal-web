@@ -28,6 +28,7 @@ import { ImageUploadField } from '@/components/custom/upload/image-upload';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ProductResponse, ProductSectionWithCount } from '@/lib/types';
+import { PRODUCT_STATUS_OPTIONS } from '@/lib/types';
 import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
 import { cn } from '@/lib/utils';
 import { BOOKING_MODE_LABELS, PRICE_TYPE_LABELS } from './offering-labels';
@@ -377,9 +378,11 @@ export function UpdateProductDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="unlisted">Unlisted</SelectItem>
-                      <SelectItem value="disabled">Disabled</SelectItem>
+                      {PRODUCT_STATUS_OPTIONS.map(({ value, label }) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 )}

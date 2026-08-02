@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { calculatePercentage } from '@/lib/product-helper';
 import { formatOfferingPricePair } from '@/lib/utils/formatOfferingPrice';
 import type { ProductResponse, ProductSectionWithCount } from '@/lib/types';
+import { PRODUCT_STATUS_OPTIONS } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ViewProduct } from '../view-product';
 import { ProductActions } from './product-actions';
@@ -133,14 +134,19 @@ export function getColumns(
         <div
           className={cn(
             'inline-flex h-max items-center rounded-sm px-2 py-0.5 text-xs capitalize',
+            // Green stays reserved for success (the repo's standing rule), so
+            // only `active` gets it. `unlisted` was red, which reads as a
+            // fault — it is a deliberate hidden state, so it takes amber.
             row.original.status === 'active' &&
               'bg-green-600/10 text-green-700',
-            row.original.status === 'unlisted' && 'bg-red-600/10 text-red-700',
+            row.original.status === 'unlisted' &&
+              'bg-amber-500/15 text-amber-700 dark:text-amber-400',
             row.original.status === 'disabled' &&
               'bg-muted text-muted-foreground',
           )}
         >
-          {row.original.status}
+          {PRODUCT_STATUS_OPTIONS.find((o) => o.value === row.original.status)
+            ?.label ?? row.original.status}
         </div>
       ),
     },

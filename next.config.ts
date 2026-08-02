@@ -84,6 +84,17 @@ const buildCSPImageSources = (): string => {
 };
 
 const nextConfig: NextConfig = {
+  experimental: {
+    serverActions: {
+      // Server Actions default to a 1 MB request body, but the product-image
+      // upload action (and the branch/registration ones) accept files up to
+      // 2 MB — so a valid 2 MB image was rejected by the transport with a 413
+      // ("Body exceeded 1 MB limit") before the handler's own size check ran.
+      // 3 MB leaves headroom for multipart boundaries + the other form fields,
+      // and stays well under Vercel's 4.5 MB platform body cap.
+      bodySizeLimit: '3mb',
+    },
+  },
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,

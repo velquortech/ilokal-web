@@ -11,12 +11,13 @@ import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { ProductStatus } from '@/lib/types';
+import { PRODUCT_STATUS_OPTIONS } from '@/lib/types';
 
+// Shares PRODUCT_STATUS_OPTIONS with the row-action setter so the filter can
+// never again offer a status the setter can't produce (or vice versa).
 const STATUS_OPTIONS: Array<{ value: ProductStatus | ''; label: string }> = [
   { value: '', label: 'All' },
-  { value: 'active', label: 'Active' },
-  { value: 'unlisted', label: 'Unlisted' },
-  { value: 'disabled', label: 'Disabled' },
+  ...PRODUCT_STATUS_OPTIONS.map(({ value, label }) => ({ value, label })),
 ];
 
 interface FilterProductsProps {

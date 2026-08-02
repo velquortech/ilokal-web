@@ -20,6 +20,7 @@ import {
   createProductSchema,
   updateProductSchema,
   applySaleSchema,
+  productStatusSchema,
 } from '@/lib/validation/products';
 import * as productQuery from '@/lib/api/products/productQuery';
 import * as productService from '@/lib/api/products/productService';
@@ -143,22 +144,95 @@ export async function deleteProductAction(
 }
 
 /**
- * Update only the status of a product
+ * Update only the status of a product.
+ *
+ * The status is validated here rather than trusted: this is an exported Server
+ * Action, so it is a publicly invocable endpoint — an unvalidated string went
+ * straight to PostgREST and came back as a CHECK violation (23514) that the
+ * caller saw as a generic INTERNAL_ERROR.
  */
 export async function updateProductStatusAction(
   id: string,
   status: ProductStatus,
 ): Promise<ApiResponse<Product>> {
   try {
+    const parsed = productStatusSchema.safeParse(status);
+    if (!parsed.success) {
+      return {
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'Invalid product status' },
+      };
+    }
+
     const verify = await verifyBusinessOwner();
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
     return await productService.updateProduct(id, verify.business!.id, {
-      status,
+      status: parsed.data,
     });
   } catch (error) {
     console.error('[updateProductStatusAction]', error);
+    return {
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to update product status',
+      },
+    };
+  }
+}
+
+/** Cap on one bulk status change — the table pages at most 50 rows. */
+const MAX_BULK_STATUS_IDS = 50;
+
+/**
+ * Set the status of several offerings at once (the table's selection column).
+ *
+ * One UPDATE scoped to `business_id`, not a loop of single updates: N round
+ * trips is slow, and a partial failure halfway through leaves the owner with a
+ * selection they can't reason about.
+ */
+export async function updateProductsStatusAction(
+  ids: string[],
+  status: ProductStatus,
+): Promise<ApiResponse<{ updated: number }>> {
+  try {
+    const parsed = z
+      .object({
+        ids: z
+          .array(z.guid())
+          .min(1, 'Select at least one item')
+          .max(
+            MAX_BULK_STATUS_IDS,
+            `Select at most ${MAX_BULK_STATUS_IDS} items`,
+          ),
+        status: productStatusSchema,
+      })
+      .safeParse({ ids, status });
+
+    if (!parsed.success) {
+      const firstError = parsed.error.issues[0]?.message;
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: firstError || 'Invalid selection',
+        },
+      };
+    }
+
+    const verify = await verifyBusinessOwner();
+    if (!verify.authorized)
+      return { success: false, error: verify.error as ApiError };
+
+    return await productService.updateProductsStatus(
+      parsed.data.ids,
+      verify.business!.id,
+      parsed.data.status,
+    );
+  } catch (error) {
+    console.error('[updateProductsStatusAction]', error);
     return {
       success: false,
       error: {

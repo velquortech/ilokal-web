@@ -73,8 +73,11 @@ function initialState(event?: EventWithRefs): FormState {
     name: event?.name ?? '',
     description: event?.description ?? '',
     address: event?.address ?? '',
-    latitude: '',
-    longitude: '',
+    // Prefilled from the DB's generated projections of `location`. Leaving
+    // these blank on an edit is what made every save look like "the owner
+    // cleared the pin".
+    latitude: event?.latitude != null ? String(event.latitude) : '',
+    longitude: event?.longitude != null ? String(event.longitude) : '',
     startsAt: isoToManilaInput(event?.starts_at),
     endsAt: isoToManilaInput(event?.ends_at),
     dailyStart: timeToInput(event?.daily_start_time),
@@ -85,9 +88,11 @@ function initialState(event?: EventWithRefs): FormState {
   };
 }
 
-// No `businessId` prop: every action derives the shop from the session via
-// `verifyBusinessOwner`, so passing one from the client would be a value the
-// server must ignore anyway.
+// ⚠️ No `businessId` prop, and that is a KNOWN BUG rather than a decision.
+// The actions call `verifyBusinessOwner()` with no argument, which falls back
+// to whichever business `.limit(1)` returns — so an owner who holds several
+// shops creates events against the wrong one. The route segment must be
+// threaded through and verified server-side.
 export function EventDialog({ offerings, event, children }: EventDialogProps) {
   const router = useRouter();
   const isEdit = Boolean(event);
@@ -116,6 +121,21 @@ export function EventDialog({ offerings, event, children }: EventDialogProps) {
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  /** The coordinate keys, present only when the pair is genuinely usable. */
+  const coordinates = (state: FormState) => {
+    const lat = Number(state.latitude);
+    const lng = Number(state.longitude);
+    if (
+      state.latitude.trim() === '' ||
+      state.longitude.trim() === '' ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng)
+    ) {
+      return {};
+    }
+    return { latitude: lat, longitude: lng };
+  };
 
   const submit = async (asDraft: boolean) => {
     setPending(true);
@@ -164,8 +184,11 @@ export function EventDialog({ offerings, event, children }: EventDialogProps) {
         link_url: form.linkUrl,
         ticket_url: form.ticketUrl,
         product_id: form.productId === NO_OFFERING ? null : form.productId,
-        latitude: form.latitude ? Number(form.latitude) : null,
-        longitude: form.longitude ? Number(form.longitude) : null,
+        // Sent ONLY when both parse to real numbers. A blank field means "I
+        // did not set a pin", never "erase the one that is there" — the
+        // service refuses to write `location` without a pair for the same
+        // reason, so an empty form cannot wipe a point at either layer.
+        ...coordinates(form),
       };
 
       const result = event

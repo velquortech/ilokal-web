@@ -105,9 +105,20 @@ function toRow(input: Partial<CreateEventInput>): Record<string, unknown> {
   if (input.ticket_url !== undefined) row.ticket_url = input.ticket_url;
   if (input.product_id !== undefined) row.product_id = input.product_id;
 
-  // Coordinates are validated as a pair, so testing one is enough. Omitting
-  // them entirely leaves an existing location alone on an update.
-  if (input.latitude !== undefined || input.longitude !== undefined) {
+  // `location` is written ONLY when a real pair arrives.
+  //
+  // The previous rule — write whenever either key was present — meant a form
+  // that always sent `latitude: null, longitude: null` (which the edit dialog
+  // did, because nothing read the stored point back) silently erased the
+  // coordinates on every save, dropping the event out of `events_nearby` and
+  // the mobile endpoint.
+  //
+  // The cost is that this cannot CLEAR a point. That is the right way round:
+  // an event with a stale pin is findable, an event with none is not.
+  if (
+    typeof input.latitude === 'number' &&
+    typeof input.longitude === 'number'
+  ) {
     row.location = toPoint(input.latitude, input.longitude);
   }
 

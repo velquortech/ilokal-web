@@ -12,6 +12,7 @@
 
 import { cache } from 'react';
 import { createServerSupabaseClient } from '@/supabase/server';
+import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { describeDbError } from '@/lib/utils/describeDbError';
 import type {
   EventFilters,
@@ -42,11 +43,50 @@ function firstOrNull<T>(value: unknown): T | null {
   return (value as T) ?? null;
 }
 
-function normalise(row: EmbeddedRow): EventWithRefs {
+type StorageClient = Parameters<typeof resolveStorageUrl>[0];
+
+/**
+ * Shape one row for rendering.
+ *
+ * Two things happen here, both of which look optional until they bite:
+ *
+ * 1. `business` and `product` are to-one embeds, which PostgREST returns as
+ *    ARRAYS. Reading `.shop_name` off an array yields undefined and renders as
+ *    a shop with no name.
+ * 2. Image columns hold RAW STORAGE PATHS. `uploadWebP` returns `data.path`,
+ *    so a real upload stores `<businessId>/<file>.webp` — handing that to
+ *    `next/image` produces a relative URL that 404s. Seeds store full URLs
+ *    instead, and `resolveStorageUrl` passes those through untouched, so one
+ *    call covers both.
+ */
+function normalise(supabase: StorageClient, row: EmbeddedRow): EventWithRefs {
+  const event = row as unknown as EventWithRefs;
+  const business = firstOrNull<EventWithRefs['business']>(row.business);
+  const product = firstOrNull<EventWithRefs['product']>(row.product);
+
   return {
-    ...(row as unknown as EventWithRefs),
-    business: firstOrNull(row.business),
-    product: firstOrNull(row.product),
+    ...event,
+    image_url: resolveStorageUrl(supabase, 'event-images', event.image_url),
+    business: business
+      ? {
+          ...business,
+          logo_url: resolveStorageUrl(
+            supabase,
+            'shop-logos',
+            business.logo_url,
+          ),
+        }
+      : null,
+    product: product
+      ? {
+          ...product,
+          image_url: resolveStorageUrl(
+            supabase,
+            'product-images',
+            product.image_url,
+          ),
+        }
+      : null,
   };
 }
 
@@ -112,7 +152,9 @@ export async function getPublicEvents(
 
     const total = count ?? 0;
     return {
-      events: (data ?? []).map((row) => normalise(row as EmbeddedRow)),
+      events: (data ?? []).map((row) =>
+        normalise(supabase, row as EmbeddedRow),
+      ),
       metadata: {
         total,
         page,
@@ -152,7 +194,7 @@ export async function getBannerEvents(limit = 8): Promise<EventWithRefs[]> {
       console.error('[getBannerEvents]', describeDbError(error));
       return [];
     }
-    return (data ?? []).map((row) => normalise(row as EmbeddedRow));
+    return (data ?? []).map((row) => normalise(supabase, row as EmbeddedRow));
   } catch (err) {
     console.error('[getBannerEvents]', err);
     return [];
@@ -192,7 +234,7 @@ export const getEventById = cache(
       }
       if (!data) return { error: 'NOT_FOUND' };
 
-      return { event: normalise(data as EmbeddedRow) };
+      return { event: normalise(supabase, data as EmbeddedRow) };
     } catch (err) {
       console.error('[getEventById]', err);
       return { error: 'LOAD_FAILED' };
@@ -243,7 +285,9 @@ export async function getEventsForBusiness(
 
     const total = count ?? 0;
     return {
-      events: (data ?? []).map((row) => normalise(row as EmbeddedRow)),
+      events: (data ?? []).map((row) =>
+        normalise(supabase, row as EmbeddedRow),
+      ),
       metadata: {
         total,
         page,
@@ -297,7 +341,9 @@ export async function getEventsForReview(
 
     const total = count ?? 0;
     return {
-      events: (data ?? []).map((row) => normalise(row as EmbeddedRow)),
+      events: (data ?? []).map((row) =>
+        normalise(supabase, row as EmbeddedRow),
+      ),
       metadata: {
         total,
         page,

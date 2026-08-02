@@ -10,11 +10,15 @@ import type { EventWithRefs } from '@/lib/types';
 /**
  * One event in the grid.
  *
- * Server component: no state, no handlers, so it costs nothing in the client
- * bundle and renders complete in the HTML. The "Happening now" badge is
- * computed against the server clock, which is right to the minute for
- * something an hour long and is additive either way — the badge appearing a
- * moment late is not a defect worth shipping JS for.
+ * No state and no handlers of its own — but it does NOT stay off the client
+ * bundle: `events-browser.tsx` is a client component and imports this, so the
+ * whole card ships and both badges are re-evaluated at hydration.
+ *
+ * `eventPhase` therefore runs against the SERVER clock on the first render and
+ * the DEVICE clock on the second. For an event measured in hours those agree,
+ * but at a phase boundary (or with a skewed device clock) they will not, and
+ * React will warn. Passing a server-computed phase down as a prop is the fix;
+ * it is not done here yet.
  */
 export function EventCard({ event }: { event: EventWithRefs }) {
   const live = eventPhase(event) === 'live';

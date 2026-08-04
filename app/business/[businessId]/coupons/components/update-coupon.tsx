@@ -37,6 +37,7 @@ import type {
   UsageScope,
 } from '@/lib/types';
 import { updateCouponAction } from '../../actions/couponActions';
+import { useBusinessId } from '@/providers/BusinessProvider';
 
 interface UpdateCouponDialogProps {
   coupon: Coupon;
@@ -79,6 +80,7 @@ export function UpdateCouponDialog({
   products,
   children,
 }: UpdateCouponDialogProps) {
+  const businessId = useBusinessId();
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -118,7 +120,7 @@ export function UpdateCouponDialog({
     setServerError(null);
 
     try {
-      const result = await updateCouponAction(coupon.id, {
+      const result = await updateCouponAction(businessId, coupon.id, {
         promotion_type: data.promotion_type,
         status: data.status,
         code: data.code,

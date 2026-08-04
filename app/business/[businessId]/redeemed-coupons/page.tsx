@@ -13,11 +13,17 @@ type SearchParams = Promise<{
   branch?: string;
 }>;
 
+type RouteParams = Promise<{ businessId: string }>;
+
 export default async function RedeemedCouponsPage({
+  params: routeParams,
   searchParams,
 }: {
+  params: RouteParams;
   searchParams: SearchParams;
 }) {
+  // The shop being viewed comes from the route, not from a fallback lookup.
+  const { businessId } = await routeParams;
   const params = await searchParams;
 
   const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1);
@@ -41,8 +47,8 @@ export default async function RedeemedCouponsPage({
   };
 
   const [redemptionsResult, statsResult] = await Promise.all([
-    getRedeemedCouponsAction(filters),
-    getRedemptionSummaryStatsAction(branchId),
+    getRedeemedCouponsAction(businessId, filters),
+    getRedemptionSummaryStatsAction(businessId, branchId),
   ]);
 
   const paginatedData = redemptionsResult.success

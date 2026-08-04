@@ -72,7 +72,7 @@ describe('getBusinessCouponsPaginatedAction', () => {
 
   it('returns error when not authorized', async () => {
     mockUnauthorized();
-    const res = await getBusinessCouponsPaginatedAction({
+    const res = await getBusinessCouponsPaginatedAction(BUSINESS_ID, {
       page: 1,
       per_page: 10,
     });
@@ -93,7 +93,7 @@ describe('getBusinessCouponsPaginatedAction', () => {
       mockResult,
     );
 
-    const res = await getBusinessCouponsPaginatedAction({
+    const res = await getBusinessCouponsPaginatedAction(BUSINESS_ID, {
       page: 1,
       per_page: 10,
     });
@@ -117,7 +117,7 @@ describe('getBusinessCouponsPaginatedAction', () => {
       mockResult,
     );
 
-    const res = await getBusinessCouponsPaginatedAction({
+    const res = await getBusinessCouponsPaginatedAction(BUSINESS_ID, {
       page: 1,
       per_page: 10,
       status: 'published',
@@ -143,7 +143,7 @@ describe('getBusinessCouponsPaginatedAction', () => {
       mockResult,
     );
 
-    const res = await getBusinessCouponsPaginatedAction({
+    const res = await getBusinessCouponsPaginatedAction(BUSINESS_ID, {
       page: 1,
       per_page: 10,
       status: 'draft',
@@ -164,7 +164,7 @@ describe('getBusinessCouponsPaginatedAction', () => {
       ReturnType<typeof couponQuery.getCouponsPaginated>
     >);
 
-    const res = await getBusinessCouponsPaginatedAction({
+    const res = await getBusinessCouponsPaginatedAction(BUSINESS_ID, {
       page: 1,
       per_page: 10,
     });
@@ -183,7 +183,7 @@ describe('getBusinessCouponStatsAction', () => {
 
   it('returns error when not authorized', async () => {
     mockUnauthorized();
-    const res = await getBusinessCouponStatsAction();
+    const res = await getBusinessCouponStatsAction(BUSINESS_ID);
     expect(res.success).toBe(false);
   });
 
@@ -194,7 +194,7 @@ describe('getBusinessCouponStatsAction', () => {
       draft: 2,
     });
 
-    const res = await getBusinessCouponStatsAction();
+    const res = await getBusinessCouponStatsAction(BUSINESS_ID);
     expect(res.success).toBe(true);
     const data = (
       res as ApiResponse<{ total: number; published: number; draft: number }>
@@ -211,7 +211,7 @@ describe('getBusinessCouponStatsAction', () => {
       draft: 1,
     });
 
-    await getBusinessCouponStatsAction('branch-42');
+    await getBusinessCouponStatsAction(BUSINESS_ID, 'branch-42');
 
     expect(couponQuery.getCouponStatsByBusiness).toHaveBeenCalledWith(
       BUSINESS_ID,
@@ -226,7 +226,7 @@ describe('getBusinessCouponStatsAction', () => {
       draft: 0,
     });
 
-    await getBusinessCouponStatsAction();
+    await getBusinessCouponStatsAction(BUSINESS_ID);
 
     expect(couponQuery.getCouponStatsByBusiness).toHaveBeenCalledWith(
       BUSINESS_ID,
@@ -244,13 +244,16 @@ describe('createCouponAction', () => {
   });
 
   it('returns VALIDATION_ERROR when code is missing', async () => {
-    const res = await createCouponAction({ ...baseValidInput, code: '' });
+    const res = await createCouponAction(BUSINESS_ID, {
+      ...baseValidInput,
+      code: '',
+    });
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('VALIDATION_ERROR');
   });
 
   it('returns VALIDATION_ERROR when expiry is before start', async () => {
-    const res = await createCouponAction({
+    const res = await createCouponAction(BUSINESS_ID, {
       ...baseValidInput,
       expiry_date: new Date(Date.now() - 86400000).toISOString(),
     });
@@ -260,7 +263,7 @@ describe('createCouponAction', () => {
 
   it('returns error when not authorized', async () => {
     mockUnauthorized();
-    const res = await createCouponAction(baseValidInput);
+    const res = await createCouponAction(BUSINESS_ID, baseValidInput);
     expect(res.success).toBe(false);
   });
 
@@ -276,7 +279,7 @@ describe('createCouponAction', () => {
       data: mockCoupon as Coupon,
     });
 
-    const res = await createCouponAction(baseValidInput);
+    const res = await createCouponAction(BUSINESS_ID, baseValidInput);
     expect(res.success).toBe(true);
     expect(couponService.default.create).toHaveBeenCalledWith(
       BUSINESS_ID,
@@ -296,7 +299,7 @@ describe('createCouponAction', () => {
       data: mockCoupon as Coupon,
     });
 
-    const res = await createCouponAction({
+    const res = await createCouponAction(BUSINESS_ID, {
       ...baseValidInput,
       status: 'published',
     });
@@ -315,7 +318,7 @@ describe('createCouponAction', () => {
       data: mockCoupon as Coupon,
     });
 
-    const res = await createCouponAction(baseValidInput);
+    const res = await createCouponAction(BUSINESS_ID, baseValidInput);
     expect(res.success).toBe(true);
     expect((res as ApiResponse<Coupon>).data?.code).toBe('TEST10');
   });
@@ -333,7 +336,9 @@ describe('updateCouponAction', () => {
     vi.mocked(couponQuery.getCouponById).mockResolvedValueOnce({
       error: 'Coupon not found',
     });
-    const res = await updateCouponAction(COUPON_ID, { status: 'published' });
+    const res = await updateCouponAction(BUSINESS_ID, COUPON_ID, {
+      status: 'published',
+    });
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('NOT_FOUND');
   });
@@ -342,7 +347,9 @@ describe('updateCouponAction', () => {
     vi.mocked(couponQuery.getCouponById).mockResolvedValueOnce({
       coupon: { id: COUPON_ID, business_id: 'other-biz-id' } as Coupon,
     });
-    const res = await updateCouponAction(COUPON_ID, { status: 'published' });
+    const res = await updateCouponAction(BUSINESS_ID, COUPON_ID, {
+      status: 'published',
+    });
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('AUTHORIZATION_ERROR');
   });
@@ -361,7 +368,9 @@ describe('updateCouponAction', () => {
       data: { id: COUPON_ID, status: 'published' } as Coupon,
     });
 
-    const res = await updateCouponAction(COUPON_ID, { status: 'published' });
+    const res = await updateCouponAction(BUSINESS_ID, COUPON_ID, {
+      status: 'published',
+    });
     expect(res.success).toBe(true);
     expect(couponService.default.update).toHaveBeenCalledWith(
       COUPON_ID,
@@ -383,7 +392,9 @@ describe('updateCouponAction', () => {
       data: { id: COUPON_ID, status: 'draft' } as Coupon,
     });
 
-    const res = await updateCouponAction(COUPON_ID, { status: 'draft' });
+    const res = await updateCouponAction(BUSINESS_ID, COUPON_ID, {
+      status: 'draft',
+    });
     expect(res.success).toBe(true);
   });
 });
@@ -398,7 +409,7 @@ describe('deleteCouponAction', () => {
 
   it('returns error when not authorized', async () => {
     mockUnauthorized();
-    const res = await deleteCouponAction(COUPON_ID);
+    const res = await deleteCouponAction(BUSINESS_ID, COUPON_ID);
     expect(res.success).toBe(false);
   });
 
@@ -406,7 +417,7 @@ describe('deleteCouponAction', () => {
     vi.mocked(couponQuery.getCouponById).mockResolvedValueOnce({
       error: 'Coupon not found',
     });
-    const res = await deleteCouponAction(COUPON_ID);
+    const res = await deleteCouponAction(BUSINESS_ID, COUPON_ID);
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('NOT_FOUND');
   });
@@ -415,7 +426,7 @@ describe('deleteCouponAction', () => {
     vi.mocked(couponQuery.getCouponById).mockResolvedValueOnce({
       coupon: { id: COUPON_ID, business_id: 'other-biz-id' } as Coupon,
     });
-    const res = await deleteCouponAction(COUPON_ID);
+    const res = await deleteCouponAction(BUSINESS_ID, COUPON_ID);
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('AUTHORIZATION_ERROR');
   });
@@ -431,7 +442,7 @@ describe('deleteCouponAction', () => {
         data: null,
       });
 
-      const res = await deleteCouponAction(COUPON_ID);
+      const res = await deleteCouponAction(BUSINESS_ID, COUPON_ID);
       expect(res.success).toBe(true);
     }
   });

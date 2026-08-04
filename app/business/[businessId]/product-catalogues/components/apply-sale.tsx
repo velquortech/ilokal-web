@@ -25,6 +25,7 @@ import {
   removeSaleAction,
 } from '../../actions/productActions';
 import type { ProductResponse } from '@/lib/types';
+import { useBusinessId } from '@/providers/BusinessProvider';
 
 interface ApplySaleProps {
   product: ProductResponse;
@@ -42,6 +43,7 @@ type SaleFormValues = {
 const QUICK_DISCOUNTS = [10, 25, 50, 70];
 
 export function ApplySale({ product, children }: ApplySaleProps) {
+  const businessId = useBusinessId();
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [isPending, setIsPending] = React.useState(false);
@@ -108,7 +110,7 @@ export function ApplySale({ product, children }: ApplySaleProps) {
     setIsPending(true);
     setServerError(null);
     try {
-      const result = await applySaleAction(product.id, {
+      const result = await applySaleAction(businessId, product.id, {
         sale_price: data.salePrice,
         sale_starts_at: data.sale_starts_at
           ? new Date(data.sale_starts_at).toISOString()
@@ -139,7 +141,7 @@ export function ApplySale({ product, children }: ApplySaleProps) {
     setIsRemoving(true);
     setServerError(null);
     try {
-      const result = await removeSaleAction(product.id);
+      const result = await removeSaleAction(businessId, product.id);
       if (!result.success) {
         const msg = result.error?.message ?? 'Failed to remove sale';
         setServerError(msg);

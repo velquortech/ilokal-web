@@ -40,7 +40,7 @@ import {
   PRICE_TYPE_LABELS,
   SERVICE_LOCATION_LABELS,
 } from './offering-labels';
-import { useBusinessShop } from '@/providers/BusinessProvider';
+import { useBusinessShop, useBusinessId } from '@/providers/BusinessProvider';
 import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
 import {
   createProductAction,
@@ -112,6 +112,7 @@ export function AddProductDialog({
   sections,
   onSuccess,
 }: AddProductDialogProps) {
+  const businessId = useBusinessId();
   const { selectedBranchId } = useBusinessShop();
   const vocabulary = useOfferingVocabulary();
   const [open, setOpen] = React.useState(false);
@@ -184,7 +185,7 @@ export function AddProductDialog({
       if (data.image instanceof File) {
         const fd = new FormData();
         fd.append('file', data.image);
-        const uploadResult = await uploadProductImageAction(fd);
+        const uploadResult = await uploadProductImageAction(businessId, fd);
         if (!uploadResult.success) {
           const msg = uploadResult.error?.message ?? 'Image upload failed';
           setServerError(msg);
@@ -196,7 +197,7 @@ export function AddProductDialog({
 
       const quoteBased = data.price_type === 'on_request';
 
-      const result = await createProductAction({
+      const result = await createProductAction(businessId, {
         name: data.name,
         description: data.description || undefined,
         // A quote-based offering carries no figure at all — the DB CHECK

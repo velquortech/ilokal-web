@@ -56,8 +56,15 @@ beforeEach(() => {
   });
 });
 
+const BUSINESS_ID = 'biz-00000000-0000-0000-0000-000000000001';
+
 function params(sp: Record<string, string | string[] | undefined>) {
-  return { searchParams: Promise.resolve(sp) };
+  // The page now reads the shop from its own `[businessId]` route segment
+  // rather than falling back to whichever shop `.limit(1)` returns.
+  return {
+    params: Promise.resolve({ businessId: BUSINESS_ID }),
+    searchParams: Promise.resolve(sp),
+  };
 }
 
 describe('ProductCataloguesPage searchParams passthrough', () => {

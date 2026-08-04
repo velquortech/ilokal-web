@@ -50,7 +50,7 @@ export default async function Page({
   if (branchId) {
     const [analyticsResult, branchResult] = await Promise.all([
       getBusinessAnalyticsDashboardAction(businessId, branchId),
-      getBusinessBranchByIdAction(branchId),
+      getBusinessBranchByIdAction(businessId, branchId),
     ]);
 
     const data = analyticsResult.success
@@ -73,7 +73,7 @@ export default async function Page({
   // All-branches mode: fetch business-wide analytics + branch list for summary
   const [analyticsResult, branchesResult] = await Promise.all([
     getBusinessAnalyticsDashboardAction(businessId),
-    getBusinessBranchesAction({ per_page: 50, status: 'all' }),
+    getBusinessBranchesAction(businessId, { per_page: 50, status: 'all' }),
   ]);
 
   const data = analyticsResult.success ? analyticsResult.data! : emptyDashboard;

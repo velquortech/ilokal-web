@@ -79,3 +79,23 @@ export const useBusinessShop = () => {
   }
   return context;
 };
+
+/**
+ * The id of the shop currently being managed.
+ *
+ * Every business Server Action takes this as its first argument, because
+ * `verifyBusinessOwner()` called with NO argument falls back to whichever shop
+ * `.limit(1)` returns — so an owner holding two shops would act on the wrong
+ * one. The layout resolves the shop from the `[businessId]` route segment, so
+ * this is that segment's shop, already ownership-checked server-side.
+ *
+ * Returns `''` when the provider has no shop (the pre-registration state).
+ * Callers must treat that as "not ready" rather than sending it: an empty id
+ * fails `verifyBusinessOwner`'s UUID check and comes back as a
+ * VALIDATION_ERROR, which is a confusing thing to show for "your shop has not
+ * loaded yet".
+ */
+export const useBusinessId = (): string => {
+  const { business } = useBusinessShop();
+  return business?.id ?? '';
+};

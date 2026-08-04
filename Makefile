@@ -167,6 +167,55 @@ seed-cloud:
 	@bash supabase/seeds/seed-storage.sh
 	@echo "Cloud seed complete."
 
+# ── Live E2E (Playwright) — LOCAL ONLY ────────────────────────────────────────
+# Drives a real browser against the running local stack and WRITES REAL ROWS
+# (branches, coupons, redemptions, follows, events). `e2e/global-setup.ts`
+# refuses to start unless both the app and Supabase URLs are localhost.
+#
+# Order: `make e2e-preflight` once after a reset, then `make e2e` (or `e2e-video`).
+
+# The shop the walkthrough follows: Iloilo Street Eats (20 products).
+# Deliberately NOT the shop the old no-arg `.limit(1)` fallback resolved to —
+# see the note on DEMO_BUSINESS in e2e/fixtures/accounts.ts. Must match it.
+E2E_DEMO_BUSINESS ?= 11111111-1111-1111-1111-111111111107
+
+# Everything the seven demo flows need before a run:
+#   1. enable_events + enable_bookings ON (both default false -> routes 404)
+#   2. one PRE-APPROVED event (the approval gate is a DB trigger, so an owner
+#      cannot approve their own — see e2e/seed/e2e-preflight.sql)
+#   3. dashboard_demo.sql, which `make seed-db` does NOT run, so without it the
+#      owner analytics dashboard renders zeros
+#   4. any storage image the DB references but that never uploaded (a flaky
+#      loremflickr download leaves a row pointing at a missing file, which
+#      renders as a broken image)
+e2e-preflight:
+	@echo "  applying e2e preflight (flags + approved event)..."
+	@docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres -v ON_ERROR_STOP=1 < e2e/seed/e2e-preflight.sql
+	@echo "  loading dashboard demo analytics data..."
+	@# Pinned to the demo shop (Iloilo Street Eats). Left to its own default,
+	@# dashboard_demo.sql picks the oldest verified business, which is a shop
+	@# with ZERO products — so the analytics act would film a populated
+	@# dashboard for a shop whose menu, catalogue and coupons are all empty.
+	@# The SET must share the psql session with the seed, hence the pipe.
+	@( echo "SET ilokal.demo_business_id = '$(E2E_DEMO_BUSINESS)';"; \
+	   cat supabase/seeds/dashboard_demo.sql ) \
+	  | docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres -v ON_ERROR_STOP=1 > /dev/null
+	@bash e2e/seed/fill-image-gaps.sh
+	@echo "E2E preflight complete."
+
+e2e:
+	@yarn playwright test --config=e2e/playwright.config.ts
+
+e2e-headed:
+	@yarn playwright test --config=e2e/playwright.config.ts --headed
+
+# Record the walkthrough, then stitch the per-spec clips into one mp4.
+e2e-video: e2e
+	@bash e2e/record.sh
+
+e2e-report:
+	@yarn playwright show-report e2e/.artifacts/report
+
 generate-types:
 	# Delegate to the db:types script so the `>` redirect lives *inside* the
 	# yarn-run shell and captures only supabase's output — running
@@ -192,4 +241,4 @@ review:
 	yarn test:run
 	@echo "Review complete: lint, build, and tests passed"
 
-.PHONY: all init-log setup-supabase clean report-backlog migrate-new migrate-up migrate-diff migrate-reset stop-db run-dev test test-run test-ui test-coverage review seed-storage seed-db seed seed-cloud migrate-cloud deploy-cloud
+.PHONY: all init-log setup-supabase clean report-backlog migrate-new migrate-up migrate-diff migrate-reset stop-db run-dev test test-run test-ui test-coverage review seed-storage seed-db seed seed-cloud migrate-cloud deploy-cloud e2e e2e-preflight e2e-headed e2e-video e2e-report

@@ -12,11 +12,19 @@ type SearchParams = Promise<{
   sort?: string;
 }>;
 
+type RouteParams = Promise<{ businessId: string }>;
+
 export default async function BranchesPage({
+  params: routeParams,
   searchParams,
 }: {
+  params: RouteParams;
   searchParams: SearchParams;
 }) {
+  // The route segment is the shop being viewed. Passing it on is what makes
+  // this correct for an owner with more than one shop — without it the actions
+  // fall back to whichever shop `.limit(1)` returns.
+  const { businessId } = await routeParams;
   const params = await searchParams;
 
   const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1);
@@ -36,8 +44,8 @@ export default async function BranchesPage({
   };
 
   const [branchesResult, statsResult] = await Promise.all([
-    getBusinessBranchesAction(filters),
-    getBusinessBranchStatsAction(),
+    getBusinessBranchesAction(businessId, filters),
+    getBusinessBranchStatsAction(businessId),
   ]);
 
   const paginatedData = branchesResult.success

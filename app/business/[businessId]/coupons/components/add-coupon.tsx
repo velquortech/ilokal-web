@@ -36,7 +36,7 @@ import type {
 } from '@/lib/types';
 import { createCouponAction } from '../../actions/couponActions';
 import { ProductPicker } from './product-picker';
-import { useBusinessShop } from '@/providers/BusinessProvider';
+import { useBusinessShop, useBusinessId } from '@/providers/BusinessProvider';
 
 interface AddCouponDialogProps {
   children: React.ReactNode;
@@ -84,6 +84,7 @@ export function AddCouponDialog({
   products,
   onSuccess,
 }: AddCouponDialogProps) {
+  const businessId = useBusinessId();
   const { selectedBranchId } = useBusinessShop();
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -124,7 +125,7 @@ export function AddCouponDialog({
     setServerError(null);
 
     try {
-      const result = await createCouponAction({
+      const result = await createCouponAction(businessId, {
         promotion_type: data.promotion_type,
         status: data.status,
         code: data.code,

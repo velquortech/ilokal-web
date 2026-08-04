@@ -38,6 +38,7 @@ import {
   updateProductAction,
   uploadProductImageAction,
 } from '../../actions/productActions';
+import { useBusinessId } from '@/providers/BusinessProvider';
 
 interface UpdateProductDialogProps {
   product: ProductResponse;
@@ -69,6 +70,7 @@ export function UpdateProductDialog({
   sections,
   children,
 }: UpdateProductDialogProps) {
+  const businessId = useBusinessId();
   const router = useRouter();
   const vocabulary = useOfferingVocabulary();
   const [open, setOpen] = React.useState(false);
@@ -123,7 +125,7 @@ export function UpdateProductDialog({
       if (data.image_url instanceof File) {
         const fd = new FormData();
         fd.append('file', data.image_url);
-        const uploadResult = await uploadProductImageAction(fd);
+        const uploadResult = await uploadProductImageAction(businessId, fd);
         if (!uploadResult.success) {
           const msg = uploadResult.error?.message ?? 'Image upload failed';
           setServerError(msg);
@@ -137,7 +139,7 @@ export function UpdateProductDialog({
 
       const nextIsQuote = data.price_type === 'on_request';
 
-      const result = await updateProductAction(product.id, {
+      const result = await updateProductAction(businessId, product.id, {
         name: data.name,
         description: data.description || undefined,
         // Omitted when the offering is (or becomes) quote-based, so the

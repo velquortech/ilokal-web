@@ -85,7 +85,7 @@ describe('getBusinessBranchesAction', () => {
 
   it('returns error when not authorized', async () => {
     mockUnauthorized();
-    const res = await getBusinessBranchesAction({});
+    const res = await getBusinessBranchesAction(BUSINESS_ID, {});
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('UNAUTHORIZED');
   });
@@ -94,7 +94,10 @@ describe('getBusinessBranchesAction', () => {
     vi.mocked(branchQuery.getBranchesByBusinessId).mockResolvedValueOnce(
       makePaginatedResult([makeBranch()]),
     );
-    const res = await getBusinessBranchesAction({ page: 1, per_page: 10 });
+    const res = await getBusinessBranchesAction(BUSINESS_ID, {
+      page: 1,
+      per_page: 10,
+    });
     expect(res.success).toBe(true);
     expect(
       (res as ApiResponse<PaginatedBranchesResponse>).data?.branches,
@@ -105,7 +108,7 @@ describe('getBusinessBranchesAction', () => {
     vi.mocked(branchQuery.getBranchesByBusinessId).mockResolvedValueOnce(
       makePaginatedResult([]),
     );
-    const res = await getBusinessBranchesAction({});
+    const res = await getBusinessBranchesAction(BUSINESS_ID, {});
     expect(res.success).toBe(true);
     expect(
       (res as ApiResponse<PaginatedBranchesResponse>).data?.branches,
@@ -118,7 +121,7 @@ describe('getBusinessBranchesAction', () => {
       total: 0,
       error: 'DB connection failed',
     });
-    const res = await getBusinessBranchesAction({});
+    const res = await getBusinessBranchesAction(BUSINESS_ID, {});
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('INTERNAL_ERROR');
   });
@@ -127,7 +130,10 @@ describe('getBusinessBranchesAction', () => {
     vi.mocked(branchQuery.getBranchesByBusinessId).mockResolvedValueOnce(
       makePaginatedResult(),
     );
-    await getBusinessBranchesAction({ search: 'main', sort_by: 'newest' });
+    await getBusinessBranchesAction(BUSINESS_ID, {
+      search: 'main',
+      sort_by: 'newest',
+    });
     expect(branchQuery.getBranchesByBusinessId).toHaveBeenCalledWith(
       BUSINESS_ID,
       expect.objectContaining({ search: 'main', sort_by: 'newest' }),
@@ -138,7 +144,7 @@ describe('getBusinessBranchesAction', () => {
     vi.mocked(branchQuery.getBranchesByBusinessId).mockResolvedValueOnce(
       makePaginatedResult([]),
     );
-    await getBusinessBranchesAction({});
+    await getBusinessBranchesAction(BUSINESS_ID, {});
     expect(branchQuery.getBranchesByBusinessId).toHaveBeenCalledWith(
       BUSINESS_ID,
       expect.objectContaining({ status: 'all' }),
@@ -156,7 +162,7 @@ describe('getBusinessBranchStatsAction', () => {
 
   it('returns error when not authorized', async () => {
     mockUnauthorized();
-    const res = await getBusinessBranchStatsAction();
+    const res = await getBusinessBranchStatsAction(BUSINESS_ID);
     expect(res.success).toBe(false);
   });
 
@@ -175,7 +181,7 @@ describe('getBusinessBranchStatsAction', () => {
       per_page: 1000,
       total_pages: 1,
     });
-    const res = await getBusinessBranchStatsAction();
+    const res = await getBusinessBranchStatsAction(BUSINESS_ID);
     expect(res.success).toBe(true);
     const stats = (res as ApiResponse<BranchStats>).data!;
     expect(stats.total).toBe(3);
@@ -191,7 +197,7 @@ describe('getBusinessBranchStatsAction', () => {
       per_page: 1000,
       total_pages: 0,
     });
-    const res = await getBusinessBranchStatsAction();
+    const res = await getBusinessBranchStatsAction(BUSINESS_ID);
     expect(res.success).toBe(true);
     const stats = (res as ApiResponse<BranchStats>).data!;
     expect(stats.total).toBe(0);
@@ -205,7 +211,7 @@ describe('getBusinessBranchStatsAction', () => {
       total: 0,
       error: 'DB connection failed',
     });
-    const res = await getBusinessBranchStatsAction();
+    const res = await getBusinessBranchStatsAction(BUSINESS_ID);
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('INTERNAL_ERROR');
   });
@@ -221,7 +227,7 @@ describe('getBusinessBranchByIdAction', () => {
 
   it('returns error when not authorized', async () => {
     mockUnauthorized();
-    const res = await getBusinessBranchByIdAction(BRANCH_ID);
+    const res = await getBusinessBranchByIdAction(BUSINESS_ID, BRANCH_ID);
     expect(res.success).toBe(false);
   });
 
@@ -229,7 +235,7 @@ describe('getBusinessBranchByIdAction', () => {
     vi.mocked(branchQuery.getBranchById).mockResolvedValueOnce({
       error: 'Branch not found',
     });
-    const res = await getBusinessBranchByIdAction(BRANCH_ID);
+    const res = await getBusinessBranchByIdAction(BUSINESS_ID, BRANCH_ID);
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('NOT_FOUND');
   });
@@ -238,7 +244,7 @@ describe('getBusinessBranchByIdAction', () => {
     vi.mocked(branchQuery.getBranchById).mockResolvedValueOnce({
       branch: makeBranch({ business_id: 'other-biz-id' }) as Branch,
     });
-    const res = await getBusinessBranchByIdAction(BRANCH_ID);
+    const res = await getBusinessBranchByIdAction(BUSINESS_ID, BRANCH_ID);
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('AUTHORIZATION_ERROR');
   });
@@ -246,7 +252,7 @@ describe('getBusinessBranchByIdAction', () => {
   it('returns branch data when authorized and found', async () => {
     const branch = makeBranch();
     vi.mocked(branchQuery.getBranchById).mockResolvedValueOnce({ branch });
-    const res = await getBusinessBranchByIdAction(BRANCH_ID);
+    const res = await getBusinessBranchByIdAction(BUSINESS_ID, BRANCH_ID);
     expect(res.success).toBe(true);
     expect((res as ApiResponse<Branch>).data?.id).toBe(BRANCH_ID);
     expect((res as ApiResponse<Branch>).data?.name).toBe('Main Branch');
@@ -263,7 +269,7 @@ describe('createBranchAction', () => {
 
   it('returns error when not authorized', async () => {
     mockUnauthorized();
-    const res = await createBranchAction({
+    const res = await createBranchAction(BUSINESS_ID, {
       name: 'Branch',
       address: '123 St.',
     });
@@ -271,13 +277,19 @@ describe('createBranchAction', () => {
   });
 
   it('returns VALIDATION_ERROR when name is missing', async () => {
-    const res = await createBranchAction({ name: '', address: '123 St.' });
+    const res = await createBranchAction(BUSINESS_ID, {
+      name: '',
+      address: '123 St.',
+    });
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('VALIDATION_ERROR');
   });
 
   it('returns VALIDATION_ERROR when address is missing', async () => {
-    const res = await createBranchAction({ name: 'Branch', address: '' });
+    const res = await createBranchAction(BUSINESS_ID, {
+      name: 'Branch',
+      address: '',
+    });
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('VALIDATION_ERROR');
   });
@@ -288,7 +300,7 @@ describe('createBranchAction', () => {
       success: true,
       data: branch,
     });
-    const res = await createBranchAction({
+    const res = await createBranchAction(BUSINESS_ID, {
       name: 'Main Branch',
       address: '123 Iznart St.',
     });
@@ -304,7 +316,7 @@ describe('createBranchAction', () => {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to create branch' },
     });
-    const res = await createBranchAction({
+    const res = await createBranchAction(BUSINESS_ID, {
       name: 'Branch',
       address: '123 St.',
     });
@@ -323,7 +335,9 @@ describe('updateBranchAction', () => {
 
   it('returns error when not authorized', async () => {
     mockUnauthorized();
-    const res = await updateBranchAction(BRANCH_ID, { name: 'Updated' });
+    const res = await updateBranchAction(BUSINESS_ID, BRANCH_ID, {
+      name: 'Updated',
+    });
     expect(res.success).toBe(false);
   });
 
@@ -331,7 +345,9 @@ describe('updateBranchAction', () => {
     vi.mocked(branchQuery.getBranchById).mockResolvedValueOnce({
       error: 'Branch not found',
     });
-    const res = await updateBranchAction(BRANCH_ID, { name: 'Updated' });
+    const res = await updateBranchAction(BUSINESS_ID, BRANCH_ID, {
+      name: 'Updated',
+    });
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('NOT_FOUND');
   });
@@ -340,7 +356,9 @@ describe('updateBranchAction', () => {
     vi.mocked(branchQuery.getBranchById).mockResolvedValueOnce({
       branch: makeBranch({ business_id: 'other-biz-id' }) as Branch,
     });
-    const res = await updateBranchAction(BRANCH_ID, { name: 'Updated' });
+    const res = await updateBranchAction(BUSINESS_ID, BRANCH_ID, {
+      name: 'Updated',
+    });
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('AUTHORIZATION_ERROR');
   });
@@ -354,7 +372,9 @@ describe('updateBranchAction', () => {
       success: true,
       data: updated,
     });
-    const res = await updateBranchAction(BRANCH_ID, { name: 'Updated Branch' });
+    const res = await updateBranchAction(BUSINESS_ID, BRANCH_ID, {
+      name: 'Updated Branch',
+    });
     expect(res.success).toBe(true);
     expect((res as ApiResponse<Branch>).data?.name).toBe('Updated Branch');
     expect(revalidatePath).toHaveBeenCalledWith(
@@ -370,7 +390,9 @@ describe('updateBranchAction', () => {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to update branch' },
     });
-    const res = await updateBranchAction(BRANCH_ID, { name: 'Updated' });
+    const res = await updateBranchAction(BUSINESS_ID, BRANCH_ID, {
+      name: 'Updated',
+    });
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('INTERNAL_ERROR');
   });
@@ -386,7 +408,7 @@ describe('deleteBranchAction', () => {
 
   it('returns error when not authorized', async () => {
     mockUnauthorized();
-    const res = await deleteBranchAction(BRANCH_ID);
+    const res = await deleteBranchAction(BUSINESS_ID, BRANCH_ID);
     expect(res.success).toBe(false);
   });
 
@@ -394,7 +416,7 @@ describe('deleteBranchAction', () => {
     vi.mocked(branchQuery.getBranchById).mockResolvedValueOnce({
       error: 'Branch not found',
     });
-    const res = await deleteBranchAction(BRANCH_ID);
+    const res = await deleteBranchAction(BUSINESS_ID, BRANCH_ID);
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('NOT_FOUND');
   });
@@ -403,7 +425,7 @@ describe('deleteBranchAction', () => {
     vi.mocked(branchQuery.getBranchById).mockResolvedValueOnce({
       branch: makeBranch({ business_id: 'other-biz-id' }) as Branch,
     });
-    const res = await deleteBranchAction(BRANCH_ID);
+    const res = await deleteBranchAction(BUSINESS_ID, BRANCH_ID);
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('AUTHORIZATION_ERROR');
   });
@@ -416,7 +438,7 @@ describe('deleteBranchAction', () => {
       success: true,
       data: null,
     });
-    const res = await deleteBranchAction(BRANCH_ID);
+    const res = await deleteBranchAction(BUSINESS_ID, BRANCH_ID);
     expect(res.success).toBe(true);
     expect(revalidatePath).toHaveBeenCalledWith(
       `/business/${BUSINESS_ID}/branches`,
@@ -431,7 +453,7 @@ describe('deleteBranchAction', () => {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to delete branch' },
     });
-    const res = await deleteBranchAction(BRANCH_ID);
+    const res = await deleteBranchAction(BUSINESS_ID, BRANCH_ID);
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('INTERNAL_ERROR');
   });

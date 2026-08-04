@@ -26,8 +26,18 @@ import { TourOverlay } from './TourOverlay';
 interface OnboardingTourContextValue {
   /** The `enable_onboarding_tour` kill switch. False hides every entry point. */
   enabled: boolean;
-  /** Start the tour outright — the two replay entries. */
-  startTour: () => void;
+  /**
+   * Start the tour outright — the two replay entries.
+   *
+   * `returnFocusTo` is where focus goes when the tour ends. Pass it explicitly
+   * from a Radix menu: the menu's own focus restore happens on UNMOUNT, after
+   * its exit animation, so reading `document.activeElement` at click time
+   * records a menu item that is detached moments later and the restore lands on
+   * `<body>`. Omit it and the currently focused element is used, which is right
+   * for a plain button — including when this is passed directly as an `onClick`
+   * handler and the argument is a click event, which is ignored.
+   */
+  startTour: (returnFocusTo?: unknown) => void;
   /**
    * Offer the tour. Called once, by the post-registration arrival. A no-op if
    * it has already been taken or skipped, so a refresh cannot replay it.
@@ -90,7 +100,7 @@ export function OnboardingTourProvider({
     void completeOnboardingTourAction(businessId).catch(() => {});
   }, [businessId]);
 
-  const { phase, invite, start, dismiss, finish } = useOnboardingTour(
+  const { phase, invite, start, dismiss, finish, abort } = useOnboardingTour(
     businessId,
     enabled,
     { serverSeen: tourCompleted, onSettle: record },
@@ -113,16 +123,26 @@ export function OnboardingTourProvider({
     returnFocus.current = null;
   }, [phase]);
 
-  const remember = () => {
+  const remember = (element?: unknown) => {
+    // `instanceof`, not truthiness: `startTour` is handed straight to `onClick`
+    // in two places, so the first argument is routinely a click EVENT. Trusting
+    // it would store a non-element and quietly lose the focus return.
+    if (element instanceof HTMLElement) {
+      returnFocus.current = element;
+      return;
+    }
     if (typeof document === 'undefined') return;
     const active = document.activeElement;
     returnFocus.current = active instanceof HTMLElement ? active : null;
   };
 
-  const startTour = useCallback(() => {
-    remember();
-    start();
-  }, [start]);
+  const startTour = useCallback(
+    (returnFocusTo?: unknown) => {
+      remember(returnFocusTo);
+      start();
+    },
+    [start],
+  );
 
   const requestWelcome = useCallback(() => {
     remember();
@@ -138,10 +158,19 @@ export function OnboardingTourProvider({
     [enabled, businessId, startTour, requestWelcome],
   );
 
-  // Copy and flag filtering resolve once per render of the shell, not per step.
+  // Keyed on the flag VALUES, not the record's identity: the server layout
+  // builds a fresh `flags` object on every RSC render — including the
+  // `router.replace` that consumes the welcome marker — and a new identity here
+  // restarts the overlay's settle timer and re-fires `scrollIntoView` mid-tour.
+  const bookings = flags.enable_bookings === true;
+  const events = flags.enable_events === true;
   const steps = useMemo(
-    () => resolveTourSteps({ vocabulary, flags }),
-    [vocabulary, flags],
+    () =>
+      resolveTourSteps({
+        vocabulary,
+        flags: { enable_bookings: bookings, enable_events: events },
+      }),
+    [vocabulary, bookings, events],
   );
 
   return (
@@ -174,7 +203,14 @@ export function OnboardingTourProvider({
       </Dialog>
 
       {phase === 'running' && (
-        <TourOverlay steps={steps} onFinish={finish} onSkip={dismiss} />
+        <TourOverlay
+          steps={steps}
+          onFinish={finish}
+          onSkip={dismiss}
+          // Nothing to point at is not an answer: `abort` closes without
+          // recording, so the tour is still offered next time.
+          onAbort={abort}
+        />
       )}
     </OnboardingTourContext.Provider>
   );

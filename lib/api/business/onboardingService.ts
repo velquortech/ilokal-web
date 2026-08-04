@@ -25,14 +25,16 @@ async function stamp(
   try {
     const supabase = await createServerSupabaseClient();
 
-    const { error } = await supabase.from('business_settings').upsert(
-      {
-        business_id: businessId,
-        [column]: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'business_id' },
-    );
+    // `updated_at` is deliberately NOT written: it means "the owner changed a
+    // setting", and hiding a card is not a settings change. The column has
+    // `DEFAULT now()` for the insert path and this table has no
+    // `handle_updated_at` trigger, so an existing row keeps its real value.
+    const { error } = await supabase
+      .from('business_settings')
+      .upsert(
+        { business_id: businessId, [column]: new Date().toISOString() },
+        { onConflict: 'business_id' },
+      );
 
     if (error) throw error;
     return { ok: true };

@@ -110,22 +110,18 @@ export async function getEventsEnabled(): Promise<boolean> {
 /**
  * Onboarding-tour kill switch (`enable_onboarding_tour`).
  *
- * **Default ON when the row is absent**, which is the opposite of the two flags
- * above — deliberately, and for a reason that does not generalise. Those gate
- * features that ship DARK: their routes 404 and the database refuses the write
- * independently, so an unset flag must mean "off" or a half-configured feature
- * leaks. The tour is a presentational overlay with no server side and nothing
- * to leak; treating "never configured" as "off" would ship a feature that only
- * works after an admin discovers a switch they were never told about.
+ * **Fails closed, like its siblings.** The row is SEEDED `true` by migration
+ * `20260804233000`, which is what makes that safe: "absent" is unreachable, so
+ * this reader never has to guess. Defaulting an absent row to `true` instead
+ * would have been actively unsafe here — `app_settings` is readable `TO
+ * authenticated` only, so a caller on the `anon` role gets zero rows and NO
+ * error, and an ON-by-default reader would read that as "enabled" and silently
+ * defeat an admin who switched it off. Exactly the trap that moved `readFlag`
+ * onto the `public_feature_flags` RPC.
  *
- * A real read FAILURE still returns false — an overlay that paints over the
- * dashboard is the one failure mode worth being timid about, and it is exactly
- * what this switch exists to stop without a deploy.
- *
- * Read straight from the table rather than through `public_feature_flags`: only
- * a signed-in business owner ever sees this, `app_settings` is readable `TO
- * authenticated`, and widening the anon-facing RPC for it would need a
- * migration to expose something anonymous visitors have no use for.
+ * Read straight from the table rather than through that RPC: only a signed-in
+ * business owner ever sees this, and widening the anon-facing function would
+ * need a migration to expose something anonymous visitors have no use for.
  */
 export async function getOnboardingTourEnabled(): Promise<boolean> {
   try {
@@ -142,11 +138,12 @@ export async function getOnboardingTourEnabled(): Promise<boolean> {
       return false;
     }
 
-    // No row = never configured = on. An admin toggling it off upserts `false`,
-    // which lands in the branch below and sticks.
-    if (!data) return true;
+    // No row visible — either never seeded, or the caller cannot read the
+    // table. Both mean "we do not know", and an overlay that paints over the
+    // dashboard is the one thing worth being timid about.
+    if (!data) return false;
 
-    return typeof data.value === 'boolean' ? data.value : true;
+    return data.value === true;
   } catch (err) {
     if (isDynamicUsageError(err)) throw err;
 

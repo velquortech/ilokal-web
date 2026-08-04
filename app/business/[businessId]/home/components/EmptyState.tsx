@@ -17,9 +17,22 @@ import {
 interface EmptyStateProps {
   onAddProduct?: () => void;
   onViewOrders?: () => void;
+  /**
+   * From `useOfferingVocabulary()`. A salon's dashboard said "No products yet"
+   * and offered "Add First Product" — the wrong noun on the one screen a new
+   * owner has nothing else to read. Defaults keep every existing call site
+   * byte-identical.
+   */
+  emptyLabel?: string;
+  addLabel?: string;
 }
 
-export function EmptyState({ onAddProduct, onViewOrders }: EmptyStateProps) {
+export function EmptyState({
+  onAddProduct,
+  onViewOrders,
+  emptyLabel = 'No products yet',
+  addLabel = 'Add First Product',
+}: EmptyStateProps) {
   return (
     <div className="bg-muted/30 flex flex-1 flex-col items-center justify-center py-12 text-center">
       <Card className="w-full max-w-5xl border-dashed p-20">
@@ -35,17 +48,17 @@ export function EmptyState({ onAddProduct, onViewOrders }: EmptyStateProps) {
               <ChartArea className="text-primary/40 h-8 w-8" />
             </div>
           </div>
-          <CardTitle className="mt-4 text-xl">No products yet</CardTitle>
+          <CardTitle className="mt-4 text-xl">{emptyLabel}</CardTitle>
           <CardDescription className="mx-auto max-w-md text-center">
-            Your shop dashboard is empty. Add your first product to get started
-            and start tracking your sales performance.
+            Your shop dashboard is empty. Add your first one to get started and
+            start tracking your sales performance.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Button onClick={onAddProduct}>
               <Package className="mr-2 h-4 w-4" />
-              Add First Product
+              {addLabel}
             </Button>
             <Button variant="outline" onClick={onViewOrders}>
               View My Shop

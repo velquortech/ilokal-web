@@ -84,10 +84,21 @@ export function SetupChecklist({
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(dismissKey(businessId), '1');
     }
-    // Fire-and-forget: the card is already gone, and a failed write is logged
-    // server-side. The owner did not ask for a save, so nothing here is worth a
-    // toast — and the echo above keeps this device quiet regardless.
-    void dismissOnboardingChecklistAction(businessId).catch(() => {});
+    // Fire-and-forget: the card is already gone and the echo above keeps this
+    // device quiet, so nothing here is worth a toast — the owner did not ask for
+    // a save. But a REFUSED write (`FORBIDDEN`, `RATE_LIMITED`) resolves rather
+    // than rejects, so `.catch()` alone would drop the one signal that explains
+    // why the card came back on another device.
+    void dismissOnboardingChecklistAction(businessId)
+      .then((result) => {
+        if (!result.success) {
+          console.warn(
+            '[SetupChecklist] dismissal not recorded:',
+            result.error?.code,
+          );
+        }
+      })
+      .catch(() => {});
   };
 
   if (hidden) return null;
@@ -123,6 +134,10 @@ export function SetupChecklist({
 
   return (
     <Card
+      // `Card` is a bare `<div>`, i.e. role `generic`, where ARIA prohibits
+      // naming — so `aria-labelledby` alone is dropped by assistive tech. The
+      // landing's claim code had the same defect with `aria-label` on a `<p>`.
+      role="region"
       aria-labelledby="setup-checklist-heading"
       // The tour's first step points here. Attribute on the card that already
       // exists — no wrapper whose only job is to be measured.

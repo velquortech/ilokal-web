@@ -30,6 +30,8 @@ interface RecordedQuery {
   eq: unknown[][];
   is: unknown[][];
   not: unknown[][];
+  lte: unknown[][];
+  gte: unknown[][];
 }
 
 type Row = Record<string, unknown> | null;
@@ -73,6 +75,8 @@ function mockTables(fixtures: TableFixtures) {
       eq: [],
       is: [],
       not: [],
+      lte: [],
+      gte: [],
     };
     queries.push(recorded);
 
@@ -101,6 +105,14 @@ function mockTables(fixtures: TableFixtures) {
       },
       not: (...args: unknown[]) => {
         recorded.not.push(args);
+        return proxy;
+      },
+      lte: (...args: unknown[]) => {
+        recorded.lte.push(args);
+        return proxy;
+      },
+      gte: (...args: unknown[]) => {
+        recorded.gte.push(args);
         return proxy;
       },
       maybeSingle: () => Promise.resolve(result),
@@ -215,6 +227,53 @@ describe('getOnboardingProgress', () => {
       'archived_at',
       null,
     ]);
+  });
+
+  it('does not count a promo outside its own date window', async () => {
+    // The row's copy promises the deal reaches the Deals feed, and
+    // `mobile_deals` also requires `start_date <= now <= expiry_date` — so an
+    // expired or scheduled-for-later coupon reaches nobody and is not done.
+    const { queries } = mockTables(COMPLETE);
+
+    await getOnboardingProgress(BUSINESS_ID, VOCAB);
+
+    const coupons = queryFor(queries, 'coupons');
+    expect(coupons.lte.map(([column]) => column)).toContain('start_date');
+    expect(coupons.gte.map(([column]) => column)).toContain('expiry_date');
+  });
+
+  it('only counts offerings a shopper can actually see', async () => {
+    // `sync_product_availability` sets `is_available = (status = 'active')`, so
+    // an unlisted or disabled offering leaves the public page empty — which is
+    // the state this step exists to move the owner out of. The same count feeds
+    // the dashboard's empty state.
+    const { queries } = mockTables(COMPLETE);
+
+    await getOnboardingProgress(BUSINESS_ID, VOCAB);
+
+    expect(queryFor(queries, 'products').eq).toContainEqual([
+      'status',
+      'active',
+    ]);
+  });
+
+  it('names the suspended state instead of calling it "in review"', async () => {
+    // A Record over the status union, not nested ternaries: the else branch used
+    // to tell a suspended shop "Verification in review — nothing to do".
+    const { items } = await (async () => {
+      mockTables({
+        ...COMPLETE,
+        businesses: {
+          data: { ...COMPLETE.businesses!.data, status: 'suspended' },
+        },
+      });
+      return getOnboardingProgress(BUSINESS_ID, VOCAB);
+    })();
+
+    const verification = items.find((item) => item.id === 'verification')!;
+    expect(verification.label).toMatch(/suspended/i);
+    expect(verification.label).not.toMatch(/in review/i);
+    expect(verification.done).toBe(false);
   });
 
   it('treats a missing settings row as not-done, not as an error', async () => {

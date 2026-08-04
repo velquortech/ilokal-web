@@ -148,6 +148,7 @@ describe('TourOverlay', () => {
         steps={[step('nav-catalogue'), step('branch-switcher')]}
         onFinish={vi.fn()}
         onSkip={vi.fn()}
+        onAbort={vi.fn()}
       />,
     );
 
@@ -156,19 +157,25 @@ describe('TourOverlay', () => {
     expect(text()).not.toContain('Title branch-switcher');
   });
 
-  it('ends quietly when there is nothing on screen to point at', () => {
+  it('aborts — not skips — when there is nothing on screen to point at', () => {
+    // `onSkip` settles: it writes the "seen" marker and posts the Server
+    // Action. Using it here would record the tour as answered on a visit where
+    // the owner saw nothing at all, and they would never be offered it again.
     paintAnchors([]);
     const onSkip = vi.fn();
+    const onAbort = vi.fn();
 
     render(
       <TourOverlay
         steps={[step('nav-catalogue')]}
         onFinish={vi.fn()}
         onSkip={onSkip}
+        onAbort={onAbort}
       />,
     );
 
-    expect(onSkip).toHaveBeenCalledTimes(1);
+    expect(onAbort).toHaveBeenCalledTimes(1);
+    expect(onSkip).not.toHaveBeenCalled();
     expect(text()).not.toContain('Step 1 of');
   });
 
@@ -181,6 +188,7 @@ describe('TourOverlay', () => {
         steps={[step('a'), step('b')]}
         onFinish={onFinish}
         onSkip={vi.fn()}
+        onAbort={vi.fn()}
       />,
     );
 
@@ -200,6 +208,7 @@ describe('TourOverlay', () => {
         steps={[step('a'), step('b')]}
         onFinish={vi.fn()}
         onSkip={vi.fn()}
+        onAbort={vi.fn()}
       />,
     );
 
@@ -214,17 +223,59 @@ describe('TourOverlay', () => {
     paintAnchors(['a']);
     const onSkip = vi.fn();
     render(
-      <TourOverlay steps={[step('a')]} onFinish={vi.fn()} onSkip={onSkip} />,
+      <TourOverlay
+        steps={[step('a')]}
+        onFinish={vi.fn()}
+        onSkip={onSkip}
+        onAbort={vi.fn()}
+      />,
     );
 
     act(() => button('Skip')?.click());
     expect(onSkip).toHaveBeenCalledTimes(1);
   });
 
+  it('clamps the step index when the visible set shrinks', () => {
+    // The visible set is recomputed whenever `steps` changes identity. An index
+    // left past the end renders nothing while the phase stays 'running', at
+    // which point `startTour()` is a no-op and the tour is dead until remount.
+    paintAnchors(['a', 'b']);
+    const onAbort = vi.fn();
+
+    render(
+      <TourOverlay
+        steps={[step('a'), step('b')]}
+        onFinish={vi.fn()}
+        onSkip={vi.fn()}
+        onAbort={onAbort}
+      />,
+    );
+    act(() => button('Next')?.click());
+    expect(text()).toContain('Step 2 of 2');
+
+    // Same component, a shorter list — as a flag flip or a re-resolve produces.
+    render(
+      <TourOverlay
+        steps={[step('a')]}
+        onFinish={vi.fn()}
+        onSkip={vi.fn()}
+        onAbort={onAbort}
+      />,
+    );
+
+    expect(text()).toContain('Step 1 of 1');
+    expect(onAbort).not.toHaveBeenCalled();
+  });
+
   it('opens the sidebar and restores the owner’s own state on exit', () => {
     paintAnchors(['a']);
     render(
-      <TourOverlay steps={[step('a')]} onFinish={vi.fn()} onSkip={vi.fn()} />,
+      <TourOverlay
+        steps={[step('a')]}
+        onFinish={vi.fn()}
+        onSkip={vi.fn()}
+        onAbort={vi.fn()}
+      />,
     );
 
     expect(sidebar.setOpen).toHaveBeenCalledWith(true);
@@ -242,7 +293,12 @@ describe('TourOverlay', () => {
   it('announces the step once, as a single polite region', () => {
     paintAnchors(['a']);
     render(
-      <TourOverlay steps={[step('a')]} onFinish={vi.fn()} onSkip={vi.fn()} />,
+      <TourOverlay
+        steps={[step('a')]}
+        onFinish={vi.fn()}
+        onSkip={vi.fn()}
+        onAbort={vi.fn()}
+      />,
     );
 
     const live = document.querySelectorAll('[aria-live="polite"]');
@@ -254,7 +310,12 @@ describe('TourOverlay', () => {
   it('anchors a small element to its own box', () => {
     paintAnchors(['a']);
     render(
-      <TourOverlay steps={[step('a')]} onFinish={vi.fn()} onSkip={vi.fn()} />,
+      <TourOverlay
+        steps={[step('a')]}
+        onFinish={vi.fn()}
+        onSkip={vi.fn()}
+        onAbort={vi.fn()}
+      />,
     );
 
     // Nothing clever needed here: ring and anchor are the same rect.
@@ -281,6 +342,7 @@ describe('TourOverlay', () => {
         steps={[step('setup-checklist')]}
         onFinish={vi.fn()}
         onSkip={vi.fn()}
+        onAbort={vi.fn()}
       />,
     );
 
@@ -299,7 +361,12 @@ describe('TourOverlay', () => {
     paintAnchors(['a'], { left: -50, top: -100, width: 200, height: 200 });
 
     render(
-      <TourOverlay steps={[step('a')]} onFinish={vi.fn()} onSkip={vi.fn()} />,
+      <TourOverlay
+        steps={[step('a')]}
+        onFinish={vi.fn()}
+        onSkip={vi.fn()}
+        onAbort={vi.fn()}
+      />,
     );
 
     expect(highlightBox()?.top).toBe('0px');
@@ -317,6 +384,7 @@ describe('TourOverlay', () => {
         steps={[step('a'), step('b')]}
         onFinish={vi.fn()}
         onSkip={vi.fn()}
+        onAbort={vi.fn()}
       />,
     );
 

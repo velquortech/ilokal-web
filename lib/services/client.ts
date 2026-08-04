@@ -3,15 +3,17 @@
 */
 import { AxiosRequestHeaders } from 'axios';
 import apiClient from './utils/apiClient';
+import { apiBaseUrl } from './utils/apiBaseUrl';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-
-const DEFAULT_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 function buildUrl(path: string) {
   // Ensure path starts with '/'
   const p = path.startsWith('/') ? path : `/${path}`;
-  return `${DEFAULT_BASE}/api${p}`;
+  // Same source as the axios client, so the two can never disagree about where
+  // this app's API lives. Only reached on the server, where `fetch` needs an
+  // absolute URL.
+  return `${apiBaseUrl()}/api${p}`;
 }
 
 export async function request<T = unknown>(

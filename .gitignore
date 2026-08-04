@@ -53,3 +53,9 @@ claude.md
 .claude/CATALOGUES.md
 .claude/EVENTS.md
 .claude/EVENTS_TABLE.md
+.claude/playwright-e2e-live-feature.md
+
+# playwright e2e artifacts (video, traces, reports) — local dev only
+e2e/.artifacts/
+test-results/
+playwright-report/

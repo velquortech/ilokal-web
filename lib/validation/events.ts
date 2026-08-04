@@ -165,10 +165,24 @@ export const eventDecisionSchema = z
     },
   );
 
+/**
+ * A search term off the query string.
+ *
+ * Its own export because pages parse `?search=` one field at a time — they do
+ * not build a whole filter object — and an unbounded term goes straight into a
+ * `%…%` scan. Blank becomes `undefined` so "search for nothing" is not a
+ * filter.
+ */
+export const searchTermSchema = z
+  .string()
+  .trim()
+  .max(120)
+  .transform((value) => (value === '' ? undefined : value));
+
 export const eventFiltersSchema = z.object({
   page: z.number().int().min(1).default(1),
   per_page: z.number().int().min(1).max(50).default(12),
-  search: z.string().trim().max(120).optional(),
+  search: searchTermSchema.optional(),
   status: z.union([eventStatusSchema, z.literal('')]).optional(),
   business_id: eventIdSchema.optional(),
   when: eventTimeFilterSchema.default('upcoming'),

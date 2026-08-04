@@ -200,17 +200,29 @@ export function EventFormDialog({
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Reopening a dialog on a row whose data changed underneath should show the
-  // new data, not what was loaded the first time it mounted.
-  React.useEffect(() => {
-    if (open) {
+  /**
+   * Seed the form from the row, at the moment of OPENING.
+   *
+   * This used to be an effect keyed on `[open, event]` — the `event` OBJECT.
+   * The tables hand down a new object identity on every `router.refresh()`,
+   * and a refresh happens whenever any sibling row moves status or a banner
+   * order is saved. So an edit dialog that was sitting open, half filled in,
+   * silently reset itself and threw the work away.
+   *
+   * Reopening still shows fresh data — that was the effect's real job — but
+   * "the row changed underneath" while someone is typing into it is not a
+   * reason to discard what they typed.
+   */
+  const handleOpenChange = (next: boolean) => {
+    if (next) {
       setForm(initialState(event));
       setDailyHours(Boolean(event?.daily_start_time));
       setImageUrl(event?.image_url ?? '');
       setImageFile(null);
       setError(null);
     }
-  }, [open, event]);
+    setOpen(next);
+  };
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -234,7 +246,10 @@ export function EventFormDialog({
     setPending(true);
     setError(null);
 
-    const toastId = 'event-save';
+    // Scoped per row, not a module-level literal: two dialogs mounted from two
+    // table rows would otherwise share one toast, and whichever settled last
+    // would rewrite the other's result.
+    const toastId = `event-save-${event?.id ?? 'new'}`;
     toast.loading(asDraft ? 'Saving draft…' : 'Saving…', { id: toastId });
 
     try {
@@ -252,6 +267,11 @@ export function EventFormDialog({
           return;
         }
         finalImageUrl = upload.data.url;
+        // Promote it now. A failed SAVE used to leave `imageFile` set, so every
+        // retry re-uploaded the same picture and littered the bucket with
+        // objects nothing references.
+        setImageUrl(finalImageUrl);
+        setImageFile(null);
       }
 
       const startsAt = manilaInputToIso(form.startsAt);
@@ -310,7 +330,7 @@ export function EventFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>

@@ -14,6 +14,8 @@ import { cache } from 'react';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { describeDbError } from '@/lib/utils/describeDbError';
+import { ilikePattern } from '@/lib/utils/postgrestSearch';
+import { eventIdSchema } from '@/lib/validation/events';
 import { EMPTY_EVENT_STATS } from '@/lib/types';
 import type {
   EventFilters,
@@ -101,9 +103,18 @@ const EMPTY_PAGE = (perPage: number): PaginatedEvents => ({
 export type EventPageResult = PaginatedEvents & { error?: 'LOAD_FAILED' };
 
 /**
- * The public list. RLS already restricts this to approved, non-archived events
- * of live shops, so the filter here is about TIME, not permission — never
- * rely on a `.eq('status', …)` in application code for that.
+ * The public list.
+ *
+ * `.eq('status', 'approved')` is NOT redundant with RLS, and the comment that
+ * used to say it was is what made this wrong. Postgres OR's *permissive*
+ * policies, and `events` carries three SELECT-capable ones: the public
+ * approved-only policy, `"Owners view own events"` (no status filter at all)
+ * and `"Admins manage all events"`. So for a signed-in owner this read
+ * returned their own drafts and rejected proposals on the PUBLIC events page,
+ * and for an admin it returned every unreviewed proposal in the system.
+ *
+ * RLS is the floor — what a caller may *never* see. It is not the filter for
+ * what this particular surface *should* show.
  */
 export async function getPublicEvents(
   filters: EventFilters = {},
@@ -119,6 +130,7 @@ export async function getPublicEvents(
     let query = supabase
       .from('events')
       .select(SELECT_WITH_REFS, { count: 'exact' })
+      .eq('status', 'approved')
       .is('archived_at', null);
 
     const nowIso = new Date().toISOString();
@@ -137,7 +149,10 @@ export async function getPublicEvents(
     }
 
     if (filters.search) {
-      const term = `%${filters.search}%`;
+      // Quoted + escaped: a raw term is interpolated into a filter STRING, so
+      // a comma or a parenthesis rewrites the filter instead of being searched
+      // for — and "Iznart St., Iloilo" is an entirely reasonable thing to type.
+      const term = ilikePattern(filters.search);
       query = query.or(`name.ilike.${term},address.ilike.${term}`);
     }
 
@@ -186,6 +201,11 @@ export async function getBannerEvents(limit = 8): Promise<EventWithRefs[]> {
     const { data, error } = await supabase
       .from('events')
       .select(SELECT_WITH_REFS)
+      // Same reason as `getPublicEvents`: the owner and admin SELECT policies
+      // are OR'd with the public one, so without this an owner browsing
+      // /explore saw their OWN unreviewed event rendered as a published
+      // banner — the exact thing the approval gate exists to prevent.
+      .eq('status', 'approved')
       .is('archived_at', null)
       .gte('ends_at', new Date().toISOString())
       .order('priority', { ascending: false })
@@ -220,7 +240,10 @@ export type EventDetailResult =
  */
 export const getEventById = cache(
   async (id: string): Promise<EventDetailResult> => {
-    if (!id) return { error: 'NOT_FOUND' };
+    // Shape-checked before it reaches PostgREST. `/events/<junk>` otherwise
+    // raises 22P02, which the caller reads as LOAD_FAILED and renders as
+    // "couldn't load" with a 200 — a soft 404 on an enumerable public URL.
+    if (!eventIdSchema.safeParse(id).success) return { error: 'NOT_FOUND' };
 
     try {
       const supabase = await createServerSupabaseClient();

@@ -28,15 +28,26 @@ function AdminLogo() {
   );
 }
 
-export function AdminSidebar() {
+export function AdminSidebar({
+  flags = {},
+}: {
+  /**
+   * `app_settings` kill switches, keyed as the nav config names them. Same
+   * contract as `BusinessSidebar` — an entry whose `flag` is not true here is
+   * not rendered, because its route 404s.
+   */
+  flags?: Record<string, boolean>;
+}) {
   const { adminId } = useAdmin();
 
   const sections = SIDEBAR_SECTIONS.map((section) => ({
     ...section,
-    items: section.items.map((item) => ({
-      ...item,
-      href: item.href ? injectAdminId(item.href, adminId) : item.href,
-    })),
+    items: section.items
+      .filter((item) => !item.flag || flags[item.flag] === true)
+      .map((item) => ({
+        ...item,
+        href: item.href ? injectAdminId(item.href, adminId) : item.href,
+      })),
   }));
 
   return (

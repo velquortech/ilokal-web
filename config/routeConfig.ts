@@ -45,6 +45,13 @@ export const ROUTES = {
     DEALS: '/explore/deals',
   },
 
+  // Public events surface. Plural collection + camelCase segment, matching
+  // /explore/[businessId]; `/event/:id` redirects here (next.config.ts).
+  EVENTS: {
+    HOME: '/events',
+    NEARBY: '/events/nearby',
+  },
+
   // Protected customer (role app_user) area
   CUSTOMER: {
     HOME: '/customer',
@@ -176,6 +183,16 @@ export function businessRedeemedCouponsPath(businessId: string): string {
   return businessPath(businessId, 'redeemed-coupons');
 }
 
+/** A shop's own event proposals. */
+export function businessEventsPath(businessId: string): string {
+  return businessPath(businessId, 'events');
+}
+
+/** The public page for one event. */
+export function eventPath(eventId: string): string {
+  return [ROUTES.EVENTS.HOME, eventId].join('/');
+}
+
 export function businessBranchesPath(businessId: string): string {
   return businessPath(businessId, 'branches');
 }
@@ -209,6 +226,11 @@ export function adminPath(adminId: string, ...segments: string[]): string {
 
 export function adminUsersPath(adminId: string): string {
   return adminPath(adminId, 'users');
+}
+
+/** The admin event-review queue. */
+export function adminEventsPath(adminId: string): string {
+  return adminPath(adminId, 'events');
 }
 
 export function adminBranchesPath(adminId: string): string {

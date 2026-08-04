@@ -5,7 +5,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import { BranchSelector } from './BranchSelector';
 import { ThemeToggle } from '@/components/custom/ThemeTogge';
-import { NotificationBell } from './NotificationBell';
+import { NotificationBell } from '@/components/custom/NotificationBell';
 import type { Branch as BranchSelectorItem } from '../libs/configs/config';
 // import { useAIContext } from './AIChatSheet'; // TODO: re-enable with AI assistant
 import { useBusinessShop } from '@/providers/BusinessProvider';

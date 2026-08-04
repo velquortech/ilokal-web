@@ -14,6 +14,9 @@ import {
   loginPathForPathname,
   ROUTES,
   businessRedeemedCouponsPath,
+  businessEventsPath,
+  adminEventsPath,
+  eventPath,
 } from '../routeConfig';
 
 const ADMIN_ID = '11111111-1111-1111-1111-111111111111';
@@ -125,5 +128,24 @@ describe('loginPathForPathname', () => {
   it('falls back to the unified sign-in door for a missing pathname', () => {
     expect(loginPathForPathname(null)).toBe(ROUTES.AUTH.SIGN_IN);
     expect(loginPathForPathname(undefined)).toBe(ROUTES.AUTH.SIGN_IN);
+  });
+});
+
+describe('event routes', () => {
+  it('builds the public event path from the collection constant', () => {
+    expect(eventPath('abc-123')).toBe('/events/abc-123');
+    expect(eventPath('abc-123').startsWith(ROUTES.EVENTS.HOME)).toBe(true);
+  });
+
+  it('uses the plural collection every other route uses', () => {
+    // `/event/:id` exists only as a redirect (next.config.ts). Every dynamic
+    // segment in this app is camelCase and every collection is plural.
+    expect(ROUTES.EVENTS.HOME).toBe('/events');
+    expect(ROUTES.EVENTS.NEARBY).toBe('/events/nearby');
+  });
+
+  it('builds the shop and admin event surfaces', () => {
+    expect(businessEventsPath('biz-1')).toBe('/business/biz-1/events');
+    expect(adminEventsPath('admin-1')).toBe('/admin/admin-1/events');
   });
 });

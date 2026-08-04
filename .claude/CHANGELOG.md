@@ -1,5 +1,284 @@
 # Changelog
 
+## 2026-08-04 — Event tables join the dashboard, and admin staff picks (feat/events-festivals)
+
+> **No schema migration.** Everything rides the table, policies, triggers and
+> RPCs `20260802034107_events.sql` already ships. LOW–MED risk: presentational
+> for the tables, one new admin-only write path. Parity table and action items:
+> [`.claude/EVENTS_TABLE.md`](.claude/EVENTS_TABLE.md) (local, not committed).
+
+- **Both event lists were bespoke `<ul>`s of cards while every neighbouring
+  table is a TanStack `DataTable`.** Not a cosmetic gap: no rows-per-page, no
+  "page N of M", no column headers, no kebab, and `Remove` as a bare row button
+  with **no confirmation** — one mis-click soft-deleted an event. Owner
+  (`/business/[id]/events`) and admin (`/admin/[id]/events`) are now the same
+  table as the catalogue and coupons: stat cards, filter popover, debounced
+  URL search, `manualPagination` + `DataTablePagination`, kebab row actions,
+  confirm dialogs on anything destructive.
+- **🔴 Admin "Add event" — staff picks.** `createPlatformEvent()` has existed
+  in the service since the feature landed and **never had a caller**. It does
+  now: an admin authors an event, `business_id` stays null, and it inserts at
+  `approved` — an admin writing the event **is** the review, and the dialog says
+  so instead of offering "Send for review". No draft button and no offering
+  picker: a platform event has no shop, so it has nothing to promote (the
+  composite FK would refuse one anyway). New `updatePlatformEvent` /
+  `archivePlatformEvent`, both scoped **`.is('business_id', null)` in the
+  WHERE** — the admin RLS policy covers every row, so without that predicate
+  the same functions would silently edit and archive a *shop's* event. Taking
+  a shop's event down stays the **reject** path, which notifies the owner with
+  a reason; Edit and Remove are therefore **absent** on a shop's row, not
+  disabled.
+- **🔴 Fixed the multi-shop bug the code itself documented.** Every event
+  action called `verifyBusinessOwner()` with **no argument**, which falls back
+  to whichever shop `.limit(1)` returns — so an owner holding two shops filed
+  events against the wrong one. All five now take `businessId` from the route
+  segment and verify it, matching `sectionActions.ts`, which always has. The
+  dialog carried a comment admitting this; the comment is gone because the bug
+  is.
+- **One form, not two.** `EventDialog` moved to
+  `components/custom/events/EventFormDialog.tsx` taking
+  `variant: 'proposal' | 'staff-pick'` plus **injected** save/upload calls — a
+  Server Action is bound to a role, so the component rendering the fields must
+  not pick one. Copy lives in a `Record<Variant, …>` map, so a third variant is
+  a compile error until every string is written. Same for the status pill and
+  tone map (`EventStatusBadge`), the image/title/when/venue cells
+  (`EventCells`), and the filter popover (`FilterEvents`) — each was spelled
+  out twice before.
+- **`DataTable` gained an optional `emptyState`**, defaulting to `"No results."`
+  so every other table is unchanged. Both event lists distinguish "we couldn't
+  load this" from "you have none" — a distinction this repo has had to restore
+  on three separate surfaces — and that survives the port only because the
+  shared table can carry the caller's copy.
+- **`DataTablePagination` no longer claims a selection that cannot exist.** It
+  printed `"0 of 10 row(s) selected"` unconditionally; on a table with no
+  checkbox column that describes a control that isn't there. It now renders
+  that line only when a `select` column exists — byte-identical for the
+  catalogue, coupons and redemptions, which all have one. **Neither event table
+  has one, deliberately:** the owner's four states are per-event decisions, and
+  bulk-approving is precisely what the approval gate exists to prevent.
+- **Stat cards** — `getEventStats(businessId?)`: head-only counts (`select('id',
+  { count: 'exact', head: true })`) run in parallel, one per status, never
+  `select('status')` then `.filter().length`, which the PostgREST 1000-row cap
+  turns into a wrong number. A shop is never asked for its staff-pick count —
+  a platform event has no `business_id`, so inside a shop's scope the answer is
+  always 0. A failed read reports `failed: true` and the cards render an em
+  dash: four confident zeros and an outage look identical otherwise, which is
+  the `getBookingStats` lesson.
+- **Also:** admin nav entry and page title `Event Proposals` → **Events** (the
+  page authors staff picks now, which are nobody's proposal); banner order
+  moved from an inline control in a card into an `Order` column, still an
+  inline input because a dialog for one two-digit number is worse; every event
+  link in the admin table still passes through `safeExternalUrl` with
+  `rel="noopener noreferrer"`.
+- **🔴 The event form asked for latitude and longitude as two bare numbers.**
+  Nobody knows their own coordinates, so most events would be filed with both
+  blank — and `events_nearby` filters `location IS NOT NULL`, so a blank pair
+  makes the event **invisible** to `/events/nearby` and to the mobile endpoint.
+  The feature would have shipped and received no data. A guessed pair is worse
+  than a blank one: every value in range is valid, so a typo puts the pin in
+  the sea with no error anywhere, and `POINT(lng lat)` — longitude first — is
+  the opposite of how everyone says it. Both fields now sit under a **map you
+  click to pin**, with a draggable marker, "Use my location", and the numbers
+  still there and still editable (the map is a `div`, so it gives a keyboard
+  user nothing — it is an aid, never the only path).
+- **The picker was moved, not copied.** It lived under
+  `app/business/registration/components/` while branch creation already
+  reached **across features** to import it — two outside importers is the
+  repo's own trigger for `components/custom/` (CLAUDE.md §DRY), and events
+  would have been the third reach. `git mv` to
+  `components/custom/map/LocationPicker.tsx`, plus a new `LocationField` (map +
+  the two inputs + device location + clear) and `useGeolocation` — the latter
+  replacing **twenty lines duplicated verbatim** in the two step files.
+- **Three things that are free on a page and broken in a dialog**, which is why
+  this was a widen and not a drop-in: leaflet measures its container at mount,
+  and in a dialog that mount is mid-open-animation, so it paints a grey band —
+  a `ResizeObserver` calling `invalidateSize()` covers that, a rotation and a
+  breakpoint reflow; `scrollWheelZoom` defaults to **true**, so scrolling the
+  form with the pointer over the map zoomed the map and trapped the reader
+  mid-form (the dialog passes `false`, the two page call sites keep the
+  default and are unchanged); and the inputs take **strings**, because a
+  controlled `type="number"` cannot hold `"10."` on the way to `"10.6973"` and
+  swallows the decimal point.
+- **The map renders at every width in the dialog**, unlike registration and
+  branch-create, which wrap the picker in `hidden … md:block` — so on a phone
+  those two show no map at all and the user is back to typing coordinates, on
+  the one device that actually knows where it is. Their `hidden md:block` is
+  **left alone** (changing a wizard step is its own change with its own QA) and
+  recorded as a follow-up in `.claude/EVENTS_TABLE.md` §6, along with the
+  absence of any geocoding from the typed address — that needs a provider, and
+  the stack is frozen.
+- **No validation change.** `createEventSchema` already refuses half a pair,
+  the dialog already sends the keys only when both parse, and
+  `eventService.toRow()` already writes `location` only on a real pair — so a
+  blank form still cannot wipe an existing pin. The map adds a way to *set* the
+  value and changes none of those rules.
+- **Tests (+47, 1917 → 1964):** `DataTable.contract` (the selection line
+  follows the checkbox column; `emptyState` defaults and overrides),
+  `eventStats` (head-only reads, per-status scope, the skipped staff-pick
+  query, `failed` on both a query error and a dead client),
+  `eventPlatformService` (the `business_id IS NULL` scope on both writes,
+  NOT_FOUND when a shop's id is passed, `product_id` pinned null, no driver
+  text in the message), the admin actions' new endpoints (kill switch before
+  auth, auth before DB, guid validation), `eventActions` re-pointed at the new
+  signature **plus** a regression asserting `verifyBusinessOwner` receives the
+  segment id, and an `eventTables.contract` sweep (the owner's menu moves an
+  event only to `draft`/`pending_review`; no `select` column in either table;
+  Edit/Remove gated on `business_id === null`; neither dialog forks the form).
+- **Map tests (+39, 1964 → 2003):** `useGeolocation` (six decimal places, the
+  busy flag clearing on **both** paths — a spinner that never stops is worse
+  than the failure it hides — the message naming the two ways out, the
+  no-geolocation browser, and `clearError`), `LocationField` (a half-typed
+  `"10."` survives; the map gets a usable pair or `undefined`, never `NaN`;
+  clear empties both or neither; the wheel-zoom switch reaches the map), and a
+  `mapPicker.contract` sweep (all three call sites import the shared component,
+  none reaches into `app/business/registration/components/`, all mount
+  `ssr: false`, none hand-rolls `navigator.geolocation`, the dialog passes
+  `scrollWheelZoom={false}`, and the two bare `event-lat`/`event-lng` inputs
+  are gone).
+- Verified: `yarn lint` + **2003** tests + a clean `yarn build` green.
+- **Not verified — needs a browser:** both tables are behind auth and this
+  environment has no login path, so the kebab menus, the staff-pick dialog and
+  the stat cards have not been clicked through. **The map especially** —
+  leaflet needs a real layout box and a tile server, and the dialog failure
+  mode this code exists to prevent (a grey band instead of tiles) is only
+  visible in a browser.
+
+## 2026-08-02 — Events: proposals, review, and the /explore dateline (feat/events-festivals)
+
+> **ONE schema migration (`20260802034107_events.sql`) — HIGH risk: new table
+> + 4 RLS policies + 3 gate/fan-out triggers + 2 SECURITY DEFINER RPCs + a
+> public storage bucket + two widened CHECKs.** Applied, red-teamed and
+> `migrate-reset`-verified on **LOCAL ONLY**. ⚠️ **Needs human approval before
+> merge, then `make migrate-cloud` + a `supabase_migrations.schema_migrations`
+> ledger reconcile.** Ships **DARK** behind `app_settings.enable_events`
+> (default false). Plan, parity table and phased action items:
+> `.claude/EVENTS.md` (local, not committed).
+
+- **The whole feature is one question: who decides what appears on the front
+  page.** A shop proposes an event; an admin approves it; only then does it
+  reach `/explore`. Everything else is presentation.
+- **🔴 The gate is a TRIGGER, not RLS.** The owner policy is `FOR ALL`, and RLS
+  cannot express "you may write this row but not that column" — so without a
+  trigger an owner could `PATCH status='approved'` straight through PostgREST
+  and publish their own banner to every visitor. `set_event_initial_status`
+  forces a non-admin insert to `draft`/`pending_review` and zeroes `priority`;
+  `guard_event_review_columns` reverts any later attempt and **re-arms review
+  when an approved event's content is edited** — otherwise you approve "Free
+  coffee at the plaza" and it becomes something else, on the front page, with
+  no second look. Both `ENABLE ALWAYS`, because seeds run under
+  `session_replication_role = replica`, which skips ordinary triggers.
+  Red-teamed as an impersonated owner: 11 attacks, all blocked (insert-as-
+  approved, update-to-approved, self-set priority/review columns, edit-after-
+  approval, cross-shop product, `javascript:`/`data:` links, inverted dates,
+  half-set daily window, another shop's event, anon reading a pending row, a
+  stranger driving the notify RPC).
+- **Cross-shop promotion is unrepresentable, not merely checked.** An event may
+  promote one offering, and a client-supplied `product_id` is not proof of
+  ownership — the same hole `sectionBelongsToBusiness()` had to close in
+  application code. Here a redundant `UNIQUE (id, business_id)` on `products`
+  lets `events` carry a **composite FK** on `(product_id, business_id)`. Zero
+  application code, and it cannot be forgotten.
+- **Two timestamps model a CONTINUOUS span, which is wrong for most events.**
+  A three-day fiesta open 10:00–22:00 daily is not running at 3am on day two.
+  Optional `daily_start_time`/`daily_end_time` (CHECK-paired, so half a window
+  is rejected) make the run explicit; an end at or before the start means it
+  closes after midnight, reusing the overnight rule
+  `lib/utils/operatingHours.ts` already applies to shop hours.
+- **`location geography(Point,4326)`** — the brief listed `event_address` only,
+  but you cannot compute distance from a string, so "events near me" was
+  unbuildable without it.
+- **Times are pinned to `Asia/Manila` on READ *and* WRITE.** A
+  `datetime-local` input value carries **no zone**: handing it to `new Date()`
+  reads it wherever the owner is sitting, so someone filing "18:00" from abroad
+  would schedule their event for 18:00 somewhere else.
+  `manilaInputToIso`/`isoToManilaInput` pin `+08:00` (fixed — the Philippines
+  has not observed DST since 1978), tested for round-trip fidelity across a
+  year boundary and for midnight rendering as `00:00`, not `24:00`.
+- **Notifications: one table, one bell, one new RPC.** `notifications` already
+  takes any `auth.users` id as recipient and an admin **is** a user, so an
+  `admin_notifications` table would have duplicated the schema, the RLS, the
+  keyset index, the query layer, the service and the bell. Admin→owner needs
+  **no new SQL** (`create_notification` already authorises an admin caller);
+  only owner→admins does, because that caller is neither admin nor recipient —
+  the exact situation that produced `notify_coupon_redemption`, and
+  `notify_event_proposal_submitted` is built to that template. It refuses
+  unless the event is genuinely `pending_review`, so a draft or a resubmit loop
+  cannot hold down a "notify every admin" button.
+- **The admin bell was a MOVE, not a build.** `NotificationBell` and
+  `notificationActions` sat under `app/business/[businessId]/` but contained
+  nothing business-specific — the actions read `getCurrentUser()` and RLS scopes
+  the rows. Relocated to `components/custom/` and `app/actions/` (via `git mv`,
+  so history follows) and mounted in `AdminHeader`. One bell, one unread count,
+  one keyset pager. `notificationHref` was extended rather than forked;
+  `event_proposal_submitted` deep-links to `adminEventsPath(user_id)`, since
+  only admins receive that type and admin routes are keyed by the admin's own
+  id — which *is* the recipient.
+- **The signature: `/explore` gets a dateline, not a carousel.** Events are the
+  only thing in the app with a DATE — shops, offerings and deals are ambient —
+  so order IS the information and the gaps are real. One exception, and it is
+  the point: something happening **right now** jumps ahead of chronology,
+  because someone opening the app on a Saturday afternoon wants what is on, not
+  what is next. Deliberately **no auto-advance** (the plan called for it): a
+  dateline is scrubbed, not waited on, and a strip that moves on its own is
+  fighting whoever is reading it. Ranking depends on "now", which differs
+  between server and client, so the server ships the query's order and the live
+  ranking applies after mount — nothing is hidden either way, asserted against
+  `renderToStaticMarkup`. **Zero events renders literally nothing**
+  (`expect(html).toBe('')`).
+- **Public surfaces:** `/events` (upcoming / finished / everything, search,
+  `.range()` pagination) and `/events/[eventId]` (the two links are the page's
+  real job — **Get tickets** primary, **Visit &lt;host&gt;** secondary, both
+  through `safeExternalUrl` with `rel="noopener noreferrer"`, **absent when
+  unset rather than disabled**). The public RLS policy is deliberately **not**
+  date-filtered: a link shared on Facebook must not 404 the morning after, so a
+  finished event stays reachable and says *Finished*.
+- **Nearby is PULL, and the entry says so.** There is no push infrastructure in
+  this repo — no device-token table, no provider, no worker, and `profiles`
+  stores no location. `GET /api/mobile/events/nearby` + `/events/nearby` ask,
+  holding the caller's own coordinates. Followers do get an in-app inbox row on
+  publication, via a trigger calling `notify_followers` — that function is
+  revoked from anon/authenticated precisely because a direct caller could
+  inject notifications into every follower's inbox, so a trigger is the only
+  sanctioned path. `business_notifications.type` gained `'event'`; without it
+  the fan-out would have violated the CHECK and its exception handler would
+  have swallowed the failure, leaving a feature that silently never notified
+  anyone.
+- **DRY passes made on the way through** (CLAUDE.md §DRY, added this branch):
+  `describeDbError` moved to `lib/utils/` once a second module needed it;
+  `NotificationType` was spelled out twice (union + a separate Zod enum) and
+  the schema is now derived from the constant; `documentDecisionSchema` became
+  `reviewDecisionSchema` with an alias, because "a reason is required on
+  reject" is the same rule whether the thing reviewed is a document or an
+  event; `readFlag(key)` backs both `getBookingsEnabled` and
+  `getEventsEnabled`; `NavItem` gained `flag?`, replacing a hardcoded
+  `endsWith('/business/bookings')`, and **all four** nav surfaces (business
+  sidebar, admin sidebar, customer header, customer footer) now take the same
+  `flags` record; and `PublicShell` was extracted when `/events` needed the
+  same chrome as `/explore`.
+- **Routes:** `ROUTES.EVENTS`, `eventPath`, `businessEventsPath`,
+  `adminEventsPath`. `/event/:eventId` 307s to `/events/:eventId` — the plural
+  collection + camelCase segment matches every other route, and the singular
+  form is kept so any link already shared keeps working.
+- **Admin settings** gained a **Features** card covering `enable_events` and
+  `enable_bookings`; the action's key allowlist widened from two keys to four
+  (the allowlist is the security boundary — this is a callable endpoint).
+- **Tests (+~145, 1846 → 1894, plus the SQL suite):** the daily-window logic
+  (mid-run-but-closed, overnight past midnight, the span capping the last day,
+  a UTC-vs-Manila boundary), every dangerous URL scheme incl. tab/CR/LF-embedded
+  and protocol-relative, the action gate ORDER (validation before auth, kill
+  switch before any DB work), a draft never notifying, reject-without-a-reason
+  refused server-side, a failed notification never undoing the decision it
+  describes, the banner's server HTML, outage-vs-empty on every public surface,
+  the mobile route's clamps and `.range()`, and `supabase/tests/events.test.sql`
+  (7 blocks, ending "ALL EVENT TESTS PASSED").
+- Verified: `yarn lint` + **1894** tests + a clean `yarn build` + a full
+  `make migrate-reset` re-applying the migration from scratch, with the SQL
+  suite green afterwards.
+- **Not done:** cloud apply (needs approval); a browser sweep of the new
+  surfaces (they are behind auth or behind the flag, and this environment has
+  no login path); background push (D7 — needs infrastructure that does not
+  exist); per-day schedule exceptions; event categories.
+
 ## 2026-08-02 — Product catalogue "Set Status" was writing values the DB rejects (feat/product-catalogue-status)
 
 > No schema, API-contract, or auth change. One additive optional prop on the

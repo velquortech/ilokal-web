@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   CalendarClock,
+  CalendarDays,
   Compass,
   Home,
   Loader2,
@@ -41,11 +42,23 @@ export interface CustomerHeaderUser {
  * App nav, shown once there's a session. Anonymous visitors get the landing's
  * own nav instead — see `PublicNav`.
  */
-const NAV_LINKS = [
+const NAV_LINKS: Array<{
+  href: string;
+  label: string;
+  icon: typeof Home;
+  /** The `app_settings` kill switch this entry needs, if any. */
+  flag?: string;
+}> = [
   { href: ROUTES.PUBLIC.LANDING, label: 'Home', icon: Home },
   { href: ROUTES.EXPLORE.HOME, label: 'Explore', icon: Compass },
   { href: ROUTES.EXPLORE.NEARBY, label: 'Nearby', icon: MapPin },
   { href: ROUTES.EXPLORE.DEALS, label: 'Deals', icon: Ticket },
+  {
+    href: ROUTES.EVENTS.HOME,
+    label: 'Events',
+    icon: CalendarDays,
+    flag: 'enable_events',
+  },
 ];
 
 /**
@@ -59,14 +72,25 @@ const NAV_LINKS = [
  */
 export function CustomerHeader({
   user,
-  bookingsEnabled = false,
+  flags = {},
 }: {
   user: CustomerHeaderUser | null;
-  /** `app_settings.enable_bookings` — resolved server-side by the layout. */
-  bookingsEnabled?: boolean;
+  /**
+   * `app_settings` kill switches, resolved server-side by the layout. One
+   * record rather than a boolean per feature: a flagged route 404s while its
+   * flag is off, so every entry needs the same filter and adding the third
+   * feature should not change this signature again.
+   */
+  flags?: Record<string, boolean>;
 }) {
   const pathname = usePathname();
   const { logout, isLoggingOut } = useAuth();
+
+  // A flagged route 404s while its flag is off, so the nav must not advertise
+  // it. Both breakpoint rows read this one list.
+  const navLinks = NAV_LINKS.filter(
+    (link) => !link.flag || flags[link.flag] === true,
+  );
 
   const isCustomer = user?.role === 'app_user';
   const initial = (user?.full_name?.trim()?.[0] ?? 'U').toUpperCase();
@@ -93,7 +117,7 @@ export function CustomerHeader({
             <BrandLogo markSize={26} eager wordmarkClassName="text-lg" />
           </Link>
           <nav className="hidden items-center gap-1 md:flex">
-            {NAV_LINKS.map(({ href, label, icon: Icon }) => (
+            {navLinks.map(({ href, label, icon: Icon }) => (
               <Button
                 key={href}
                 asChild
@@ -173,7 +197,7 @@ export function CustomerHeader({
                   {/* Only rendered when bookings are switched on — the route
                       404s while the flag is off, so advertising it would be a
                       dead end. */}
-                  {bookingsEnabled && (
+                  {flags.enable_bookings && (
                     <DropdownMenuItem asChild>
                       <Link href={ROUTES.CUSTOMER.BOOKINGS}>
                         <CalendarClock className="h-4 w-4" />
@@ -217,7 +241,7 @@ export function CustomerHeader({
       {/* Narrow-viewport row — same set as the inline row above, at the
           complementary breakpoint, so exactly one of the two is ever on. */}
       <nav className="flex items-center gap-1 overflow-x-auto px-2 pb-2 md:hidden">
-        {NAV_LINKS.map(({ href, label, icon: Icon }) => (
+        {navLinks.map(({ href, label, icon: Icon }) => (
           <Button
             key={href}
             asChild

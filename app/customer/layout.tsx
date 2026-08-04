@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import { resolvePublicAvatarUrl } from '@/lib/api/customer/customerQuery';
-import { getBookingsEnabled } from '@/lib/api/appSettings';
+import { getBookingsEnabled, getEventsEnabled } from '@/lib/api/appSettings';
 import { CustomerHeader } from '@/components/customer/CustomerHeader';
 import { ROUTES, getDashboardRoute } from '@/config/routeConfig';
 
@@ -20,9 +20,10 @@ export default async function CustomerLayout({
   if (!user) redirect(ROUTES.AUTH.SIGN_IN);
   if (user.role !== 'app_user') redirect(getDashboardRoute(user.role));
 
-  const [avatarUrl, bookingsEnabled] = await Promise.all([
+  const [avatarUrl, bookingsEnabled, eventsEnabled] = await Promise.all([
     resolvePublicAvatarUrl(user.avatar_url),
     getBookingsEnabled(),
+    getEventsEnabled(),
   ]);
 
   return (
@@ -34,7 +35,10 @@ export default async function CustomerLayout({
           avatar_url: avatarUrl,
           role: user.role,
         }}
-        bookingsEnabled={bookingsEnabled}
+        flags={{
+          enable_bookings: bookingsEnabled,
+          enable_events: eventsEnabled,
+        }}
       />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
         {children}

@@ -66,6 +66,28 @@ export type {
 } from './product';
 export { PRODUCT_STATUSES, PRODUCT_STATUS_OPTIONS } from './product';
 
+// Event Domain Types
+export type {
+  Event,
+  EventStatus,
+  EventBusinessRef,
+  EventProductRef,
+  EventWithRefs,
+  NearbyEvent,
+  EventListMetadata,
+  PaginatedEvents,
+  EventTimeFilter,
+  EventFilters,
+  EventDecision,
+  EventStats,
+} from './event';
+export {
+  EVENT_STATUSES,
+  EVENT_STATUS_OPTIONS,
+  EVENT_TIME_FILTERS,
+  EMPTY_EVENT_STATS,
+} from './event';
+
 // Offering Domain Types (product/service discriminators)
 export type { OfferingKind, OfferingMode } from './offering';
 export {

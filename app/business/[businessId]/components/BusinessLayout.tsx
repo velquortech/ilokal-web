@@ -22,14 +22,15 @@ export default function BusinessLayout({
   shop,
   branches = [],
   vocabulary,
-  bookingsEnabled = false,
+  flags = {},
 }: {
   children: React.ReactNode;
   user: User;
   shop?: BusinessShop | null;
   branches?: Branch[];
   vocabulary?: OfferingVocabulary | null;
-  bookingsEnabled?: boolean;
+  /** `app_settings` kill switches, keyed as the nav config names them. */
+  flags?: Record<string, boolean>;
 }) {
   return (
     <UserProvider user={user}>
@@ -47,7 +48,7 @@ export default function BusinessLayout({
                     } as React.CSSProperties
                   }
                 >
-                  <BusinessSidebar bookingsEnabled={bookingsEnabled} />
+                  <BusinessSidebar flags={flags} />
                   <SidebarInset className="flex flex-1 flex-col overflow-hidden">
                     <BusinessHeader branches={branches} />
                     <VerifiedCelebration

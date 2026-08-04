@@ -2,6 +2,7 @@
 
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { ThemeToggle } from '@/components/custom/ThemeTogge';
+import { NotificationBell } from '@/components/custom/NotificationBell';
 
 export function AdminHeader() {
   return (
@@ -11,7 +12,12 @@ export function AdminHeader() {
           <SidebarTrigger className="h-9 w-9" />
         </div>
 
-        <div className="flex items-center">
+        <div className="flex items-center gap-1">
+          {/* The same component the business header mounts. It reads
+              `getCurrentUser()` and RLS scopes the rows, so an admin sees
+              admin-addressed notifications and nothing else — no admin-only
+              bell, no second inbox, no forked query layer. */}
+          <NotificationBell />
           <ThemeToggle />
         </div>
       </div>

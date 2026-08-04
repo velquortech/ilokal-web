@@ -55,14 +55,41 @@ DECLARE
   ];
 
 BEGIN
-  -- ── 1. Resolve business (first non-seed verified business) ──
-  SELECT b.id, b.owner_id INTO v_business_id, v_owner_id
-  FROM   public.businesses b
-  JOIN   public.profiles   p ON p.id = b.owner_id
-  WHERE  b.status = 'verified'
-    AND  p.email  <> 'seedowner@ilokal.dev'
-  ORDER BY b.created_at
-  LIMIT 1;
+  -- ── 1. Resolve business ──
+  --
+  -- An explicit target wins, so a caller that needs the analytics attached to
+  -- a PARTICULAR shop can say so:
+  --
+  --   SET ilokal.demo_business_id = '<uuid>';   -- same psql session
+  --
+  -- Without it the original behaviour holds (first non-seed verified
+  -- business). That default is arbitrary — it is ordered by created_at, so it
+  -- can easily land on a shop with no products, which makes the dashboard look
+  -- populated while every other surface of that shop is empty. The e2e
+  -- preflight sets the variable for exactly that reason.
+  --
+  -- Read via current_setting rather than a psql `:var`: this is a dollar-quoted
+  -- block, and psql does not interpolate variables inside one.
+  SELECT NULLIF(current_setting('ilokal.demo_business_id', true), '')::uuid
+    INTO v_business_id;
+
+  IF v_business_id IS NOT NULL THEN
+    SELECT b.owner_id INTO v_owner_id
+    FROM   public.businesses b
+    WHERE  b.id = v_business_id;
+
+    IF v_owner_id IS NULL THEN
+      RAISE EXCEPTION 'ilokal.demo_business_id=% matches no business', v_business_id;
+    END IF;
+  ELSE
+    SELECT b.id, b.owner_id INTO v_business_id, v_owner_id
+    FROM   public.businesses b
+    JOIN   public.profiles   p ON p.id = b.owner_id
+    WHERE  b.status = 'verified'
+      AND  p.email  <> 'seedowner@ilokal.dev'
+    ORDER BY b.created_at
+    LIMIT 1;
+  END IF;
 
   IF v_business_id IS NULL THEN
     RAISE EXCEPTION 'No non-seed verified business found. Please register and verify a business first.';

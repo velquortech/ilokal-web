@@ -469,6 +469,8 @@ export type Database = {
           contact_phone_public: string | null
           contact_website: string | null
           coupon_default_expiry_days: number
+          onboarding_checklist_dismissed_at: string | null
+          onboarding_tour_completed_at: string | null
           operating_hours: Json | null
           social_links: Json | null
           updated_at: string
@@ -479,6 +481,8 @@ export type Database = {
           contact_phone_public?: string | null
           contact_website?: string | null
           coupon_default_expiry_days?: number
+          onboarding_checklist_dismissed_at?: string | null
+          onboarding_tour_completed_at?: string | null
           operating_hours?: Json | null
           social_links?: Json | null
           updated_at?: string
@@ -489,6 +493,8 @@ export type Database = {
           contact_phone_public?: string | null
           contact_website?: string | null
           coupon_default_expiry_days?: number
+          onboarding_checklist_dismissed_at?: string | null
+          onboarding_tour_completed_at?: string | null
           operating_hours?: Json | null
           social_links?: Json | null
           updated_at?: string

@@ -9,6 +9,7 @@ import {
   LogOut,
   Loader2,
   ChevronsUpDown,
+  Compass,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -26,12 +27,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUser } from '@/providers/UserContext';
 import { useBusinessShop } from '@/providers/BusinessProvider';
 import { businessPath, ROUTES } from '@/config/routeConfig';
+import { useOnboardingTourContext } from '@/components/custom/onboarding/OnboardingTourProvider';
 
 export function UserMenu() {
   const { logout, isLoggingOut } = useAuth();
   const user = useUser();
   const isMobile = useIsMobile();
   const { business } = useBusinessShop();
+  const { enabled: tourEnabled, startTour } = useOnboardingTourContext();
   const bid = business?.id;
   const bPath = (...segs: string[]) =>
     bid ? businessPath(bid, ...segs) : `/business/${segs.join('/')}`;
@@ -99,6 +102,21 @@ export function UserMenu() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
+        {/* Absent, not disabled, when the kill switch is off — a menu entry
+            that opens nothing is worse than one that isn't there. */}
+        {tourEnabled && (
+          <DropdownMenuItem
+            onSelect={() => {
+              // Let the menu close and restore focus first; starting the tour
+              // inside the same tick fights Radix for the focus it is about to
+              // put back on the trigger.
+              requestAnimationFrame(() => startTour());
+            }}
+          >
+            <Compass className="mr-2 h-4 w-4" />
+            Replay tour
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem asChild>
           <Link href={bPath('help')}>
             <HelpCircle className="mr-2 h-4 w-4" />

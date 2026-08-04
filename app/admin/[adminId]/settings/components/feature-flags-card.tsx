@@ -33,6 +33,12 @@ const TOGGLES: {
     description:
       'When on, customers can request a booking for an offering and owners get a booking inbox. The database refuses new bookings independently while this is off.',
   },
+  {
+    key: 'enable_onboarding_tour',
+    label: 'Onboarding tour',
+    description:
+      'The guided tour a shop owner is offered when they first reach their dashboard, plus the "Replay tour" entry in their menu. Unlike the two above this is ON until switched off — it is a presentational overlay, not a dark-shipped feature. Turn it off if the spotlight misbehaves.',
+  },
 ];
 
 /**

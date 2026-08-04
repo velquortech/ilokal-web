@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { describeDbError } from '@/lib/utils/describeDbError';
 import {
@@ -11,8 +12,12 @@ import type { OfferingVocabulary } from '@/lib/types/offering';
 import type {
   OnboardingItem,
   OnboardingProgress,
+  OnboardingState,
 } from '@/lib/types/onboarding';
-import { EMPTY_ONBOARDING_PROGRESS } from '@/lib/types/onboarding';
+import {
+  EMPTY_ONBOARDING_PROGRESS,
+  EMPTY_ONBOARDING_STATE,
+} from '@/lib/types/onboarding';
 import type { BusinessVerificationStatus } from '@/lib/types/business';
 
 /**
@@ -211,3 +216,47 @@ export async function getOnboardingProgress(
     return { ...EMPTY_ONBOARDING_PROGRESS, failed: true };
   }
 }
+
+/**
+ * The two stored onboarding facts, from `business_settings`.
+ *
+ * `React.cache`d because the LAYOUT needs the tour flag (to seed the provider)
+ * and the PAGE needs the dismissal flag (to seed the card) — two components
+ * that cannot pass props to each other, and a shop should not pay for the same
+ * point lookup twice per request.
+ *
+ * `.maybeSingle()`, not `.single()`: the settings row is created lazily on
+ * first save, so most shops have none. "No row" means neither has been
+ * answered — it is not an error, and `.single()` would raise PGRST116 and turn
+ * a brand-new shop's dashboard into the failure path.
+ *
+ * Never throws. A failed read reports `failed: true` with both flags false,
+ * which SHOWS the guidance: wrongly showing a card is a small annoyance, while
+ * wrongly hiding the setup checklist withholds the one thing a new owner needs.
+ */
+export const getOnboardingState = cache(
+  async (businessId: string): Promise<OnboardingState> => {
+    try {
+      const supabase = await createServerSupabaseClient();
+
+      const { data, error } = await supabase
+        .from('business_settings')
+        .select(
+          'onboarding_tour_completed_at, onboarding_checklist_dismissed_at',
+        )
+        .eq('business_id', businessId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      return {
+        tourCompleted: data?.onboarding_tour_completed_at != null,
+        checklistDismissed: data?.onboarding_checklist_dismissed_at != null,
+        failed: false,
+      };
+    } catch (err) {
+      console.error('[getOnboardingState]', describeDbError(err));
+      return { ...EMPTY_ONBOARDING_STATE };
+    }
+  },
+);

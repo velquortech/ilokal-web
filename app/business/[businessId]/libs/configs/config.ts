@@ -24,17 +24,20 @@ export const storeNavigation: NavItem[] = [
     title: 'My Shop',
     href: '/business/shop',
     icon: Store,
+    tourId: 'nav-shop',
   },
   {
     title: 'Product Catalogues',
     href: '/business/product-catalogues',
     icon: ShoppingBasket,
+    tourId: 'nav-catalogue',
   },
   {
     title: 'Bookings',
     href: '/business/bookings',
     icon: CalendarClock,
     flag: 'enable_bookings',
+    tourId: 'nav-bookings',
   },
   {
     title: 'Events',
@@ -46,6 +49,7 @@ export const storeNavigation: NavItem[] = [
     title: 'Coupons & Deals',
     href: '/business/coupons',
     icon: Ticket,
+    tourId: 'nav-coupons',
   },
   {
     title: 'Redeemed Coupons',

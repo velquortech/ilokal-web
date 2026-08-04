@@ -18,12 +18,20 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SetupChecklist } from '../SetupChecklist';
+import { OnboardingTourProvider } from '../OnboardingTourProvider';
 import type { OnboardingProgress } from '@/lib/types/onboarding';
 
 const replace = vi.fn();
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace, push: vi.fn(), refresh: vi.fn() }),
+}));
+
+const dismissAction = vi.fn().mockResolvedValue({ success: true });
+
+vi.mock('@/app/actions/onboardingActions', () => ({
+  dismissOnboardingChecklistAction: (id: string) => dismissAction(id),
+  completeOnboardingTourAction: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 vi.mock('next/link', () => ({
@@ -171,6 +179,37 @@ describe('SetupChecklist', () => {
     expect(container.innerHTML).not.toBe('');
   });
 
+  it('records the dismissal server-side, so it survives a different browser', () => {
+    render({});
+
+    const hide = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Hide',
+    )!;
+    act(() => hide.click());
+
+    // The local marker alone is per-device, which is exactly the gap phase 3
+    // closes; the write is scoped to the shop being dismissed.
+    expect(dismissAction).toHaveBeenCalledWith(BUSINESS_ID);
+  });
+
+  it('starts hidden when the server says it was already dismissed', () => {
+    // Seeded from the prop, not discovered after mount — an already-dismissed
+    // card must never be painted and then yanked away.
+    render({ dismissed: true });
+
+    expect(container.innerHTML).toBe('');
+  });
+
+  it('cannot be resurrected locally once the server has it dismissed', () => {
+    render({ dismissed: true });
+    // Nothing in localStorage for this shop, yet it stays hidden: the echo may
+    // only ever add a "hidden".
+    expect(
+      window.localStorage.getItem(`ilokal-onboarding-hidden:${BUSINESS_ID}`),
+    ).toBe(null);
+    expect(container.innerHTML).toBe('');
+  });
+
   it('gives every row a real destination', () => {
     render({});
 
@@ -190,5 +229,41 @@ describe('SetupChecklist', () => {
     // way or the list announces as identical rows.
     expect(container.textContent).toContain('— done');
     expect(container.textContent).toContain('— not done yet');
+  });
+
+  it('anchors the tour’s first step to the card that already exists', () => {
+    render({});
+
+    expect(container.querySelector('[data-tour="setup-checklist"]')).not.toBe(
+      null,
+    );
+  });
+
+  it('offers the tour here too, and only when it is switched on', () => {
+    // Second entry point (the user menu is the other): one stray "Not now"
+    // must not be the end of onboarding.
+    const takeTheTour = () =>
+      Array.from(container.querySelectorAll('button')).find((button) =>
+        /Take the tour/.test(button.textContent ?? ''),
+      );
+
+    render({});
+    // No provider above it — the shared card must stay mountable anywhere, and
+    // reads as "no tour here" rather than throwing.
+    expect(takeTheTour()).toBeUndefined();
+
+    act(() => {
+      root.render(
+        React.createElement(
+          OnboardingTourProvider,
+          { businessId: BUSINESS_ID, enabled: true },
+          React.createElement(SetupChecklist, {
+            businessId: BUSINESS_ID,
+            progress: progressWith(),
+          }),
+        ),
+      );
+    });
+    expect(takeTheTour()).toBeDefined();
   });
 });

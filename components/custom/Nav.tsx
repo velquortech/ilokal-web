@@ -25,6 +25,7 @@ import {
 
 import { LucideIcon } from 'lucide-react';
 import Image from 'next/image';
+import type { TourStepId } from '@/lib/onboarding/tourSteps';
 
 export type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline';
 
@@ -49,6 +50,12 @@ export interface NavItem {
    * how a nav entry ends up pointing at a route nobody can open.
    */
   flag?: string;
+  /**
+   * Anchor for the onboarding tour, rendered as `data-tour` on this entry's
+   * link. Typed as the step union rather than `string`, so renaming a step id
+   * is a compile error here instead of a spotlight pointing at nothing.
+   */
+  tourId?: TourStepId;
   items?: NavSubItem[];
 }
 
@@ -275,7 +282,11 @@ function SimpleNavItem({
         tooltip={item.title}
         disabled={disabled}
       >
-        <Link href={item.href || '#'} aria-disabled={disabled}>
+        <Link
+          href={item.href || '#'}
+          aria-disabled={disabled}
+          data-tour={item.tourId}
+        >
           <NavItemIcon icon={item.icon} />
           <span>{item.title}</span>
           {item.badge && (

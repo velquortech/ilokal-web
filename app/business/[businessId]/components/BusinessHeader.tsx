@@ -81,7 +81,10 @@ export function BusinessHeader({ branches = [] }: BusinessHeaderProps) {
         </div>
 
         <div className="flex items-center">
-          <div className="hidden items-center gap-2 sm:flex">
+          <div
+            className="hidden items-center gap-2 sm:flex"
+            data-tour="notifications"
+          >
             {/* TODO: re-enable once the AI assistant is functional */}
             {/* <button
               onClick={() => setIsAIChatOpen((prev) => !prev)}

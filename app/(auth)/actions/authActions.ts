@@ -12,6 +12,12 @@ import { rateLimit, clientIp } from '@/app/api/helpers/rateLimit';
 import { ROUTES, businessPath } from '@/config/routeConfig';
 import { User } from '@/lib/types/user';
 import { SignupInput } from '@/lib/validation/auth';
+import {
+  isAuthFailure,
+  type AuthErrorCode,
+  type AuthFailure,
+  type LoginRateLimited,
+} from '@/lib/types/authResult';
 
 // SEC-8 budgets for the Server-Action login path — /api/auth/* is covered by
 // checkAuthRateLimit, but this action is a separate publicly-invocable door
@@ -34,24 +40,40 @@ const LOGIN_ACCOUNT_WINDOW_MS = Number(
  * - Generic error messages to prevent account enumeration
  * - Uses service role only for auth operations
  */
-export interface LoginRateLimited {
-  rateLimited: true;
-  message: string;
+/**
+ * Why these actions RETURN failures instead of throwing.
+ *
+ * In a production build Next.js replaces the message of anything thrown from a
+ * Server Action with "An error occurred in the Server Components render… the
+ * specific message is omitted in production builds…". The client then rendered
+ * that notice verbatim, because the redacted object is still an `Error` and the
+ * usual `error instanceof Error ? error.message : fallback` therefore always
+ * took the first branch. Users saw Next's internals where the reason should be.
+ *
+ * A RETURNED value is not redacted. `LoginRateLimited` already worked this way
+ * for the 429 case for exactly this reason; `AuthFailure` generalises it so
+ * every failure reason survives the trip to the browser.
+ *
+ * `redirect()` still throws (NEXT_REDIRECT) — that is navigation, not failure,
+ * and every caller keeps its `isRedirectError()` guard.
+ */
+function fail(code: AuthErrorCode, message: string): AuthFailure {
+  return { failed: true, code, message };
 }
 
 export async function loginAction(
   email: string,
   password: string,
-): Promise<{ user: User; message: string } | LoginRateLimited> {
+): Promise<{ user: User; message: string } | AuthFailure | LoginRateLimited> {
   try {
     // Validate required fields
     if (!email?.trim() || !password?.trim()) {
-      throw new Error('Email and password are required');
+      return fail('VALIDATION_ERROR', 'Please enter your email and password.');
     }
 
     // Validate email format (basic)
     if (!email.includes('@')) {
-      throw new Error('Invalid email format');
+      return fail('VALIDATION_ERROR', 'Please enter a valid email address.');
     }
 
     // Rate-limit before any auth/DB work (generic message — no oracle).
@@ -81,7 +103,9 @@ export async function loginAction(
       // from Server Actions, and the form must distinguish 429 from bad
       // credentials.
       return {
+        failed: true,
         rateLimited: true,
+        code: 'RATE_LIMITED',
         message: 'Too many attempts. Please try again in a few minutes.',
       };
     }
@@ -101,7 +125,9 @@ export async function loginAction(
     if (authError || !authData.user) {
       // Generic error message prevents account enumeration attacks
       console.error('[loginAction] Auth error:', authError?.message);
-      throw new Error('Invalid email or password');
+      // Deliberately identical for "no such account" and "wrong password":
+      // a more specific message would be an account-enumeration oracle.
+      return fail('INVALID_CREDENTIALS', 'Incorrect email or password.');
     }
 
     // Fetch profile data from 'profiles' table
@@ -117,7 +143,10 @@ export async function loginAction(
         '[loginAction] Profile not found for user',
         authData.user.id,
       );
-      throw new Error('Failed to load user profile');
+      return fail(
+        'INTERNAL_ERROR',
+        'We couldn’t load your account. Please try again.',
+      );
     }
 
     // Verify user account is not archived
@@ -125,8 +154,9 @@ export async function loginAction(
       console.warn(
         `[loginAction] Login attempt by archived user ${authData.user.id}`,
       );
-      throw new Error(
-        'Your account has been archived. Please contact support.',
+      return fail(
+        'ACCOUNT_ARCHIVED',
+        'This account has been closed. Please contact support if you think that’s wrong.',
       );
     }
 
@@ -135,8 +165,11 @@ export async function loginAction(
       console.warn(
         `[loginAction] Login attempt by inactive user ${authData.user.id} with status: ${statusCheck.status}`,
       );
-      throw new Error(
-        `Your account is ${statusCheck.status}. Please contact support.`,
+      return fail(
+        'ACCOUNT_INACTIVE',
+        statusCheck.status === 'suspended'
+          ? 'This account is suspended. Please contact support.'
+          : 'This account is inactive. Please contact support to reactivate it.',
       );
     }
 
@@ -148,7 +181,10 @@ export async function loginAction(
       .single();
 
     if (!profile) {
-      throw new Error('Failed to load user profile');
+      return fail(
+        'INTERNAL_ERROR',
+        'We couldn’t load your account. Please try again.',
+      );
     }
 
     return {
@@ -156,11 +192,13 @@ export async function loginAction(
       message: 'Logged in successfully',
     };
   } catch (error) {
-    // Log detailed error server-side, return generic message to client
-    const errorMessage =
-      error instanceof Error ? error.message : 'An unexpected error occurred';
-    console.error('[loginAction] Error:', errorMessage);
-    throw new Error(errorMessage);
+    // Full detail stays in the server log; the client gets hand-written copy.
+    // Rethrowing here is what produced Next's redaction notice in the browser.
+    console.error('[loginAction] Error:', error);
+    return fail(
+      'INTERNAL_ERROR',
+      'We couldn’t sign you in just now. Please try again.',
+    );
   }
 }
 
@@ -176,20 +214,23 @@ export async function loginAction(
  */
 export async function signupAction(
   data: SignupInput,
-): Promise<{ user: User; message: string }> {
+): Promise<{ user: User; message: string } | AuthFailure> {
   try {
     // Validate required fields (Zod handles this, but double-check)
     if (!data.email?.trim() || !data.password?.trim() || !data.name?.trim()) {
-      throw new Error('Email, password, and name are required');
+      return fail(
+        'VALIDATION_ERROR',
+        'Please fill in your name, email and password.',
+      );
     }
 
     if (!data.role) {
-      throw new Error('User role is required');
+      return fail('VALIDATION_ERROR', 'Please choose an account type.');
     }
 
     // Validate email format
     if (!data.email.includes('@')) {
-      throw new Error('Invalid email format');
+      return fail('VALIDATION_ERROR', 'Please enter a valid email address.');
     }
 
     // Create server-side Supabase client
@@ -217,7 +258,21 @@ export async function signupAction(
 
     if (authError || !authData.user) {
       console.error('[signupAction] Auth error:', authError?.message);
-      throw new Error(authError?.message || 'Failed to create account');
+      // auth.signUp reports a duplicate itself; map it rather than forwarding
+      // GoTrue's wording straight to the browser.
+      console.error('[signupAction] signUp error:', authError?.message);
+      const alreadyRegistered = /already registered|already exists/i.test(
+        authError?.message ?? '',
+      );
+      return alreadyRegistered
+        ? fail(
+            'EMAIL_TAKEN',
+            'That email is already registered. Try signing in instead.',
+          )
+        : fail(
+            'INTERNAL_ERROR',
+            'We couldn’t create your account just now. Please try again.',
+          );
     }
 
     const userId = authData.user.id;
@@ -263,7 +318,10 @@ export async function signupAction(
       .single();
 
     if (!createdProfile) {
-      throw new Error('Failed to load created profile');
+      return fail(
+        'INTERNAL_ERROR',
+        'Your account was created but we couldn’t load it. Try signing in.',
+      );
     }
 
     return {
@@ -271,10 +329,11 @@ export async function signupAction(
       message: 'Account created successfully',
     };
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'An unexpected error occurred';
-    console.error('[signupAction] Error:', errorMessage);
-    throw new Error(errorMessage);
+    console.error('[signupAction] Error:', error);
+    return fail(
+      'INTERNAL_ERROR',
+      'We couldn’t create your account just now. Please try again.',
+    );
   }
 }
 
@@ -285,17 +344,18 @@ export async function signupAction(
 export async function loginAsAdmin(
   email: string,
   password: string,
-): Promise<{ user: User; message: string }> {
+): Promise<{ user: User; message: string } | AuthFailure> {
   const result = await loginAction(email, password);
 
-  // Admin/business portals keep the throwing contract — surface the 429 the
-  // same way their other failures surface.
-  if ('rateLimited' in result) throw new Error(result.message);
+  // Failures propagate as VALUES. This door used to rethrow them, which is
+  // exactly what let Next's redaction notice reach the admin form.
+  if (isAuthFailure(result)) return result;
 
   if (result.user.role !== 'admin') {
     const supabase = await createServerSupabaseClient();
     await supabase.auth.signOut();
-    throw new Error(
+    return fail(
+      'WRONG_PORTAL',
       'This portal is for admins only. Please use the main sign-in page.',
     );
   }
@@ -317,11 +377,11 @@ export async function signInAction(
   email: string,
   password: string,
 ): Promise<
-  { user: User; businessId: string | null; message: string } | LoginRateLimited
+  { user: User; businessId: string | null; message: string } | AuthFailure
 > {
   const result = await loginAction(email, password);
 
-  if ('rateLimited' in result) return result;
+  if (isAuthFailure(result)) return result;
 
   let businessId: string | null = null;
   if (result.user.role === 'business_owner') {
@@ -513,6 +573,12 @@ export async function signupFormAction(
 
     // Call the signup server action
     const response = await signupAction(result.data);
+
+    // A returned failure carries real copy; a thrown one would have been
+    // replaced by Next's redaction notice in production.
+    if (isAuthFailure(response)) {
+      return { error: response.message };
+    }
 
     return {
       success: true,

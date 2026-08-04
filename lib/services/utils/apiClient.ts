@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { ROUTES } from '@/config/routeConfig';
+import { apiBaseUrl } from './apiBaseUrl';
 
 export interface ApiErrorResponse {
   message?: string;
@@ -17,8 +18,11 @@ class ApiManager {
 
   constructor() {
     this.instance = axios.create({
-      // Use origin only; API routes are prefixed with `/api` by callers.
-      baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
+      // Empty in the browser: same-origin, so callers' `/api/...` paths resolve
+      // against whatever host actually served the page. See `apiBaseUrl` — the
+      // previous hardcoded `http://localhost:3000` made every browser request
+      // in production go to the visitor's own machine.
+      baseURL: apiBaseUrl(),
       headers: {
         'Content-Type': 'application/json',
       },

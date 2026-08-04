@@ -102,14 +102,15 @@ function mockFlagRow(
 }
 
 describe('getOnboardingTourEnabled', () => {
-  it('is ON when the row was never created', async () => {
-    // Deliberately the opposite of the dark-shipped flags. The tour has no
-    // server side and nothing to leak, so treating "never configured" as off
-    // would ship a feature that only works once an admin finds a switch nobody
-    // told them about.
+  it('fails closed when no row is visible', async () => {
+    // The row is seeded true by 20260804233000, so "absent" means either the
+    // migration has not landed or the caller cannot read `app_settings` (it is
+    // readable TO authenticated only — an anon caller gets zero rows and NO
+    // error). Answering `true` there would silently defeat an admin's OFF
+    // switch, which is the trap that moved `readFlag` onto the RPC.
     mockFlagRow(null);
 
-    await expect(getOnboardingTourEnabled()).resolves.toBe(true);
+    await expect(getOnboardingTourEnabled()).resolves.toBe(false);
   });
 
   it('honours an admin turning it off', async () => {
@@ -139,9 +140,10 @@ describe('getOnboardingTourEnabled', () => {
     await expect(getOnboardingTourEnabled()).resolves.toBe(false);
   });
 
-  it('ignores a non-boolean stored value', async () => {
+  it('accepts only a real boolean true', async () => {
+    // A truthy string is a mis-seeded row, not consent.
     mockFlagRow({ value: 'yes' });
 
-    await expect(getOnboardingTourEnabled()).resolves.toBe(true);
+    await expect(getOnboardingTourEnabled()).resolves.toBe(false);
   });
 });

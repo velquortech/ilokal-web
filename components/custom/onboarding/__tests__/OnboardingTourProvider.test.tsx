@@ -245,6 +245,29 @@ describe('OnboardingTourProvider', () => {
     expect(completeAction).not.toHaveBeenCalled();
   });
 
+  it('does not consume the tour when there was nothing to show', () => {
+    // No `paintAnchor` here: every element measures 0x0, so the overlay has
+    // nothing to point at. That must not count as an answer — otherwise one
+    // click on a layout where no anchor renders silences the tour for good.
+    render(
+      <OnboardingTourProvider businessId={BUSINESS_ID} enabled>
+        <ReplayEntry />
+      </OnboardingTourProvider>,
+    );
+
+    act(() => button('Take the tour')?.click());
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(completeAction).not.toHaveBeenCalled();
+    expect(
+      window.localStorage.getItem(`ilokal-onboarding-tour:${BUSINESS_ID}`),
+    ).toBe(null);
+    // ...and the entry point is still there to try again.
+    expect(button('Take the tour')).toBeDefined();
+  });
+
   it('does not ask an owner who answered on another device', () => {
     // Nothing in this browser's storage — the stored answer travels with the
     // shop, which is the whole point of moving it off localStorage.

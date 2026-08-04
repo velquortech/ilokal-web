@@ -197,10 +197,12 @@ describe('onboarding writers', () => {
     const rec = mockWrite();
     await markTourCompleted(BUSINESS_ID);
 
+    // `updated_at` is absent on purpose: it means "the owner changed a
+    // setting", and hiding a card is not a settings change. The column defaults
+    // to now() on insert and this table has no updated-at trigger.
     expect(Object.keys(rec.payload ?? {}).sort()).toEqual([
       'business_id',
       'onboarding_tour_completed_at',
-      'updated_at',
     ]);
     expect(rec.payload).not.toHaveProperty('onboarding_checklist_dismissed_at');
   });

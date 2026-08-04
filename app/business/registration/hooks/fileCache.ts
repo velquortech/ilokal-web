@@ -84,9 +84,20 @@ function run<T>(
         const tx = db.transaction(STORE, mode);
         const request = work(tx.objectStore(STORE));
 
-        request.onsuccess = () => resolve({ value: request.result ?? null });
+        // A write is only cached once the transaction COMMITS: `onsuccess`
+        // fires first, and a commit-time abort (quota) after it would otherwise
+        // be reported as a successful cache whose files vanish on reload. Reads
+        // resolve on `onsuccess`, since there is nothing to commit.
+        let value: T | null = null;
+        request.onsuccess = () => {
+          value = request.result ?? null;
+          if (mode === 'readonly') resolve({ value });
+        };
         request.onerror = () => resolve(null);
-        tx.oncomplete = () => db.close();
+        tx.oncomplete = () => {
+          db.close();
+          resolve({ value });
+        };
         tx.onabort = () => {
           db.close();
           resolve(null);

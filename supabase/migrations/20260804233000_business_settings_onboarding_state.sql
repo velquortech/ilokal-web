@@ -1,5 +1,12 @@
 -- Onboarding state for one shop.
 --
+-- ⚠️ NEEDS HUMAN APPROVAL BEFORE MERGE (schema change, per CLAUDE.md §Workflow),
+-- then `make migrate-cloud` + a `supabase_migrations.schema_migrations` ledger
+-- reconcile. **The cloud apply must land BEFORE the app deploy**: without these
+-- columns `getOnboardingState` errors 42703 on every business dashboard load,
+-- so the checklist can never be hidden and both writers silently return
+-- `ok:false`. Applied and red-teamed on LOCAL ONLY so far.
+--
 -- Phase 1 and 2 of the onboarding work derive EVERY checklist item from the
 -- data it describes — storing "logo uploaded ✓" duplicates a fact
 -- `businesses.logo_url` already holds, and the two drift the first time an
@@ -25,8 +32,11 @@
 -- and its `auth.uid()` is already wrapped as `(select auth.uid())` by
 -- `20260717000002`. So the write path is covered as-is.
 --
--- NO new index: `business_id` is the primary key and every read here is a
--- point lookup by it.
+-- No index is needed on `business_settings` itself — `business_id` is the
+-- primary key and every read here is a point lookup by it. But the checklist
+-- this unblocks counts `branches` per shop on every dashboard load, and
+-- `branches.business_id` was never indexed (Postgres does not auto-index FKs),
+-- so that read seq-scans the table. Added below.
 --
 -- NO backfill, and none is possible — the existing markers are in browsers we
 -- cannot read. NULL means "not done", so an owner who dismissed the card
@@ -47,3 +57,21 @@ COMMENT ON COLUMN public.business_settings.onboarding_tour_completed_at IS
 
 COMMENT ON COLUMN public.business_settings.onboarding_checklist_dismissed_at IS
   'When the owner hid the setup checklist. NULL = still shown. The checklist ITEMS stay fully derived; only this dismissal is stored.';
+
+-- The checklist's branch step counts live, pinned branches for one shop on every
+-- dashboard load. Partial, because the count always filters `archived_at IS
+-- NULL`, so the index only has to carry the rows that can match.
+CREATE INDEX IF NOT EXISTS idx_branches_business_id_live
+  ON public.branches (business_id)
+  WHERE archived_at IS NULL;
+
+-- Seed the onboarding-tour kill switch so "row absent" is unreachable and its
+-- reader can fail CLOSED like `enable_events` / `enable_bookings`. Without the
+-- row, a reader has to choose a default for "no rows", and `app_settings` is
+-- `SELECT … TO authenticated` — so an anonymous caller sees zero rows and NO
+-- error, which an ON-by-default reader would turn into "enabled", silently
+-- defeating an admin who switched it off. `ON CONFLICT DO NOTHING`: an admin's
+-- existing choice must survive a re-run.
+INSERT INTO public.app_settings (key, value)
+VALUES ('enable_onboarding_tour', 'true'::jsonb)
+ON CONFLICT (key) DO NOTHING;

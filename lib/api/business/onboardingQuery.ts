@@ -21,6 +21,36 @@ import {
 import type { BusinessVerificationStatus } from '@/lib/types/business';
 
 /**
+ * The verification row's copy, one entry per status.
+ *
+ * A `Record` over the union rather than nested ternaries, so a new status is a
+ * compile error instead of silently falling into the else branch — which is how
+ * a **suspended** shop came to be told "Verification in review… Nothing to do"
+ * (CLAUDE.md §DRY: extend the map, don't branch beside it).
+ */
+const VERIFICATION_COPY: Record<
+  BusinessVerificationStatus,
+  { label: string; detail: string }
+> = {
+  verified: {
+    label: 'Shop verified',
+    detail: 'Your shop is visible to shoppers.',
+  },
+  pending: {
+    label: 'Verification in review',
+    detail: 'Nothing to do — everything above can be done while you wait.',
+  },
+  rejected: {
+    label: 'Verification needs attention',
+    detail: 'Check the reason and resubmit your documents.',
+  },
+  suspended: {
+    label: 'Shop suspended',
+    detail: 'An admin has suspended this shop. Contact support to resolve it.',
+  },
+};
+
+/**
  * The post-registration setup checklist, derived in full.
  *
  * Counts are head-only (`select('id', { count: 'exact', head: true })`) — never
@@ -91,24 +121,40 @@ export async function getOnboardingProgress(
       return data;
     };
 
+    /**
+     * `status='active'` is part of "done", not decoration:
+     * `sync_product_availability` sets `is_available = (status = 'active')`, so
+     * an `unlisted` or `disabled` offering is invisible on the public page —
+     * exactly the state this step exists to move the owner out of. The same
+     * number drives the dashboard's empty state.
+     */
     const offeringCountRead = async () => {
       const { count, error } = await supabase
         .from('products')
         .select('id', { count: 'exact', head: true })
         .eq('business_id', businessId)
+        .eq('status', 'active')
         .is('archived_at', null);
       if (error) throw error;
       return count ?? 0;
     };
 
-    /** A draft promo is not published, so it is not a completed step. */
+    /**
+     * The full coupon access invariant, not just `published`: `mobile_deals`
+     * also requires `start_date <= now <= expiry_date`, so an expired or
+     * not-yet-started deal reaches nobody — and this row's own copy promises it
+     * reaches the Deals feed.
+     */
     const livePromoCount = async () => {
+      const nowIso = new Date().toISOString();
       const { count, error } = await supabase
         .from('coupons')
         .select('id', { count: 'exact', head: true })
         .eq('business_id', businessId)
         .eq('status', 'published')
-        .is('archived_at', null);
+        .is('archived_at', null)
+        .lte('start_date', nowIso)
+        .gte('expiry_date', nowIso);
       if (error) throw error;
       return count ?? 0;
     };
@@ -181,18 +227,8 @@ export async function getOnboardingProgress(
       },
       {
         id: 'verification',
-        label:
-          status === 'verified'
-            ? 'Shop verified'
-            : status === 'rejected'
-              ? 'Verification needs attention'
-              : 'Verification in review',
-        detail:
-          status === 'verified'
-            ? 'Your shop is visible to shoppers.'
-            : status === 'rejected'
-              ? 'Check the reason and resubmit your documents.'
-              : 'Nothing to do — everything above can be done while you wait.',
+        label: VERIFICATION_COPY[status ?? 'pending'].label,
+        detail: VERIFICATION_COPY[status ?? 'pending'].detail,
         done: status === 'verified',
         href: businessProfilePath(businessId),
         readOnly: true,

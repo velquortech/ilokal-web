@@ -34,6 +34,14 @@ interface UseOnboardingTourReturn {
   dismiss: () => void;
   /** Reached the last step. */
   finish: () => void;
+  /**
+   * Close WITHOUT recording an answer.
+   *
+   * For the case where the tour cannot run — no anchor on this layout measures,
+   * so there is nothing to show. Recording that as "answered" would silence the
+   * tour forever on the strength of a visit where the owner saw nothing at all.
+   */
+  abort: () => void;
 }
 
 const read = (key: string): boolean => {
@@ -125,6 +133,8 @@ export function useOnboardingTour(
     }
   }, [businessId, onSettle]);
 
+  const abort = useCallback(() => setPhase('idle'), []);
+
   return {
     phase,
     seen,
@@ -134,5 +144,6 @@ export function useOnboardingTour(
     // the invitation returning on the next refresh.
     dismiss: settle,
     finish: settle,
+    abort,
   };
 }

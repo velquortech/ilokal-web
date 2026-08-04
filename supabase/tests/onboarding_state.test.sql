@@ -153,6 +153,21 @@ BEGIN
   RESET ROLE;
   ASSERT v_count = 0, 'anon can read business_settings directly';
 
+  -- ─────────────────── the checklist's hot read is indexed ────────────────
+  -- The branch step counts pinned branches per shop on every dashboard load,
+  -- and Postgres does not auto-index FKs.
+  SELECT count(*) INTO v_count FROM pg_indexes
+   WHERE tablename = 'branches' AND indexdef LIKE '%business_id%';
+  ASSERT v_count >= 1, 'branches.business_id is unindexed — the checklist seq-scans it';
+
+  -- ─────────────────── the kill switch is seeded, not guessed ─────────────
+  -- Its reader fails CLOSED, which is only safe because "row absent" cannot
+  -- happen: `app_settings` is readable TO authenticated only, so a caller that
+  -- cannot see the table gets zero rows and no error.
+  SELECT count(*) INTO v_count FROM app_settings
+   WHERE key = 'enable_onboarding_tour' AND value = 'true'::jsonb;
+  ASSERT v_count = 1, 'enable_onboarding_tour was not seeded';
+
   RAISE NOTICE 'ALL ONBOARDING STATE TESTS PASSED';
 END $$;
 

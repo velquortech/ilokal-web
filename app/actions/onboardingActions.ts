@@ -41,35 +41,50 @@ type Guard =
   | { ok: true; businessId: string }
   | { ok: false; response: ApiResponse<never> };
 
+function fail(code: string, message: string): ApiResponse<never> {
+  return { success: false, error: { code, message } };
+}
+
 async function guard(businessId: string): Promise<Guard> {
   // Validates the id's shape and proves the caller owns that exact shop.
   const verify = await verifyBusinessOwner(businessId);
   if (!verify.authorized) {
-    return {
-      ok: false,
-      response: { success: false, error: verify.error as ApiError },
-    };
+    // `verifyBusinessOwner`'s error is a union that also has a `NextResponse`
+    // arm; narrow rather than cast, or that arm would be serialised into an
+    // `ApiResponse` body.
+    const error: ApiError =
+      verify.error && typeof verify.error === 'object' && 'code' in verify.error
+        ? (verify.error as ApiError)
+        : {
+            code: 'UNAUTHORIZED',
+            message: 'You do not have access to this shop.',
+          };
+    return { ok: false, response: { success: false, error } };
   }
 
   const userId = verify.user?.id;
-  if (userId) {
-    const { allowed } = rateLimit(
-      `business-onboarding-write:${userId}`,
-      RATE_LIMIT,
-      RATE_WINDOW_MS,
-    );
-    if (!allowed) {
-      return {
-        ok: false,
-        response: {
-          success: false,
-          error: {
-            code: 'RATE_LIMITED',
-            message: 'Too many requests — please try again in a moment.',
-          },
-        },
-      };
-    }
+  // No id means no bucket to rate-limit against, so treat it as unauthorized
+  // rather than letting the write through unthrottled.
+  if (!userId) {
+    return {
+      ok: false,
+      response: fail('UNAUTHORIZED', 'You do not have access to this shop.'),
+    };
+  }
+
+  const { allowed } = rateLimit(
+    `business-onboarding-write:${userId}`,
+    RATE_LIMIT,
+    RATE_WINDOW_MS,
+  );
+  if (!allowed) {
+    return {
+      ok: false,
+      response: fail(
+        'RATE_LIMITED',
+        'Too many requests — please try again in a moment.',
+      ),
+    };
   }
 
   // The VERIFIED id, not the client's.

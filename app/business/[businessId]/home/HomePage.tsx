@@ -21,7 +21,7 @@ import { RegistrationSteps } from './components/RegistrationSteps';
 
 export default function BusinessHome({
   requireDocuments = true,
-  hasOfferings = false,
+  hasOfferings,
 }: {
   requireDocuments?: boolean;
   /**
@@ -29,6 +29,11 @@ export default function BusinessHome({
    * Without it this component rendered `EmptyState` for ANY existing business
    * — so a shop with 200 offerings was told "No products yet. Your shop
    * dashboard is empty." Nothing here ever counted them.
+   *
+   * **`undefined` means the count is UNKNOWN** (the read failed), which is not
+   * the same as zero. Defaulting it to `false` put "No products yet" beside the
+   * checklist's own "we couldn't load" card on every outage — the same lie one
+   * component down. Neither branch below renders while it is undefined.
    */
   hasOfferings?: boolean;
 }) {
@@ -64,11 +69,14 @@ export default function BusinessHome({
         </>
       )}
 
-      {/* Only when the shop genuinely has nothing. This used to render for ANY
-          existing business, so a shop with 200 offerings read "No products
-          yet" — nothing here counted them. */}
-      {business && !hasOfferings && (
+      {/* Only when the shop genuinely has nothing — `=== false`, not falsy, so
+          an unknown count (failed read) renders neither this nor the card
+          below. This used to render for ANY existing business, so a shop with
+          200 offerings read "No products yet". */}
+      {business && hasOfferings === false && (
         <EmptyState
+          emptyLabel={vocabulary.emptyLabel}
+          addLabel={vocabulary.addLabel}
           onAddProduct={() =>
             router.push(
               business?.id
@@ -89,7 +97,7 @@ export default function BusinessHome({
       {/* Shop has offerings but is not verified, so the analytics page it would
           otherwise show has nothing to display. Say why rather than leaving a
           blank column — the layout's pending banner covers the visibility side. */}
-      {business && hasOfferings && (
+      {business && hasOfferings === true && (
         <Card className="border-dashed">
           <CardContent className="flex items-center gap-3 py-6">
             <Lock className="text-muted-foreground h-5 w-5 shrink-0" />

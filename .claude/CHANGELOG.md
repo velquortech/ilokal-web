@@ -1,5 +1,102 @@
 # Changelog
 
+## 2026-08-05 — PR #27 review hardening (feat/business-onboarding)
+
+> Fixes from the react-doctor + api-doctor review of the whole onboarding
+> branch. **Edits the unmerged `20260804233000` migration in place** (it is not
+> on cloud) — it still needs human approval + `make migrate-cloud` + a ledger
+> reconcile before merge.
+
+- **🔴 The outage-vs-empty lie was fixed for the checklist and reintroduced one
+  component down.** `hasOfferings` defaulted to `false`, and a failed
+  `getOnboardingProgress` reports `offeringCount: 0` — so on any read outage a
+  pending shop got "We couldn't load your setup checklist" stacked directly on
+  "No products yet. Your shop dashboard is empty", for a shop that may have 200
+  offerings. `hasOfferings` is now **`boolean | undefined`**, where `undefined`
+  means *unknown*, and `HomePage` tests `=== false` / `=== true`, so an outage
+  renders neither the empty state nor the analytics-lock card.
+- **🔴 A tour with nothing to point at consumed itself.** The "no anchor
+  measures" exit called `onSkip`, which settles — writing the seen marker AND
+  posting the Server Action. An owner clicking "Take the tour" on a layout where
+  no anchor renders saw nothing happen and would never be offered it again. New
+  `abort()` closes without recording; the overlay takes an explicit `onAbort`.
+- **🔴 The step index was never clamped when the visible set shrank.** A shorter
+  list left `current` undefined, the overlay returned `null` with `phase` still
+  `'running'`, and `startTour()` was then a no-op — the tour was dead until the
+  provider remounted. Clamped in the same effect that recomputes the set.
+- **🔴 The migration now says out loud what it needs.** Approval + cloud apply +
+  ledger reconcile, and specifically that **the cloud apply must land before the
+  app deploy**: without the columns `getOnboardingState` errors 42703 on every
+  dashboard load and both writers silently return `ok:false`.
+- **Three checklist items ticked for states that reach nobody.** The promo count
+  only checked `published`, but `mobile_deals` also requires `start_date <= now
+  <= expiry_date`, so an expired or scheduled deal marked "reaches the app's
+  Deals feed" done. The offering count ignored `products.status`, so a shop whose
+  only offerings are `unlisted`/`disabled` — both `is_available = false` via
+  `sync_product_availability` — was told the step was done while its public page
+  was empty (and the same count feeds the empty state). And the verification
+  row's nested ternaries told a **suspended** shop "Verification in review —
+  nothing to do"; it is a `Record` over the status union now, so a new status is
+  a compile error.
+- **`branches.business_id` was unindexed** and the checklist counts it per
+  dashboard load — Postgres does not auto-index FKs. Partial index (`WHERE
+  archived_at IS NULL`, matching the query) added to the same migration.
+- **🔴 The tour flag's default direction was unsafe, so the row is seeded
+  instead.** `app_settings` is readable `TO authenticated` only, so a caller on
+  the `anon` role gets zero rows and **no error** — and an ON-when-absent reader
+  turns that into "enabled", silently defeating an admin who switched it off.
+  Exactly the trap that moved `readFlag` onto the `public_feature_flags` RPC. The
+  migration now seeds `enable_onboarding_tour = true` (`ON CONFLICT DO NOTHING`,
+  so an admin's choice survives a re-run), which makes "absent" unreachable and
+  lets the reader **fail closed** like its siblings. It also now requires a real
+  boolean `true`, not a truthy value.
+- **Focus return after the tour was pointing at a detached node.** Radix restores
+  focus on menu UNMOUNT, after the exit animation, so the `requestAnimationFrame`
+  start recorded a menu item that no longer existed — and Radix's own late
+  restore punched focus out of the open tour card. The tour is started from
+  `onCloseAutoFocus` with `preventDefault()` now, and `startTour(element)` takes
+  the trigger explicitly.
+- **The test caught a live bug in that same fix:** `startTour` is passed straight
+  to `onClick` in two places, so its first argument is routinely a click EVENT.
+  The element is now validated with `instanceof HTMLElement` rather than
+  truthiness, which is what makes the focus return work from the card as well.
+- **The step-resolution memo keyed on the `flags` OBJECT identity**, which the
+  server layout re-creates on every RSC render — including the `router.replace`
+  that consumes the welcome marker. Each new identity restarted the overlay's
+  380 ms settle timer and re-fired `scrollIntoView` mid-tour. Keyed on the flag
+  values now.
+- **The geometry memo read `window.innerWidth/Height` but was keyed on the rect
+  alone**, so a height-only resize kept pre-resize dimensions for both the
+  viewport clipping and the oversize decision. Viewport size is tracked by the
+  same measure loop and is part of the deps.
+- **`onFinish()` was called inside a `setIndex` updater.** Updaters must be pure
+  and StrictMode invokes them twice, which would double-fire the settle (a
+  localStorage write plus a rate-limited action).
+- **Also:** `role="region"` on the checklist card (`Card` is a bare `<div>`,
+  where ARIA prohibits naming, so `aria-labelledby` alone was dropped — the
+  landing claim-code defect again); the dashboard reads the stored answers FIRST
+  and skips the five-read derivation when the card cannot render; `EmptyState`
+  takes the vocabulary, so a salon no longer reads "No products yet / Add First
+  Product"; a refused dismissal (`FORBIDDEN`/`RATE_LIMITED` resolve rather than
+  reject) is logged instead of dropped; the onboarding writers no longer touch
+  `updated_at`, which means "the owner changed a setting"; the actions treat a
+  missing user id as unauthorized rather than skipping the flood guard, and
+  narrow `verifyBusinessOwner`'s error union instead of casting it; and the
+  IndexedDB store resolves writes from `tx.oncomplete`, so a commit-time quota
+  abort is no longer reported as a successful cache.
+- **Tests (+6, 2177 → 2183):** abort records nothing and leaves the tour on
+  offer; a no-anchor tour does not consume it; the index clamps when the set
+  shrinks; the promo date window and the `status='active'` offering filter; the
+  suspended label; plus the SQL suite gained assertions that
+  `branches.business_id` is indexed and the flag row is seeded, and the
+  appSettings tests were inverted to the fail-closed contract.
+- Verified: `yarn lint` + **2183** tests + a clean `yarn build` + the SQL suite
+  green, with the new index and the seeded flag applied to the local DB.
+- **Not re-run:** `make migrate-reset`. The migration is `ADD COLUMN IF NOT
+  EXISTS` / `CREATE INDEX IF NOT EXISTS` / `INSERT … ON CONFLICT DO NOTHING` and
+  no seed touches these columns, so a reset would only re-prove ordering — and
+  it would wipe the dev database unasked.
+
 ## 2026-08-05 — Tour step card was rendering outside the viewport (feat/business-onboarding)
 
 > Presentational fix to the phase-2 overlay. No schema, API or auth change.

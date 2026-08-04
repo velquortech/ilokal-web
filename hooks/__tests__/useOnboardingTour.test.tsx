@@ -181,6 +181,25 @@ describe('useOnboardingTour', () => {
     expect(onSettle).toHaveBeenCalledTimes(1);
   });
 
+  it('aborting records nothing, so the tour is still offered', () => {
+    // For the case where no anchor measures: the owner saw nothing, so there is
+    // no answer. Settling here would silence the tour forever on the strength
+    // of a visit that showed them a dimmed screen at most.
+    const onSettle = vi.fn();
+    mount({ onSettle });
+
+    act(() => api.start());
+    act(() => api.abort());
+
+    expect(api.phase).toBe('idle');
+    expect(api.seen).toBe(false);
+    expect(onSettle).not.toHaveBeenCalled();
+    expect(window.localStorage.getItem(tourSeenKey(BUSINESS_A))).toBe(null);
+
+    act(() => api.invite());
+    expect(api.phase).toBe('invite');
+  });
+
   it('does not re-post an answer the server already holds', () => {
     const onSettle = vi.fn();
     mount({ serverSeen: true, onSettle });

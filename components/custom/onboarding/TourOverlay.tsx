@@ -51,12 +51,26 @@ function isPaintable(el: HTMLElement | null): el is HTMLElement {
  * scrolls, and the dashboard's content is its own scroll container, so the
  * scroll listener is registered in the CAPTURE phase to see it.
  */
-function useAnchorRect(id: TourStepId | null): DOMRect | null {
+interface Viewport {
+  width: number;
+  height: number;
+}
+
+function useAnchorRect(id: TourStepId | null): {
+  rect: DOMRect | null;
+  viewport: Viewport | null;
+} {
   const [rect, setRect] = useState<DOMRect | null>(null);
+  // Tracked alongside the rect, because the geometry below is derived from BOTH
+  // and a height-only resize moves the viewport without moving a fixed-width
+  // sidebar link — leaving the clipping and the oversize decision on stale
+  // dimensions.
+  const [viewport, setViewport] = useState<Viewport | null>(null);
 
   useEffect(() => {
     if (!id || typeof window === 'undefined') {
       setRect(null);
+      setViewport(null);
       return;
     }
 
@@ -67,14 +81,17 @@ function useAnchorRect(id: TourStepId | null): DOMRect | null {
     const measure = () => {
       frame = 0;
       const next = anchorElement(id)?.getBoundingClientRect() ?? null;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
       const key = next
-        ? `${next.x}|${next.y}|${next.width}|${next.height}`
-        : 'none';
+        ? `${next.x}|${next.y}|${next.width}|${next.height}|${vw}x${vh}`
+        : `none|${vw}x${vh}`;
 
       if (key !== last) {
         last = key;
         stable = 0;
         setRect(next);
+        setViewport({ width: vw, height: vh });
       } else {
         stable += 1;
       }
@@ -106,7 +123,7 @@ function useAnchorRect(id: TourStepId | null): DOMRect | null {
     };
   }, [id]);
 
-  return rect;
+  return { rect, viewport };
 }
 
 interface Box {
@@ -139,18 +156,23 @@ const OVERSIZE_RATIO = 0.5;
  *   the card opens upward from there, over the element it is describing but
  *   always inside the window.
  */
-function useAnchorGeometry(rect: DOMRect | null): {
+function useAnchorGeometry(
+  rect: DOMRect | null,
+  viewport: Viewport | null,
+): {
   highlight: Box | null;
   anchor: Box | null;
   oversized: boolean;
 } {
   return useMemo(() => {
-    if (!rect || typeof window === 'undefined') {
+    if (!rect || !viewport) {
       return { highlight: null, anchor: null, oversized: false };
     }
 
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
+    // From the measure loop, not read here: a memo keyed on the rect alone
+    // would keep pre-resize dimensions whenever a resize left the anchor put.
+    const vw = viewport.width;
+    const vh = viewport.height;
 
     const left = Math.max(0, Math.min(rect.left, vw));
     const top = Math.max(0, Math.min(rect.top, vh));
@@ -180,18 +202,26 @@ function useAnchorGeometry(rect: DOMRect | null): {
       },
       oversized: true,
     };
-  }, [rect]);
+  }, [rect, viewport]);
 }
 
 export function TourOverlay({
   steps,
   onFinish,
   onSkip,
+  onAbort,
 }: {
   /** Already flag-filtered and copy-resolved. */
   steps: ResolvedTourStep[];
   onFinish: () => void;
   onSkip: () => void;
+  /**
+   * Close without recording an answer, for the case where the tour cannot run
+   * at all. `onSkip` would mark it answered, so an owner who clicked "Take the
+   * tour" on a layout where nothing measures would never be offered it again
+   * having seen nothing.
+   */
+  onAbort: () => void;
 }) {
   const { isMobile, open, setOpen } = useSidebar();
 
@@ -211,7 +241,10 @@ export function TourOverlay({
     return () => setOpen(previous);
     // Deliberately keyed on `isMobile` alone: re-running on `open` would fight
     // the user, and `setOpen` is recreated whenever `open` changes, which is
-    // the same thing by another name.
+    // the same thing by another name. Omitting `setOpen` is safe only because
+    // shadcn's version ignores its stale `open` closure for a non-function
+    // argument — and this repo's ESLint has no `react-hooks` plugin to argue
+    // about it, so the reasoning lives here instead.
   }, [isMobile]);
 
   /**
@@ -229,7 +262,13 @@ export function TourOverlay({
     }
 
     const timer = setTimeout(() => {
-      setVisible(steps.filter((step) => isPaintable(anchorElement(step.id))));
+      const next = steps.filter((step) => isPaintable(anchorElement(step.id)));
+      setVisible(next);
+      // Clamped in the same breath: this effect re-runs whenever `steps`
+      // changes identity, and an index left past the end of a shorter list
+      // renders nothing while `phase` stays 'running' — at which point
+      // `startTour()` is a no-op and the tour is dead until a remount.
+      setIndex((i) => Math.min(i, Math.max(0, next.length - 1)));
       setReady(true);
     }, SETTLE_MS);
 
@@ -237,14 +276,17 @@ export function TourOverlay({
   }, [steps, isMobile]);
 
   const current = visible[index];
-  const rect = useAnchorRect(isMobile ? null : (current?.id ?? null));
-  const { highlight, anchor, oversized } = useAnchorGeometry(rect);
+  const { rect, viewport } = useAnchorRect(
+    isMobile ? null : (current?.id ?? null),
+  );
+  const { highlight, anchor, oversized } = useAnchorGeometry(rect, viewport);
 
   // Nothing to point at — end quietly rather than paint a dimmed screen with an
-  // empty card on it.
+  // empty card on it. `onAbort`, NOT `onSkip`: the owner saw nothing, so there
+  // is no answer to record.
   useEffect(() => {
-    if (ready && visible.length === 0) onSkip();
-  }, [ready, visible.length, onSkip]);
+    if (ready && visible.length === 0) onAbort();
+  }, [ready, visible.length, onAbort]);
 
   // Bring the anchor into view before it is highlighted. `block: 'center'`
   // because a highlight flush against the viewport edge leaves no room for the
@@ -266,15 +308,16 @@ export function TourOverlay({
     });
   }, [current, isMobile]);
 
+  // Computed OUTSIDE the updater: a `setState` updater must be pure, and React
+  // invokes it twice under StrictMode — calling `onFinish()` in there would
+  // double-fire the settle (a localStorage write plus a rate-limited action).
   const next = useCallback(() => {
-    setIndex((i) => {
-      if (i + 1 >= visible.length) {
-        onFinish();
-        return i;
-      }
-      return i + 1;
-    });
-  }, [visible.length, onFinish]);
+    if (index + 1 >= visible.length) {
+      onFinish();
+      return;
+    }
+    setIndex(index + 1);
+  }, [index, visible.length, onFinish]);
 
   const back = useCallback(() => setIndex((i) => Math.max(0, i - 1)), []);
 
@@ -323,6 +366,8 @@ export function TourOverlay({
     );
   }
 
+  // Belt for the clamp above: an index with no step means there is nothing to
+  // show, and leaving the overlay mounted-but-blank strands the tour.
   if (!current) return null;
 
   const isLast = index === visible.length - 1;

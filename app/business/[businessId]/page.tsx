@@ -63,13 +63,23 @@ export default async function Page({
   // The post-registration setup checklist rides ABOVE both branches below — a
   // pending shop and a freshly verified one both need it, and the verified case
   // is the common one on a default install (`auto_verify_businesses`).
+  // Read the stored answers FIRST: it is `React.cache`d and the layout already
+  // made it, so it is free — and a dismissed checklist means the five-read
+  // derivation below would be thrown away. The pending branch is the exception:
+  // it needs the offering count whether the card shows or not.
+  const onboardingState = await getOnboardingState(businessId);
+  const needsProgress =
+    !onboardingState.checklistDismissed || business.status !== 'verified';
+
   const vocabulary = await getOfferingVocabulary(businessId);
-  // The state read is `React.cache`d and the layout already made it, so this
-  // costs nothing beyond the checklist's own derivation.
-  const [progress, onboardingState] = await Promise.all([
-    getOnboardingProgress(businessId, vocabulary),
-    getOnboardingState(businessId),
-  ]);
+  const progress = needsProgress
+    ? await getOnboardingProgress(businessId, vocabulary)
+    : null;
+
+  // `undefined`, not `false`, when the count is unknown: a failed read must not
+  // put "No products yet" beside the checklist's own "we couldn't load" card.
+  const hasOfferings =
+    progress && !progress.failed ? progress.offeringCount > 0 : undefined;
 
   const welcome = sp[ONBOARDING_WELCOME_PARAM] === '1';
   const cleanUrl = welcome
@@ -81,13 +91,15 @@ export default async function Page({
       {/* Renders nothing. Kept beside the card rather than inside it so a
           dismissed or already-complete checklist cannot cancel the tour. */}
       <TourWelcomeTrigger welcome={welcome} />
-      <SetupChecklist
-        businessId={businessId}
-        progress={progress}
-        welcome={welcome}
-        cleanUrl={cleanUrl}
-        dismissed={onboardingState.checklistDismissed}
-      />
+      {progress && (
+        <SetupChecklist
+          businessId={businessId}
+          progress={progress}
+          welcome={welcome}
+          cleanUrl={cleanUrl}
+          dismissed={onboardingState.checklistDismissed}
+        />
+      )}
     </>
   );
 
@@ -98,7 +110,7 @@ export default async function Page({
         {checklist}
         <BusinessHome
           requireDocuments={requireBusinessDocuments}
-          hasOfferings={progress.offeringCount > 0}
+          hasOfferings={hasOfferings}
         />
       </div>
     );

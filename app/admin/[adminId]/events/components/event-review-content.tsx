@@ -46,9 +46,20 @@ export function EventReviewContent({
   const [searchInput, setSearchInput] = React.useState(
     searchParams.get('search') ?? '',
   );
+  // Ignore navigations this component caused, or the debounce landing
+  // mid-typing resets the input and eats the characters typed during the
+  // round-trip. Same guard as `explore-content.tsx` and the owner's list.
+  const lastPushedSearch = React.useRef<string | null>(null);
 
   React.useEffect(() => {
-    setSearchInput(searchParams.get('search') ?? '');
+    const urlValue = searchParams.get('search') ?? '';
+    if (
+      lastPushedSearch.current !== null &&
+      urlValue === lastPushedSearch.current
+    ) {
+      return;
+    }
+    setSearchInput(urlValue);
   }, [searchParams]);
 
   const updateParams = React.useCallback(
@@ -67,6 +78,7 @@ export function EventReviewContent({
     const timeout = setTimeout(() => {
       const current = searchParams.get('search') ?? '';
       if (searchInput !== current) {
+        lastPushedSearch.current = searchInput;
         updateParams({ search: searchInput || null, page: '1' });
       }
     }, 400);

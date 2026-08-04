@@ -107,6 +107,38 @@ describe('getPublicEvents', () => {
     expect(calls.is).toContainEqual(['archived_at', null]);
   });
 
+  it('filters to approved rather than trusting RLS to do it', async () => {
+    const { calls } = mockClient({ data: [], error: null, count: 0 });
+
+    await getPublicEvents({});
+
+    // Permissive policies are OR'd, and `events` has three SELECT-capable
+    // ones. Without this a signed-in owner saw their own drafts and rejected
+    // proposals on the PUBLIC list, and an admin saw every open proposal.
+    expect(calls.eq).toContainEqual(['status', 'approved']);
+  });
+
+  it('quotes and escapes the search term before it becomes a filter string', async () => {
+    const { calls } = mockClient({ data: [], error: null, count: 0 });
+
+    await getPublicEvents({ search: 'Iznart St., Iloilo' });
+
+    const filter = String(calls.or[0][0]);
+    // A raw comma would split `.or()` into a condition nobody asked for.
+    expect(filter).toBe(
+      'name.ilike."%Iznart St., Iloilo%",address.ilike."%Iznart St., Iloilo%"',
+    );
+  });
+
+  it('escapes ilike wildcards so a % is searched for, not scanned with', async () => {
+    const { calls } = mockClient({ data: [], error: null, count: 0 });
+
+    await getPublicEvents({ search: '100%_off' });
+
+    expect(String(calls.or[0][0])).toContain('\\%');
+    expect(String(calls.or[0][0])).toContain('\\_');
+  });
+
   it('shows what is still running under "upcoming"', async () => {
     const { calls } = mockClient({ data: [], error: null, count: 0 });
 
@@ -166,6 +198,25 @@ describe('getBannerEvents', () => {
     expect(calls.limit[0]).toEqual([8]);
   });
 
+  it('filters to approved — an owner must not see their own draft on /explore', async () => {
+    const { calls } = mockClient({ data: [], error: null });
+
+    await getBannerEvents();
+
+    expect(calls.eq).toContainEqual(['status', 'approved']);
+  });
+
+  it('orders by priority before start time, matching the client re-sort', async () => {
+    const { calls } = mockClient({ data: [], error: null });
+
+    await getBannerEvents();
+
+    // `compareForBanner` re-ranks after mount. If the two orderings disagree,
+    // hydration visibly reshuffles the strip.
+    expect(calls.order[0]).toEqual(['priority', { ascending: false }]);
+    expect(calls.order[1]).toEqual(['starts_at', { ascending: true }]);
+  });
+
   it('returns an empty banner on failure instead of throwing', async () => {
     mockClient({ data: null, error: { message: 'boom' } });
 
@@ -173,16 +224,19 @@ describe('getBannerEvents', () => {
   });
 });
 
+const EVENT_ID = '550e8400-e29b-41d4-a716-446655440001';
+const MISSING_ID = '550e8400-e29b-41d4-a716-4466554400aa';
+
 describe('getEventById', () => {
   it('keeps NOT_FOUND and LOAD_FAILED distinct', async () => {
     mockClient({ data: null, error: null });
     // A missing row is a 404…
-    expect(await getEventById('evt-missing')).toEqual({ error: 'NOT_FOUND' });
+    expect(await getEventById(MISSING_ID)).toEqual({ error: 'NOT_FOUND' });
 
     vi.clearAllMocks();
     mockClient({ data: null, error: { message: 'boom' } });
     // …but a transient blip must not tell a crawler the page is gone.
-    expect(await getEventById('evt-1')).toEqual({ error: 'LOAD_FAILED' });
+    expect(await getEventById(EVENT_ID)).toEqual({ error: 'LOAD_FAILED' });
   });
 
   it('short-circuits an empty id without a round trip', async () => {
@@ -192,19 +246,32 @@ describe('getEventById', () => {
     expect(from).not.toHaveBeenCalled();
   });
 
+  it.each(['not-a-uuid', '1 OR 1=1', '../../etc/passwd'])(
+    'rejects %s as NOT_FOUND without a round trip',
+    async (id) => {
+      const { from } = mockClient({ data: null, error: null });
+
+      // Unvalidated, this reached PostgREST, raised 22P02, and the page
+      // rendered "couldn't load" with a 200 — a soft 404 on an enumerable
+      // public URL.
+      expect(await getEventById(id)).toEqual({ error: 'NOT_FOUND' });
+      expect(from).not.toHaveBeenCalled();
+    },
+  );
+
   it('normalises the array-shaped to-one embeds', async () => {
     // PostgREST returns a to-one embed as an ARRAY; reading `.shop_name` off
     // that yields undefined and renders as a shop with no name.
     mockClient({
       data: {
-        id: 'evt-1',
+        id: EVENT_ID,
         business: [{ id: 'biz-1', shop_name: 'Kape Iloilo', logo_url: null }],
         product: [],
       },
       error: null,
     });
 
-    const result = await getEventById('evt-1');
+    const result = await getEventById(EVENT_ID);
 
     expect('event' in result && result.event.business?.shop_name).toBe(
       'Kape Iloilo',
@@ -231,7 +298,7 @@ describe('storage paths are resolved before rendering', () => {
       error: null,
     });
 
-    const result = await getEventById('evt-1');
+    const result = await getEventById(EVENT_ID);
 
     expect('event' in result && result.event.image_url).toBe(
       'https://cdn.example/event-images/biz-1/1785649417885-poster.webp',
@@ -252,7 +319,7 @@ describe('storage paths are resolved before rendering', () => {
       error: null,
     });
 
-    const result = await getEventById('evt-1');
+    const result = await getEventById(EVENT_ID);
 
     expect('event' in result && result.event.image_url).toBe(
       'https://picsum.photos/seed/x/1600/686',

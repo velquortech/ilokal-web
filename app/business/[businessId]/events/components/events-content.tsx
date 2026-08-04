@@ -47,9 +47,22 @@ export function EventsContent({
   const [searchInput, setSearchInput] = React.useState(
     searchParams.get('search') ?? '',
   );
+  // The last search value THIS component pushed into the URL. The sync effect
+  // below must ignore navigations we caused ourselves — otherwise, when the
+  // debounce lands mid-typing, it resets the input to the URL value and
+  // silently deletes every character typed during the server round-trip.
+  // Same guard as `app/explore/components/explore-content.tsx`.
+  const lastPushedSearch = React.useRef<string | null>(null);
 
   React.useEffect(() => {
-    setSearchInput(searchParams.get('search') ?? '');
+    const urlValue = searchParams.get('search') ?? '';
+    if (
+      lastPushedSearch.current !== null &&
+      urlValue === lastPushedSearch.current
+    ) {
+      return;
+    }
+    setSearchInput(urlValue);
   }, [searchParams]);
 
   const updateParams = React.useCallback(
@@ -68,6 +81,7 @@ export function EventsContent({
     const timeout = setTimeout(() => {
       const current = searchParams.get('search') ?? '';
       if (searchInput !== current) {
+        lastPushedSearch.current = searchInput;
         updateParams({ search: searchInput || null, page: '1' });
       }
     }, 400);

@@ -6,6 +6,7 @@ import {
   getEventsForBusiness,
 } from '@/lib/api/events/eventQuery';
 import { getProductsPaginated } from '@/lib/api/products/productQuery';
+import { searchTermSchema } from '@/lib/validation/events';
 import { EVENT_STATUSES, type EventStatus } from '@/lib/types/event';
 import { EventsContent } from './components/events-content';
 
@@ -49,7 +50,10 @@ export default async function BusinessEventsPage({
     (EVENT_STATUSES as readonly string[]).includes(sp.status)
       ? (sp.status as EventStatus)
       : ('' as const);
-  const search = typeof sp.search === 'string' ? sp.search : undefined;
+  const search =
+    typeof sp.search === 'string'
+      ? (searchTermSchema.safeParse(sp.search).data ?? undefined)
+      : undefined;
 
   const [result, offerings, stats] = await Promise.all([
     getEventsForBusiness(businessId, {

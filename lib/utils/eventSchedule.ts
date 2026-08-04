@@ -139,13 +139,22 @@ export function isEventLive(
 }
 
 /**
- * Banner order: what is on right now comes first, then everything else by
- * start time, `priority` breaking ties, then id so the order is stable across
- * renders.
+ * Banner order: what is on right now first, then the admin's `priority`, then
+ * start time, then id so the order is stable across renders.
  *
  * The happening-now exception is deliberate and is the one place chronology is
  * broken: someone opening the app on a Saturday afternoon wants what is on,
  * not what is next.
+ *
+ * **`priority` outranks `starts_at`, and must.** This comparator re-ranks after
+ * mount on top of what `getBannerEvents` already ordered
+ * (`priority DESC, starts_at ASC, id`). It used to sort by `starts_at` first,
+ * so hydration threw the admin's ordering away: a priority-9 event led the
+ * server HTML and then jumped to the back a tick later, and the "Banner order"
+ * control only ever broke ties between two byte-identical start timestamps —
+ * not "events starting the same day", which is what the admin dialog promises.
+ * Keeping the two orderings identical apart from the live-first exception is
+ * what makes the control mean anything.
  */
 export function compareForBanner<
   T extends EventSchedule & { priority?: number; id?: string },
@@ -154,12 +163,12 @@ export function compareForBanner<
   const bLive = isEventLive(b, now) ? 0 : 1;
   if (aLive !== bLive) return aLive - bLive;
 
+  const byPriority = (b.priority ?? 0) - (a.priority ?? 0);
+  if (byPriority !== 0) return byPriority;
+
   const aStart = toDate(a.starts_at)?.getTime() ?? Number.MAX_SAFE_INTEGER;
   const bStart = toDate(b.starts_at)?.getTime() ?? Number.MAX_SAFE_INTEGER;
   if (aStart !== bStart) return aStart - bStart;
-
-  const byPriority = (b.priority ?? 0) - (a.priority ?? 0);
-  if (byPriority !== 0) return byPriority;
 
   return (a.id ?? '').localeCompare(b.id ?? '');
 }

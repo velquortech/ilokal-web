@@ -23,6 +23,13 @@ export function ShopRegistrationContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  // Survives `resetResumeMarkers()`, which runs before the dialog opens and
+  // clears the refs below. The dialog needs both: the id to build its
+  // destination, the status to know whether to say "live" or "under review".
+  const [created, setCreated] = useState<{
+    id: string;
+    status: string | null;
+  } | null>(null);
   const submittingRef = useRef(false);
   // Resume markers: if creation succeeded but a file upload failed, a retry
   // must reuse the created business (no duplicate row) and skip files that
@@ -61,10 +68,21 @@ export function ShopRegistrationContent() {
       });
       businessId = business.id;
       businessIdRef.current = businessId;
+      setCreated({ id: business.id, status: business.status ?? null });
       if (typeof window !== 'undefined') {
         localStorage.setItem(BUSINESS_ID_KEY, businessId);
       }
     }
+
+    // Resumed submit: the row already existed, so nothing above re-created it
+    // and its status was never read back. Record the id anyway — the dialog
+    // still needs a destination — and leave the status null so it renders
+    // neutral copy. Guessing "under review" is precisely the claim that was
+    // wrong.
+    const resolvedId = businessId;
+    setCreated((prev) =>
+      prev?.id === resolvedId ? prev : { id: resolvedId, status: null },
+    );
 
     // Phase 2 — upload files one request at a time so each stays under
     // Vercel's 4.5 MB body limit (all-in-one multipart 413'd in prod).
@@ -227,6 +245,7 @@ export function ShopRegistrationContent() {
           isSubmitting={isSubmitting}
           showSuccessDialog={showSuccessDialog}
           onSuccessDialogChange={setShowSuccessDialog}
+          createdBusiness={created}
         />
       </form>
     </>

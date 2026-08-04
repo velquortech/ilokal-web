@@ -17,6 +17,9 @@ import {
   businessEventsPath,
   adminEventsPath,
   eventPath,
+  businessWelcomePath,
+  businessPathWithoutWelcome,
+  ONBOARDING_WELCOME_PARAM,
 } from '../routeConfig';
 
 const ADMIN_ID = '11111111-1111-1111-1111-111111111111';
@@ -147,5 +150,39 @@ describe('event routes', () => {
   it('builds the shop and admin event surfaces', () => {
     expect(businessEventsPath('biz-1')).toBe('/business/biz-1/events');
     expect(adminEventsPath('admin-1')).toBe('/admin/admin-1/events');
+  });
+});
+
+describe('onboarding welcome marker', () => {
+  it('appends the marker to the shop path, not to /business', () => {
+    // `/business` resolves through a `redirect()`, which drops every search
+    // param — a marker put there would never reach the dashboard.
+    expect(businessWelcomePath('biz-1')).toBe(
+      `/business/biz-1?${ONBOARDING_WELCOME_PARAM}=1`,
+    );
+  });
+
+  it('strips only the marker, keeping every other param', () => {
+    expect(
+      businessPathWithoutWelcome('biz-1', {
+        [ONBOARDING_WELCOME_PARAM]: '1',
+        branch: 'branch-9',
+      }),
+    ).toBe('/business/biz-1?branch=branch-9');
+  });
+
+  it('leaves a bare path when the marker was the only param', () => {
+    expect(
+      businessPathWithoutWelcome('biz-1', { [ONBOARDING_WELCOME_PARAM]: '1' }),
+    ).toBe('/business/biz-1');
+  });
+
+  it('keeps repeated params and drops undefined ones', () => {
+    expect(
+      businessPathWithoutWelcome('biz-1', {
+        tag: ['a', 'b'],
+        empty: undefined,
+      }),
+    ).toBe('/business/biz-1?tag=a&tag=b');
   });
 });

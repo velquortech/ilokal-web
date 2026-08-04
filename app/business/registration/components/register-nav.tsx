@@ -14,10 +14,13 @@ export function RegistrationNav({
   isSubmitting,
   showSuccessDialog,
   onSuccessDialogChange,
+  createdBusiness,
 }: {
   isSubmitting: boolean;
   showSuccessDialog: boolean;
   onSuccessDialogChange: (open: boolean) => void;
+  /** The row the submit created — id for the destination, status for the copy. */
+  createdBusiness: { id: string; status: string | null } | null;
 }) {
   const router = useRouter();
   const { step, steps, prevStep, canProceed, nextStep } = useMultiStepForm();
@@ -81,6 +84,8 @@ export function RegistrationNav({
             <ApplicationSuccessDialog
               open={showSuccessDialog}
               onOpenChange={onSuccessDialogChange}
+              businessId={createdBusiness?.id ?? null}
+              status={createdBusiness?.status ?? null}
             />
           </>
         )}

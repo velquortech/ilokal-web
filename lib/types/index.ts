@@ -337,5 +337,13 @@ export type {
 } from './section';
 export { MAX_SECTIONS_PER_SHOP, MAX_SECTION_NAME_LENGTH } from './section';
 
+// Post-registration setup checklist (derived, never stored)
+export type {
+  OnboardingItemId,
+  OnboardingItem,
+  OnboardingProgress,
+} from './onboarding';
+export { EMPTY_ONBOARDING_PROGRESS } from './onboarding';
+
 // Test helpers (used by unit/integration tests)
 export type { TestNextRequest } from './test';

@@ -46,6 +46,15 @@ interface DataTableProps<TData, TValue> {
   };
   /** Rendered above the table — bulk actions for the current selection. */
   toolbar?: ReactNode;
+  /**
+   * What fills the table when `data` is empty. Defaults to "No results.".
+   *
+   * Optional because most tables have one empty case. Some have two, and this
+   * repo has fixed outage-reading-as-empty on three separate surfaces: "we
+   * couldn't load this" and "you haven't made one yet" are different things to
+   * tell someone, and only the caller knows which happened.
+   */
+  emptyState?: ReactNode;
 }
 
 export function DataTable<TData, TValue>({
@@ -58,6 +67,7 @@ export function DataTable<TData, TValue>({
   onSortingChange,
   selection,
   toolbar,
+  emptyState,
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
     data,
@@ -124,7 +134,7 @@ export function DataTable<TData, TValue>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  {emptyState ?? 'No results.'}
                 </TableCell>
               </TableRow>
             )}

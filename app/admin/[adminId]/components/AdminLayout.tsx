@@ -9,9 +9,12 @@ import { User } from '@/lib/types';
 export default function AdminLayout({
   children,
   user,
+  flags = {},
 }: {
   children: React.ReactNode;
   user: User;
+  /** `app_settings` kill switches, keyed as the nav config names them. */
+  flags?: Record<string, boolean>;
 }) {
   return (
     <UserProvider user={user}>
@@ -25,7 +28,7 @@ export default function AdminLayout({
             } as React.CSSProperties
           }
         >
-          <AdminSidebar />
+          <AdminSidebar flags={flags} />
           <SidebarInset className="flex flex-1 flex-col overflow-hidden">
             <AdminHeader />
             <div className="flex flex-1 overflow-auto px-10 py-6">

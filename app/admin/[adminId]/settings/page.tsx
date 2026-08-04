@@ -1,14 +1,23 @@
-import { getRegistrationSettings } from '@/lib/api/appSettings';
+import {
+  getRegistrationSettings,
+  getBookingsEnabled,
+  getEventsEnabled,
+} from '@/lib/api/appSettings';
 import { RegistrationSettingsCard } from './components/registration-settings-card';
+import { FeatureFlagsCard } from './components/feature-flags-card';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Platform settings. Admin-managed feature flags — currently the two
- * business-registration gates (see .claude/REGISTRATION_GATING.md).
+ * Platform settings. Admin-managed feature flags — the two
+ * business-registration gates, plus the dark-shipped features.
  */
 export default async function AdminSettingsPage() {
-  const settings = await getRegistrationSettings();
+  const [settings, bookingsEnabled, eventsEnabled] = await Promise.all([
+    getRegistrationSettings(),
+    getBookingsEnabled(),
+    getEventsEnabled(),
+  ]);
 
   return (
     <div className="flex flex-1 flex-col space-y-6">
@@ -17,9 +26,19 @@ export default async function AdminSettingsPage() {
           Platform Settings
         </h1>
         <p className="text-muted-foreground text-sm">
-          Feature flags that control how businesses join the platform.
+          Feature flags that control how businesses join the platform and what
+          the app exposes.
         </p>
       </div>
+      <FeatureFlagsCard
+        initial={{
+          enable_events: eventsEnabled,
+          enable_bookings: bookingsEnabled,
+          // Present so the record is total; the registration card owns these.
+          require_business_documents: settings.requireBusinessDocuments,
+          auto_verify_businesses: settings.autoVerifyBusinesses,
+        }}
+      />
       <RegistrationSettingsCard initialSettings={settings} />
     </div>
   );

@@ -5,13 +5,20 @@ import { useRouter } from 'next/navigation';
 import {
   Bell,
   BadgePercent,
+  CalendarDays,
   CheckCheck,
   CircleCheck,
   CircleX,
   Info,
   Loader2,
+  MapPin,
 } from 'lucide-react';
-import { businessRedeemedCouponsPath } from '@/config/routeConfig';
+import {
+  adminEventsPath,
+  businessEventsPath,
+  businessRedeemedCouponsPath,
+  eventPath,
+} from '@/config/routeConfig';
 import {
   Popover,
   PopoverContent,
@@ -27,7 +34,7 @@ import {
   getNotificationsAction,
   markNotificationReadAction,
   markAllNotificationsReadAction,
-} from '../actions/notificationActions';
+} from '@/app/actions/notificationActions';
 
 const PAGE_SIZE = 15;
 
@@ -37,6 +44,10 @@ const TYPE_ICON: Record<NotificationType, typeof Info> = {
   business_document_rejected: CircleX,
   business_rejected: CircleX,
   coupon_redeemed: BadgePercent,
+  event_proposal_submitted: CalendarDays,
+  event_proposal_approved: CircleCheck,
+  event_proposal_rejected: CircleX,
+  event_nearby: MapPin,
   system: Info,
 };
 
@@ -46,18 +57,48 @@ const TYPE_TONE: Record<NotificationType, string> = {
   business_document_rejected: 'text-destructive',
   business_rejected: 'text-destructive',
   coupon_redeemed: 'text-primary',
+  event_proposal_submitted: 'text-primary',
+  event_proposal_approved: 'text-emerald-600',
+  event_proposal_rejected: 'text-destructive',
+  event_nearby: 'text-primary',
   system: 'text-muted-foreground',
 };
 
 /**
- * Where a notification should deep-link on click, or null if it only marks read.
- * `coupon_redeemed` opens the business's Redeemed Coupons page.
+ * Where a notification should deep-link on click, or null if it only marks
+ * read.
+ *
+ * One function for both audiences: the bell is mounted in the business header
+ * AND the admin header, and RLS decides which rows each caller sees, so the
+ * destination follows from the TYPE rather than from who is looking.
  */
 export function notificationHref(notification: Notification): string | null {
-  if (notification.type === 'coupon_redeemed' && notification.business_id) {
-    return businessRedeemedCouponsPath(notification.business_id);
+  const eventId = notification.metadata?.event_id;
+
+  switch (notification.type) {
+    case 'coupon_redeemed':
+      return notification.business_id
+        ? businessRedeemedCouponsPath(notification.business_id)
+        : null;
+
+    // Only admins receive this type, and admin routes are keyed by the
+    // admin's own id — which is the recipient. No extra context needed.
+    case 'event_proposal_submitted':
+      return adminEventsPath(notification.user_id);
+
+    // The owner gets these; their own list carries the reviewer's note.
+    case 'event_proposal_approved':
+    case 'event_proposal_rejected':
+      return notification.business_id
+        ? businessEventsPath(notification.business_id)
+        : null;
+
+    case 'event_nearby':
+      return typeof eventId === 'string' ? eventPath(eventId) : null;
+
+    default:
+      return null;
   }
-  return null;
 }
 
 function timeAgo(iso: string): string {

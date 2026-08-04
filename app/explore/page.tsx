@@ -3,6 +3,9 @@ import {
   getBusinessDirectory,
   getCustomerCategories,
 } from '@/lib/api/customer/customerQuery';
+import { getEventsEnabled } from '@/lib/api/appSettings';
+import { getBannerEvents } from '@/lib/api/events/eventQuery';
+import { EventBanner, EventBannerHeader } from './components/event-banner';
 import { ExploreContent } from './components/explore-content';
 
 export const metadata: Metadata = {
@@ -34,7 +37,7 @@ export default async function ExplorePage({
   const search = typeof sp.search === 'string' ? sp.search : undefined;
   const categoryId = typeof sp.category === 'string' ? sp.category : undefined;
 
-  const [directory, categories] = await Promise.all([
+  const [directory, categories, eventsEnabled] = await Promise.all([
     getBusinessDirectory({
       page,
       per_page: perPage,
@@ -42,7 +45,12 @@ export default async function ExplorePage({
       category_id: categoryId,
     }),
     getCustomerCategories(),
+    getEventsEnabled(),
   ]);
+
+  // With the flag off, or nothing approved, /explore is byte-identical to what
+  // it was before events existed — the banner does not render an empty shell.
+  const bannerEvents = eventsEnabled ? await getBannerEvents() : [];
 
   const loadFailed = 'error' in directory;
   const { businesses, metadata } = loadFailed
@@ -53,11 +61,19 @@ export default async function ExplorePage({
     : directory;
 
   return (
-    <ExploreContent
-      businesses={businesses}
-      metadata={metadata}
-      categories={categories}
-      loadFailed={loadFailed}
-    />
+    <div className="space-y-8">
+      {bannerEvents.length > 0 && (
+        <section className="space-y-3">
+          <EventBannerHeader />
+          <EventBanner events={bannerEvents} />
+        </section>
+      )}
+      <ExploreContent
+        businesses={businesses}
+        metadata={metadata}
+        categories={categories}
+        loadFailed={loadFailed}
+      />
+    </div>
   );
 }

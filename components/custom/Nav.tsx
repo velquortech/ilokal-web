@@ -42,6 +42,13 @@ export interface NavItem {
   badge?: string;
   badgeVariant?: BadgeVariant;
   adminOnly?: boolean;
+  /**
+   * The `app_settings` kill switch this entry belongs to. The route 404s when
+   * the flag is off, so the nav must not advertise it. Named here rather than
+   * matched by href in the sidebar — one hardcoded `endsWith()` per feature is
+   * how a nav entry ends up pointing at a route nobody can open.
+   */
+  flag?: string;
   items?: NavSubItem[];
 }
 

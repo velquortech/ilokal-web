@@ -137,6 +137,16 @@ const nextConfig: NextConfig = {
         destination: '/sign-in/admin',
         permanent: false,
       },
+      // Events settled on the plural collection + camelCase segment every other
+      // route uses (`/explore/[businessId]`, `/business/[businessId]`). The
+      // singular form is kept so any link already shared keeps working.
+      // permanent:false for the same reason as the login redirects — browsers
+      // cache a 308 past a rollback.
+      {
+        source: '/event/:eventId',
+        destination: '/events/:eventId',
+        permanent: false,
+      },
     ];
   },
   async headers() {

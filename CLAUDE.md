@@ -1,5 +1,18 @@
 # CLAUDE.md — iLokal Web
 
+<!-- TEMP: remove when events merge -->
+> **Active work:** Events — built, local only. `/explore` dateline banner,
+> `/events`, `/events/[eventId]`, `/events/nearby`, owner proposals at
+> `/business/[id]/events`, admin review at `/admin/[id]/events`, and
+> `GET /api/mobile/events/nearby`. Ships dark behind
+> `app_settings.enable_events`. **The approval gate is a DB trigger, not RLS
+> alone** — RLS cannot restrict a column, so an owner would otherwise be able
+> to `PATCH status='approved'` through PostgREST. Migration
+> `20260802034107_events.sql` **needs human approval + `make migrate-cloud`**.
+> Plan and parity table: [`.claude/EVENTS.md`](.claude/EVENTS.md) (local, not
+> committed); what landed is in `.claude/CHANGELOG.md`. Delete this note when
+> merged.
+
 <!-- TEMP: remove when the offerings model is merged -->
 > **Active work:** Offerings model — generalizing the product-only catalogue to
 > serve services/rentals (van rental, salon, tours). `products` carries
@@ -36,6 +49,46 @@ Soft test step: `yarn lint --fix && yarn build` (or `make review` to include tes
 ## Package manager
 
 **yarn** — always use `yarn` instead of `npm`. Never run `npm install`, `npm run`, or `npx` (use `yarn dlx` instead).
+
+## DRY — search before you write
+
+**Before adding a function, table, component, schema or helper, look for the one
+that already does it, and reuse it.** A second implementation of something is
+not neutral: it doubles the surface a bug can hide in, and the two copies drift.
+This repo has already paid for that — the status trio was spelled out in five
+separate files until one of them drifted to values the DB rejects, and "Set
+Status" silently did nothing for weeks.
+
+Reuse means *call the existing thing*, not copy it. If it is close but not
+general enough, **widen it and keep one caller-visible name** (rename + alias so
+no call site breaks) rather than forking a near-duplicate.
+
+- **Search first, in this order:** `lib/utils/` (pure helpers) → `lib/api/*/`
+  (query + service per domain) → `lib/validation/` (Zod) → `components/custom/`
+  → `supabase/migrations/` (an RPC or trigger may already do it).
+  `grep -rn "<the noun>" lib app components supabase` costs seconds.
+- **A shared constant, not a repeated literal.** Anything spelled out in more
+  than one file — a status set, a size cap, a route string, a bucket name — is
+  one exported constant. Route strings come from `config/routeConfig.ts`; that
+  rule is a special case of this one.
+- **Components are role-agnostic until proven otherwise.** A component that
+  reads `getCurrentUser()` and lets RLS scope the data works for every role —
+  mount it again, do not rebuild it per surface. Move it to `components/custom/`
+  when the second surface appears.
+- **New table? Prove the existing one can't hold it.** Check whether the FK
+  already points at `auth.users` / `businesses` and a nullable column or a new
+  `type` value would do. Normalized beats parallel: two tables with the same
+  shape means two sets of RLS, indexes, queries, services and UI.
+- **New RPC? Check whether an existing one already authorizes your caller.**
+  `create_notification` covers admin→anyone and self→self; only a caller who is
+  *neither* needs a new SECURITY DEFINER function (that is why
+  `notify_coupon_redemption` exists, and it is the template when you do).
+- **Extend the map, don't branch beside it.** `Record<SomeUnion, …>` maps
+  (`TYPE_ICON`, `TYPE_TONE`, label tables) make a missing case a compile error.
+  Add the entry; never add an `if` next to the map.
+- **Duplication that IS justified:** when the two callers genuinely change for
+  different reasons. Say so in a comment, so the next reader does not "fix" it
+  by merging them.
 
 ## Stack
 

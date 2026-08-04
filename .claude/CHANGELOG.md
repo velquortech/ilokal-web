@@ -1,5 +1,102 @@
 # Changelog
 
+## 2026-08-04 — Onboarding phase 1: the hand-off and a derived setup checklist (feat/business-onboarding)
+
+> **No schema migration.** Presentational + one new derived read. LOW risk.
+> Plan, parity table (ON1–ON20) and the remaining phases:
+> [`.claude/ONBOARDING.md`](.claude/ONBOARDING.md) (local, not committed).
+
+- **A business owner who finished registering was handed a dashboard and no
+  guidance.** `pending` got a bare `EmptyState`; `verified` got the analytics
+  page straight away. The only onboarding surface the app had — the hero,
+  `RegistrationSteps` and `TourDialog` — renders **before** you have a shop,
+  which is the one state that needs it least. Phase 1 fills the landing
+  moment; the guided tour is phase 2 and the persistence migration phase 3.
+- **🔴 The success dialog told most owners something false.** It hardcoded
+  "Your shop registration is under review", a 24–48 hour timeline and an
+  "Under Review → Shop Activated" tracker — but `auto_verify_businesses` is
+  seeded **true** (`20260723000000`), so `set_business_initial_status` had
+  already published the shop before that dialog painted. The owner was told to
+  wait for an approval that had happened, then landed on a dashboard for a
+  live shop. It now forks on the **persisted** status: `verified` → "Your shop
+  is live" with no timeline and no "Review Process" breakdown, `pending` →
+  today's copy unchanged.
+  The status is trustworthy because `createBusinessDraft` does
+  `.insert(...).select().single()` and PostgREST's `RETURNING` runs **after**
+  the trigger. A **resumed** submit is the one case with no status — the row
+  already existed and was never read back — and that path says "registration
+  received" rather than guessing, because guessing "under review" is the bug.
+- **🔴 `EmptyState` claimed an empty shop for any shop.** `HomePage` rendered
+  it whenever a business existed; nothing counted products. A shop with 200
+  offerings read "No products yet. Your shop dashboard is empty." It is now
+  gated on the derived count, and a pending shop that *does* have offerings is
+  told why the page is bare ("Analytics unlock once your shop is verified")
+  instead of getting a blank column.
+- **The welcome signal is a param, not a guess.** The dialog pushes
+  `businessWelcomePath(id)` — `?welcome=1` on the shop's **own** path, because
+  `/business` answers with `redirect(businessPath(id))` and a redirect drops
+  every search param, so a marker put there would never arrive. The dashboard
+  reads it on the SERVER from `searchParams` (not `useSearchParams()`, which
+  would force a Suspense boundary whose fallback has nothing to show yet) and
+  `router.replace`s a clean URL, so a refresh or a shared link cannot replay
+  it. `businessPathWithoutWelcome` strips only the marker — a `?branch=`
+  selection has to survive, or consuming the welcome would silently kick the
+  owner back to all-branches mode. `businesses.created_at` recency was
+  rejected: a heuristic with a clock in it, misfiring on a slow first login.
+- **The checklist is DERIVED, never stored.** Storing "logo uploaded ✓"
+  duplicates what `businesses.logo_url` already holds and the two drift the
+  first time an owner deletes the logo. `getOnboardingProgress` runs one
+  `Promise.all` of head-only counts (`select('id', { count: 'exact', head:
+  true })` — `select(...)` then `.length` is silently wrong past the PostgREST
+  1000-row cap) and never throws.
+  Six rows: profile, pinned branch, hours + contact, first offering, first
+  published deal, and verification. **Verification is read-only and excluded
+  from both sides of the ratio** — counting a step nobody can take leaves the
+  bar permanently short through no fault of theirs.
+- **"Done" means genuinely usable, which is narrower than "not null".** A
+  branch with no `location` is invisible to `nearby_businesses`, which filters
+  on it — an unpinned branch is not a finished step, it is a shop nobody can
+  find. A **draft** coupon reaches nobody, so only `status='published'` counts.
+  An **empty** `operating_hours` object is what a form that saved nothing
+  leaves behind and renders no hours at all. A whitespace-only description is
+  not a description. The settings row is created lazily, so it is read with
+  `.maybeSingle()` and "no row" is *not done*, not an error — `.single()`
+  would raise PGRST116 and fail the whole checklist.
+- **A failed read says so, and says it INSTEAD of the list.** `failed: true`
+  renders "we couldn't load your setup checklist" with no rows at all. Six
+  unchecked boxes and an outage look identical otherwise, and an unchecked box
+  tells the owner to redo work they already did — the `getEventStats` /
+  `getBookingStats` lesson. A half-built list is the same lie.
+- **Deliberately not flag-filtered.** Every item is part of being *sellable*
+  and none lives behind a kill switch. Events and bookings are **absent**
+  rather than conditionally present; adding one later means taking the same
+  `flags` record `BusinessSidebar` filters on, not a second source.
+- **Also:** the offering row's label comes from `useOfferingVocabulary()`, so a
+  salon reads "Add Service" and a rental firm "Add Vehicle"; dismissal is keyed
+  **per business** (`ilokal-onboarding-hidden:<id>`), so an owner with two
+  shops sets up each one; hidden state starts `false` and is corrected after
+  mount, so the server HTML and the first client render agree; the pre-
+  registration hero and `TourDialog` are **untouched** — different audience,
+  different CTA, no shared state.
+- **Tests (+37, 2049 → 2086):** `onboardingProgress` (head-only reads, per-shop
+  scope, unpinned branches and draft promos excluded, lazy settings row,
+  empty-hours and blank-string cases, vocabulary label, `failed` on a query
+  error / missing row / thrown client with `items` empty),
+  `SetupChecklist.test.tsx` (the failure state replaces the list, nothing
+  renders when complete, the marker is consumed by exactly one `replace`, no
+  replace without a marker, dismissal keyed per business, done-ness stated in
+  text because every tick is `aria-hidden`),
+  `application-success-dialog.test.tsx` (all three status forks and both push
+  targets), and `routeConfig` (+4 — the marker rides the shop path, stripping
+  keeps `?branch=`, repeated params survive).
+- Verified: `yarn lint` + **2086** tests + a clean `yarn build` green.
+- **Not verified — needs a browser:** the dashboard is behind auth and this
+  environment has no login path, so the card, the welcome ring and the
+  registration hand-off have not been clicked through.
+- **Next:** phase 2 (guided tour behind `enable_onboarding_tour`), phase 3 (the
+  two `business_settings` columns — HIGH risk, needs approval), phase 4
+  (per-surface empty states).
+
 ## 2026-08-04 — Event tables join the dashboard, and admin staff picks (feat/events-festivals)
 
 > **No schema migration.** Everything rides the table, policies, triggers and

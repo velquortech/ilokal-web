@@ -7,6 +7,13 @@ import {
 } from './actions/branchActions';
 import { getBusinessById } from '@/lib/api/business/business';
 import { getRegistrationSettings } from '@/lib/api/appSettings';
+import { getOnboardingProgress } from '@/lib/api/business/onboardingQuery';
+import { getOfferingVocabulary } from '@/lib/api/offerings/offeringQuery';
+import { SetupChecklist } from '@/components/custom/onboarding/SetupChecklist';
+import {
+  businessPathWithoutWelcome,
+  ONBOARDING_WELCOME_PARAM,
+} from '@/config/routeConfig';
 import type { BusinessAnalyticsDashboard, Branch } from '@/lib/types';
 
 type Params = Promise<{ businessId: string }>;
@@ -41,9 +48,45 @@ export default async function Page({
   const branchId = typeof sp.branch === 'string' ? sp.branch : undefined;
 
   const business = await getBusinessById(businessId);
-  if (!business || business.status !== 'verified') {
+
+  // No business row yet: the pre-registration screen. Untouched by onboarding —
+  // there is nothing to be onboarded into, and no id to key progress on.
+  if (!business) {
     const { requireBusinessDocuments } = await getRegistrationSettings();
     return <BusinessHome requireDocuments={requireBusinessDocuments} />;
+  }
+
+  // The post-registration setup checklist rides ABOVE both branches below — a
+  // pending shop and a freshly verified one both need it, and the verified case
+  // is the common one on a default install (`auto_verify_businesses`).
+  const vocabulary = await getOfferingVocabulary(businessId);
+  const progress = await getOnboardingProgress(businessId, vocabulary);
+
+  const welcome = sp[ONBOARDING_WELCOME_PARAM] === '1';
+  const cleanUrl = welcome
+    ? businessPathWithoutWelcome(businessId, sp)
+    : undefined;
+
+  const checklist = (
+    <SetupChecklist
+      businessId={businessId}
+      progress={progress}
+      welcome={welcome}
+      cleanUrl={cleanUrl}
+    />
+  );
+
+  if (business.status !== 'verified') {
+    const { requireBusinessDocuments } = await getRegistrationSettings();
+    return (
+      <div className="flex w-full flex-1 flex-col space-y-6">
+        {checklist}
+        <BusinessHome
+          requireDocuments={requireBusinessDocuments}
+          hasOfferings={progress.offeringCount > 0}
+        />
+      </div>
+    );
   }
 
   // Branch mode: fetch analytics scoped to that branch + branch name
@@ -61,12 +104,15 @@ export default async function Page({
       : undefined;
 
     return (
-      <AnalyticsDashboard
-        data={data}
-        businessId={businessId}
-        branchId={branchId}
-        branchName={branchName}
-      />
+      <div className="w-full space-y-6">
+        {checklist}
+        <AnalyticsDashboard
+          data={data}
+          businessId={businessId}
+          branchId={branchId}
+          branchName={branchName}
+        />
+      </div>
     );
   }
 
@@ -82,10 +128,13 @@ export default async function Page({
     : [];
 
   return (
-    <AnalyticsDashboard
-      data={data}
-      businessId={businessId}
-      branches={branches}
-    />
+    <div className="w-full space-y-6">
+      {checklist}
+      <AnalyticsDashboard
+        data={data}
+        businessId={businessId}
+        branches={branches}
+      />
+    </div>
   );
 }

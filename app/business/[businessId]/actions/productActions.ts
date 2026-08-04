@@ -70,6 +70,7 @@ function checkProductWriteLimit(userId?: string): ApiResponse<never> | null {
  * Create a new product
  */
 export async function createProductAction(
+  businessId: string,
   input: CreateProductRequest,
 ): Promise<ApiResponse<Product>> {
   try {
@@ -88,7 +89,7 @@ export async function createProductAction(
     }
 
     // Verify business owner and get business id
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized) {
       return { success: false, error: verify.error as ApiError };
     }
@@ -113,6 +114,7 @@ export async function createProductAction(
  * Update an existing product
  */
 export async function updateProductAction(
+  businessId: string,
   id: string,
   input: UpdateProductRequest,
 ): Promise<ApiResponse<Product>> {
@@ -131,7 +133,7 @@ export async function updateProductAction(
       };
     }
 
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -156,10 +158,11 @@ export async function updateProductAction(
  * Delete/archive a product
  */
 export async function deleteProductAction(
+  businessId: string,
   id: string,
 ): Promise<ApiResponse<null>> {
   try {
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -185,6 +188,7 @@ export async function deleteProductAction(
  * caller saw as a generic INTERNAL_ERROR.
  */
 export async function updateProductStatusAction(
+  businessId: string,
   id: string,
   status: ProductStatus,
 ): Promise<ApiResponse<Product>> {
@@ -206,7 +210,7 @@ export async function updateProductStatusAction(
       };
     }
 
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -236,6 +240,7 @@ export async function updateProductStatusAction(
  * selection they can't reason about.
  */
 export async function updateProductsStatusAction(
+  businessId: string,
   ids: string[],
   status: ProductStatus,
 ): Promise<ApiResponse<{ updated: number }>> {
@@ -253,7 +258,7 @@ export async function updateProductsStatusAction(
       };
     }
 
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -280,11 +285,11 @@ export async function updateProductsStatusAction(
 /**
  * Get products by business
  */
-export async function getBusinessProductsAction(): Promise<
-  ApiResponse<Product[]>
-> {
+export async function getBusinessProductsAction(
+  businessId: string,
+): Promise<ApiResponse<Product[]>> {
   try {
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -321,6 +326,7 @@ export async function getBusinessProductsAction(): Promise<
  * Apply a sale price to a product
  */
 export async function applySaleAction(
+  businessId: string,
   id: string,
   input: ApplySaleRequest,
 ): Promise<ApiResponse<Product>> {
@@ -339,7 +345,7 @@ export async function applySaleAction(
       };
     }
 
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -361,10 +367,11 @@ export async function applySaleAction(
  * Remove an active sale from a product
  */
 export async function removeSaleAction(
+  businessId: string,
   id: string,
 ): Promise<ApiResponse<Product>> {
   try {
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -382,10 +389,11 @@ export async function removeSaleAction(
  * Get paginated products for the authenticated business owner
  */
 export async function getBusinessProductsPaginatedAction(
+  businessId: string,
   filters: Omit<ProductFilters, 'business_id'>,
 ): Promise<ApiResponse<PaginatedProductsResponse>> {
   try {
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -414,7 +422,9 @@ export async function getBusinessProductsPaginatedAction(
 /**
  * Get product status counts for the authenticated business owner
  */
-export async function getBusinessProductStatsAction(): Promise<
+export async function getBusinessProductStatsAction(
+  businessId: string,
+): Promise<
   // Follows the real CHECK on products.status (active|unlisted|disabled); the
   // previous inactive/archived shape described values the column cannot hold.
   ApiResponse<{
@@ -425,7 +435,7 @@ export async function getBusinessProductStatsAction(): Promise<
   }>
 > {
   try {
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -498,10 +508,11 @@ const ALLOWED_IMAGE_TYPES = [
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2 MB
 
 export async function uploadProductImageAction(
+  businessId: string,
   formData: FormData,
 ): Promise<ApiResponse<{ url: string }>> {
   try {
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized) {
       return { success: false, error: verify.error as ApiError };
     }
@@ -535,9 +546,9 @@ export async function uploadProductImageAction(
     }
 
     const supabase = await createServerSupabaseClient();
-    const businessId = verify.business!.id;
+    const verifiedBusinessId = verify.business!.id;
     const fileName = `${Date.now()}-${toWebPFilename(file.name.replace(/\s+/g, '-'))}`;
-    const filePath = `${businessId}/${fileName}`;
+    const filePath = `${verifiedBusinessId}/${fileName}`;
 
     try {
       await uploadWebP(supabase, 'product-images', filePath, file, {

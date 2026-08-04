@@ -107,7 +107,7 @@ describe('updateProductStatusAction', () => {
       data: { id: PRODUCT_ID, status: s } as never,
     });
 
-    const res = await updateProductStatusAction(PRODUCT_ID, s);
+    const res = await updateProductStatusAction(BUSINESS_ID, PRODUCT_ID, s);
 
     expect(res.success).toBe(true);
     expect(productService.updateProduct).toHaveBeenCalledWith(
@@ -121,6 +121,7 @@ describe('updateProductStatusAction', () => {
     'rejects %s without reaching the DB',
     async (bad) => {
       const res = await updateProductStatusAction(
+        BUSINESS_ID,
         PRODUCT_ID,
         bad as ProductStatus,
       );
@@ -139,7 +140,11 @@ describe('updateProductStatusAction', () => {
       error: { code: 'UNAUTHORIZED', message: 'Not authorized' },
     } as unknown as Awaited<ReturnType<typeof verifyBusinessOwner>>);
 
-    const res = await updateProductStatusAction(PRODUCT_ID, 'unlisted');
+    const res = await updateProductStatusAction(
+      BUSINESS_ID,
+      PRODUCT_ID,
+      'unlisted',
+    );
 
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('UNAUTHORIZED');
@@ -147,7 +152,11 @@ describe('updateProductStatusAction', () => {
   });
 
   it('rejects a malformed id instead of letting PostgREST 22P02', async () => {
-    const res = await updateProductStatusAction('not-a-uuid', 'unlisted');
+    const res = await updateProductStatusAction(
+      BUSINESS_ID,
+      'not-a-uuid',
+      'unlisted',
+    );
 
     expect(res.error?.code).toBe('VALIDATION_ERROR');
     expect(productService.updateProduct).not.toHaveBeenCalled();
@@ -167,6 +176,7 @@ describe('updateProductsStatusAction', () => {
     });
 
     const res = await updateProductsStatusAction(
+      BUSINESS_ID,
       [PRODUCT_ID, OTHER_ID],
       'unlisted',
     );
@@ -181,19 +191,24 @@ describe('updateProductsStatusAction', () => {
   });
 
   it('rejects an empty selection', async () => {
-    const res = await updateProductsStatusAction([], 'active');
+    const res = await updateProductsStatusAction(BUSINESS_ID, [], 'active');
     expect(res.error?.code).toBe('VALIDATION_ERROR');
     expect(productService.updateProductsStatus).not.toHaveBeenCalled();
   });
 
   it('rejects a non-uuid id rather than passing it to PostgREST', async () => {
-    const res = await updateProductsStatusAction(['not-a-uuid'], 'active');
+    const res = await updateProductsStatusAction(
+      BUSINESS_ID,
+      ['not-a-uuid'],
+      'active',
+    );
     expect(res.error?.code).toBe('VALIDATION_ERROR');
     expect(productService.updateProductsStatus).not.toHaveBeenCalled();
   });
 
   it('rejects a status outside the CHECK', async () => {
     const res = await updateProductsStatusAction(
+      BUSINESS_ID,
       [PRODUCT_ID],
       'archived' as ProductStatus,
     );
@@ -207,7 +222,7 @@ describe('updateProductsStatusAction', () => {
       (_, i) =>
         `550e8400-e29b-41d4-a716-4466554400${String(i).padStart(2, '0')}`,
     );
-    const res = await updateProductsStatusAction(ids, 'active');
+    const res = await updateProductsStatusAction(BUSINESS_ID, ids, 'active');
     expect(res.error?.code).toBe('VALIDATION_ERROR');
     expect(productService.updateProductsStatus).not.toHaveBeenCalled();
   });
@@ -247,7 +262,9 @@ describe('per-user flood guard', () => {
     // is a 50-row write amplifier — the budget has to live in the action.
     const results = [];
     for (let i = 0; i < 40; i++) {
-      results.push(await updateProductStatusAction(PRODUCT_ID, 'unlisted'));
+      results.push(
+        await updateProductStatusAction(BUSINESS_ID, PRODUCT_ID, 'unlisted'),
+      );
     }
 
     expect(results.some((r) => r.error?.code === 'RATE_LIMITED')).toBe(true);

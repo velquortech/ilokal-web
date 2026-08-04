@@ -53,21 +53,25 @@ function mockUnauthorized() {
 
 // ===== updateProductAction =====
 
-describe('updateProductAction()', () => {
+describe('updateProductAction(BUSINESS_ID)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAuthorized();
   });
 
   it('returns VALIDATION_ERROR when name is empty string', async () => {
-    const res = await updateProductAction(mockProduct.id, { name: '' });
+    const res = await updateProductAction(BUSINESS_ID, mockProduct.id, {
+      name: '',
+    });
 
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('VALIDATION_ERROR');
   });
 
   it('returns VALIDATION_ERROR when price is negative', async () => {
-    const res = await updateProductAction(mockProduct.id, { price: -10 });
+    const res = await updateProductAction(BUSINESS_ID, mockProduct.id, {
+      price: -10,
+    });
 
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('VALIDATION_ERROR');
@@ -76,7 +80,9 @@ describe('updateProductAction()', () => {
   it('returns error when not authorized', async () => {
     mockUnauthorized();
 
-    const res = await updateProductAction(mockProduct.id, { name: 'New Name' });
+    const res = await updateProductAction(BUSINESS_ID, mockProduct.id, {
+      name: 'New Name',
+    });
 
     expect(res.success).toBe(false);
   });
@@ -92,7 +98,9 @@ describe('updateProductAction()', () => {
       data: updatedProduct as Product,
     });
 
-    const res = await updateProductAction(mockProduct.id, { name: 'New Name' });
+    const res = await updateProductAction(BUSINESS_ID, mockProduct.id, {
+      name: 'New Name',
+    });
 
     expect(res.success).toBe(true);
     expect((res as ApiResponse<Product>).data?.name).toBe('New Name');
@@ -104,7 +112,9 @@ describe('updateProductAction()', () => {
       new Error('unexpected'),
     );
 
-    const res = await updateProductAction(mockProduct.id, { name: 'X' });
+    const res = await updateProductAction(BUSINESS_ID, mockProduct.id, {
+      name: 'X',
+    });
 
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('INTERNAL_ERROR');
@@ -113,7 +123,7 @@ describe('updateProductAction()', () => {
 
 // ===== deleteProductAction =====
 
-describe('deleteProductAction()', () => {
+describe('deleteProductAction(BUSINESS_ID)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAuthorized();
@@ -122,7 +132,7 @@ describe('deleteProductAction()', () => {
   it('returns error when not authorized', async () => {
     mockUnauthorized();
 
-    const res = await deleteProductAction(mockProduct.id);
+    const res = await deleteProductAction(BUSINESS_ID, mockProduct.id);
 
     expect(res.success).toBe(false);
   });
@@ -134,7 +144,7 @@ describe('deleteProductAction()', () => {
       data: null,
     });
 
-    const res = await deleteProductAction(mockProduct.id);
+    const res = await deleteProductAction(BUSINESS_ID, mockProduct.id);
 
     expect(res.success).toBe(true);
     expect(res.data).toBeNull();
@@ -147,7 +157,7 @@ describe('deleteProductAction()', () => {
       error: { code: 'NOT_FOUND', message: 'Product not found' },
     });
 
-    const res = await deleteProductAction('nonexistent-id');
+    const res = await deleteProductAction(BUSINESS_ID, 'nonexistent-id');
 
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('NOT_FOUND');
@@ -156,7 +166,7 @@ describe('deleteProductAction()', () => {
 
 // ===== applySaleAction =====
 
-describe('applySaleAction()', () => {
+describe('applySaleAction(BUSINESS_ID)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAuthorized();
@@ -164,6 +174,7 @@ describe('applySaleAction()', () => {
 
   it('returns VALIDATION_ERROR when sale_price is missing', async () => {
     const res = await applySaleAction(
+      BUSINESS_ID,
       mockProduct.id,
       {} as Parameters<typeof applySaleAction>[1],
     );
@@ -173,7 +184,9 @@ describe('applySaleAction()', () => {
   });
 
   it('returns VALIDATION_ERROR when sale_price is negative', async () => {
-    const res = await applySaleAction(mockProduct.id, { sale_price: -10 });
+    const res = await applySaleAction(BUSINESS_ID, mockProduct.id, {
+      sale_price: -10,
+    });
 
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('VALIDATION_ERROR');
@@ -182,7 +195,9 @@ describe('applySaleAction()', () => {
   it('returns error when not authorized', async () => {
     mockUnauthorized();
 
-    const res = await applySaleAction(mockProduct.id, { sale_price: 140 });
+    const res = await applySaleAction(BUSINESS_ID, mockProduct.id, {
+      sale_price: 140,
+    });
 
     expect(res.success).toBe(false);
   });
@@ -195,7 +210,9 @@ describe('applySaleAction()', () => {
       data: saleProduct as Product,
     });
 
-    const res = await applySaleAction(mockProduct.id, { sale_price: 140 });
+    const res = await applySaleAction(BUSINESS_ID, mockProduct.id, {
+      sale_price: 140,
+    });
 
     expect(res.success).toBe(true);
     expect((res as ApiResponse<Product>).data?.sale_price).toBe(140);
@@ -204,7 +221,7 @@ describe('applySaleAction()', () => {
 
 // ===== removeSaleAction =====
 
-describe('removeSaleAction()', () => {
+describe('removeSaleAction(BUSINESS_ID)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAuthorized();
@@ -213,7 +230,7 @@ describe('removeSaleAction()', () => {
   it('returns error when not authorized', async () => {
     mockUnauthorized();
 
-    const res = await removeSaleAction(mockProductOnSale.id);
+    const res = await removeSaleAction(BUSINESS_ID, mockProductOnSale.id);
 
     expect(res.success).toBe(false);
   });
@@ -229,7 +246,7 @@ describe('removeSaleAction()', () => {
       data: clearedProduct as Product,
     });
 
-    const res = await removeSaleAction(mockProductOnSale.id);
+    const res = await removeSaleAction(BUSINESS_ID, mockProductOnSale.id);
 
     expect(res.success).toBe(true);
     expect((res as ApiResponse<Product>).data?.sale_price).toBeNull();
@@ -242,7 +259,7 @@ describe('removeSaleAction()', () => {
       error: { code: 'NOT_FOUND', message: 'Product not found' },
     });
 
-    const res = await removeSaleAction('missing-id');
+    const res = await removeSaleAction(BUSINESS_ID, 'missing-id');
 
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('NOT_FOUND');
@@ -251,7 +268,7 @@ describe('removeSaleAction()', () => {
 
 // ===== getBusinessProductsPaginatedAction =====
 
-describe('getBusinessProductsPaginatedAction()', () => {
+describe('getBusinessProductsPaginatedAction(BUSINESS_ID)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -259,7 +276,7 @@ describe('getBusinessProductsPaginatedAction()', () => {
   it('returns error when not authorized', async () => {
     mockUnauthorized();
 
-    const res = await getBusinessProductsPaginatedAction({
+    const res = await getBusinessProductsPaginatedAction(BUSINESS_ID, {
       page: 1,
       per_page: 10,
     });
@@ -273,7 +290,7 @@ describe('getBusinessProductsPaginatedAction()', () => {
       paginatedProductsResponse,
     );
 
-    const res = await getBusinessProductsPaginatedAction({
+    const res = await getBusinessProductsPaginatedAction(BUSINESS_ID, {
       page: 1,
       per_page: 10,
     });
@@ -288,7 +305,10 @@ describe('getBusinessProductsPaginatedAction()', () => {
       paginatedProductsResponse,
     );
 
-    await getBusinessProductsPaginatedAction({ page: 1, per_page: 10 });
+    await getBusinessProductsPaginatedAction(BUSINESS_ID, {
+      page: 1,
+      per_page: 10,
+    });
 
     expect(vi.mocked(productQuery.getProductsPaginated)).toHaveBeenCalledWith(
       expect.objectContaining({ business_id: BUSINESS_ID }),
@@ -301,7 +321,7 @@ describe('getBusinessProductsPaginatedAction()', () => {
       error: 'DB failed',
     });
 
-    const res = await getBusinessProductsPaginatedAction({
+    const res = await getBusinessProductsPaginatedAction(BUSINESS_ID, {
       page: 1,
       per_page: 10,
     });
@@ -313,7 +333,7 @@ describe('getBusinessProductsPaginatedAction()', () => {
 
 // ===== getBusinessProductStatsAction =====
 
-describe('getBusinessProductStatsAction()', () => {
+describe('getBusinessProductStatsAction(BUSINESS_ID)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -321,7 +341,7 @@ describe('getBusinessProductStatsAction()', () => {
   it('returns error when not authorized', async () => {
     mockUnauthorized();
 
-    const res = await getBusinessProductStatsAction();
+    const res = await getBusinessProductStatsAction(BUSINESS_ID);
 
     expect(res.success).toBe(false);
   });
@@ -332,7 +352,7 @@ describe('getBusinessProductStatsAction()', () => {
       mockProductStats,
     );
 
-    const res = await getBusinessProductStatsAction();
+    const res = await getBusinessProductStatsAction(BUSINESS_ID);
 
     expect(res.success).toBe(true);
     expect(res.data?.total).toBe(4);
@@ -347,7 +367,7 @@ describe('getBusinessProductStatsAction()', () => {
       mockProductStats,
     );
 
-    await getBusinessProductStatsAction();
+    await getBusinessProductStatsAction(BUSINESS_ID);
 
     expect(
       vi.mocked(productQuery.getProductStatsByBusiness),

@@ -65,7 +65,7 @@ const defaultStats: RedemptionSummaryStats = {
   claimed: 3,
 };
 
-describe('getRedeemedCouponsAction()', () => {
+describe('getRedeemedCouponsAction(BUSINESS_ID)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -77,7 +77,7 @@ describe('getRedeemedCouponsAction()', () => {
     );
 
     const result: ApiResponse<PaginatedRedemptionRecordsResponse> =
-      await getRedeemedCouponsAction({ page: 1, per_page: 10 });
+      await getRedeemedCouponsAction(BUSINESS_ID, { page: 1, per_page: 10 });
 
     expect(result.success).toBe(true);
     expect(result.data).toEqual(emptyPaginatedResult);
@@ -89,7 +89,7 @@ describe('getRedeemedCouponsAction()', () => {
       emptyPaginatedResult,
     );
 
-    await getRedeemedCouponsAction({
+    await getRedeemedCouponsAction(BUSINESS_ID, {
       page: 2,
       per_page: 20,
       status: 'active',
@@ -104,7 +104,10 @@ describe('getRedeemedCouponsAction()', () => {
   it('returns error when not authorized', async () => {
     mockUnauthorized();
 
-    const result = await getRedeemedCouponsAction({ page: 1, per_page: 10 });
+    const result = await getRedeemedCouponsAction(BUSINESS_ID, {
+      page: 1,
+      per_page: 10,
+    });
 
     expect(result.success).toBe(false);
     expect(result.error?.code).toBe('UNAUTHORIZED');
@@ -119,7 +122,10 @@ describe('getRedeemedCouponsAction()', () => {
       error: 'Failed to fetch redemptions',
     });
 
-    const result = await getRedeemedCouponsAction({ page: 1, per_page: 10 });
+    const result = await getRedeemedCouponsAction(BUSINESS_ID, {
+      page: 1,
+      per_page: 10,
+    });
 
     expect(result.success).toBe(false);
     expect(result.error?.code).toBe('INTERNAL_ERROR');
@@ -131,14 +137,17 @@ describe('getRedeemedCouponsAction()', () => {
       new Error('unexpected'),
     );
 
-    const result = await getRedeemedCouponsAction({ page: 1, per_page: 10 });
+    const result = await getRedeemedCouponsAction(BUSINESS_ID, {
+      page: 1,
+      per_page: 10,
+    });
 
     expect(result.success).toBe(false);
     expect(result.error?.code).toBe('INTERNAL_ERROR');
   });
 });
 
-describe('getRedemptionSummaryStatsAction()', () => {
+describe('getRedemptionSummaryStatsAction(BUSINESS_ID)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -150,7 +159,7 @@ describe('getRedemptionSummaryStatsAction()', () => {
     ).mockResolvedValue(defaultStats);
 
     const result: ApiResponse<RedemptionSummaryStats> =
-      await getRedemptionSummaryStatsAction();
+      await getRedemptionSummaryStatsAction(BUSINESS_ID);
 
     expect(result.success).toBe(true);
     expect(result.data).toEqual(defaultStats);
@@ -162,7 +171,7 @@ describe('getRedemptionSummaryStatsAction()', () => {
       couponQuery.getRedemptionSummaryStatsByBusiness,
     ).mockResolvedValue(defaultStats);
 
-    await getRedemptionSummaryStatsAction('branch-abc');
+    await getRedemptionSummaryStatsAction(BUSINESS_ID, 'branch-abc');
 
     expect(
       couponQuery.getRedemptionSummaryStatsByBusiness,
@@ -172,7 +181,7 @@ describe('getRedemptionSummaryStatsAction()', () => {
   it('returns error when not authorized', async () => {
     mockUnauthorized();
 
-    const result = await getRedemptionSummaryStatsAction();
+    const result = await getRedemptionSummaryStatsAction(BUSINESS_ID);
 
     expect(result.success).toBe(false);
     expect(
@@ -186,7 +195,7 @@ describe('getRedemptionSummaryStatsAction()', () => {
       couponQuery.getRedemptionSummaryStatsByBusiness,
     ).mockRejectedValue(new Error('unexpected'));
 
-    const result = await getRedemptionSummaryStatsAction();
+    const result = await getRedemptionSummaryStatsAction(BUSINESS_ID);
 
     expect(result.success).toBe(false);
     expect(result.error?.code).toBe('INTERNAL_ERROR');

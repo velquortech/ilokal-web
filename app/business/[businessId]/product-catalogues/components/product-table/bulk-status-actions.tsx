@@ -18,6 +18,7 @@ import type { ProductStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { updateProductsStatusAction } from '@/app/business/[businessId]/actions/productActions';
 import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
+import { useBusinessId } from '@/providers/BusinessProvider';
 
 interface BulkStatusActionsProps {
   /** Ids of the currently selected rows. */
@@ -34,6 +35,7 @@ interface BulkStatusActionsProps {
  * something is selected, so the empty case is unchanged.
  */
 export function BulkStatusActions({ ids, onDone }: BulkStatusActionsProps) {
+  const businessId = useBusinessId();
   const router = useRouter();
   const vocabulary = useOfferingVocabulary();
   const [pending, setPending] = React.useState(false);
@@ -47,7 +49,7 @@ export function BulkStatusActions({ ids, onDone }: BulkStatusActionsProps) {
     const toastId = 'product-bulk-status';
     toast.loading('Updating status…', { id: toastId });
     try {
-      const result = await updateProductsStatusAction(ids, status);
+      const result = await updateProductsStatusAction(businessId, ids, status);
       if (result.success) {
         const label = PRODUCT_STATUS_OPTIONS.find(
           (o) => o.value === status,

@@ -15,12 +15,23 @@ import { MAX_BULK_STATUS_IDS } from '@/lib/validation/products';
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
+type RouteParams = Promise<{ businessId: string }>;
+
 export default async function ProductCataloguesPage({
+  params,
   searchParams,
 }: {
+  params: RouteParams;
   searchParams: SearchParams;
 }) {
-  const [verify, sp] = await Promise.all([verifyBusinessOwner(), searchParams]);
+  // The shop being viewed is the one in the URL. Without this argument
+  // `verifyBusinessOwner` falls back to whichever shop `.limit(1)` returns, so
+  // an owner with two shops sees the wrong catalogue under the right header.
+  const [{ businessId: routeBusinessId }, sp] = await Promise.all([
+    params,
+    searchParams,
+  ]);
+  const verify = await verifyBusinessOwner(routeBusinessId);
 
   if (!verify.authorized) {
     const isUnauthenticated =

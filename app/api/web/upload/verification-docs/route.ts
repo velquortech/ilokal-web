@@ -83,7 +83,15 @@ export async function POST(request: NextRequest) {
       }
       businessId = suppliedBusinessId;
     } else {
-      businessId = auth.business?.id;
+      // No fallback. `verifyBusinessOwner()` with no argument resolves to
+      // whichever shop `.limit(1)` returns, so an owner with more than one
+      // shop would have the upload filed against the wrong one — silently,
+      // under the right header. Every caller already sends `businessId`;
+      // anything that does not is a bug worth surfacing, not guessing at.
+      return NextResponse.json(
+        { success: false, error: 'Business ID is required' },
+        { status: 400 },
+      );
     }
 
     if (!file) {

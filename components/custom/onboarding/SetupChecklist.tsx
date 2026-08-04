@@ -3,17 +3,23 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Check, CircleAlert, Clock } from 'lucide-react';
+import { ArrowRight, Check, CircleAlert, Clock, Compass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import { useOnboardingTourContext } from './OnboardingTourProvider';
+import { dismissOnboardingChecklistAction } from '@/app/actions/onboardingActions';
 import type { OnboardingItem, OnboardingProgress } from '@/lib/types';
 
 /**
- * Per-business, so an owner with two shops sets each one up. Phase 1 storage
- * only — it is per-device, which is the known gap Phase 3's
- * `business_settings.onboarding_checklist_dismissed_at` closes.
+ * Per-business, so an owner with two shops sets each one up.
+ *
+ * Since phase 3 the authoritative marker is
+ * `business_settings.onboarding_checklist_dismissed_at`, passed in as
+ * `dismissed`. This key survives as a LOCAL ECHO: it keeps the card hidden on
+ * this device even if the server write fails. It can only ever hide the card,
+ * never resurrect one the server says was dismissed.
  */
 const dismissKey = (businessId: string) =>
   `ilokal-onboarding-hidden:${businessId}`;
@@ -23,6 +29,7 @@ export function SetupChecklist({
   progress,
   welcome = false,
   cleanUrl,
+  dismissed = false,
 }: {
   businessId: string;
   progress: OnboardingProgress;
@@ -36,21 +43,34 @@ export function SetupChecklist({
   welcome?: boolean;
   /** Same URL with `?welcome` removed; every other param preserved. */
   cleanUrl?: string;
+  /**
+   * `business_settings.onboarding_checklist_dismissed_at != null`, read on the
+   * server — so hiding the card on one device hides it on every device. Seeds
+   * the initial state directly, which means an already-dismissed card is never
+   * painted and then yanked away.
+   */
+  dismissed?: boolean;
 }) {
   const router = useRouter();
+  const { enabled: tourEnabled, startTour } = useOnboardingTourContext();
 
-  // `false` until mount so the server HTML and the first client render agree.
-  // Seeding from localStorage during render would be a hydration mismatch, and
-  // seeding *hidden* would blank the card for everyone on the server pass.
-  const [hidden, setHidden] = useState(false);
+  // Seeded from the SERVER's answer, so both renders agree. The localStorage
+  // echo is still read after mount — it can only add a "hidden", never undo
+  // one, so it cannot contradict the server.
+  const [hidden, setHidden] = useState(dismissed);
   // Snapshotted at mount: the URL is cleaned a tick later, and the card must
   // not silently swap back to its ordinary heading when that lands.
   const [welcomed] = useState(welcome);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    setHidden(window.localStorage.getItem(dismissKey(businessId)) === '1');
-  }, [businessId]);
+    // Recomputed, not merely OR'd in: the key is per business, so switching
+    // shops must be able to bring the card BACK. `dismissed` still wins, so the
+    // echo can never contradict what the server recorded.
+    setHidden(
+      dismissed || window.localStorage.getItem(dismissKey(businessId)) === '1',
+    );
+  }, [businessId, dismissed]);
 
   // Consume the one-shot marker: keep the welcome state for this visit, then
   // strip the param so a refresh, a bookmark or a shared link cannot replay it.
@@ -64,6 +84,10 @@ export function SetupChecklist({
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(dismissKey(businessId), '1');
     }
+    // Fire-and-forget: the card is already gone, and a failed write is logged
+    // server-side. The owner did not ask for a save, so nothing here is worth a
+    // toast — and the echo above keeps this device quiet regardless.
+    void dismissOnboardingChecklistAction(businessId).catch(() => {});
   };
 
   if (hidden) return null;
@@ -100,6 +124,9 @@ export function SetupChecklist({
   return (
     <Card
       aria-labelledby="setup-checklist-heading"
+      // The tour's first step points here. Attribute on the card that already
+      // exists — no wrapper whose only job is to be measured.
+      data-tour="setup-checklist"
       className={cn(welcomed && 'ring-primary/40 ring-2')}
     >
       <CardHeader className="gap-2">
@@ -116,9 +143,17 @@ export function SetupChecklist({
                 : 'A shopper sees a finished shop, not a half-filled one.'}
             </p>
           </div>
-          <Button variant="ghost" size="sm" onClick={dismiss}>
-            Hide
-          </Button>
+          <div className="flex items-center gap-1">
+            {tourEnabled && (
+              <Button variant="outline" size="sm" onClick={startTour}>
+                <Compass className="mr-1.5 size-4" aria-hidden />
+                Take the tour
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={dismiss}>
+              Hide
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-1.5">

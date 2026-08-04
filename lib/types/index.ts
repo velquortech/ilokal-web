@@ -342,8 +342,12 @@ export type {
   OnboardingItemId,
   OnboardingItem,
   OnboardingProgress,
+  OnboardingState,
 } from './onboarding';
-export { EMPTY_ONBOARDING_PROGRESS } from './onboarding';
+export {
+  EMPTY_ONBOARDING_PROGRESS,
+  EMPTY_ONBOARDING_STATE,
+} from './onboarding';
 
 // Test helpers (used by unit/integration tests)
 export type { TestNextRequest } from './test';

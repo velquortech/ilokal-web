@@ -7,9 +7,13 @@ import {
 } from './actions/branchActions';
 import { getBusinessById } from '@/lib/api/business/business';
 import { getRegistrationSettings } from '@/lib/api/appSettings';
-import { getOnboardingProgress } from '@/lib/api/business/onboardingQuery';
+import {
+  getOnboardingProgress,
+  getOnboardingState,
+} from '@/lib/api/business/onboardingQuery';
 import { getOfferingVocabulary } from '@/lib/api/offerings/offeringQuery';
 import { SetupChecklist } from '@/components/custom/onboarding/SetupChecklist';
+import { TourWelcomeTrigger } from '@/components/custom/onboarding/TourWelcomeTrigger';
 import {
   businessPathWithoutWelcome,
   ONBOARDING_WELCOME_PARAM,
@@ -60,7 +64,12 @@ export default async function Page({
   // pending shop and a freshly verified one both need it, and the verified case
   // is the common one on a default install (`auto_verify_businesses`).
   const vocabulary = await getOfferingVocabulary(businessId);
-  const progress = await getOnboardingProgress(businessId, vocabulary);
+  // The state read is `React.cache`d and the layout already made it, so this
+  // costs nothing beyond the checklist's own derivation.
+  const [progress, onboardingState] = await Promise.all([
+    getOnboardingProgress(businessId, vocabulary),
+    getOnboardingState(businessId),
+  ]);
 
   const welcome = sp[ONBOARDING_WELCOME_PARAM] === '1';
   const cleanUrl = welcome
@@ -68,12 +77,18 @@ export default async function Page({
     : undefined;
 
   const checklist = (
-    <SetupChecklist
-      businessId={businessId}
-      progress={progress}
-      welcome={welcome}
-      cleanUrl={cleanUrl}
-    />
+    <>
+      {/* Renders nothing. Kept beside the card rather than inside it so a
+          dismissed or already-complete checklist cannot cancel the tour. */}
+      <TourWelcomeTrigger welcome={welcome} />
+      <SetupChecklist
+        businessId={businessId}
+        progress={progress}
+        welcome={welcome}
+        cleanUrl={cleanUrl}
+        dismissed={onboardingState.checklistDismissed}
+      />
+    </>
   );
 
   if (business.status !== 'verified') {

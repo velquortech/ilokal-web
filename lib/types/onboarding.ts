@@ -54,6 +54,30 @@ export interface OnboardingProgress {
   offeringCount: number;
 }
 
+/**
+ * The two facts about onboarding that are NOT derivable from anything else:
+ * whether the tour was answered, and whether the card was hidden. Stored on
+ * `business_settings` (migration `20260804233000`) rather than in localStorage,
+ * so an owner who answers on their phone is not asked again on their laptop.
+ */
+export interface OnboardingState {
+  /** Finished or skipped — both mean "do not offer it again". */
+  tourCompleted: boolean;
+  checklistDismissed: boolean;
+  /**
+   * The read failed. Both flags then read `false`, which SHOWS the guidance:
+   * wrongly showing a card is a small annoyance, wrongly hiding the setup
+   * checklist withholds the one thing a new owner needs.
+   */
+  failed: boolean;
+}
+
+export const EMPTY_ONBOARDING_STATE: OnboardingState = {
+  tourCompleted: false,
+  checklistDismissed: false,
+  failed: true,
+};
+
 export const EMPTY_ONBOARDING_PROGRESS: OnboardingProgress = {
   items: [],
   completed: 0,

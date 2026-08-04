@@ -40,7 +40,14 @@ export function BranchSelector({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="hidden h-9 gap-2 md:flex">
+        {/* `data-tour` sits on the trigger that already exists rather than a
+            wrapper: the tour measures this element, and below `md` it is
+            `hidden`, so its zero-size box makes the step skip itself. */}
+        <Button
+          variant="outline"
+          className="hidden h-9 gap-2 md:flex"
+          data-tour="branch-switcher"
+        >
           <Building2 className="h-4 w-4" />
           <span className="max-w-30 truncate">{currentBranch.name}</span>
           <ChevronDown className="text-muted-foreground h-4 w-4" />

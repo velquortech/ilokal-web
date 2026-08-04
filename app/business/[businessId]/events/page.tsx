@@ -1,7 +1,10 @@
 import { notFound } from 'next/navigation';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import { getEventsEnabled } from '@/lib/api/appSettings';
-import { getEventsForBusiness } from '@/lib/api/events/eventQuery';
+import {
+  getEventStats,
+  getEventsForBusiness,
+} from '@/lib/api/events/eventQuery';
 import { getProductsPaginated } from '@/lib/api/products/productQuery';
 import { EVENT_STATUSES, type EventStatus } from '@/lib/types/event';
 import { EventsContent } from './components/events-content';
@@ -48,7 +51,7 @@ export default async function BusinessEventsPage({
       : ('' as const);
   const search = typeof sp.search === 'string' ? sp.search : undefined;
 
-  const [result, offerings] = await Promise.all([
+  const [result, offerings, stats] = await Promise.all([
     getEventsForBusiness(businessId, {
       page,
       per_page: perPage,
@@ -63,12 +66,17 @@ export default async function BusinessEventsPage({
       per_page: 100,
       status: 'active',
     }),
+    // Counts span every status, so they are read separately from the filtered
+    // page — the cards must not change when the filter does.
+    getEventStats(businessId),
   ]);
 
   return (
     <EventsContent
+      businessId={businessId}
       events={result.events}
       metadata={result.metadata}
+      stats={stats}
       // "Couldn't load" and "none yet" are different things to tell someone.
       loadFailed={'error' in result && result.error === 'LOAD_FAILED'}
       selectedStatus={status}

@@ -8,6 +8,12 @@
  * and uses the VERIFIED business id (never the client's), and passes through a
  * per-user flood guard — Server-Action POSTs never reach the proxy's limiter.
  *
+ * Each takes the `businessId` from the route segment and hands it to
+ * `verifyBusinessOwner`. That argument is not optional decoration: without it
+ * the helper falls back to whichever shop `.limit(1)` returns, so an owner who
+ * holds two shops files events against the wrong one — matching
+ * `sectionActions.ts`, which has always passed it.
+ *
  * What is deliberately NOT here: approving or rejecting. An owner cannot reach
  * `approved` by any route — the DB trigger reverts it — so there is no action
  * to write, and none of these functions send a status the trigger would have
@@ -62,7 +68,7 @@ function fail(code: string, message: string): ApiResponse<never> {
  * is inside their budget. Written once so a new action cannot ship with two of
  * the three.
  */
-async function guard(): Promise<Guard> {
+async function guard(businessId: string): Promise<Guard> {
   // The kill switch is checked server-side too. Hiding the nav entry stops an
   // honest owner; it does not stop a POST to the action.
   if (!(await getEventsEnabled())) {
@@ -72,7 +78,9 @@ async function guard(): Promise<Guard> {
     };
   }
 
-  const verify = await verifyBusinessOwner();
+  // `verifyBusinessOwner` validates the id's shape and proves the caller owns
+  // THAT shop — the argument is what makes this correct for a multi-shop owner.
+  const verify = await verifyBusinessOwner(businessId);
   if (!verify.authorized) {
     return {
       ok: false,
@@ -113,6 +121,7 @@ function revalidate(businessId: string): void {
  * refuses to ping anyone for a draft — so this cannot be used to spam admins.
  */
 export async function createEventAction(
+  businessId: string,
   input: unknown,
   submit = true,
 ): Promise<ApiResponse<Event>> {
@@ -125,7 +134,7 @@ export async function createEventAction(
       );
     }
 
-    const g = await guard();
+    const g = await guard(businessId);
     if (!g.ok) return g.response;
 
     const result = await eventService.createEvent(
@@ -156,6 +165,7 @@ export async function createEventAction(
  * quietly vanish from the banner.
  */
 export async function updateEventAction(
+  businessId: string,
   id: string,
   input: unknown,
 ): Promise<ApiResponse<Event>> {
@@ -172,7 +182,7 @@ export async function updateEventAction(
       );
     }
 
-    const g = await guard();
+    const g = await guard(businessId);
     if (!g.ok) return g.response;
 
     const result = await eventService.updateEvent(
@@ -196,6 +206,7 @@ export async function updateEventAction(
  * them again at the table.
  */
 export async function setEventStatusAction(
+  businessId: string,
   id: string,
   status: unknown,
 ): Promise<ApiResponse<Event>> {
@@ -209,7 +220,7 @@ export async function setEventStatusAction(
       return fail('VALIDATION_ERROR', 'You cannot set that status.');
     }
 
-    const g = await guard();
+    const g = await guard(businessId);
     if (!g.ok) return g.response;
 
     const result = await eventService.setOwnerEventStatus(
@@ -232,6 +243,7 @@ export async function setEventStatusAction(
 
 /** Withdraw an event from the shop's list. Soft delete — the row stays. */
 export async function archiveEventAction(
+  businessId: string,
   id: string,
 ): Promise<ApiResponse<null>> {
   try {
@@ -239,7 +251,7 @@ export async function archiveEventAction(
       return fail('VALIDATION_ERROR', 'Invalid event.');
     }
 
-    const g = await guard();
+    const g = await guard(businessId);
     if (!g.ok) return g.response;
 
     const result = await eventService.archiveEvent(id, g.businessId);
@@ -260,10 +272,11 @@ export async function archiveEventAction(
  * the free Supabase plan has no on-the-fly transforms.
  */
 export async function uploadEventImageAction(
+  businessId: string,
   formData: FormData,
 ): Promise<ApiResponse<{ url: string }>> {
   try {
-    const g = await guard();
+    const g = await guard(businessId);
     if (!g.ok) return g.response;
 
     const file = formData.get('file');

@@ -1,5 +1,148 @@
 # Changelog
 
+## 2026-08-04 — Event tables join the dashboard, and admin staff picks (feat/events-festivals)
+
+> **No schema migration.** Everything rides the table, policies, triggers and
+> RPCs `20260802034107_events.sql` already ships. LOW–MED risk: presentational
+> for the tables, one new admin-only write path. Parity table and action items:
+> [`.claude/EVENTS_TABLE.md`](.claude/EVENTS_TABLE.md) (local, not committed).
+
+- **Both event lists were bespoke `<ul>`s of cards while every neighbouring
+  table is a TanStack `DataTable`.** Not a cosmetic gap: no rows-per-page, no
+  "page N of M", no column headers, no kebab, and `Remove` as a bare row button
+  with **no confirmation** — one mis-click soft-deleted an event. Owner
+  (`/business/[id]/events`) and admin (`/admin/[id]/events`) are now the same
+  table as the catalogue and coupons: stat cards, filter popover, debounced
+  URL search, `manualPagination` + `DataTablePagination`, kebab row actions,
+  confirm dialogs on anything destructive.
+- **🔴 Admin "Add event" — staff picks.** `createPlatformEvent()` has existed
+  in the service since the feature landed and **never had a caller**. It does
+  now: an admin authors an event, `business_id` stays null, and it inserts at
+  `approved` — an admin writing the event **is** the review, and the dialog says
+  so instead of offering "Send for review". No draft button and no offering
+  picker: a platform event has no shop, so it has nothing to promote (the
+  composite FK would refuse one anyway). New `updatePlatformEvent` /
+  `archivePlatformEvent`, both scoped **`.is('business_id', null)` in the
+  WHERE** — the admin RLS policy covers every row, so without that predicate
+  the same functions would silently edit and archive a *shop's* event. Taking
+  a shop's event down stays the **reject** path, which notifies the owner with
+  a reason; Edit and Remove are therefore **absent** on a shop's row, not
+  disabled.
+- **🔴 Fixed the multi-shop bug the code itself documented.** Every event
+  action called `verifyBusinessOwner()` with **no argument**, which falls back
+  to whichever shop `.limit(1)` returns — so an owner holding two shops filed
+  events against the wrong one. All five now take `businessId` from the route
+  segment and verify it, matching `sectionActions.ts`, which always has. The
+  dialog carried a comment admitting this; the comment is gone because the bug
+  is.
+- **One form, not two.** `EventDialog` moved to
+  `components/custom/events/EventFormDialog.tsx` taking
+  `variant: 'proposal' | 'staff-pick'` plus **injected** save/upload calls — a
+  Server Action is bound to a role, so the component rendering the fields must
+  not pick one. Copy lives in a `Record<Variant, …>` map, so a third variant is
+  a compile error until every string is written. Same for the status pill and
+  tone map (`EventStatusBadge`), the image/title/when/venue cells
+  (`EventCells`), and the filter popover (`FilterEvents`) — each was spelled
+  out twice before.
+- **`DataTable` gained an optional `emptyState`**, defaulting to `"No results."`
+  so every other table is unchanged. Both event lists distinguish "we couldn't
+  load this" from "you have none" — a distinction this repo has had to restore
+  on three separate surfaces — and that survives the port only because the
+  shared table can carry the caller's copy.
+- **`DataTablePagination` no longer claims a selection that cannot exist.** It
+  printed `"0 of 10 row(s) selected"` unconditionally; on a table with no
+  checkbox column that describes a control that isn't there. It now renders
+  that line only when a `select` column exists — byte-identical for the
+  catalogue, coupons and redemptions, which all have one. **Neither event table
+  has one, deliberately:** the owner's four states are per-event decisions, and
+  bulk-approving is precisely what the approval gate exists to prevent.
+- **Stat cards** — `getEventStats(businessId?)`: head-only counts (`select('id',
+  { count: 'exact', head: true })`) run in parallel, one per status, never
+  `select('status')` then `.filter().length`, which the PostgREST 1000-row cap
+  turns into a wrong number. A shop is never asked for its staff-pick count —
+  a platform event has no `business_id`, so inside a shop's scope the answer is
+  always 0. A failed read reports `failed: true` and the cards render an em
+  dash: four confident zeros and an outage look identical otherwise, which is
+  the `getBookingStats` lesson.
+- **Also:** admin nav entry and page title `Event Proposals` → **Events** (the
+  page authors staff picks now, which are nobody's proposal); banner order
+  moved from an inline control in a card into an `Order` column, still an
+  inline input because a dialog for one two-digit number is worse; every event
+  link in the admin table still passes through `safeExternalUrl` with
+  `rel="noopener noreferrer"`.
+- **🔴 The event form asked for latitude and longitude as two bare numbers.**
+  Nobody knows their own coordinates, so most events would be filed with both
+  blank — and `events_nearby` filters `location IS NOT NULL`, so a blank pair
+  makes the event **invisible** to `/events/nearby` and to the mobile endpoint.
+  The feature would have shipped and received no data. A guessed pair is worse
+  than a blank one: every value in range is valid, so a typo puts the pin in
+  the sea with no error anywhere, and `POINT(lng lat)` — longitude first — is
+  the opposite of how everyone says it. Both fields now sit under a **map you
+  click to pin**, with a draggable marker, "Use my location", and the numbers
+  still there and still editable (the map is a `div`, so it gives a keyboard
+  user nothing — it is an aid, never the only path).
+- **The picker was moved, not copied.** It lived under
+  `app/business/registration/components/` while branch creation already
+  reached **across features** to import it — two outside importers is the
+  repo's own trigger for `components/custom/` (CLAUDE.md §DRY), and events
+  would have been the third reach. `git mv` to
+  `components/custom/map/LocationPicker.tsx`, plus a new `LocationField` (map +
+  the two inputs + device location + clear) and `useGeolocation` — the latter
+  replacing **twenty lines duplicated verbatim** in the two step files.
+- **Three things that are free on a page and broken in a dialog**, which is why
+  this was a widen and not a drop-in: leaflet measures its container at mount,
+  and in a dialog that mount is mid-open-animation, so it paints a grey band —
+  a `ResizeObserver` calling `invalidateSize()` covers that, a rotation and a
+  breakpoint reflow; `scrollWheelZoom` defaults to **true**, so scrolling the
+  form with the pointer over the map zoomed the map and trapped the reader
+  mid-form (the dialog passes `false`, the two page call sites keep the
+  default and are unchanged); and the inputs take **strings**, because a
+  controlled `type="number"` cannot hold `"10."` on the way to `"10.6973"` and
+  swallows the decimal point.
+- **The map renders at every width in the dialog**, unlike registration and
+  branch-create, which wrap the picker in `hidden … md:block` — so on a phone
+  those two show no map at all and the user is back to typing coordinates, on
+  the one device that actually knows where it is. Their `hidden md:block` is
+  **left alone** (changing a wizard step is its own change with its own QA) and
+  recorded as a follow-up in `.claude/EVENTS_TABLE.md` §6, along with the
+  absence of any geocoding from the typed address — that needs a provider, and
+  the stack is frozen.
+- **No validation change.** `createEventSchema` already refuses half a pair,
+  the dialog already sends the keys only when both parse, and
+  `eventService.toRow()` already writes `location` only on a real pair — so a
+  blank form still cannot wipe an existing pin. The map adds a way to *set* the
+  value and changes none of those rules.
+- **Tests (+47, 1917 → 1964):** `DataTable.contract` (the selection line
+  follows the checkbox column; `emptyState` defaults and overrides),
+  `eventStats` (head-only reads, per-status scope, the skipped staff-pick
+  query, `failed` on both a query error and a dead client),
+  `eventPlatformService` (the `business_id IS NULL` scope on both writes,
+  NOT_FOUND when a shop's id is passed, `product_id` pinned null, no driver
+  text in the message), the admin actions' new endpoints (kill switch before
+  auth, auth before DB, guid validation), `eventActions` re-pointed at the new
+  signature **plus** a regression asserting `verifyBusinessOwner` receives the
+  segment id, and an `eventTables.contract` sweep (the owner's menu moves an
+  event only to `draft`/`pending_review`; no `select` column in either table;
+  Edit/Remove gated on `business_id === null`; neither dialog forks the form).
+- **Map tests (+39, 1964 → 2003):** `useGeolocation` (six decimal places, the
+  busy flag clearing on **both** paths — a spinner that never stops is worse
+  than the failure it hides — the message naming the two ways out, the
+  no-geolocation browser, and `clearError`), `LocationField` (a half-typed
+  `"10."` survives; the map gets a usable pair or `undefined`, never `NaN`;
+  clear empties both or neither; the wheel-zoom switch reaches the map), and a
+  `mapPicker.contract` sweep (all three call sites import the shared component,
+  none reaches into `app/business/registration/components/`, all mount
+  `ssr: false`, none hand-rolls `navigator.geolocation`, the dialog passes
+  `scrollWheelZoom={false}`, and the two bare `event-lat`/`event-lng` inputs
+  are gone).
+- Verified: `yarn lint` + **2003** tests + a clean `yarn build` green.
+- **Not verified — needs a browser:** both tables are behind auth and this
+  environment has no login path, so the kebab menus, the staff-pick dialog and
+  the stat cards have not been clicked through. **The map especially** —
+  leaflet needs a real layout box and a tile server, and the dialog failure
+  mode this code exists to prevent (a grey band instead of tiles) is only
+  visible in a browser.
+
 ## 2026-08-02 — Events: proposals, review, and the /explore dateline (feat/events-festivals)
 
 > **ONE schema migration (`20260802034107_events.sql`) — HIGH risk: new table

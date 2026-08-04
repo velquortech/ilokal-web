@@ -79,11 +79,13 @@ export type {
   EventTimeFilter,
   EventFilters,
   EventDecision,
+  EventStats,
 } from './event';
 export {
   EVENT_STATUSES,
   EVENT_STATUS_OPTIONS,
   EVENT_TIME_FILTERS,
+  EMPTY_EVENT_STATS,
 } from './event';
 
 // Offering Domain Types (product/service discriminators)

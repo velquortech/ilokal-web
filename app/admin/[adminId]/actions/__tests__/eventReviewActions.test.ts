@@ -29,6 +29,8 @@ import {
   decideEventAction,
   setEventPriorityAction,
   createPlatformEventAction,
+  updatePlatformEventAction,
+  archivePlatformEventAction,
 } from '../eventReviewActions';
 
 const ADMIN_ID = '550e8400-e29b-41d4-a716-4466554400aa';
@@ -70,6 +72,14 @@ beforeEach(() => {
   vi.mocked(eventService.createPlatformEvent).mockResolvedValue({
     success: true,
     data: EVENT,
+  });
+  vi.mocked(eventService.updatePlatformEvent).mockResolvedValue({
+    success: true,
+    data: EVENT,
+  });
+  vi.mocked(eventService.archivePlatformEvent).mockResolvedValue({
+    success: true,
+    data: null,
   });
 });
 
@@ -262,5 +272,85 @@ describe('createPlatformEventAction', () => {
 
     expect(result.error?.code).toBe('VALIDATION_ERROR');
     expect(eventService.createPlatformEvent).not.toHaveBeenCalled();
+  });
+
+  it('validates before it authorises', async () => {
+    const result = await createPlatformEventAction({ name: '' });
+
+    expect(result.error?.code).toBe('VALIDATION_ERROR');
+    expect(getEventsEnabled).not.toHaveBeenCalled();
+    expect(verifyCurrentUserIsAdmin).not.toHaveBeenCalled();
+  });
+
+  it('refuses a non-admin', async () => {
+    vi.mocked(verifyCurrentUserIsAdmin).mockResolvedValue({
+      authorized: false,
+      error: 'Unauthorized',
+    });
+
+    const result = await createPlatformEventAction(VALID);
+
+    expect(result.error?.code).toBe('UNAUTHORIZED');
+    expect(eventService.createPlatformEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe('the staff-pick edit and takedown paths', () => {
+  it('refuses a non-admin on both', async () => {
+    vi.mocked(verifyCurrentUserIsAdmin).mockResolvedValue({
+      authorized: false,
+      error: 'Unauthorized',
+    });
+
+    const results = await Promise.all([
+      updatePlatformEventAction(EVENT_ID, { name: 'x' }),
+      archivePlatformEventAction(EVENT_ID),
+    ]);
+
+    for (const result of results)
+      expect(result.error?.code).toBe('UNAUTHORIZED');
+    expect(eventService.updatePlatformEvent).not.toHaveBeenCalled();
+    expect(eventService.archivePlatformEvent).not.toHaveBeenCalled();
+  });
+
+  it('refuses both when the kill switch is off', async () => {
+    vi.mocked(getEventsEnabled).mockResolvedValue(false);
+
+    const results = await Promise.all([
+      updatePlatformEventAction(EVENT_ID, { name: 'x' }),
+      archivePlatformEventAction(EVENT_ID),
+    ]);
+
+    for (const result of results) expect(result.error?.code).toBe('NOT_FOUND');
+    expect(eventService.updatePlatformEvent).not.toHaveBeenCalled();
+    expect(eventService.archivePlatformEvent).not.toHaveBeenCalled();
+  });
+
+  it('rejects a malformed id on both', async () => {
+    expect(
+      (await updatePlatformEventAction('nope', { name: 'x' })).error?.code,
+    ).toBe('VALIDATION_ERROR');
+    expect((await archivePlatformEventAction('nope')).error?.code).toBe(
+      'VALIDATION_ERROR',
+    );
+  });
+
+  it('passes the validated payload through to the scoped service', async () => {
+    const result = await updatePlatformEventAction(EVENT_ID, {
+      name: 'Renamed',
+    });
+
+    expect(result.success).toBe(true);
+    expect(eventService.updatePlatformEvent).toHaveBeenCalledWith(
+      EVENT_ID,
+      expect.objectContaining({ name: 'Renamed' }),
+    );
+  });
+
+  it('archives by id alone — the service owns the platform-only scope', async () => {
+    const result = await archivePlatformEventAction(EVENT_ID);
+
+    expect(result.success).toBe(true);
+    expect(eventService.archivePlatformEvent).toHaveBeenCalledWith(EVENT_ID);
   });
 });

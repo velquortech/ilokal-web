@@ -140,6 +140,34 @@ export interface NearbyEvent {
   business_name: string | null;
 }
 
+/**
+ * Counts for the dashboard stat cards, one per status plus the total.
+ *
+ * `failed` is not decoration: four confident zeros and "we couldn't read this"
+ * look identical on a stat card, and this repo has already shipped that
+ * confusion once (`getBookingStats`). `staff_picks` is admin-only — the number
+ * of platform events (`business_id IS NULL`) — and stays 0 on the owner's side.
+ */
+export interface EventStats {
+  total: number;
+  draft: number;
+  pending_review: number;
+  approved: number;
+  rejected: number;
+  staff_picks: number;
+  failed: boolean;
+}
+
+export const EMPTY_EVENT_STATS: EventStats = {
+  total: 0,
+  draft: 0,
+  pending_review: 0,
+  approved: 0,
+  rejected: 0,
+  staff_picks: 0,
+  failed: false,
+};
+
 export interface EventListMetadata {
   total: number;
   page: number;

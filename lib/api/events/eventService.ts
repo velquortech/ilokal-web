@@ -178,6 +178,84 @@ export async function createPlatformEvent(
 }
 
 /**
+ * Edit a platform event.
+ *
+ * `.is('business_id', null)` is not belt-and-braces — it is the whole scope.
+ * The admin RLS policy covers EVERY row, so without it this function would
+ * silently edit a shop's event too, and a shop's event has an owner who was
+ * told what they submitted. Content an admin needs to change on a shop's event
+ * goes back through reject-with-a-reason, which notifies them.
+ */
+export async function updatePlatformEvent(
+  id: string,
+  input: UpdateEventInput,
+): Promise<ApiResponse<Event>> {
+  try {
+    const supabase = await createServerSupabaseClient();
+
+    const { data, error } = await supabase
+      .from('events')
+      // A platform event promotes no shop's offering — the composite FK needs
+      // a business_id — so the column is pinned rather than passed through.
+      .update({ ...toRow(input), product_id: null })
+      .eq('id', id)
+      .is('business_id', null)
+      .is('archived_at', null)
+      .select('*')
+      .maybeSingle();
+
+    if (error) return failure(error, 'updatePlatformEvent');
+    if (!data) {
+      return {
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'That event is not an iLokal event.',
+        },
+      };
+    }
+    return { success: true, data: data as Event };
+  } catch (err) {
+    return failure(err as PgError, 'updatePlatformEvent');
+  }
+}
+
+/**
+ * Take down a platform event. Soft delete, and scoped to platform events for
+ * the same reason `updatePlatformEvent` is.
+ */
+export async function archivePlatformEvent(
+  id: string,
+): Promise<ApiResponse<null>> {
+  try {
+    const supabase = await createServerSupabaseClient();
+
+    const { data, error } = await supabase
+      .from('events')
+      .update({ archived_at: new Date().toISOString() })
+      .eq('id', id)
+      .is('business_id', null)
+      .is('archived_at', null)
+      .select('id')
+      .maybeSingle();
+
+    if (error) return failure(error, 'archivePlatformEvent');
+    if (!data) {
+      return {
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'That event is not an iLokal event.',
+        },
+      };
+    }
+    return { success: true, data: null };
+  } catch (err) {
+    return failure(err as PgError, 'archivePlatformEvent');
+  }
+}
+
+/**
  * Update an event's content.
  *
  * Scoped by `business_id` in the WHERE, not checked beforehand: ownership

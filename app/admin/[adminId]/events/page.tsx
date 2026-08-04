@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getEventsEnabled } from '@/lib/api/appSettings';
-import { getEventsForReview } from '@/lib/api/events/eventQuery';
+import { getEventStats, getEventsForReview } from '@/lib/api/events/eventQuery';
 import { EVENT_STATUSES, type EventStatus } from '@/lib/types/event';
 import { EventReviewContent } from './components/event-review-content';
 
@@ -15,7 +15,7 @@ type SearchParams = Promise<{
 }>;
 
 export const metadata = {
-  title: 'Event Proposals',
+  title: 'Events',
 };
 
 /**
@@ -50,17 +50,23 @@ export default async function AdminEventsPage({
         : ('pending_review' as EventStatus);
   const search = typeof sp.search === 'string' ? sp.search : undefined;
 
-  const result = await getEventsForReview({
-    page,
-    per_page: perPage,
-    status,
-    search,
-  });
+  const [result, stats] = await Promise.all([
+    getEventsForReview({
+      page,
+      per_page: perPage,
+      status,
+      search,
+    }),
+    // Counts span every status, so they are read separately from the filtered
+    // page — the cards must not change when the filter does.
+    getEventStats(),
+  ]);
 
   return (
     <EventReviewContent
       events={result.events}
       metadata={result.metadata}
+      stats={stats}
       loadFailed={'error' in result && result.error === 'LOAD_FAILED'}
       selectedStatus={status}
     />

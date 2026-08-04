@@ -15,6 +15,7 @@
  */
 
 import { revalidatePath } from 'next/cache';
+import { createServerSupabaseClient } from '@/supabase/server';
 import { verifyCurrentUserIsAdmin } from '@/lib/api/admin/adminActionHelpers';
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import { getEventsEnabled } from '@/lib/api/appSettings';
@@ -25,8 +26,24 @@ import {
   createEventSchema,
   eventDecisionSchema,
   eventIdSchema,
+  updateEventSchema,
 } from '@/lib/validation/events';
+import {
+  uploadWebP,
+  ImageProcessingError,
+  toWebPFilename,
+  IMAGE_PRESETS,
+} from '@/lib/api/helpers/image';
 import type { ApiResponse, Event, NotificationType } from '@/lib/types';
+
+/** Same caps the owner's upload enforces — one number, one meaning. */
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+];
 
 function fail(code: string, message: string): ApiResponse<never> {
   return { success: false, error: { code, message } };
@@ -228,5 +245,104 @@ export async function createPlatformEventAction(
   } catch (error) {
     console.error('[createPlatformEventAction]', error);
     return fail('INTERNAL_ERROR', 'Failed to create the event.');
+  }
+}
+
+/**
+ * Edit a staff pick.
+ *
+ * Only a platform event — the service scopes the write `business_id IS NULL`.
+ * A shop's event is changed by rejecting it with a reason, so the owner learns
+ * what happened to the thing they wrote.
+ */
+export async function updatePlatformEventAction(
+  eventId: string,
+  input: unknown,
+): Promise<ApiResponse<Event>> {
+  try {
+    if (!eventIdSchema.safeParse(eventId).success) {
+      return fail('VALIDATION_ERROR', 'Invalid event.');
+    }
+
+    const parsed = updateEventSchema.safeParse(input);
+    if (!parsed.success) {
+      return fail(
+        'VALIDATION_ERROR',
+        parsed.error.issues[0]?.message ?? 'Check the form and try again.',
+      );
+    }
+
+    const g = await guard();
+    if (!g.ok) return g.response;
+
+    const result = await eventService.updatePlatformEvent(eventId, parsed.data);
+    if (result.success) revalidate();
+    return result;
+  } catch (error) {
+    console.error('[updatePlatformEventAction]', error);
+    return fail('INTERNAL_ERROR', 'Failed to update the event.');
+  }
+}
+
+/** Take a staff pick down. Soft delete — platform events only. */
+export async function archivePlatformEventAction(
+  eventId: string,
+): Promise<ApiResponse<null>> {
+  try {
+    if (!eventIdSchema.safeParse(eventId).success) {
+      return fail('VALIDATION_ERROR', 'Invalid event.');
+    }
+
+    const g = await guard();
+    if (!g.ok) return g.response;
+
+    const result = await eventService.archivePlatformEvent(eventId);
+    if (result.success) revalidate();
+    return result;
+  } catch (error) {
+    console.error('[archivePlatformEventAction]', error);
+    return fail('INTERNAL_ERROR', 'Failed to remove the event.');
+  }
+}
+
+/**
+ * Upload a staff pick's image.
+ *
+ * Path is `platform/<file>.webp`. The bucket's write policy permits an admin
+ * any path, but a shop's folder is a shop's folder — keeping platform images
+ * under one prefix is what makes "whose image is this?" answerable from the
+ * path alone, exactly as the owner's `<businessId>/` prefix does.
+ */
+export async function uploadPlatformEventImageAction(
+  formData: FormData,
+): Promise<ApiResponse<{ url: string }>> {
+  try {
+    const g = await guard();
+    if (!g.ok) return g.response;
+
+    const file = formData.get('file');
+    if (!(file instanceof File)) {
+      return fail('VALIDATION_ERROR', 'No file provided.');
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+      return fail('VALIDATION_ERROR', 'The image must be under 2 MB.');
+    }
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      return fail('VALIDATION_ERROR', 'Use a JPEG, PNG, GIF or WebP image.');
+    }
+
+    const supabase = await createServerSupabaseClient();
+    const path = `platform/${Date.now()}-${toWebPFilename(file.name)}`;
+    const url = await uploadWebP(supabase, 'event-images', path, file, {
+      maxDimension: IMAGE_PRESETS.hero,
+    });
+
+    return { success: true, data: { url } };
+  } catch (error) {
+    if (error instanceof ImageProcessingError) {
+      return fail('VALIDATION_ERROR', 'That image could not be read.');
+    }
+    console.error('[uploadPlatformEventImageAction]', error);
+    return fail('INTERNAL_ERROR', 'Failed to upload the image.');
   }
 }

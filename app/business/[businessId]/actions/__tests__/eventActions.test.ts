@@ -75,10 +75,10 @@ describe('the kill switch is enforced server-side', () => {
     vi.mocked(getEventsEnabled).mockResolvedValue(false);
 
     const results = await Promise.all([
-      createEventAction(VALID_INPUT),
-      updateEventAction(EVENT_ID, { name: 'x' }),
-      setEventStatusAction(EVENT_ID, 'pending_review'),
-      archiveEventAction(EVENT_ID),
+      createEventAction(BUSINESS_ID, VALID_INPUT),
+      updateEventAction(BUSINESS_ID, EVENT_ID, { name: 'x' }),
+      setEventStatusAction(BUSINESS_ID, EVENT_ID, 'pending_review'),
+      archiveEventAction(BUSINESS_ID, EVENT_ID),
     ]);
 
     for (const result of results) {
@@ -93,15 +93,27 @@ describe('the kill switch is enforced server-side', () => {
 
 describe('createEventAction', () => {
   it('validates before it authorises', async () => {
-    const result = await createEventAction({ name: '' });
+    const result = await createEventAction(BUSINESS_ID, { name: '' });
 
     expect(result.error?.code).toBe('VALIDATION_ERROR');
     expect(getEventsEnabled).not.toHaveBeenCalled();
     expect(verifyBusinessOwner).not.toHaveBeenCalled();
   });
 
+  it('verifies the business from the route segment, not whichever shop comes first', async () => {
+    await createEventAction(BUSINESS_ID, VALID_INPUT);
+
+    // Called with NO argument, `verifyBusinessOwner` falls back to whatever
+    // `.limit(1)` returns — so an owner with two shops filed events against
+    // the wrong one.
+    expect(verifyBusinessOwner).toHaveBeenCalledWith(BUSINESS_ID);
+  });
+
   it('uses the verified business id, never one from the caller', async () => {
-    await createEventAction({ ...VALID_INPUT, business_id: OTHER_BUSINESS });
+    await createEventAction(BUSINESS_ID, {
+      ...VALID_INPUT,
+      business_id: OTHER_BUSINESS,
+    });
 
     expect(eventService.createEvent).toHaveBeenCalledWith(
       BUSINESS_ID,
@@ -114,12 +126,12 @@ describe('createEventAction', () => {
   });
 
   it('notifies the admins when the proposal is submitted', async () => {
-    await createEventAction(VALID_INPUT, true);
+    await createEventAction(BUSINESS_ID, VALID_INPUT, true);
     expect(eventService.notifyProposalSubmitted).toHaveBeenCalledWith(EVENT_ID);
   });
 
   it('does NOT notify anyone for a draft', async () => {
-    await createEventAction(VALID_INPUT, false);
+    await createEventAction(BUSINESS_ID, VALID_INPUT, false);
 
     expect(eventService.createEvent).toHaveBeenCalledWith(
       BUSINESS_ID,
@@ -132,14 +144,14 @@ describe('createEventAction', () => {
   it('still succeeds when the notification fails', async () => {
     vi.mocked(eventService.notifyProposalSubmitted).mockResolvedValue(0);
 
-    const result = await createEventAction(VALID_INPUT);
+    const result = await createEventAction(BUSINESS_ID, VALID_INPUT);
 
     // A notification that does not arrive must not fail the proposal.
     expect(result.success).toBe(true);
   });
 
   it('rejects a javascript: link before the DB sees it', async () => {
-    const result = await createEventAction({
+    const result = await createEventAction(BUSINESS_ID, {
       ...VALID_INPUT,
       link_url: 'javascript:alert(1)',
     });
@@ -154,7 +166,7 @@ describe('createEventAction', () => {
       error: { code: 'UNAUTHORIZED', message: 'Not authorized' },
     } as unknown as Awaited<ReturnType<typeof verifyBusinessOwner>>);
 
-    const result = await createEventAction(VALID_INPUT);
+    const result = await createEventAction(BUSINESS_ID, VALID_INPUT);
 
     expect(result.error?.code).toBe('UNAUTHORIZED');
     expect(eventService.createEvent).not.toHaveBeenCalled();
@@ -163,7 +175,7 @@ describe('createEventAction', () => {
 
 describe('setEventStatusAction', () => {
   it.each(['draft', 'pending_review'])('allows %s', async (status) => {
-    const result = await setEventStatusAction(EVENT_ID, status);
+    const result = await setEventStatusAction(BUSINESS_ID, EVENT_ID, status);
 
     expect(result.success).toBe(true);
     expect(eventService.setOwnerEventStatus).toHaveBeenCalledWith(
@@ -176,7 +188,7 @@ describe('setEventStatusAction', () => {
   it.each(['approved', 'rejected', 'anything'])(
     'refuses %s — an owner cannot decide their own proposal',
     async (status) => {
-      const result = await setEventStatusAction(EVENT_ID, status);
+      const result = await setEventStatusAction(BUSINESS_ID, EVENT_ID, status);
 
       expect(result.error?.code).toBe('VALIDATION_ERROR');
       expect(eventService.setOwnerEventStatus).not.toHaveBeenCalled();
@@ -184,16 +196,20 @@ describe('setEventStatusAction', () => {
   );
 
   it('notifies on submit but not on withdraw', async () => {
-    await setEventStatusAction(EVENT_ID, 'pending_review');
+    await setEventStatusAction(BUSINESS_ID, EVENT_ID, 'pending_review');
     expect(eventService.notifyProposalSubmitted).toHaveBeenCalledTimes(1);
 
     vi.mocked(eventService.notifyProposalSubmitted).mockClear();
-    await setEventStatusAction(EVENT_ID, 'draft');
+    await setEventStatusAction(BUSINESS_ID, EVENT_ID, 'draft');
     expect(eventService.notifyProposalSubmitted).not.toHaveBeenCalled();
   });
 
   it('rejects a malformed id', async () => {
-    const result = await setEventStatusAction('not-a-uuid', 'draft');
+    const result = await setEventStatusAction(
+      BUSINESS_ID,
+      'not-a-uuid',
+      'draft',
+    );
     expect(result.error?.code).toBe('VALIDATION_ERROR');
     expect(eventService.setOwnerEventStatus).not.toHaveBeenCalled();
   });
@@ -201,7 +217,7 @@ describe('setEventStatusAction', () => {
 
 describe('updateEventAction and archiveEventAction scope by the verified id', () => {
   it('passes the verified business id to update', async () => {
-    await updateEventAction(EVENT_ID, { name: 'Renamed' });
+    await updateEventAction(BUSINESS_ID, EVENT_ID, { name: 'Renamed' });
     expect(eventService.updateEvent).toHaveBeenCalledWith(
       EVENT_ID,
       BUSINESS_ID,
@@ -210,7 +226,7 @@ describe('updateEventAction and archiveEventAction scope by the verified id', ()
   });
 
   it('passes the verified business id to archive', async () => {
-    await archiveEventAction(EVENT_ID);
+    await archiveEventAction(BUSINESS_ID, EVENT_ID);
     expect(eventService.archiveEvent).toHaveBeenCalledWith(
       EVENT_ID,
       BUSINESS_ID,
@@ -218,10 +234,10 @@ describe('updateEventAction and archiveEventAction scope by the verified id', ()
   });
 
   it('rejects a malformed id on both', async () => {
-    expect((await updateEventAction('nope', {})).error?.code).toBe(
+    expect((await updateEventAction(BUSINESS_ID, 'nope', {})).error?.code).toBe(
       'VALIDATION_ERROR',
     );
-    expect((await archiveEventAction('nope')).error?.code).toBe(
+    expect((await archiveEventAction(BUSINESS_ID, 'nope')).error?.code).toBe(
       'VALIDATION_ERROR',
     );
   });
@@ -231,7 +247,7 @@ describe('per-user flood guard', () => {
   it('rate-limits a burst of writes', async () => {
     const results = [];
     for (let i = 0; i < 40; i++) {
-      results.push(await createEventAction(VALID_INPUT));
+      results.push(await createEventAction(BUSINESS_ID, VALID_INPUT));
     }
 
     // Server-Action POSTs never reach the proxy limiter, so the budget has to

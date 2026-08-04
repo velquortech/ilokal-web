@@ -22,12 +22,26 @@ interface DataTablePaginationProps<TData> {
 export function DataTablePagination<TData>({
   table,
 }: DataTablePaginationProps<TData>) {
+  /**
+   * Only tables that actually render a checkbox column can have a selection.
+   * Printing "0 of 10 row(s) selected" under a table with nothing selectable
+   * describes a control that isn't there, and reads as a broken one. The empty
+   * `<div>` keeps `justify-between` pushing the pager right.
+   */
+  const hasSelectionColumn = table
+    .getAllColumns()
+    .some((column) => column.id === 'select');
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-2">
-      <div className="text-muted-foreground text-sm">
-        {table.getFilteredSelectedRowModel().rows.length} of{' '}
-        {table.getFilteredRowModel().rows.length} row(s) selected.
-      </div>
+      {hasSelectionColumn ? (
+        <div className="text-muted-foreground text-sm">
+          {table.getFilteredSelectedRowModel().rows.length} of{' '}
+          {table.getFilteredRowModel().rows.length} row(s) selected.
+        </div>
+      ) : (
+        <div />
+      )}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 lg:gap-x-8">
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium">Rows per page</p>

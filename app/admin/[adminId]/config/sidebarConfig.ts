@@ -35,7 +35,9 @@ export const mainNavigation: NavItem[] = [
     icon: MapPin,
   },
   {
-    title: 'Event Proposals',
+    // Not "Event Proposals" any more: the page also authors staff picks, which
+    // are nobody's proposal.
+    title: 'Events',
     href: '/admin/events',
     icon: CalendarDays,
     flag: 'enable_events',

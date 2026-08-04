@@ -14,8 +14,11 @@ import { cache } from 'react';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { describeDbError } from '@/lib/utils/describeDbError';
+import { EMPTY_EVENT_STATS } from '@/lib/types';
 import type {
   EventFilters,
+  EventStats,
+  EventStatus,
   EventWithRefs,
   NearbyEvent,
   PaginatedEvents,
@@ -354,6 +357,70 @@ export async function getEventsForReview(
   } catch (err) {
     console.error('[getEventsForReview]', err);
     return { ...EMPTY_PAGE(perPage), error: 'LOAD_FAILED' };
+  }
+}
+
+/**
+ * Status counts for the dashboard stat cards.
+ *
+ * Head-only counts, one per status, run in parallel — never
+ * `select('status')` then `.filter().length`, which the PostgREST 1000-row cap
+ * turns into a wrong number the moment a shop is busy (CLAUDE.md §API
+ * standards). `businessId` omitted = every shop, which is the admin view; RLS
+ * decides what the caller can actually see either way.
+ *
+ * A failed read reports `failed: true` rather than four confident zeros — an
+ * outage and an empty catalogue look identical on a stat card otherwise.
+ */
+export async function getEventStats(businessId?: string): Promise<EventStats> {
+  try {
+    const supabase = await createServerSupabaseClient();
+
+    /** The scope every count shares: live rows, optionally one shop's. */
+    const scoped = () => {
+      const query = supabase
+        .from('events')
+        // Count-only read: no row payload (repo count rule).
+        .select('id', { count: 'exact', head: true })
+        .is('archived_at', null);
+      return businessId ? query.eq('business_id', businessId) : query;
+    };
+
+    const byStatus = async (status: EventStatus) => {
+      const { count, error } = await scoped().eq('status', status);
+      if (error) throw error;
+      return count ?? 0;
+    };
+
+    const platformCount = async () => {
+      const { count, error } = await scoped().is('business_id', null);
+      if (error) throw error;
+      return count ?? 0;
+    };
+
+    const [draft, pendingReview, approved, rejected, staffPicks] =
+      await Promise.all([
+        byStatus('draft'),
+        byStatus('pending_review'),
+        byStatus('approved'),
+        byStatus('rejected'),
+        // A platform event has no shop, so it can never fall inside a shop's
+        // scope — the owner's card would always read 0. Don't ask.
+        businessId ? Promise.resolve(0) : platformCount(),
+      ]);
+
+    return {
+      total: draft + pendingReview + approved + rejected,
+      draft,
+      pending_review: pendingReview,
+      approved,
+      rejected,
+      staff_picks: staffPicks,
+      failed: false,
+    };
+  } catch (err) {
+    console.error('[getEventStats]', describeDbError(err));
+    return { ...EMPTY_EVENT_STATS, failed: true };
   }
 }
 

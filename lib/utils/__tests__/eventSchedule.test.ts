@@ -198,12 +198,43 @@ describe('compareForBanner', () => {
     expect(isEventLive(live, night)).toBe(false);
   });
 
-  it('breaks a start-time tie by priority, then id, so the order is stable', () => {
+  it('ranks by priority before start time, then id, so the order is stable', () => {
     const a = { ...soon, id: 'aaa', priority: 1 };
     const b = { ...soon, id: 'bbb', priority: 9 };
     const c = { ...soon, id: 'ccc', priority: 9 };
     const sorted = [a, c, b].sort((x, y) => compareForBanner(x, y, now));
     expect(sorted.map((e) => e.id)).toEqual(['bbb', 'ccc', 'aaa']);
+  });
+
+  it('lets priority outrank an earlier start date', () => {
+    // The regression this pins: `priority` used to sit BELOW `starts_at`, so
+    // it only separated two byte-identical timestamps. The admin's "Banner
+    // order" control promised "higher shows first among events starting the
+    // same day" and delivered almost nothing.
+    const featured = { ...later, id: 'featured', priority: 9 };
+    const sorted = [soon, featured].sort((x, y) => compareForBanner(x, y, now));
+    expect(sorted.map((e) => e.id)).toEqual(['featured', 'soon']);
+  });
+
+  it('agrees with the order getBannerEvents already applied', () => {
+    // This comparator re-ranks AFTER mount on top of the query's
+    // `priority DESC, starts_at ASC, id`. If the two disagree, hydration
+    // visibly reshuffles the strip — which is what shipped.
+    const rows = [
+      { ...soon, id: 'p9-late', priority: 9 },
+      { ...later, id: 'p9-later', priority: 9 },
+      { ...soon, id: 'p0-soon', priority: 0 },
+    ];
+    const fromQuery = [...rows].sort(
+      (x, y) =>
+        y.priority - x.priority ||
+        Date.parse(x.starts_at) - Date.parse(y.starts_at) ||
+        x.id.localeCompare(y.id),
+    );
+    const fromClient = [...rows].sort((x, y) => compareForBanner(x, y, now));
+
+    // No event here is live, so the one deliberate divergence cannot apply.
+    expect(fromClient.map((e) => e.id)).toEqual(fromQuery.map((e) => e.id));
   });
 });
 

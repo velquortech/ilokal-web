@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getEventsEnabled } from '@/lib/api/appSettings';
 import { getEventStats, getEventsForReview } from '@/lib/api/events/eventQuery';
+import { searchTermSchema } from '@/lib/validation/events';
 import { EVENT_STATUSES, type EventStatus } from '@/lib/types/event';
 import { EventReviewContent } from './components/event-review-content';
 
@@ -48,7 +49,10 @@ export default async function AdminEventsPage({
       : sp.status === 'all'
         ? ('' as const)
         : ('pending_review' as EventStatus);
-  const search = typeof sp.search === 'string' ? sp.search : undefined;
+  const search =
+    typeof sp.search === 'string'
+      ? (searchTermSchema.safeParse(sp.search).data ?? undefined)
+      : undefined;
 
   const [result, stats] = await Promise.all([
     getEventsForReview({

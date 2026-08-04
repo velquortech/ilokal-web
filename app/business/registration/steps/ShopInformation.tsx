@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, LocateFixed } from 'lucide-react';
+import { useGeolocation } from '@/components/custom/map/useGeolocation';
 
 import { Controller } from 'react-hook-form';
 import { useMultiStepForm } from '../provider/registration-form-provider';
@@ -22,7 +23,10 @@ import { Field, FieldError } from '@/components/ui/field';
 import { getCitiesByProvince, getBarangaysByCity } from '@/lib/ph-locations';
 
 const LocationPicker = dynamic(
-  () => import('../components/LocationPicker').then((m) => m.LocationPicker),
+  () =>
+    import('@/components/custom/map/LocationPicker').then(
+      (m) => m.LocationPicker,
+    ),
   {
     ssr: false,
     loading: () => (
@@ -104,8 +108,6 @@ function BasicInformation() {
 
 function Location() {
   const { form } = useMultiStepForm();
-  const [isGeolocating, setIsGeolocating] = useState(false);
-  const [geoError, setGeoError] = useState<string | null>(null);
 
   const selectedCity = form.watch('location.city');
   const latitude = form.watch('location.latitude');
@@ -145,34 +147,30 @@ function Location() {
     }
   }, [latitude, longitude, form]);
 
-  const handleDetectLocation = () => {
-    if (!navigator.geolocation) {
-      setGeoError('Geolocation is not supported by your browser.');
-      return;
-    }
-    setIsGeolocating(true);
-    setGeoError(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = parseFloat(pos.coords.latitude.toFixed(6));
-        const lng = parseFloat(pos.coords.longitude.toFixed(6));
-        form.setValue('location.latitude', lat, { shouldValidate: true });
-        form.setValue('location.longitude', lng, { shouldValidate: true });
-        setIsGeolocating(false);
-      },
-      () => {
-        setGeoError(
-          'Unable to detect location. Please click the map or enter coordinates manually.',
-        );
-        setIsGeolocating(false);
-      },
-    );
-  };
+  const setCoordinates = useCallback(
+    (lat: number, lng: number) => {
+      form.setValue('location.latitude', lat, { shouldValidate: true });
+      form.setValue('location.longitude', lng, { shouldValidate: true });
+    },
+    [form],
+  );
 
-  const handleLocationSelect = (lat: number, lng: number) => {
-    form.setValue('location.latitude', lat, { shouldValidate: true });
-    form.setValue('location.longitude', lng, { shouldValidate: true });
-  };
+  // Was twenty lines duplicated verbatim here and in branch creation.
+  const {
+    detect: handleDetectLocation,
+    isDetecting: isGeolocating,
+    error: geoError,
+    clearError,
+  } = useGeolocation(setCoordinates);
+
+  // Pinning by hand answers the failure message, so it should stop being shown.
+  const handleLocationSelect = useCallback(
+    (lat: number, lng: number) => {
+      clearError();
+      setCoordinates(lat, lng);
+    },
+    [clearError, setCoordinates],
+  );
 
   const geometryError = form.formState.errors.location?.geometry;
 

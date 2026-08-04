@@ -136,6 +136,22 @@ describe('the admin can author, but cannot silently take a shop event down', () 
   });
 });
 
+describe('a search box does not eat what is typed into it', () => {
+  const CONTENTS = [
+    `${OWNER_DIR}/events-content.tsx`,
+    `${ADMIN_DIR}/event-review-content.tsx`,
+  ];
+
+  it.each(CONTENTS)('%s ignores the navigation it caused', (relative) => {
+    const source = read(relative);
+    // Without this the debounce landing mid-typing resets the input to the URL
+    // value and deletes every character typed during the round-trip — the bug
+    // already fixed once in `app/explore/components/explore-content.tsx`.
+    expect(source).toContain('lastPushedSearch');
+    expect(source).toContain('lastPushedSearch.current = searchInput');
+  });
+});
+
 describe('the form is not forked', () => {
   it.each([
     `${OWNER_DIR}/event-dialog.tsx`,
@@ -153,5 +169,15 @@ describe('the form is not forked', () => {
     const shared = read('components/custom/events/EventFormDialog.tsx');
     // The draft button renders only for a variant that declares one.
     expect(shared).toContain('copy.draftSubmit');
+  });
+
+  it('seeds on OPEN, never from an effect watching the row object', () => {
+    const shared = read('components/custom/events/EventFormDialog.tsx');
+
+    // The tables hand down a new `event` object on every `router.refresh()` —
+    // which any sibling row's status move triggers. An effect keyed on that
+    // object reset the form under someone mid-edit and threw their work away.
+    expect(shared).toContain('onOpenChange={handleOpenChange}');
+    expect(shared).not.toMatch(/\}, \[open, event\]\)/);
   });
 });

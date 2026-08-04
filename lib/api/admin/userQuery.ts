@@ -9,6 +9,7 @@
  */
 
 import { createServerSupabaseClient } from '@/supabase/server';
+import { ilikePattern } from '@/lib/utils/postgrestSearch';
 import { AdminUser } from '@/lib/types/admin';
 
 export type UserFilterType = 'active' | 'archived' | 'all' | 'inactive';
@@ -91,14 +92,8 @@ export async function getUsersFiltered(
 
     // APPLY SEARCH FILTER
     if (search) {
-      const escapedSearch = search
-        .replace(/\\/g, '\\\\')
-        .replace(/"/g, '\\"')
-        .replace(/'/g, "''")
-        .replace(/%/g, '\\%')
-        .replace(/_/g, '\\_');
-
-      const likePattern = `"%${escapedSearch}%"`;
+      // Shared with the events search — same escaping, one implementation.
+      const likePattern = ilikePattern(search);
 
       query = query.or(
         `full_name.ilike.${likePattern},email.ilike.${likePattern}`,

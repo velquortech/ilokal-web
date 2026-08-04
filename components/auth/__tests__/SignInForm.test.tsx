@@ -181,6 +181,61 @@ describe('SignInForm', () => {
     expect(actions.redirectByRole).toHaveBeenCalledWith('admin', null);
   });
 
+  /**
+   * The reported bug, pinned.
+   *
+   * In a production build Next.js replaces the message of anything THROWN from
+   * a Server Action with this notice. The form rendered it verbatim, because
+   * the redacted object is still an `Error` and
+   * `error instanceof Error ? error.message : fallback` therefore always took
+   * the first branch — making the friendly fallback unreachable exactly when
+   * it was needed. `yarn dev` never redacts, which is why it survived review.
+   */
+  const NEXT_REDACTION =
+    'An error occurred in the Server Components render. The specific message ' +
+    'is omitted in production builds to avoid leaking sensitive details. A ' +
+    'digest property is included on this error instance which may provide ' +
+    'additional details about the nature of the error.';
+
+  it('never renders Next’s redaction notice when the action throws', async () => {
+    actions.signInAction.mockRejectedValue(new Error(NEXT_REDACTION));
+    render();
+    await submitCredentials();
+
+    expect(container.textContent).not.toContain('omitted in production');
+    expect(container.textContent).not.toContain('digest property');
+    expect(container.textContent).toContain('Failed to sign in');
+    expect(actions.redirectByRole).not.toHaveBeenCalled();
+  });
+
+  it('shows the real reason a sign-in was refused', async () => {
+    // The whole point of returning failures instead of throwing: this copy
+    // survives the production build.
+    actions.signInAction.mockResolvedValue({
+      failed: true,
+      code: 'INVALID_CREDENTIALS',
+      message: 'Incorrect email or password.',
+    });
+    render();
+    await submitCredentials();
+
+    expect(container.textContent).toContain('Incorrect email or password.');
+    expect(actions.checkMFARequiredAction).not.toHaveBeenCalled();
+    expect(actions.redirectByRole).not.toHaveBeenCalled();
+  });
+
+  it('shows a suspended account its own message, not a generic failure', async () => {
+    actions.signInAction.mockResolvedValue({
+      failed: true,
+      code: 'ACCOUNT_INACTIVE',
+      message: 'This account is suspended. Please contact support.',
+    });
+    render();
+    await submitCredentials();
+
+    expect(container.textContent).toContain('suspended');
+  });
+
   it('renders the typed rate-limit message without navigating', async () => {
     actions.signInAction.mockResolvedValue({
       rateLimited: true,

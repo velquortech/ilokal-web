@@ -20,6 +20,8 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Field, FieldError } from '@/components/ui/field';
 import { isRedirectError } from '@/lib/utils/redirectError';
+import { serverErrorText } from '@/lib/utils/errorMessage';
+import { isAuthFailure } from '@/lib/types/authResult';
 
 type AdminSignInStep = 'credentials' | 'mfa';
 
@@ -43,6 +45,13 @@ export default function AdminLoginForm() {
     startTransition(async () => {
       try {
         const response = await loginAsAdmin(data.email, data.password);
+        // Failures arrive as values now (bad credentials, 429, wrong portal),
+        // so the real reason survives the production build instead of being
+        // replaced by Next's redaction notice.
+        if (isAuthFailure(response)) {
+          setServerError(response.message);
+          return;
+        }
 
         // MFA elevation — no-op unless the admin has a verified TOTP factor.
         // Required, not cosmetic: the proxy bounces an AAL1 session off every
@@ -61,9 +70,7 @@ export default function AdminLoginForm() {
         // on the digest marker (message may be empty in production builds).
         if (isRedirectError(error)) return;
         setServerError(
-          error instanceof Error
-            ? error.message
-            : 'Login failed. Please try again.',
+          serverErrorText(error, 'Login failed. Please try again.'),
         );
       }
     });
@@ -87,9 +94,7 @@ export default function AdminLoginForm() {
       await redirectByRole('admin');
     } catch (error) {
       if (isRedirectError(error)) return;
-      setMfaError(
-        error instanceof Error ? error.message : 'Verification failed',
-      );
+      setMfaError(serverErrorText(error, 'Verification failed'));
       setMfaLoading(false);
     }
   }

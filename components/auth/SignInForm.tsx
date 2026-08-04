@@ -30,6 +30,8 @@ import { Field, FieldError } from '@/components/ui/field';
 import { ROUTES } from '@/config/routeConfig';
 import { safeNext } from '@/lib/utils/safeNext';
 import { isRedirectError } from '@/lib/utils/redirectError';
+import { serverErrorText } from '@/lib/utils/errorMessage';
+import { isAuthFailure } from '@/lib/types/authResult';
 import type { User } from '@/lib/types';
 
 type SignInStep = 'credentials' | 'mfa';
@@ -89,7 +91,11 @@ function SignInFormContent() {
     startTransition(async () => {
       try {
         const response = await signInAction(data.email, data.password);
-        if ('rateLimited' in response) {
+        // Every failure now arrives as a VALUE carrying real copy — bad
+        // credentials, a suspended account, a 429. Thrown messages are
+        // replaced by Next with its redaction notice in production builds,
+        // which is what users were being shown here.
+        if (isAuthFailure(response)) {
           setServerError(response.message);
           return;
         }
@@ -108,10 +114,11 @@ function SignInFormContent() {
       } catch (error) {
         // redirect() rejections are expected navigation, not failures.
         if (isRedirectError(error)) return;
+        // Belt and braces: nothing above throws a user-facing message any
+        // more, but an unexpected throw must still not render Next's
+        // redaction notice. `serverErrorText` screens for it.
         setServerError(
-          error instanceof Error
-            ? error.message
-            : 'Failed to sign in. Please try again.',
+          serverErrorText(error, 'Failed to sign in. Please try again.'),
         );
       }
     });
@@ -144,9 +151,7 @@ function SignInFormContent() {
       // finishSignIn throws NEXT_REDIRECT on success — let navigation proceed
       // (leave the loading state on). Any other error stops the spinner.
       if (isRedirectError(error)) return;
-      setMfaError(
-        error instanceof Error ? error.message : 'Verification failed',
-      );
+      setMfaError(serverErrorText(error, 'Verification failed'));
       setMfaLoading(false);
     }
   }

@@ -53,7 +53,7 @@ describe('authActions', () => {
     expect(res.user.email).toBe('a@b.com');
   });
 
-  it('loginAction throws on invalid credentials', async () => {
+  it('loginAction RETURNS a failure on invalid credentials (never throws)', async () => {
     const supabaseClient = {
       auth: {
         signInWithPassword: vi.fn().mockResolvedValue({
@@ -67,7 +67,18 @@ describe('authActions', () => {
       supabaseClient,
     );
 
-    await expect(loginAction('x@y.com', 'bad')).rejects.toThrow();
+    // Returned, not thrown: a thrown message is replaced by Next's redaction
+    // notice in production builds, which is what users were shown.
+    const result = await loginAction('x@y.com', 'bad');
+    expect(result).toMatchObject({
+      failed: true,
+      code: 'INVALID_CREDENTIALS',
+    });
+    // Deliberately identical for "no such account" and "wrong password" —
+    // anything more specific is an account-enumeration oracle.
+    expect('message' in result && result.message).toBe(
+      'Incorrect email or password.',
+    );
   });
 
   it('signupAction creates account when email not present', async () => {

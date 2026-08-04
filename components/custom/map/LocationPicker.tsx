@@ -1,5 +1,17 @@
 'use client';
 
+/**
+ * Click-to-pin map.
+ *
+ * Shared by the registration wizard, branch creation and the event form — it
+ * lived under `app/business/registration/components/` while branch-create was
+ * already reaching across features to import it, which is the repo's own
+ * trigger for moving a component here (CLAUDE.md §DRY).
+ *
+ * Client-only by necessity: leaflet touches `window` at import, so every call
+ * site mounts it through `dynamic(..., { ssr: false })`.
+ */
+
 import { useEffect } from 'react';
 import {
   MapContainer,
@@ -11,8 +23,18 @@ import {
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+/**
+ * Iloilo City Proper. A world map at zoom 2 asks the user to find their own
+ * city before they can pin anything — the same fallback `lib/utils/geo.ts`
+ * uses when geolocation is denied.
+ */
 const DEFAULT_CENTER: [number, number] = [10.7312, 122.5649];
 
+/**
+ * Leaflet's default marker resolves its icon by a URL relative to the CSS,
+ * which 404s under a bundler — hence the self-hosted copies in
+ * `public/leaflet`.
+ */
 const pinIcon = L.icon({
   iconUrl: '/leaflet/marker-icon.png',
   iconRetinaUrl: '/leaflet/marker-icon-2x.png',
@@ -27,6 +49,14 @@ interface LocationPickerProps {
   latitude?: number;
   longitude?: number;
   onLocationSelect: (lat: number, lng: number) => void;
+  /**
+   * Leaflet's own default is `true`, and that is right on a full-page form.
+   * Inside a SCROLLING container — a dialog body — it means a wheel scroll
+   * with the pointer over the map zooms the map instead of scrolling the form,
+   * and the user is stuck mid-form. Those call sites pass `false`; the +/−
+   * buttons and pinch still zoom.
+   */
+  scrollWheelZoom?: boolean;
 }
 
 function ClickHandler({
@@ -64,10 +94,37 @@ function MapSyncer({
   return null;
 }
 
+/**
+ * Re-measure whenever the container's box changes.
+ *
+ * Leaflet lays tiles out against the size it measured at mount. Inside a
+ * dialog that mount happens mid-open-animation, so it measures a box that is
+ * still scaling and paints a grey band where the map should be. A
+ * `ResizeObserver` covers that, a viewport rotation, and a column that reflows
+ * at a breakpoint — without any of them having to know about the others.
+ */
+function InvalidateOnResize() {
+  const map = useMap();
+
+  useEffect(() => {
+    // Covers the case where the box is already settled and no resize will ever
+    // fire.
+    map.invalidateSize();
+
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
+  }, [map]);
+
+  return null;
+}
+
 export function LocationPicker({
   latitude,
   longitude,
   onLocationSelect,
+  scrollWheelZoom = true,
 }: LocationPickerProps) {
   const hasPin =
     latitude != null &&
@@ -86,6 +143,7 @@ export function LocationPicker({
       <MapContainer
         center={hasPin ? [latitude, longitude] : DEFAULT_CENTER}
         zoom={hasPin ? 16 : 13}
+        scrollWheelZoom={scrollWheelZoom}
         style={{ height: '100%', width: '100%' }}
         className="rounded-md"
       >
@@ -95,6 +153,7 @@ export function LocationPicker({
         />
         <ClickHandler onLocationSelect={onLocationSelect} />
         <MapSyncer latitude={latitude} longitude={longitude} />
+        <InvalidateOnResize />
         {hasPin && (
           <Marker
             position={[latitude, longitude]}

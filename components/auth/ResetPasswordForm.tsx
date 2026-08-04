@@ -25,6 +25,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Field, FieldError } from '@/components/ui/field';
 import { ROUTES } from '@/config/routeConfig';
+import { serverErrorText } from '@/lib/utils/errorMessage';
 
 export default function ResetPasswordForm() {
   const router = useRouter();
@@ -82,9 +83,7 @@ export default function ResetPasswordForm() {
         finish();
       } catch (err) {
         setServerError(
-          err instanceof Error
-            ? err.message
-            : 'Something went wrong. Please try again.',
+          serverErrorText(err, 'Something went wrong. Please try again.'),
         );
       }
     });
@@ -113,9 +112,7 @@ export default function ResetPasswordForm() {
         finish();
       } catch (err) {
         setServerError(
-          err instanceof Error
-            ? err.message
-            : 'Something went wrong. Please try again.',
+          serverErrorText(err, 'Something went wrong. Please try again.'),
         );
       }
     });

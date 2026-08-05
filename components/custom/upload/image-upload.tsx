@@ -1,8 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { Image as ImageIcon, X } from 'lucide-react';
+import { Image as ImageIcon, Loader2, X } from 'lucide-react';
 import Image from 'next/image';
+import {
+  compressImage,
+  describeCompression,
+  COMPRESSION_PRESETS,
+} from '@/lib/utils/compressImage';
 
 const DEFAULT_MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
 const DEFAULT_ALLOWED_TYPES = [
@@ -22,6 +27,11 @@ interface ImageUploadFieldProps {
   allowedTypes?: string[];
   sizeErrorMessage?: string;
   typeErrorMessage?: string;
+  /**
+   * Longest edge to compress to, from `COMPRESSION_PRESETS`. Defaults to the
+   * product preset, which is what every current caller uses this field for.
+   */
+  maxDimension?: number;
 }
 
 export function ImageUploadField({
@@ -33,11 +43,14 @@ export function ImageUploadField({
   allowedTypes = DEFAULT_ALLOWED_TYPES,
   sizeErrorMessage,
   typeErrorMessage,
+  maxDimension = COMPRESSION_PRESETS.product,
 }: ImageUploadFieldProps) {
   const [preview, setPreview] = React.useState<string | null>(
     typeof defaultValue === 'string' ? defaultValue : null,
   );
   const [error, setError] = React.useState<string | null>(null);
+  const [note, setNote] = React.useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -52,30 +65,50 @@ export function ImageUploadField({
     }
   }, [defaultValue]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.files?.[0];
+    if (!picked) return;
 
-    if (!allowedTypes.includes(file.type)) {
+    if (!allowedTypes.includes(picked.type)) {
       const msg =
         typeErrorMessage ?? 'Only JPEG, PNG, GIF, or WebP images are allowed';
       setError(msg);
+      setNote(null);
       onError?.(msg);
       e.target.value = '';
       return;
     }
 
-    if (file.size > maxSizeBytes) {
-      const msg =
-        sizeErrorMessage ?? `Image must be smaller than ${maxSizeLabel}`;
-      setError(msg);
-      onError?.(msg);
-      e.target.value = '';
-      return;
-    }
-
+    // Compress BEFORE the size check, not after it. A phone photo is 3–6 MB, so
+    // rejecting first means the most common way an owner produces a picture —
+    // photographing their own shop — is simply refused. The cap is a transport
+    // limit; this is what lets a real photo satisfy it.
+    setIsCompressing(true);
     setError(null);
     onError?.(null);
+    const result = await compressImage(picked, {
+      maxBytes: maxSizeBytes,
+      maxDimension,
+    });
+    setIsCompressing(false);
+
+    const file = result.file;
+
+    if (file.size > maxSizeBytes) {
+      // Says WHY it could not be used — HEIC, animation, or genuinely enormous
+      // — rather than repeating the size rule the owner just failed.
+      const msg =
+        describeCompression(result, maxSizeLabel) ??
+        sizeErrorMessage ??
+        `Image must be smaller than ${maxSizeLabel}`;
+      setError(msg);
+      setNote(null);
+      onError?.(msg);
+      e.target.value = '';
+      return;
+    }
+
+    setNote(describeCompression(result, maxSizeLabel));
     const objectUrl = URL.createObjectURL(file);
     setPreview(objectUrl);
     onChange?.(file);
@@ -85,6 +118,7 @@ export function ImageUploadField({
     e.stopPropagation();
     setPreview(null);
     setError(null);
+    setNote(null);
     onError?.(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     onChange?.(null);
@@ -101,10 +135,19 @@ export function ImageUploadField({
       />
 
       <div
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => !isCompressing && fileInputRef.current?.click()}
+        aria-busy={isCompressing}
         className={`group border-muted-foreground/25 bg-muted/50 hover:bg-muted relative flex aspect-video min-h-40 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed transition-all ${error ? 'border-destructive' : ''}`}
       >
-        {preview ? (
+        {isCompressing ? (
+          // A 5 MB photo takes a beat to decode and re-encode. Without this the
+          // control looks frozen at exactly the moment it is doing the work
+          // that makes the upload possible.
+          <div className="text-muted-foreground flex flex-col items-center justify-center gap-2 p-6 text-center">
+            <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
+            <span className="text-sm font-medium">Resizing your image…</span>
+          </div>
+        ) : preview ? (
           <div className="relative h-full w-full">
             {/* Note: If using Next.js Image with external URLs,
                 ensure the domain is in next.config.js 'remotePatterns' */}
@@ -144,6 +187,11 @@ export function ImageUploadField({
       </div>
 
       {error && <p className="text-destructive text-sm">{error}</p>}
+      {!error && note && (
+        <p className="text-muted-foreground text-xs" aria-live="polite">
+          {note}
+        </p>
+      )}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { ImagePlus, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { compressImage, COMPRESSION_PRESETS } from '@/lib/utils/compressImage';
 
 const MAX_IMAGES = 10;
 
@@ -48,7 +49,13 @@ export function GalleryUploader({
     setUploadCount({ done: 0, total: toUpload.length });
 
     const newUrls: string[] = [];
-    for (const file of toUpload) {
+    for (const picked of toUpload) {
+      // Compressed per file rather than up front: these upload sequentially, so
+      // the owner sees progress rather than a long silent pause before any of
+      // them start.
+      const { file } = await compressImage(picked, {
+        maxDimension: COMPRESSION_PRESETS.hero,
+      });
       const url = await uploadFile(file);
       if (url) {
         newUrls.push(url);

@@ -16,6 +16,7 @@ import {
 } from '@/lib/validation/auth';
 import { updateCurrentUserProfileAction } from '@/app/(auth)/actions';
 import type { User } from '@/lib/types/user';
+import { compressImage, COMPRESSION_PRESETS } from '@/lib/utils/compressImage';
 
 interface PersonalInfoFormProps {
   user: User;
@@ -44,9 +45,14 @@ export function PersonalInfoForm({ user }: PersonalInfoFormProps) {
   const avatarUrl = watch('avatar_url');
   const initials = (user.full_name ?? user.email).slice(0, 2).toUpperCase();
 
-  const handleAvatarFile = async (file: File) => {
+  const handleAvatarFile = async (picked: File) => {
     setAvatarUploading(true);
     try {
+      // The route caps at 2 MB; an avatar is almost always a phone photo.
+      const { file } = await compressImage(picked, {
+        maxDimension: COMPRESSION_PRESETS.avatar,
+      });
+
       const formData = new FormData();
       formData.append('file', file);
 

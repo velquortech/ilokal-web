@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Camera, Loader2, Store } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { compressImage, COMPRESSION_PRESETS } from '@/lib/utils/compressImage';
 
 interface LogoUploaderProps {
   businessId: string;
@@ -25,8 +26,15 @@ export function LogoUploader({
 
     setUploading(true);
     try {
+      // The route caps at 2 MB and a phone photo is 3–6 MB, so without this an
+      // owner cannot upload the picture they just took. The server re-encodes
+      // to WebP either way; this only gets it through the door.
+      const { file: upload } = await compressImage(file, {
+        maxDimension: COMPRESSION_PRESETS.logo,
+      });
+
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', upload);
       formData.append('businessId', businessId);
 
       const res = await fetch('/api/web/upload/business-logo', {

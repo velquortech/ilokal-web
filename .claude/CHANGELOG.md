@@ -1,5 +1,266 @@
 # Changelog
 
+## 2026-08-05 — An auto supply shop fit nowhere in either taxonomy (feat/image-compression)
+
+> **ONE migration (`20260805130000_retail_trades.sql`) — data-only: 9 rows into
+> `categories`, 6 into `business_categories`. No table, column, policy or index
+> change.** Applied on LOCAL only. ⚠️ **Needs human approval before merge, then
+> `make migrate-cloud` + a ledger reconcile.**
+
+- **An auto supply store could neither describe itself nor categorize a single
+  product.** It is missing from BOTH taxonomies, and they are different tables
+  doing different jobs:
+  - `business_categories` — the SHOP type, picked once at registration, stored
+    on `businesses.category_id`. Retail had **4** rows (Bookstore, Clothing,
+    Grocery, Specialty Shop), so an auto supply store registered as *Specialty
+    Shop* — which is also what the explore filter groups it under, so the whole
+    trade is unfindable as a group.
+  - `categories` — the OFFERING type, picked per product. Retail had **7** after
+    `20260805120000`, none covering parts, oils or batteries.
+- **9 offering categories** (Retail 7 → 16): Auto & Motor Parts, Hardware &
+  Construction, Agri & Pet Supplies, Medicine & Pharmacy, Sports & Outdoor,
+  Bags & Footwear, Baby & Kids, Jewelry & Accessories, Plants & Garden. Inserted
+  global then pinned, so an unresolved vertical leaves a row visible everywhere
+  rather than nowhere.
+- **6 shop types** (Retail 4 → 10): Auto Supply / Motor Parts, Hardware /
+  Construction Supply, Agrivet / Farm Supply, Pharmacy / Drugstore, Pet Shop,
+  Sports & Outdoor Shop. *Agrivet* is one row on purpose — in PH retail the feed,
+  fertilizer and veterinary counters are the same shop.
+- **🔴 The seed's retail block would have silently swallowed these.** It is
+  wrapped in `IF NOT EXISTS (SELECT 1 FROM business_categories WHERE
+  business_type_id = retail_id)` — a guard that skips the whole block once ANY
+  retail category exists, i.e. on every database that has ever been seeded.
+  Appending there looks right and does nothing. The new rows live in their own
+  **unguarded, per-row `WHERE NOT EXISTS`** block instead.
+- **`ON CONFLICT (name)` is not available:** `business_categories` has **no
+  UNIQUE on `name`**. Idempotency is per-row `WHERE NOT EXISTS`, the shape
+  `seeds/subscription_plans.sql` was rewritten to on 2026-06-16 after a plain
+  INSERT added four duplicate plans on every re-run.
+- **🔴 A shop type with no image CRASHES registration.** `image_url` is nullable
+  in the schema, but `ShopCategoryStep.tsx:255` renders
+  `<Image src={item.imageURL} />` with no fallback and `fetchCategories.ts:14`
+  types it `string` — so a NULL does not render an empty tile, it throws and
+  takes the step with it. Every new row therefore carries an image. **The
+  nullable-column-vs-required-prop mismatch itself is pre-existing and is NOT
+  fixed here** — it needs a fallback tile in the component, which is a change to
+  a wizard step with its own QA.
+- **🔴 The first cut used picsum and all six tiles rendered broken — an
+  allowlisted host is not enough, because CSP re-checks every REDIRECT HOP.**
+  `picsum.photos` is in `imageRemotePatterns`, so `buildImgSrc` put it in
+  `img-src`; but picsum answers **302 to `https://fastly.picsum.photos`**, which
+  is not on the list, and the browser blocks the redirect target. `curl` says
+  200 (it follows the redirect), the CSP header looks correct, and the DB row is
+  fine — the only symptom is alt text where the picture should be. **Dev-only**,
+  because the production branch of `buildImgSrc` pushes a bare `https:`
+  (`next.config.ts:72`) — so this would have passed a production smoke and
+  failed for every developer touching registration.
+- **Fixed by moving to `images.unsplash.com`, which the other ten tiles already
+  use** — allowlisted *and* serving 200 with no redirect. Consistency was the
+  point: a grid where four tiles are photographs of shops and six are
+  illustrations reads as unfinished.
+- **Getting real photo ids took three attempts, and the working one is worth
+  recording.** Unsplash's search API and oEmbed both answer "Authorization
+  required"; `unsplash.com/photos/<id>/download` 307s into an anti-bot wall; a
+  `curl` of the search page returns markup with no image URLs in it. **WebFetch
+  renders the page and returns them.** That is the route to take next time a
+  category needs a picture.
+- **Chosen by eye, not by alt text.** Each candidate was downloaded at card size
+  and looked at, which is the only reason the obvious-from-the-description picks
+  were rejected: the top auto-parts result is a scrapyard, the pet-shop one is a
+  flat-lay of dog biscuits on pink, the farm-supply one is a **black-and-white
+  archival photograph**, and one auto storefront carries a legible chain name —
+  a named business on a category tile implies an affiliation that does not
+  exist. Final set: bins of vehicle lamps, a hardware tool wall, sacks of feed
+  on store shelving, a pharmacist among dispensary shelves, a dog inside a pet
+  store, an outdoor apparel shop.
+- **`h=1200` in each URL is load-bearing.** The card renders into a fixed
+  `h-36`/`h-52` box with **no `object-cover`**, so it top-crops — a portrait
+  source shows its ceiling and nothing else. Two of the six sources are
+  portrait; forcing a 4:3 crop at the CDN makes what lands in the box
+  predictable.
+- **A same-origin fallback was built and then dropped.** Generated brand tiles
+  (Cornsilk field, lucide glyph, rendered through the installed `sharp`) fixed
+  the CSP problem completely and needed no host at all — but they were
+  illustrations in a grid of photographs. Kept in history, not on the branch;
+  `public/categories/` is gone.
+- **Tests:** `category_scoping.test.sql` gained a block asserting **no live shop
+  type has a NULL or blank `image_url`** (the crash above), **no duplicated
+  `name`** (what a careless plain INSERT would produce, given there is no
+  UNIQUE), and **every image is either same-origin or on
+  `images.unsplash.com`** — the two shapes verified to survive the CSP. That
+  last one was proven to bite: setting one row back to a picsum URL makes it
+  report 1. Suite green: "ALL CATEGORY SCOPING TESTS PASSED". All sixteen retail
+  tile URLs were also fetched **as stored in the row** — 200 each, so this is
+  not an assertion about a string that was later edited.
+- **Left alone, worth knowing:** `picsum.photos` is now referenced by nothing and
+  remains in `imageRemotePatterns`, i.e. an allowlisted host that always
+  redirects somewhere blocked. Removing it changes the CSP for the whole app and
+  `mobile-api.md`'s sample seed data still quotes picsum, so it is a separate
+  call.
+- **Verified:** migration applied; re-running it inside a rolled-back
+  transaction reports `INSERT 0 0` / `UPDATE 0` (idempotent); and deleting the
+  six shop types plus nulling every category mapping, then running the seed,
+  restores all of it — 16 retail categories, 10 retail shop types, 0 null
+  images — inside a rolled-back transaction, so the dev database was never
+  touched.
+- No TypeScript or schema changed, so `make generate-types` produces no diff and
+  there is nothing new to lint or build.
+- **Not done:** cloud apply (needs approval); real photography for the six shop
+  types; and a browser pass on the registration category step.
+
+## 2026-08-05 — Two verticals had a one-option category picker (feat/image-compression)
+
+> **ONE migration (`20260805120000_more_offering_categories.sql`) — data-only:
+> 23 rows into `categories` + four `UPDATE`s pinning them to a vertical. No
+> table, column, policy or index change.** Applied on LOCAL only. ⚠️ **Needs
+> human approval before merge, then `make migrate-cloud` + a ledger reconcile.**
+
+- **A salon and a tour operator were each offered exactly ONE offering
+  category.** The picker's rule is "my vertical OR global"
+  (`getCategoriesPaginated`, `lib/api/products/productQuery.ts:48`), and after
+  `20260801064656` pinned the five seeded rows there was nothing at all for
+  Services or Tourism — only Health & Beauty, the single global row, reached
+  them. **A picker with one entry is not a choice, it is a required field with a
+  default.** F&B had two.
+- **This is the phase the scoping migration named.** `20260801064656` says out
+  loud: *"Services and Tourism intentionally end up with no vertical-specific
+  categories yet. Inventing them here would be guessing; phase 6 reads the
+  section names owners actually type and turns the recurring ones into real
+  categories."*
+- **Per-vertical, not a flat list.** 5 F&B, 4 Retail, 6 Services, 6 Tourism,
+  plus 2 global. Picker totals go 2/4/1/1 → **9/10/9/9**. Dumping them all in
+  global would have undone the scoping on purpose — an electronics shop does
+  not need "Rooms & Stays".
+- **`Gift Sets & Bundles` and `Other` stay GLOBAL**, for the reason Health &
+  Beauty already does: a gift bundle is as plausible from a bakery as from a
+  souvenir shop, and *Other* has to exist in every picker or an owner with an
+  unlisted offering has nowhere to put it.
+- **Rows are inserted global, then pinned** — so a vertical that fails to
+  resolve leaves the category visible **everywhere** rather than nowhere. Same
+  fail-open shape as `20260801064656`.
+- **The original five are LEFT IN PLACE.** `food-beverages` already carries a
+  product and `categories.id` is an FK target, so dropping a row would strand
+  `products.category_id`. They stay as the broad catch-all beside the finer
+  ones.
+- **The mapping is repeated in `seeds/business_categories.sql`, and that is not
+  redundancy.** `business_types` are created by the SEED, which runs **after**
+  migrations, so on a fresh database every `WHERE bt.name = …` in the migration
+  matches **zero rows** — the trap that once left every `offering_profile` NULL.
+  COALESCE'd, so an admin's reassignment survives a re-seed. Verified by nulling
+  all 28 mappings and re-running the seed inside a rolled-back transaction: all
+  25 re-pin.
+- **The existing SQL test broke, correctly, and was rewritten to stop being
+  able to.** `category_scoping.test.sql` asserted `count = 2` for an F&B
+  picker — a literal about how MANY categories exist inside a suite about
+  SCOPING, so adding one failed it. It now asserts the picker equals *own +
+  global* computed, and gained a loop asserting **every** live vertical has at
+  least one category of its own, which is the invariant this migration
+  establishes. Suite green: "ALL CATEGORY SCOPING TESTS PASSED".
+- **Found on the way: there is no admin path to add a category.**
+  `app/admin/[adminId]/actions/categoryActions.ts` has **zero callers**, and it
+  gates on `profile?.role !== 'super_admin'` — the role CHECK is
+  `admin | business_owner | app_user`, so `super_admin` cannot exist and the
+  action would refuse every caller it ever got. Seeding is the only way in
+  today. Not fixed here (it needs a UI, not just a role string).
+- No TypeScript changed and no schema changed, so `make generate-types` produces
+  no diff and there is nothing new to lint or build.
+- **Not done:** the cloud apply (needs approval); a browser pass on the Add
+  Product picker (dashboard is behind auth and this environment has no login
+  path); and `make migrate-reset` was **skipped** rather than run against the
+  dev database unasked — the migration is `ON CONFLICT DO NOTHING` +
+  `WHERE business_type_id IS NULL`, and the seed path was proven above without
+  destroying data.
+
+## 2026-08-05 — Oversized photos are now resized, not rejected (feat/image-compression)
+
+> Client-side only. No schema, API or auth change. Phases 1–2 of
+> [`.claude/IMAGE_COMPRESSION.md`](.claude/IMAGE_COMPRESSION.md) (local, not
+> committed); the remaining upload surfaces are phase 2's tail.
+
+- **🔴 A phone photo could not be uploaded at all.** The 2 MB cap is enforced in
+  four independent places — the registration Zod schema, the gallery's own
+  filter, three Server Actions and three route handlers — and a modern phone
+  photo is 3–6 MB. So an owner photographing their own shop, which is *the* way
+  an interior image gets produced, was told the picture was invalid with no way
+  forward. The registration gallery was the worst of it: it needs **at least
+  four** such photos, and it silently dropped the oversized ones and reported a
+  count.
+- **The server already knew how to fix this and never got the chance.**
+  `convertToWebP` downscales every display image at write time (512/1200/1600),
+  so a 5 MB photo would land in storage at a few hundred KB. It was rejected
+  before it could be transported — Server Actions cap at 3 MB, Vercel functions
+  at 4.5 MB. **The cap is a transport limit being enforced against the user as
+  if it were a rule about their photo.**
+- **New `lib/utils/compressImage.ts`** — one function, `createImageBitmap` +
+  canvas, no new dependency. Decode → downscale → encode, stepping down a fixed
+  quality ladder, then halving the dimension cap once before giving up.
+- **A fixed ladder, not a binary search:** a search costs ~7 encodes of a
+  full-resolution bitmap on a phone and lands within a few percent of the same
+  size.
+- **It never throws and never makes things worse.** Every failure path returns
+  the ORIGINAL file so the existing validation still applies — a compressor that
+  threw would turn a rejected upload into a broken form. Four things it
+  deliberately refuses to touch: **PDFs** (the licence/tax-certificate path
+  uploads raw bytes), **HEIC** (Chrome and Firefox cannot decode it, so it says
+  so by name instead of blaming the size), **animated GIF/WebP** (canvas
+  captures one frame, and the server's pipeline deliberately PRESERVES
+  animation — flattening here would be a silent regression), and anything
+  already under the cap.
+- **`imageOrientation: 'from-image'` is load-bearing.** Drawing to a canvas
+  drops EXIF, so without it an iPhone portrait uploads rotated 90°.
+- **WebP, not JPEG**, because a PNG logo re-encoded as JPEG gets a black
+  background where its transparency was.
+- **Wired into the shared `ImageUploadField`** (both product dialogs inherit it)
+  and all three registration inputs — logo, banner, and the interior batch. Each
+  compresses BEFORE the size check, shows a busy state while it works (a 5 MB
+  photo takes a beat, and a frozen-looking control at that moment reads as a
+  hang), and reports what happened: "Resized from 4.7 MB to 0.9 MB."
+- **The failure message now names the reason.** HEIC and animation cannot be
+  fixed by trying again, and an owner cannot tell which one they hit from a
+  size message.
+- **A dead branch was found by its own test.** The first draft guarded against
+  an encode coming back LARGER than the input — real for already-optimised
+  JPEGs. But compression only runs when the file is over the cap, so any result
+  accepted (`≤ maxBytes`) is smaller by construction; the guard was
+  unreachable. Removed rather than kept for comfort, with the reasoning left in
+  place so it is not re-added.
+- **Tests (+17, 2213 → 2230):** the round trip and both sizes reported; the
+  ladder stopping at the rung that fits; the dimension halving; PDFs, HEIC and
+  animated GIFs left untouched (with a single-frame GIF still compressible);
+  and four never-worse paths — encoder returns null, encoder throws, result
+  still too big, result bigger than the input. The canvas encode is injected,
+  because happy-dom has no `createImageBitmap` and the stack is frozen, so the
+  alternative to a seam is no test at all.
+- Verified: `yarn lint` + **2230** tests + a clean `yarn build`.
+- **Not verified — needs a browser:** the actual encode. happy-dom has no
+  canvas, so the tests pin the decisions, not the pixels. Worth a real phone
+  photo through the registration gallery before merge, and an iPhone portrait to
+  confirm the orientation fix.
+- **Every image surface now compresses** (phase 2 complete): the shared
+  `ImageUploadField` (which the event form and both product dialogs mount), all
+  three registration inputs, the profile logo and gallery uploaders, the
+  personal avatar, the admin avatar, branch create (cover + gallery) and branch
+  edit (cover + gallery). Documents — the licence, tax certificate and branch
+  documents — are deliberately untouched: a PDF through a canvas is a corrupt
+  PDF.
+- **The quality ladder starts at 0.92, not 0.82.** This pass exists only to
+  clear the transport cap; the server re-encodes at quality 80 and owns the
+  stored artefact, so every point given away here is given away **twice**.
+  Starting high hands the server a cleaner source at almost the same transport
+  size, and the lower rungs still catch photos that need them.
+- **Nothing converts an under-cap file.** Client conversion for a file that
+  already fits buys zero storage or delivery benefit — the server's WebP output
+  is identical either way — while adding a second lossy pass and a decode on the
+  owner's phone. The compressor exists for transport; the server owns quality.
+- **A contract sweep pins it:** every image surface calls `compressImage`, none
+  hand-rolls `createImageBitmap` or `toBlob` (the EXIF, animation and alpha
+  traps get solved once or not at all), the two document surfaces do NOT call
+  it, and the event form mounts the shared field rather than growing its own
+  file input.
+- **The build caught what the tests could not:** a `const result` in the admin
+  avatar handler collided with the existing `result` from `response.json()`.
+  Vitest never loads that component; Turbopack does.
+
 ## 2026-08-05 — Second alignment pass: dangling doc links, and a debt log listing fixed work (chore/standards-debt)
 
 > Documentation only. Follows the sweep below; this is what re-verifying that

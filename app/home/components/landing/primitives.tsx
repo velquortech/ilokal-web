@@ -54,7 +54,12 @@ export function SectionTitle({
 }: {
   children: ReactNode;
   className?: string;
-  as?: 'h2' | 'h3';
+  /**
+   * `h1` is here for standalone pages (`/for-business`): the landing's own
+   * hero owns the page's single level-1, but a page that mounts this as its
+   * top heading needs one of its own or it ships with none at all.
+   */
+  as?: 'h1' | 'h2' | 'h3';
 }) {
   return (
     <Tag

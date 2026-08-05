@@ -38,7 +38,10 @@ const FOOTER_LINKS: FooterLink[] = [
     href: landingSectionPath('voices' satisfies LandingSection),
     label: 'Voices',
   },
-  { href: ROUTES.BUSINESS.registration, label: 'List your business' },
+  // `/business/registration` is behind a protected prefix, so a logged-out
+  // reader clicking this landed on the sign-in page. The public page explains
+  // the flow and carries them into it.
+  { href: ROUTES.PUBLIC.FOR_BUSINESS, label: 'List your business' },
 ];
 
 export function CustomerFooter({

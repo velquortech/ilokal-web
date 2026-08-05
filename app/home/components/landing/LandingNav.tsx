@@ -42,6 +42,10 @@ const overlayCtaStyle =
 const brandStyle =
   'display:inline-flex;align-items:center;gap:9px;font-size:24px;';
 
+// `/business/registration` sits under a protected prefix, so a logged-out
+// visitor clicking the site's primary business CTA was bounced to /sign-in
+// having been told nothing. The explainer page is the honest destination; its
+// own first button carries them straight on into the wizard.
 const defaultActions = (
   <>
     <Link
@@ -53,7 +57,7 @@ const defaultActions = (
       Log In
     </Link>
     <Link
-      href={ROUTES.BUSINESS.registration}
+      href={ROUTES.PUBLIC.FOR_BUSINESS}
       className="il-btn-primary"
       style={s(
         'background:var(--brand);color:#fff;font-size:15px;font-weight:600;padding:11px 18px;border-radius:10px;box-shadow:0 2px 10px rgba(215,0,5,.28);',
@@ -207,7 +211,7 @@ export function LandingNav({
           >
             {mobileCta ?? (
               <Link
-                href={ROUTES.BUSINESS.registration}
+                href={ROUTES.PUBLIC.FOR_BUSINESS}
                 style={s(overlayCtaStyle)}
               >
                 List Your Business

@@ -644,11 +644,20 @@ BEGIN
     'anon must be able to read enable_events through the RPC';
   ASSERT v_flags.enable_bookings IS NOT NULL,
     'anon must be able to read enable_bookings through the RPC';
+  -- Added by 20260805090000: the public /for-business page describes the
+  -- registration flow to logged-out visitors, and reading these from the table
+  -- gave it zero rows and no error — so it advertised the strict defaults.
+  ASSERT v_flags.require_business_documents IS NOT NULL,
+    'anon must be able to read require_business_documents through the RPC';
+  ASSERT v_flags.auto_verify_businesses IS NOT NULL,
+    'anon must be able to read auto_verify_businesses through the RPC';
 
   RESET ROLE;
 
-  -- The return list IS the contract: exactly two columns, so a settings row
-  -- added later stays private unless someone deliberately widens this.
+  -- The return list IS the contract: exactly these four columns, so a settings
+  -- row added later stays private unless someone deliberately widens this.
+  -- `enable_onboarding_tour` is the live example — it exists in app_settings
+  -- and is deliberately NOT here.
   -- Read from pg_proc — a RETURNS TABLE function's output columns are its
   -- 't'-mode arguments, and information_schema.columns does not describe them.
   SELECT count(*) INTO v_rows
@@ -658,8 +667,18 @@ BEGIN
   WHERE n.nspname = 'public'
     AND p.proname = 'public_feature_flags'
     AND mode = 't';
-  ASSERT v_rows = 2,
-    'public_feature_flags must expose exactly 2 columns, found ' || v_rows;
+  ASSERT v_rows = 4,
+    'public_feature_flags must expose exactly 4 columns, found ' || v_rows;
+
+  SELECT count(*) INTO v_rows
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace,
+       unnest(p.proargnames) AS arg
+  WHERE n.nspname = 'public'
+    AND p.proname = 'public_feature_flags'
+    AND arg = 'enable_onboarding_tour';
+  ASSERT v_rows = 0,
+    'enable_onboarding_tour must stay private — it is owner-facing only';
 
   RAISE NOTICE 'public flag assertions passed';
 END $$;

@@ -160,8 +160,10 @@ describe('CustomerHeader — session decides which chrome renders', () => {
       a.getAttribute('href'),
     );
     expect(hrefs).toContain(landingSectionPath('near-you'));
-    expect(hrefs).toContain(landingSectionPath('businesses'));
     expect(hrefs).toContain(landingSectionPath('voices'));
+    // "For Businesses" is the one entry that stopped being a landing anchor:
+    // the teaser answers "should I?", the page answers "how?".
+    expect(hrefs).toContain(ROUTES.PUBLIC.FOR_BUSINESS);
     // The landing's own nav uses `#shoppers` etc, which scroll nowhere here.
     expect(hrefs.some((h) => h?.startsWith('#'))).toBe(false);
   });
@@ -170,7 +172,9 @@ describe('CustomerHeader — session decides which chrome renders', () => {
     render(null);
     expect(anchors(ROUTES.AUTH.SIGN_IN).length).toBeGreaterThan(0);
     expect(anchors(ROUTES.AUTH.SIGNUP).length).toBeGreaterThan(0);
-    expect(anchors(ROUTES.BUSINESS.registration).length).toBeGreaterThan(0);
+    // The explainer, not the protected wizard.
+    expect(anchors(ROUTES.PUBLIC.FOR_BUSINESS).length).toBeGreaterThan(0);
+    expect(anchors(ROUTES.BUSINESS.registration).length).toBe(0);
   });
 
   it('sends anon "Deals" to the real feed, not the landing teaser', () => {
@@ -224,14 +228,17 @@ describe('CustomerHeader — brand lockup destination', () => {
 });
 
 describe('CustomerHeader — anonymous conversion CTAs', () => {
-  it('offers sign-in, sign-up and the business-registration CTA', () => {
+  it('offers sign-in, sign-up and the list-your-business CTA', () => {
     render(null);
     expect(anchors(ROUTES.AUTH.SIGN_IN).length).toBe(1);
     // Sign-up appears twice: the action row and the mobile overlay CTA.
     expect(anchors(ROUTES.AUTH.SIGNUP).length).toBeGreaterThan(0);
-    const listBusiness = anchors(ROUTES.BUSINESS.registration);
+    // Two anchors share this destination now — the "For Businesses" nav entry
+    // and this CTA — so match the CTA by its label rather than by count.
+    const listBusiness = anchors(ROUTES.PUBLIC.FOR_BUSINESS).filter((a) =>
+      a.textContent?.includes('List Your Business'),
+    );
     expect(listBusiness.length).toBe(1);
-    expect(listBusiness[0]!.textContent).toContain('List Your Business');
   });
 
   it('collapses the whole row rather than hiding CTAs one by one', () => {

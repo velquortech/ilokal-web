@@ -87,8 +87,11 @@ export function Hero() {
               Start exploring
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
+            {/* The explainer, not the wizard: `/business` is a protected
+                prefix, so this button bounced a logged-out reader to /sign-in
+                with nothing explained. */}
             <Link
-              href={ROUTES.BUSINESS.registration}
+              href={ROUTES.PUBLIC.FOR_BUSINESS}
               className="inline-flex items-center rounded-full border border-[#1A1A1A]/15 bg-white/70 px-7 py-4 text-base font-semibold text-[#1A1A1A] backdrop-blur-sm transition-colors hover:border-[#D70005] hover:text-[#D70005] focus-visible:ring-2 focus-visible:ring-[#D70005] focus-visible:ring-offset-2 focus-visible:outline-none dark:border-white/15 dark:bg-white/8 dark:text-[#F7F5EF]"
             >
               List your business

@@ -14,9 +14,22 @@ export interface BusinessRegistrationMeta {
  * separate per-file requests (one multipart POST with everything exceeded
  * Vercel's 4.5 MB body limit → 413 in production).
  */
+export interface CreatedBusiness {
+  id: string;
+  /**
+   * The PERSISTED status, not the one the client asked for. The insert returns
+   * through PostgREST's `RETURNING`, which runs after the
+   * `set_business_initial_status` BEFORE INSERT trigger — so with
+   * `auto_verify_businesses` on this comes back `'verified'` already. The
+   * success dialog forks on it; echoing a requested value would reproduce the
+   * "under review" lie one layer down.
+   */
+  status?: string | null;
+}
+
 export async function registerBusiness(
   meta: BusinessRegistrationMeta,
-): Promise<{ id: string }> {
+): Promise<CreatedBusiness> {
   return await apiClient.post('/api/web/businesses', meta);
 }
 

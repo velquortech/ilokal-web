@@ -167,6 +167,46 @@ export function businessPath(
   return ['/business', businessId, ...segments].filter(Boolean).join('/');
 }
 
+/**
+ * Marks the one arrival we can PROVE is the post-registration landing.
+ *
+ * Only the registration success dialog appends it, and the dashboard strips it
+ * with `router.replace` once consumed — so a refresh, a bookmark or a shared
+ * link cannot replay the welcome. Deliberately not derived from
+ * `businesses.created_at`: that is a heuristic with a clock in it, and a slow
+ * first login or a re-registration both misfire.
+ *
+ * It must be appended to `businessPath(id)` directly, NOT to `/business` — the
+ * resolver at `app/business/page.tsx` answers with `redirect(businessPath(id))`,
+ * which drops every search param.
+ */
+export const ONBOARDING_WELCOME_PARAM = 'welcome';
+
+/** The post-registration destination: the owner's dashboard, flagged once. */
+export function businessWelcomePath(businessId: string): string {
+  return `${businessPath(businessId)}?${ONBOARDING_WELCOME_PARAM}=1`;
+}
+
+/**
+ * The same dashboard URL with the welcome marker dropped and every other param
+ * kept — a branch selection must survive, or consuming the marker would
+ * silently kick the owner back to all-branches mode.
+ */
+export function businessPathWithoutWelcome(
+  businessId: string,
+  searchParams: Record<string, string | string[] | undefined>,
+): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (key === ONBOARDING_WELCOME_PARAM || value === undefined) continue;
+    if (Array.isArray(value))
+      value.forEach((entry) => params.append(key, entry));
+    else params.set(key, value);
+  }
+  const qs = params.toString();
+  return qs ? `${businessPath(businessId)}?${qs}` : businessPath(businessId);
+}
+
 export function businessShopPath(businessId: string): string {
   return businessPath(businessId, 'shop');
 }

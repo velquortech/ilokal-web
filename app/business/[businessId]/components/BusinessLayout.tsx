@@ -13,6 +13,7 @@ import { ShopPendingBanner } from '../home/components/PendingBanner';
 import { ActiveBranchBanner } from './ActiveBranchBanner';
 import { OfferingVocabularyProvider } from '@/providers/OfferingVocabularyProvider';
 import { CelebrateProvider } from '@/components/custom/Celebrate';
+import { OnboardingTourProvider } from '@/components/custom/onboarding/OnboardingTourProvider';
 import { VerifiedCelebration } from './VerifiedCelebration';
 import type { OfferingVocabulary } from '@/lib/types/offering';
 
@@ -23,6 +24,7 @@ export default function BusinessLayout({
   branches = [],
   vocabulary,
   flags = {},
+  tourCompleted = false,
 }: {
   children: React.ReactNode;
   user: User;
@@ -31,6 +33,8 @@ export default function BusinessLayout({
   vocabulary?: OfferingVocabulary | null;
   /** `app_settings` kill switches, keyed as the nav config names them. */
   flags?: Record<string, boolean>;
+  /** Stored answer to the guided tour — per shop, not per device. */
+  tourCompleted?: boolean;
 }) {
   return (
     <UserProvider user={user}>
@@ -48,23 +52,33 @@ export default function BusinessLayout({
                     } as React.CSSProperties
                   }
                 >
-                  <BusinessSidebar flags={flags} />
-                  <SidebarInset className="flex flex-1 flex-col overflow-hidden">
-                    <BusinessHeader branches={branches} />
-                    <VerifiedCelebration
-                      businessId={shop?.id}
-                      status={shop?.status}
-                    />
-                    <ActiveBranchBanner branches={branches} />
-                    {shop?.status === 'pending' && (
-                      <div className="px-3 pt-3 pb-1">
-                        <ShopPendingBanner />
+                  {/* Inside `SidebarProvider` (the tour opens the sidebar) and
+                      wrapping BOTH halves, because the sidebar's user menu and
+                      the content's setup card are both entry points. */}
+                  <OnboardingTourProvider
+                    businessId={shop?.id}
+                    enabled={flags.enable_onboarding_tour === true}
+                    flags={flags}
+                    tourCompleted={tourCompleted}
+                  >
+                    <BusinessSidebar flags={flags} />
+                    <SidebarInset className="flex flex-1 flex-col overflow-hidden">
+                      <BusinessHeader branches={branches} />
+                      <VerifiedCelebration
+                        businessId={shop?.id}
+                        status={shop?.status}
+                      />
+                      <ActiveBranchBanner branches={branches} />
+                      {shop?.status === 'pending' && (
+                        <div className="px-3 pt-3 pb-1">
+                          <ShopPendingBanner />
+                        </div>
+                      )}
+                      <div className="flex flex-1 overflow-auto px-10 py-6">
+                        {children}
                       </div>
-                    )}
-                    <div className="flex flex-1 overflow-auto px-10 py-6">
-                      {children}
-                    </div>
-                  </SidebarInset>
+                    </SidebarInset>
+                  </OnboardingTourProvider>
                 </SidebarProvider>
                 <AIChatSheet />
               </AIChatProvider>

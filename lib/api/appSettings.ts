@@ -106,3 +106,48 @@ export async function getBookingsEnabled(): Promise<boolean> {
 export async function getEventsEnabled(): Promise<boolean> {
   return readFlag('enable_events');
 }
+
+/**
+ * Onboarding-tour kill switch (`enable_onboarding_tour`).
+ *
+ * **Fails closed, like its siblings.** The row is SEEDED `true` by migration
+ * `20260804233000`, which is what makes that safe: "absent" is unreachable, so
+ * this reader never has to guess. Defaulting an absent row to `true` instead
+ * would have been actively unsafe here — `app_settings` is readable `TO
+ * authenticated` only, so a caller on the `anon` role gets zero rows and NO
+ * error, and an ON-by-default reader would read that as "enabled" and silently
+ * defeat an admin who switched it off. Exactly the trap that moved `readFlag`
+ * onto the `public_feature_flags` RPC.
+ *
+ * Read straight from the table rather than through that RPC: only a signed-in
+ * business owner ever sees this, and widening the anon-facing function would
+ * need a migration to expose something anonymous visitors have no use for.
+ */
+export async function getOnboardingTourEnabled(): Promise<boolean> {
+  try {
+    const supabase = await createServerSupabaseClient();
+
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'enable_onboarding_tour')
+      .maybeSingle();
+
+    if (error) {
+      console.error('[getOnboardingTourEnabled]', error);
+      return false;
+    }
+
+    // No row visible — either never seeded, or the caller cannot read the
+    // table. Both mean "we do not know", and an overlay that paints over the
+    // dashboard is the one thing worth being timid about.
+    if (!data) return false;
+
+    return data.value === true;
+  } catch (err) {
+    if (isDynamicUsageError(err)) throw err;
+
+    console.error('[getOnboardingTourEnabled]', err);
+    return false;
+  }
+}

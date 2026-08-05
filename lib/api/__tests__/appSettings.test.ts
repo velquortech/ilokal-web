@@ -5,7 +5,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getRegistrationSettings } from '../appSettings';
+import {
+  getRegistrationSettings,
+  getOnboardingTourEnabled,
+} from '../appSettings';
 import { createServerSupabaseClient } from '@/supabase/server';
 
 vi.mock('@/supabase/server', () => ({ createServerSupabaseClient: vi.fn() }));
@@ -75,5 +78,72 @@ describe('getRegistrationSettings', () => {
       requireBusinessDocuments: true, // fallback — 'yes' is not boolean
       autoVerifyBusinesses: true,
     });
+  });
+});
+
+function mockFlagRow(
+  row: { value: unknown } | null,
+  error: { message: string } | null = null,
+) {
+  const supabase = {
+    from: vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          maybeSingle: vi.fn().mockResolvedValue({ data: row, error }),
+        }),
+      }),
+    }),
+  };
+  mockedCreateClient.mockResolvedValue(
+    supabase as unknown as Awaited<
+      ReturnType<typeof createServerSupabaseClient>
+    >,
+  );
+}
+
+describe('getOnboardingTourEnabled', () => {
+  it('fails closed when no row is visible', async () => {
+    // The row is seeded true by 20260804233000, so "absent" means either the
+    // migration has not landed or the caller cannot read `app_settings` (it is
+    // readable TO authenticated only — an anon caller gets zero rows and NO
+    // error). Answering `true` there would silently defeat an admin's OFF
+    // switch, which is the trap that moved `readFlag` onto the RPC.
+    mockFlagRow(null);
+
+    await expect(getOnboardingTourEnabled()).resolves.toBe(false);
+  });
+
+  it('honours an admin turning it off', async () => {
+    mockFlagRow({ value: false });
+
+    await expect(getOnboardingTourEnabled()).resolves.toBe(false);
+  });
+
+  it('honours an admin turning it back on', async () => {
+    mockFlagRow({ value: true });
+
+    await expect(getOnboardingTourEnabled()).resolves.toBe(true);
+  });
+
+  it('fails closed on a read error', async () => {
+    // An overlay painted over the dashboard is the one failure worth being
+    // timid about — and switching it off without a deploy is what this flag
+    // is for.
+    mockFlagRow(null, { message: 'boom' });
+
+    await expect(getOnboardingTourEnabled()).resolves.toBe(false);
+  });
+
+  it('fails closed when the client itself throws', async () => {
+    mockedCreateClient.mockRejectedValue(new Error('no cookies'));
+
+    await expect(getOnboardingTourEnabled()).resolves.toBe(false);
+  });
+
+  it('accepts only a real boolean true', async () => {
+    // A truthy string is a mis-seeded row, not consent.
+    mockFlagRow({ value: 'yes' });
+
+    await expect(getOnboardingTourEnabled()).resolves.toBe(false);
   });
 });

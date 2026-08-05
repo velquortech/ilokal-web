@@ -31,6 +31,7 @@ vi.mock('@/providers/BusinessProvider', () => ({
 vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
 
 import { SidebarProvider } from '@/components/ui/sidebar';
+import { OnboardingTourProvider } from '@/components/custom/onboarding/OnboardingTourProvider';
 import { UserMenu } from '@/app/business/[businessId]/components/UserMenu';
 import { ROUTES } from '@/config/routeConfig';
 
@@ -94,5 +95,42 @@ describe('UserMenu (business) logout', () => {
     expect(item).toBeDefined();
     expect(item!.textContent).toContain('Signing out');
     expect(item!.getAttribute('aria-disabled')).toBe('true');
+  });
+});
+
+async function openMenuWithTour(enabled: boolean) {
+  act(() =>
+    root.render(
+      <SidebarProvider>
+        <OnboardingTourProvider businessId="biz-1" enabled={enabled}>
+          <UserMenu />
+        </OnboardingTourProvider>
+      </SidebarProvider>,
+    ),
+  );
+  const trigger = container.querySelector('button')!;
+  await act(async () => {
+    trigger.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, button: 0 }),
+    );
+    trigger.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await Promise.resolve();
+  });
+  return Array.from(document.querySelectorAll('[role="menuitem"]')).find((el) =>
+    /Replay tour/.test(el.textContent || ''),
+  );
+}
+
+describe('UserMenu (business) tour replay', () => {
+  it('offers a replay when the tour is switched on', async () => {
+    // Replay is the only way back in after one stray "Not now" — without it a
+    // single click ends onboarding permanently.
+    expect(await openMenuWithTour(true)).toBeDefined();
+  });
+
+  it('advertises nothing when the tour is switched off', async () => {
+    // Absent, not disabled: a menu entry that opens nothing is worse than one
+    // that is not there.
+    expect(await openMenuWithTour(false)).toBeUndefined();
   });
 });

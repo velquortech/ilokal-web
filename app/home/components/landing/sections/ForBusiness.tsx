@@ -47,13 +47,21 @@ export function ForBusiness() {
               ))}
             </ul>
 
-            <div className="il-reveal mt-9">
+            <div className="il-reveal mt-9 flex flex-wrap items-center gap-x-6 gap-y-3">
               <Link
-                href={ROUTES.BUSINESS.registration}
+                href={ROUTES.PUBLIC.FOR_BUSINESS}
                 className="group inline-flex items-center gap-2 rounded-full bg-[#1A1A1A] px-7 py-4 text-base font-semibold text-[#FBFAF6] transition-colors hover:bg-[#D70005] focus-visible:ring-2 focus-visible:ring-[#D70005] focus-visible:ring-offset-2 focus-visible:outline-none dark:bg-[#FBFAF6] dark:text-[#1A1A1A] dark:hover:bg-[#FEE87B]"
               >
                 List your business
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+              {/* This block answers "should I?"; the page answers "how?" —
+                  and unlike the wizard it is readable without an account. */}
+              <Link
+                href={ROUTES.PUBLIC.FOR_BUSINESS}
+                className="text-[0.9375rem] font-semibold text-[#1A1A1A] underline underline-offset-4 hover:text-[#D70005] focus-visible:ring-2 focus-visible:ring-[#D70005] focus-visible:outline-none dark:text-[#F7F5EF] dark:hover:text-[#FEE87B]"
+              >
+                What you&rsquo;ll need
               </Link>
             </div>
           </div>

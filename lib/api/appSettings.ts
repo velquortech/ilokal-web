@@ -20,21 +20,25 @@ const FALLBACKS: RegistrationSettings = {
 export async function getRegistrationSettings(): Promise<RegistrationSettings> {
   const supabase = await createServerSupabaseClient();
 
+  // Via the RPC, NOT a table read. `app_settings` is readable `TO
+  // authenticated` only, so an ANONYMOUS caller got zero rows and **no
+  // error** — which this function then read as "no rows" and answered with the
+  // strict fallbacks. Invisible while both callers were behind auth; the public
+  // `/for-business` page made it visible by telling every logged-out visitor
+  // they needed a business permit and a 24–48 hour review while the database
+  // said neither was true. Same trap that moved `readFlag` here first.
   const { data, error } = await supabase
-    .from('app_settings')
-    .select('key, value')
-    .in('key', ['require_business_documents', 'auto_verify_businesses']);
+    .rpc('public_feature_flags')
+    .maybeSingle();
 
   if (error || !data) {
-    console.error('[getRegistrationSettings]', error);
+    if (error) console.error('[getRegistrationSettings]', error);
     return FALLBACKS;
   }
 
-  const byKey = new Map(data.map((row) => [row.key, row.value]));
-  const asBool = (key: string, fallback: boolean): boolean => {
-    const value = byKey.get(key);
-    return typeof value === 'boolean' ? value : fallback;
-  };
+  const row = data as Partial<Record<string, unknown>>;
+  const asBool = (key: string, fallback: boolean): boolean =>
+    typeof row[key] === 'boolean' ? (row[key] as boolean) : fallback;
 
   return {
     requireBusinessDocuments: asBool(

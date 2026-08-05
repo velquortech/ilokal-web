@@ -1,5 +1,90 @@
 # Changelog
 
+## 2026-08-05 — A public page for how to register, and the CTAs that led nowhere (feat/how-to-register)
+
+> **ONE migration (`20260805090000_public_registration_flags.sql`) — widens an
+> existing SECURITY DEFINER function's return list. No table, column or policy
+> change.** Applied on LOCAL ONLY. ⚠️ **Needs human approval before merge, then
+> `make migrate-cloud` + a ledger reconcile.** Parity table (HR1–HR17) and the
+> phased plan: [`.claude/HOW_TO_REGISTER.md`](.claude/HOW_TO_REGISTER.md)
+> (local, not committed).
+
+- **🔴 Every public "List your business" CTA dead-ended at a sign-in wall.** All
+  six of them — the landing nav, the landing hero, the business block, the final
+  CTA, the explore nav and the explore footer — pointed at
+  `ROUTES.BUSINESS.registration`. But `/business` is a wholesale protected prefix
+  and the wizard's layout calls `getMyBusinesses()`, which throws
+  unauthenticated. A stranger clicking the site's primary business CTA was
+  bounced to `/sign-in` having been told nothing about what registering
+  involves. **That, not the absence of a page, is what this fixes.**
+- **New `/for-business`** — a public route, deliberately NOT under `/business`:
+  a page for logged-out visitors placed inside a protected prefix is a page its
+  own audience cannot open, and carving a marketing exception into a security
+  prefix trades the wrong thing.
+- **The page is generated from the wizard, not written alongside it.** The steps
+  come from the wizard's own metadata, so the page cannot describe a flow the
+  product no longer has — and it shows the **real fields** each step asks for
+  (`Map pin`, `Photos of the shop (4 or more)`), because the four-photo minimum
+  is what people discover at step three and abandon over.
+- **New `data/stepMeta.ts` splits the step titles from the step COMPONENTS.**
+  `steps.tsx` carried both, so naming the steps anywhere else meant pulling the
+  whole client-side form into that bundle — the reason a marketing page would
+  otherwise have been given its own hand-typed copy of the list. The wizard now
+  builds its components around the same metadata, keyed by a step-id union, so a
+  new step is a compile error until it has both a component and a description.
+- **Nothing factual on the page is hardcoded.** The documents line reads
+  `require_business_documents` — off for the MVP, so it says "No permits or
+  paperwork", and it says the opposite the day an admin flips it. The
+  after-submit copy reads `auto_verify_businesses`: promising a 24–48 hour
+  review on an indexed page would be the exact lie ON18 just removed from the
+  success dialog, with a bigger audience.
+- **🔴 Which is how the smoke test caught a live one.** A production build of
+  the page told every anonymous visitor they needed a **business permit** and a
+  **review**, while the database said `require_business_documents = false` and
+  `auto_verify_businesses = true`. Cause: `getRegistrationSettings` read
+  `app_settings` directly, and that table is readable `TO authenticated` only —
+  so an anonymous caller gets **zero rows and no error**, which the function read
+  as "not configured" and answered with its strict fallbacks. Invisible while
+  both callers were behind auth. The migration widens the existing
+  `public_feature_flags()` RPC (fixed return list, so a future settings row stays
+  private by default) and the reader goes through it — the same trap, and the
+  same fix, as the events flags.
+- **Design.** Reuses the landing's own primitives and the public shell rather
+  than a second set: one Cornsilk "before you start" card (Charcoal on Cornsilk
+  is 14.12:1), a numbered spine — numbering earns its place because the wizard
+  IS a sequence, which is also why the landing's business block stays a
+  three-line teaser and does not repeat these — and field names set in mono so
+  they read as the form rather than as prose. **No `.il-reveal`**: those rules
+  are scoped to `[data-ilokal-root]`, which this page is not inside, so they
+  would have silently done nothing. The FAQ is native `<details>`, so the page
+  ships no JavaScript of its own.
+- **The FAQ answers only what the schema or the flow can back.** No pricing
+  question: there is no billing surface in this app, and "free forever" on an
+  indexed page is a commercial promise, not a product fact.
+- **`RegistrationSteps` stopped claiming progress nobody has made.** It printed
+  "Step 1 of N" from a prop that was defaulted and that no caller ever passed,
+  while every row rendered identically — a static list wearing a progress
+  indicator's clothes. It reads the step count now. And the dashboard's "Learn
+  More", a `<Button>` with no handler since it was written, finally has a
+  destination.
+- **Tests (+20, 2186 → 2206):** the step spine grows from four to five the
+  moment the documents flag flips and names the Documents step only then; the
+  prerequisites and after-submit copy fork on their flags and never render both
+  variants; the hero survives `renderToStaticMarkup` with no `opacity:0`; and a
+  contract sweep over the whole landing and customer directories — not a list of
+  known files, which is how the first version of it passed while the hero and
+  final CTA still pointed at the wizard — asserts no public surface links a
+  logged-out visitor into the protected prefix.
+- Verified: `yarn lint` + **2206** tests + a clean `yarn build`, plus a real
+  production smoke: `/for-business` 200 for an anonymous visitor rendering the
+  four steps, "No permits or paperwork" and "goes live right away"; `/home` and
+  `/explore` each carrying links to it and **zero** remaining links to
+  `/business/registration`.
+- **Not done:** the cloud apply (needs approval); threading `?next=` so signup
+  returns an owner to the wizard (`safeNext` is customer-scoped today, so the
+  anonymous CTA goes to signup plainly); and a browser pass at 320/768/1280 in
+  both themes.
+
 ## 2026-08-05 — "Go to dashboard" looked dead while it worked (feat/business-onboarding)
 
 > One button. No schema, API or auth change.

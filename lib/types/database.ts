@@ -2310,8 +2310,10 @@ export type Database = {
       public_feature_flags: {
         Args: never
         Returns: {
+          auto_verify_businesses: boolean
           enable_bookings: boolean
           enable_events: boolean
+          require_business_documents: boolean
         }[]
       }
       record_view: {

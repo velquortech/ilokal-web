@@ -79,7 +79,7 @@ function SignupFormContent() {
     watch,
   } = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { role: 'app_user' },
+    defaultValues: { role: 'business_owner' },
     mode: 'onBlur',
   });
   const selectedRole = watch('role');

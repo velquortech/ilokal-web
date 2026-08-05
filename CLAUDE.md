@@ -277,7 +277,8 @@ Key facts about the current normalized schema (as of 2026-06-08):
 ## API security & performance standards
 
 Standards established by the 2026-07-17 perf/security audit (branch
-`perf/security-hardening`, full log in `.claude/PERFORMANCE_AUDIT.md`). All new
+`perf/security-hardening`; the audit doc was local and is gone — the findings
+and what landed are in the four 2026-07-17 `.claude/CHANGELOG.md` entries). All new
 code must follow these:
 
 - **RLS policies: always wrap auth functions** — write `(select auth.uid())` /
@@ -349,7 +350,6 @@ Always loaded:
 @.claude/docs/protected-routes.md
 @.claude/docs/auth-rate-limits.md
 @.claude/CHANGELOG.md
-@.claude/skill.md
 
 Load on request (read when topic is relevant):
 - `.claude/docs/architecture.md` — system design, auth flow diagrams

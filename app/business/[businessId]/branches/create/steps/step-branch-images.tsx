@@ -7,6 +7,7 @@ import { Field, FieldError } from '@/components/ui/field';
 import { ImageIcon, Upload, X } from 'lucide-react';
 import { useRef, useState, useEffect } from 'react';
 import { useBranchForm } from '../provider/branch-form-provider';
+import { compressImage, COMPRESSION_PRESETS } from '@/lib/utils/compressImage';
 
 export function StepBranchImages() {
   return (
@@ -120,9 +121,14 @@ function CoverImageUpload() {
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
+              onChange={async (e) => {
+                const picked = e.target.files?.[0];
+                if (!picked) return;
+                // Compressed here so the Server Action's 2 MB cap does not
+                // reject a photo taken on the phone filling in this form.
+                const { file } = await compressImage(picked, {
+                  maxDimension: COMPRESSION_PRESETS.hero,
+                });
                 form.setValue('cover_image', file, { shouldValidate: true });
                 cacheFile('cover_image', file);
                 if (fileInputRef.current) fileInputRef.current.value = '';
@@ -187,9 +193,17 @@ function GalleryImagesUpload() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryFiles = (form.watch('gallery_images') as File[]) ?? [];
 
-  const handleAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    if (!files.length) return;
+  const handleAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(e.target.files ?? []);
+    if (!picked.length) return;
+    const files = await Promise.all(
+      picked.map(async (file) => {
+        const { file: compressed } = await compressImage(file, {
+          maxDimension: COMPRESSION_PRESETS.hero,
+        });
+        return compressed;
+      }),
+    );
     const current = form.getValues('gallery_images') ?? [];
     const merged = [...current, ...files].slice(0, 10);
     form.setValue('gallery_images', merged, { shouldValidate: true });

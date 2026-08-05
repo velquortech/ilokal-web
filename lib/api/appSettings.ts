@@ -1,5 +1,6 @@
 'use server';
 
+import { cache } from 'react';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { isDynamicUsageError } from '@/lib/utils/dynamicUsage';
 
@@ -17,28 +18,93 @@ const FALLBACKS: RegistrationSettings = {
   autoVerifyBusinesses: false,
 };
 
-export async function getRegistrationSettings(): Promise<RegistrationSettings> {
-  const supabase = await createServerSupabaseClient();
+/**
+ * One flag read per request, shared by every caller.
+ *
+ * Via the RPC, NOT a table read: `app_settings` is readable `TO authenticated`
+ * only, so an ANONYMOUS caller gets zero rows and **no error** — which reads as
+ * "not configured" and yields the strict fallbacks. Invisible while every
+ * caller was behind auth; the public `/for-business` page made it visible by
+ * telling logged-out visitors they needed a business permit and a review while
+ * the database said neither was true.
+ *
+ * `React.cache`d because a single public page render asked for these flags
+ * FOUR times — once for the registration copy, twice inside `PublicShell` for
+ * the nav kill switches, once more for the page metadata. `'use server'`
+ * constrains this module's EXPORTS, not its internals, so caching a private
+ * helper is safe where caching the exports is not.
+ */
+const readPublicFlags = cache(
+  async (): Promise<Record<string, unknown> | null> => {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .rpc('public_feature_flags')
+      .maybeSingle();
 
-  // Via the RPC, NOT a table read. `app_settings` is readable `TO
-  // authenticated` only, so an ANONYMOUS caller got zero rows and **no
-  // error** — which this function then read as "no rows" and answered with the
-  // strict fallbacks. Invisible while both callers were behind auth; the public
-  // `/for-business` page made it visible by telling every logged-out visitor
-  // they needed a business permit and a 24–48 hour review while the database
-  // said neither was true. Same trap that moved `readFlag` here first.
+    if (error) {
+      console.error('[readPublicFlags]', error);
+      return null;
+    }
+    return (data as Record<string, unknown> | null) ?? null;
+  },
+);
+
+export async function getRegistrationSettings(): Promise<RegistrationSettings> {
+  const data = await readPublicFlags();
+
+  if (!data) return FALLBACKS;
+
+  // The two registration keys were added to the RPC by 20260805090000. If the
+  // app is deployed BEFORE that migration reaches the database, the older
+  // function still resolves — successfully, without them — and reading that as
+  // "not configured" would regress the authenticated flows that worked before:
+  // the wizard would grow a Documents step and the success dialog would go
+  // back to promising a review. So fall through to the table read, which is
+  // what those callers used and which works for a signed-in user.
+  const row = data as Partial<PublicFlagRow>;
+  if (
+    typeof row.require_business_documents !== 'boolean' ||
+    typeof row.auto_verify_businesses !== 'boolean'
+  ) {
+    return readRegistrationSettingsFromTable(
+      await createServerSupabaseClient(),
+    );
+  }
+
+  return {
+    requireBusinessDocuments: row.require_business_documents,
+    autoVerifyBusinesses: row.auto_verify_businesses,
+  };
+}
+
+type PublicFlagRow = {
+  require_business_documents: boolean;
+  auto_verify_businesses: boolean;
+};
+
+/**
+ * The pre-RPC read, kept as the fallback for the deploy window described above.
+ * Returns the strict defaults for a caller who cannot see the table — which is
+ * every anonymous one, and the reason the RPC exists.
+ */
+async function readRegistrationSettingsFromTable(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+): Promise<RegistrationSettings> {
   const { data, error } = await supabase
-    .rpc('public_feature_flags')
-    .maybeSingle();
+    .from('app_settings')
+    .select('key, value')
+    .in('key', ['require_business_documents', 'auto_verify_businesses']);
 
   if (error || !data) {
-    if (error) console.error('[getRegistrationSettings]', error);
+    if (error) console.error('[getRegistrationSettings fallback]', error);
     return FALLBACKS;
   }
 
-  const row = data as Partial<Record<string, unknown>>;
-  const asBool = (key: string, fallback: boolean): boolean =>
-    typeof row[key] === 'boolean' ? (row[key] as boolean) : fallback;
+  const byKey = new Map(data.map((entry) => [entry.key, entry.value]));
+  const asBool = (key: string, fallback: boolean): boolean => {
+    const value = byKey.get(key);
+    return typeof value === 'boolean' ? value : fallback;
+  };
 
   return {
     requireBusinessDocuments: asBool(
@@ -67,24 +133,10 @@ type PublicFlag = 'enable_events' | 'enable_bookings';
 
 async function readFlag(key: PublicFlag): Promise<boolean> {
   try {
-    const supabase = await createServerSupabaseClient();
+    const data = await readPublicFlags();
+    if (!data) return false;
 
-    // Via the RPC, NOT a table read: `app_settings` is readable `TO
-    // authenticated` only, so selecting it directly returns zero rows for an
-    // anonymous visitor — and this reader fails closed, which made the whole
-    // public events surface invisible to logged-out users. The function is
-    // SECURITY DEFINER with a fixed return list, so it exposes these two flags
-    // and nothing else.
-    const { data, error } = await supabase
-      .rpc('public_feature_flags')
-      .maybeSingle();
-
-    if (error || !data) {
-      if (error) console.error(`[readFlag ${key}]`, error);
-      return false;
-    }
-
-    return (data as Record<PublicFlag, boolean>)[key] === true;
+    return data[key] === true;
   } catch (err) {
     // Next signals "this route cannot be static" by THROWING from `cookies()`.
     // Swallowing that would answer `false` and let the route prerender with

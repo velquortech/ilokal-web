@@ -28,6 +28,13 @@ const read = (relative: string) => readFileSync(join(ROOT, relative), 'utf8');
  */
 const PUBLIC_DIRS = ['app/home/components/landing', 'components/customer'];
 
+/**
+ * The page itself is swept separately: it MAY link to the wizard, but only
+ * behind a role check — a signed-in customer sent there is bounced by the
+ * proxy, which is the dead-end this page exists to remove.
+ */
+const PAGE = 'app/for-business/page.tsx';
+
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir)) {
@@ -58,6 +65,23 @@ describe('public business CTAs', () => {
       readFileSync(file, 'utf8').includes('ROUTES.PUBLIC.FOR_BUSINESS'),
     );
     expect(linksToPage.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('gates the page’s own wizard link on the role, not on a session', () => {
+    const source = read(PAGE);
+
+    // `roleAllowedForPath` admits only these two into `/business/**`.
+    expect(source).toContain("user?.role === 'business_owner'");
+    expect(source).toContain("user?.role === 'admin'");
+    // The bug this replaced: `Boolean(user)`, which sent customers to the
+    // wizard and had them bounced to /home with no explanation.
+    expect(source).not.toContain('const signedIn = Boolean(user)');
+  });
+
+  it('is registered for session refresh, since it reads one', () => {
+    // Unmatched, nothing refreshes an expiring token: the RSC cannot write the
+    // rotated cookie, so a live owner session renders as anonymous.
+    expect(read('proxy.ts')).toContain("'/for-business'");
   });
 
   it('lands somewhere anonymous visitors can actually read', () => {

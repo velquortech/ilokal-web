@@ -18,6 +18,8 @@ const mockedCreateClient = vi.mocked(createServerSupabaseClient);
 function mockSettingsRows(
   row: Record<string, unknown> | null,
   error: { message: string } | null = null,
+  /** The table read the RPC path falls back to (pre-migration deploys). */
+  tableRows: { key: string; value: unknown }[] | null = null,
 ) {
   // Through the RPC, not a table read: `app_settings` is readable TO
   // authenticated only, so a table read answers an ANONYMOUS caller with zero
@@ -26,6 +28,11 @@ function mockSettingsRows(
   const supabase = {
     rpc: vi.fn().mockReturnValue({
       maybeSingle: vi.fn().mockResolvedValue({ data: row, error }),
+    }),
+    from: vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        in: vi.fn().mockResolvedValue({ data: tableRows, error: null }),
+      }),
     }),
   };
   mockedCreateClient.mockResolvedValue(
@@ -41,8 +48,8 @@ beforeEach(() => {
 });
 
 describe('getRegistrationSettings', () => {
-  it('returns the stored boolean values', async () => {
-    mockSettingsRows({
+  it('returns the stored boolean values, read through the RPC', async () => {
+    const supabase = mockSettingsRows({
       require_business_documents: false,
       auto_verify_businesses: true,
     });
@@ -51,6 +58,9 @@ describe('getRegistrationSettings', () => {
       requireBusinessDocuments: false,
       autoVerifyBusinesses: true,
     });
+    // Named explicitly: a typo'd RPC would otherwise pass by falling through
+    // to the fallbacks, which is the failure this change was chasing.
+    expect(supabase.rpc).toHaveBeenCalledWith('public_feature_flags');
   });
 
   it('falls back to strict defaults when rows are missing', async () => {
@@ -71,15 +81,49 @@ describe('getRegistrationSettings', () => {
     });
   });
 
-  it('ignores non-boolean values per key', async () => {
-    mockSettingsRows({
-      require_business_documents: 'yes',
-      auto_verify_businesses: true,
+  it('falls back to the table when the RPC predates the migration', async () => {
+    // 20260805090000 added the two registration keys. Deployed BEFORE it
+    // lands, the older function still resolves successfully without them —
+    // and reading that as "not configured" would regress the authenticated
+    // flows that worked via the table read: the wizard would grow a Documents
+    // step, the success dialog would promise a review again.
+    const supabase = mockSettingsRows(
+      { enable_events: true, enable_bookings: false },
+      null,
+      [
+        { key: 'require_business_documents', value: false },
+        { key: 'auto_verify_businesses', value: true },
+      ],
+    );
+
+    await expect(getRegistrationSettings()).resolves.toEqual({
+      requireBusinessDocuments: false,
+      autoVerifyBusinesses: true,
     });
+    expect(supabase.from).toHaveBeenCalledWith('app_settings');
+  });
+
+  it('stays strict when neither source can answer', async () => {
+    // The anonymous, pre-migration case: the old RPC has no registration keys
+    // and the table is invisible to this caller.
+    mockSettingsRows({ enable_events: true, enable_bookings: false }, null, []);
+
+    await expect(getRegistrationSettings()).resolves.toEqual({
+      requireBusinessDocuments: true,
+      autoVerifyBusinesses: false,
+    });
+  });
+
+  it('ignores a non-boolean value from either source', async () => {
+    mockSettingsRows(
+      { require_business_documents: 'yes', auto_verify_businesses: true },
+      null,
+      [{ key: 'require_business_documents', value: 'yes' }],
+    );
 
     await expect(getRegistrationSettings()).resolves.toEqual({
       requireBusinessDocuments: true, // fallback — 'yes' is not boolean
-      autoVerifyBusinesses: true,
+      autoVerifyBusinesses: false,
     });
   });
 });

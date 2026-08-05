@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { PublicShell } from '@/components/customer/PublicShell';
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
-import { getMyBusinesses } from '@/lib/api/business/business';
+import { getOwnedBusinessId } from '@/lib/api/business/business';
 import { getRegistrationSettings } from '@/lib/api/appSettings';
 import { getRegistrationStepMeta } from '@/app/business/registration/data/stepMeta';
 import { ROUTES, businessPath } from '@/config/routeConfig';
@@ -15,24 +14,36 @@ import {
   StepSpine,
 } from './sections';
 
-export const metadata: Metadata = {
-  title: 'List your business',
-  description:
-    'How to get your shop on iLokal: what you need before you start, the four steps of the form, and what happens after you submit.',
-  alternates: { canonical: ROUTES.PUBLIC.FOR_BUSINESS },
-  openGraph: {
-    // Next REPLACES a parent `openGraph` rather than merging it, so the fields
-    // the root layout sets have to be restated or the card loses its site name
-    // and type — the defect `socialCard.ts` exists to stop repeating.
-    title: 'List your business on iLokal',
-    description:
-      'Ten minutes, four steps. Here is exactly what the form asks for.',
-    url: ROUTES.PUBLIC.FOR_BUSINESS,
-    siteName: 'iLokal',
-    locale: 'en_PH',
-    type: 'website',
-  },
-};
+/**
+ * `generateMetadata`, not a static object: the share card quotes the step
+ * count, and the count moves with `require_business_documents`. A hardcoded
+ * "four steps" here would contradict the page it describes the day an admin
+ * flips the flag — the same drift the page's whole design guards against, in
+ * the one place search engines keep a copy of.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const { requireBusinessDocuments } = await getRegistrationSettings();
+  const stepCount = getRegistrationStepMeta(requireBusinessDocuments).length;
+  const description = `Ten minutes, ${stepCount} steps. Here is exactly what the form asks for.`;
+
+  return {
+    title: 'List your business',
+    description: `How to get your shop on iLokal: what you need before you start, the ${stepCount} steps of the form, and what happens after you submit.`,
+    alternates: { canonical: ROUTES.PUBLIC.FOR_BUSINESS },
+    openGraph: {
+      // Next REPLACES a parent `openGraph` rather than merging it, so the
+      // fields the root layout sets have to be restated or the card loses its
+      // site name and type — the defect `socialCard.ts` exists to stop
+      // repeating.
+      title: 'List your business on iLokal',
+      description,
+      url: ROUTES.PUBLIC.FOR_BUSINESS,
+      siteName: 'iLokal',
+      locale: 'en_PH',
+      type: 'website',
+    },
+  };
+}
 
 /**
  * The public "how to register" page.
@@ -56,26 +67,49 @@ export default async function ForBusinessPage() {
   // signed up but not registered yet does — the page is where they find out
   // what to gather, so they are shown it with a CTA straight into the wizard.
   if (user?.role === 'business_owner') {
-    const business = await getMyBusinesses().catch(() => null);
-    if (business?.id) redirect(businessPath(business.id));
+    const ownedId = await getOwnedBusinessId(user.id);
+    if (ownedId) redirect(businessPath(ownedId));
   }
 
   const steps = getRegistrationStepMeta(requireBusinessDocuments);
 
-  // Anonymous visitors have to make an account before the wizard will open,
-  // so send them to signup rather than into the redirect they came here from.
-  const signedIn = Boolean(user);
-  const ctaHref = signedIn ? ROUTES.BUSINESS.registration : ROUTES.AUTH.SIGNUP;
-  const ctaLabel = signedIn ? 'Start registering' : 'Create an account';
+  // 🔴 Branch on ROLE, not on "is there a session".
+  //
+  // `roleAllowedForPath` lets only `business_owner` and `admin` into
+  // `/business/**`, so pointing a signed-in CUSTOMER at the wizard hands them
+  // the very dead-end this page exists to remove: the proxy bounces them to
+  // `/home` with no explanation. And that path is one click away —
+  // `CustomerFooter`'s "List your business" renders for every session on
+  // /explore.
+  const canRegister = user?.role === 'business_owner' || user?.role === 'admin';
+  const ctaHref = canRegister
+    ? ROUTES.BUSINESS.registration
+    : ROUTES.AUTH.SIGNUP;
+  const ctaLabel = canRegister ? 'Start registering' : 'Create an account';
+  // A customer needs to know WHY the button says "create an account" when they
+  // are plainly signed in.
+  const ctaNote =
+    user && !canRegister
+      ? 'Registering a shop needs a business account — this creates one.'
+      : undefined;
 
   return (
-    <PublicShell>
-      <Hero ctaHref={ctaHref} ctaLabel={ctaLabel} />
+    <>
+      <Hero
+        ctaHref={ctaHref}
+        ctaLabel={ctaLabel}
+        ctaNote={ctaNote}
+        stepCount={steps.length}
+      />
       <Prerequisites requireDocuments={requireBusinessDocuments} />
       <StepSpine steps={steps} />
       <AfterSubmit autoVerify={autoVerifyBusinesses} />
       <Faq />
-      <FinalCta ctaHref={ctaHref} ctaLabel={ctaLabel} />
-    </PublicShell>
+      <FinalCta
+        ctaHref={ctaHref}
+        ctaLabel={ctaLabel}
+        stepCount={steps.length}
+      />
+    </>
   );
 }

@@ -27,21 +27,29 @@ import type { RegistrationStepMeta } from '@/app/business/registration/data/step
 export function Hero({
   ctaHref,
   ctaLabel,
+  ctaNote,
+  stepCount,
 }: {
   ctaHref: string;
   ctaLabel: string;
+  /** Shown when a signed-in CUSTOMER needs a business account first. */
+  ctaNote?: string;
+  /** From the wizard, so the prose cannot claim four while the spine shows five. */
+  stepCount: number;
 }) {
   return (
     <section className="pt-6 pb-14 sm:pt-10 sm:pb-20">
       <Eyebrow>For businesses</Eyebrow>
+      {/* `h1`: nothing in `PublicShell` renders one, and this is an indexed
+          marketing page. */}
       <SectionTitle
-        as="h2"
+        as="h1"
         className="mt-5 max-w-3xl text-[#1A1A1A] dark:text-[#F7F5EF]"
       >
         Put your shop where Ilonggos are already looking.
       </SectionTitle>
       <Lede className="mt-6 max-w-xl">
-        Registering takes about ten minutes and four short steps. Here is
+        Registering takes about ten minutes and {stepCount} short steps. Here is
         exactly what you will be asked for, so you can gather it first and
         finish in one sitting.
       </Lede>
@@ -49,7 +57,7 @@ export function Hero({
       <div className="mt-9 flex flex-wrap items-center gap-3">
         <Link
           href={ctaHref}
-          className="group bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-base font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden"
+          className="group bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring focus-visible:ring-offset-background inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-base font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden"
         >
           {ctaLabel}
           <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
@@ -61,6 +69,10 @@ export function Hero({
           See what you need
         </a>
       </div>
+
+      {ctaNote && (
+        <p className="text-muted-foreground mt-3 text-sm">{ctaNote}</p>
+      )}
     </section>
   );
 }
@@ -77,7 +89,10 @@ export function Prerequisites({
 }) {
   return (
     <section id="what-you-need" className="scroll-mt-24 pb-14 sm:pb-20">
-      <div className="rounded-3xl bg-[#FEF8D6] p-7 text-[#1A1A1A] sm:p-10 dark:bg-[#2A2724] dark:text-[#F7F5EF]">
+      {/* Cornsilk with Charcoal type is 14.12:1. In dark mode it hands over to
+          the card token rather than a one-off hex — the palette has no dark
+          Cornsilk, and inventing one is how a colour ends up in no ledger. */}
+      <div className="dark:bg-card dark:text-card-foreground rounded-3xl bg-[#FEF8D6] p-7 text-[#1A1A1A] sm:p-10">
         <h3 className="text-2xl font-bold tracking-tight">Before you start</h3>
         <p className="mt-2 text-[0.9375rem] opacity-80">
           Have these ready and the form is a ten-minute job.
@@ -88,7 +103,10 @@ export function Prerequisites({
             <li key={item.label} className="flex items-start gap-3.5">
               <span
                 aria-hidden
-                className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-[#D70005] text-[#FEF8D6]"
+                // `bg-primary`, not the raw hex: `#D70005` measures 3.23:1 on
+                // a dark surface, and `--primary` already lifts to `#DD2920`
+                // under `.dark`.
+                className="bg-primary text-primary-foreground mt-0.5 grid size-5 shrink-0 place-items-center rounded-full"
               >
                 <Check className="size-3" strokeWidth={3} />
               </span>
@@ -238,9 +256,11 @@ export function Faq() {
 export function FinalCta({
   ctaHref,
   ctaLabel,
+  stepCount,
 }: {
   ctaHref: string;
   ctaLabel: string;
+  stepCount: number;
 }) {
   return (
     <section className="pb-16 sm:pb-24">
@@ -249,15 +269,16 @@ export function FinalCta({
           <h3 className="text-2xl font-bold tracking-tight">
             Ready when you are.
           </h3>
-          {/* Jasmine on Brick Ember is 4.38:1 — fine at this size, never for
-              body copy. This line stays in the readable Cornsilk. */}
           <p className="mt-2 max-w-md text-[0.9375rem] opacity-90">
-            Ten minutes, four steps, and your shop is on the map.
+            Ten minutes, {stepCount} steps, and your shop is on the map.
           </p>
         </div>
         <Link
           href={ctaHref}
-          className="group bg-background text-foreground hover:bg-background/90 focus-visible:ring-background inline-flex shrink-0 items-center gap-2 rounded-full px-7 py-3.5 text-base font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden"
+          // Ring and offset both spelled out: a white ring on the default
+          // white offset, over a Brick Ember card, reads as a size change
+          // rather than a focus indicator.
+          className="group bg-background text-foreground hover:bg-background/90 focus-visible:ring-foreground focus-visible:ring-offset-primary inline-flex shrink-0 items-center gap-2 rounded-full px-7 py-3.5 text-base font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden"
         >
           {ctaLabel}
           <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />

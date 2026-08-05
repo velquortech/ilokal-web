@@ -17,7 +17,13 @@
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, it, expect, vi } from 'vitest';
-import { Prerequisites, StepSpine, AfterSubmit, Hero } from '../sections';
+import {
+  Prerequisites,
+  StepSpine,
+  AfterSubmit,
+  Hero,
+  FinalCta,
+} from '../sections';
 import { getRegistrationStepMeta } from '@/app/business/registration/data/stepMeta';
 import { STEP_FIELDS } from '../data';
 
@@ -105,12 +111,61 @@ describe('what happens after submitting', () => {
   });
 });
 
+describe('the prose count follows the flag', () => {
+  it('never claims a step count the spine contradicts', () => {
+    // Hardcoded "four steps" in the hero while the spine renders five is the
+    // exact drift this page's design argument claims to prevent.
+    const hero = html(
+      <Hero ctaHref="/signup" ctaLabel="Create an account" stepCount={5} />,
+    );
+    const cta = html(
+      <FinalCta ctaHref="/signup" ctaLabel="Create an account" stepCount={5} />,
+    );
+
+    expect(hero).toContain('5 short steps');
+    expect(hero).not.toContain('four short steps');
+    expect(cta).toContain('5 steps');
+    expect(cta).not.toContain('four steps');
+  });
+});
+
+describe('the CTA for a signed-in customer', () => {
+  it('explains why it still says "create an account"', () => {
+    // A customer cannot enter `/business/**` — `roleAllowedForPath` admits
+    // only owners and admins — so sending them to the wizard reproduces the
+    // dead-end this page exists to remove. The page sends them to signup and
+    // says why.
+    const markup = html(
+      <Hero
+        ctaHref="/signup"
+        ctaLabel="Create an account"
+        stepCount={4}
+        ctaNote="Registering a shop needs a business account — this creates one."
+      />,
+    );
+
+    expect(markup).toContain('needs a business account');
+  });
+
+  it('says nothing extra to an owner', () => {
+    const markup = html(
+      <Hero
+        ctaHref="/business/registration"
+        ctaLabel="Start registering"
+        stepCount={4}
+      />,
+    );
+
+    expect(markup).not.toContain('needs a business account');
+  });
+});
+
 describe('server HTML', () => {
   it('renders its headline and CTA without JavaScript', () => {
     // The landing shipped a blank page once by seeding state from a
     // client-only value; nothing here may be invisible or empty on the server.
     const markup = html(
-      <Hero ctaHref="/signup" ctaLabel="Create an account" />,
+      <Hero ctaHref="/signup" ctaLabel="Create an account" stepCount={4} />,
     );
 
     expect(markup).toContain(

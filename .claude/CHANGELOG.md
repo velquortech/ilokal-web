@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-08-05 — "Go to dashboard" looked dead while it worked (feat/business-onboarding)
+
+> One button. No schema, API or auth change.
+
+- **The last click of registration had no feedback.** The dashboard is a server
+  component that fetches analytics, branches and the setup checklist before it
+  can paint, so `router.push` there is a real second or two — and the button did
+  not change, leaving the owner clicking a control that appeared broken at the
+  one moment they have just finished a long form.
+- **Now: spinner, "Opening your dashboard…", disabled, `aria-busy`.**
+- **A latch, not `useTransition().isPending`.** Two reasons. The wait ends when
+  this dialog is *replaced* by the dashboard, so the busy state should last
+  until the component goes away rather than until a transition settles; and a
+  ref-backed latch makes a double-click unable to queue a second `push` even
+  before React commits the `disabled` attribute.
+- **With a 15s failsafe, because the dialog blocks Esc and outside clicks.** A
+  spinner that never ends would be a modal with no way out. If the navigation
+  has not happened by then the control hands itself back.
+- **Tests (+3, 2189 → 2192):** the busy label, disabled state and `aria-busy`
+  after a click; two clicks producing exactly one `push`; and the failsafe
+  restoring the button. The pending window could not have been asserted through
+  `useTransition` here — a mocked `router.push` resolves instantly, so the
+  transition never observably pends, which is also what made the latch the
+  honest choice rather than the convenient one.
+- Verified: `yarn lint` + **2192** tests + a clean `yarn build` green.
+- **Not verified — needs a browser:** how long the wait actually is, and
+  therefore whether 15s is the right failsafe.
+
 ## 2026-08-05 — PR #27 review round 2 (feat/business-onboarding)
 
 > Fixes from the second react-doctor + api-doctor pass. Round 1's fixes were

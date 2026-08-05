@@ -107,3 +107,24 @@ describe('the event form pins on a map rather than asking for numbers', () => {
     expect(dialog).toContain('Number.isFinite(lat)');
   });
 });
+
+describe('leaflet is contained in its own stacking context', () => {
+  // Leaflet hardcodes `z-index: 400` on its panes and `1000` on its control
+  // corners. Both outrank the sticky public header (`z-50`) and a Radix
+  // dialog's chrome, and without a stacking context on the map's own wrapper
+  // those numbers compete with the whole page — which is exactly how the shop
+  // page's branch map came to paint over the navigation bar.
+  const isolated = (source: string) =>
+    /className="[^"]*\bz-0\b[^"]*"/.test(source) &&
+    /className="[^"]*\bisolate\b[^"]*"/.test(source);
+
+  it('holds for the shared picker, so every call site inherits it', () => {
+    expect(isolated(read('components/custom/map/LocationPicker.tsx'))).toBe(
+      true,
+    );
+  });
+
+  it('holds for the public branch map', () => {
+    expect(isolated(read('components/customer/BusinessMap.tsx'))).toBe(true);
+  });
+});

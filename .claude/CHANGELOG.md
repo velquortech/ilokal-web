@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-08-05 — Leaflet was painting over the navigation bar (feat/business-onboarding)
+
+> Two class attributes and a contract test. No schema, API or auth change.
+
+- **🔴 The branch map on `/explore/[businessId]` rendered on top of the sticky
+  header.** Scrolling a shop page put map tiles over Home / Explore / Nearby /
+  Deals / Events, so the nav was unusable while the map was in view.
+- **Cause: leaflet hardcodes its own z-indexes and nothing contained them.**
+  `.leaflet-pane` is `z-index: 400` and `.leaflet-top` / `.leaflet-bottom` are
+  `1000` (from `leaflet/dist/leaflet.css`), against a header at `z-50`. Those
+  numbers are only meant to order leaflet's layers against each other, but with
+  no stacking context on the map's wrapper they compete with the whole document —
+  and 400 beats 50. Raising the header instead would have been a losing game: the
+  next dialog or popover would need to outrank 1000 too.
+- **Fix: `isolation: isolate` + `z-0` on the map's own wrapper**, so leaflet's
+  400 and 1000 resolve *inside* that box and the box itself sits at `z-0` against
+  the page. Applied to `BusinessMap` (the reported bug) and to the shared
+  `LocationPicker`'s root — the latter covers all four of its call sites at once,
+  including the event dialog, where the same 1000 would have outranked a Radix
+  dialog's own chrome. It is also why the picker's `z-[1000]` hint badge still
+  works: it now competes with the tiles and nothing else.
+- **Tests (+2, 2183 → 2185):** `mapPicker.contract` asserts both the shared
+  picker and the public branch map carry `isolate` + `z-0`, so a future class
+  sweep cannot quietly delete the containment and put the map back over the nav.
+- Verified: `yarn lint` + **2185** tests + a clean `yarn build` green.
+- **Not verified — needs a browser:** the stacking itself. happy-dom has no
+  layout or paint, so the test pins the declaration, not the result.
+
 ## 2026-08-05 — PR #27 review hardening (feat/business-onboarding)
 
 > Fixes from the react-doctor + api-doctor review of the whole onboarding

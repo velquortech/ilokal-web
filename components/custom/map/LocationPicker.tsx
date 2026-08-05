@@ -133,7 +133,14 @@ export function LocationPicker({
     !isNaN(longitude);
 
   return (
-    <div className="location-picker relative h-full w-full">
+    // `isolate` + `z-0` are load-bearing, not decoration. Leaflet gives its own
+    // panes `z-index: 400` and its control corners `1000` — above a sticky
+    // header (`z-50`) and above a Radix dialog's chrome — and with no stacking
+    // context here those numbers compete with the whole page, so the map paints
+    // over the nav. Contained on the shared component rather than at each of the
+    // four call sites, which is also why the hint badge below keeps its
+    // `z-[1000]`: it now competes with the tiles, nothing else.
+    <div className="location-picker relative isolate z-0 h-full w-full">
       <style>
         {
           '.location-picker .leaflet-container { cursor: crosshair !important; }'

@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-08-05 — Second alignment pass: dangling doc links, and a debt log listing fixed work (chore/standards-debt)
+
+> Documentation only. Follows the sweep below; this is what re-verifying that
+> sweep's own output turned up.
+
+- **Verified every claim the first pass added, against the live database** — not
+  re-asserted: `public_feature_flags()` returns exactly 4 columns,
+  `business_settings` carries exactly 2 onboarding columns,
+  `idx_branches_business_id_live` exists, `enable_onboarding_tour` is seeded
+  `true`, and that flag is **not** in the RPC's return list. The migration queue
+  is 16, and every version named in `CLAUDE.md` matches a file on disk.
+- **Two dangling references in `CLAUDE.md`, neither introduced by this work.**
+  `@.claude/skill.md` sat in the **always-loaded** list and does not exist — a
+  load instruction pointing at nothing. And the API-standards section cited
+  `.claude/PERFORMANCE_AUDIT.md`, a local doc that is gone; it now points at the
+  four 2026-07-17 CHANGELOG entries, which carry the same findings.
+- **🔴 The debt log listed five items as open that were fixed weeks ago.**
+  TD-001 (service-role key under `NEXT_PUBLIC_*`), TD-002 (no rate limit on
+  `/api/auth/*`), TD-005 (taxonomy mutations without handler authz), TD-014 (no
+  `loading.tsx`) and TD-017 (billing routes on a non-existent table). Each was
+  re-checked **against the code** before closing — 0 occurrences of the
+  `NEXT_PUBLIC_` service key, `checkAuthRateLimit` in 4 auth routes,
+  `assertAuthorized` in the taxonomy route, 28 `loading.tsx` files, and the
+  subscriptions module deleted outright — rather than closed on the strength of
+  a changelog entry. A debt log that lists finished work gets read the way a
+  stale schema doc does: people stop believing the rows that are still true.
+- **Deliberately left open:** TD-008 (the follows POST still has no id
+  validation — verified, the route has neither `z.guid()` nor a uuid check),
+  TD-003, TD-004 (SEC-5 covered several routes, not all — not cheaply
+  verifiable), TD-012 (the root `database.types.ts` is still there), and
+  TD-009/010/011/013/015/016/018.
+
 ## 2026-08-05 — Standards sweep: the docs had drifted, not the code (chore/standards-debt)
 
 > Documentation + one redundant class. No schema, API or auth change. Parity

@@ -19,13 +19,19 @@ planned work. Supersedes the old `roadmap.md` (merged in below).
 
 ## Status board
 
+> **Reconciled 2026-08-05.** Five rows below said 🔲 Open for work the CHANGELOG
+> shows landed weeks ago — each was re-verified against the code before being
+> closed here, not taken from the changelog on trust. A debt log that lists
+> fixed items is read the same way a stale schema doc is: people stop believing
+> the rows that are still true.
+
 | ID     | Sev | Area         | Title                                            | Status |
 | ------ | --- | ------------ | ------------------------------------------------ | ------ |
-| TD-001 | 🔴  | Security     | Service-role key under `NEXT_PUBLIC_*` name      | 🔲 Open |
-| TD-002 | 🔴  | Security     | No rate limit on `/api/auth/*`                   | 🔲 Open |
+| TD-001 | 🔴  | Security     | Service-role key under `NEXT_PUBLIC_*` name      | ✅ Fixed 2026-06-08 |
+| TD-002 | 🔴  | Security     | No rate limit on `/api/auth/*`                   | ✅ Fixed 2026-07-17 |
 | TD-003 | 🟠  | Security     | Self-asserted `role` at public signup            | 🔲 Open |
 | TD-004 | 🟠  | Security     | Backend error messages leak to web clients       | 🔲 Open |
-| TD-005 | 🟠  | Security     | Taxonomy mutations rely on RLS alone (no handler authz) | 🔲 Open |
+| TD-005 | 🟠  | Security     | Taxonomy mutations rely on RLS alone (no handler authz) | ✅ Fixed 2026-06-08 |
 | TD-006 | 🟢  | Security     | Signup account enumeration                       | 🔲 Open |
 | TD-007 | 🟢  | Security     | Rate limiter per-instance + spoofable XFF        | ⏸️ Deferred |
 | TD-008 | 🟢  | Validation   | `follows` POST lacks UUID validation             | 🔲 Open |
@@ -34,10 +40,10 @@ planned work. Supersedes the old `roadmap.md` (merged in below).
 | TD-011 | 🔴  | Architecture | Migration drift — local is 16 migrations ahead of cloud | 🔲 Open |
 | TD-012 | 🟢  | Architecture | Stale empty `database.types.ts` at repo root     | 🔲 Open |
 | TD-013 | 🟢  | Code quality | Response-envelope drift in web routes            | 🔲 Open |
-| TD-014 | 🟠  | UI/UX        | No `loading.tsx` / streaming states              | 🔲 Open |
+| TD-014 | 🟠  | UI/UX        | No `loading.tsx` / streaming states              | ✅ Fixed 2026-07-24 |
 | TD-015 | 🟢  | UI/UX        | Client-heavy bundle (64% `'use client'`)         | 🔲 Open |
 | TD-016 | 🟢  | UI/UX        | Uneven accessibility coverage                    | 🔲 Open |
-| TD-017 | 🔴  | Architecture | Web billing/subscription routes query non-existent `subscriptions` table | 🔲 Open |
+| TD-017 | 🔴  | Architecture | Web billing/subscription routes query non-existent `subscriptions` table | ✅ Resolved by removal 2026-07-17 |
 | TD-018 | 🟠  | Security     | Mobile protected routes not status-gated (deactivate/archive enforced app-side only) | 🔲 Open |
 | TD-019 | 🟢  | UX           | `safeNext` is customer-scoped — an owner is not returned to the wizard after signup | 🔲 Open |
 | TD-020 | 🟢  | Verification | Surfaces shipped without a browser pass (auth-gated in CI, no headless browser) | 🔲 Open |

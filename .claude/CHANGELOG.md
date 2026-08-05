@@ -1,5 +1,60 @@
 # Changelog
 
+## 2026-08-05 — Standards sweep: the docs had drifted, not the code (chore/standards-debt)
+
+> Documentation + one redundant class. No schema, API or auth change. Parity
+> table (SD1–SD7): [`.claude/STANDARDS_DEBT.md`](.claude/STANDARDS_DEBT.md)
+> (local, not committed).
+
+- **Swept 76 files across the 11 commits** of the onboarding, IndexedDB,
+  leaflet, spinner and `/for-business` work against `CLAUDE.md`. **No standard
+  is broken by the code.** Verified rather than assumed: the stack is still
+  frozen (`package.json`/`yarn.lock` untouched in every commit), no retired
+  green, no Supabase in a `.tsx`, no literal route strings, no `z.uuid()`, no
+  `whileInView`, one `<Toaster>`, head-only counts throughout the new query,
+  both new Server Actions carrying validate → verify-owner-by-segment-id →
+  rate-limit, both new migrations with pinned `search_path` and explicit
+  REVOKE/GRANT, and no `@testing-library` import or `any` in the new tests.
+- **🔴 What HAD drifted is the file that tells everyone what is true.**
+  `CLAUDE.md` claimed *"local and cloud are fully in sync through
+  `20260717082537` — no pending migrations"*. There are **16** after that point,
+  none confirmed on cloud. That line is load-bearing: the repo's own
+  "verify schema before writing queries" rule exists because four whole modules
+  were once written against tables that never existed, and this is the sentence
+  people read instead of checking the database.
+- **The queue is now named, in order, with its blast radius.** Until it lands,
+  cloud has no `events` / `booking_requests` / `product_sections` tables, no
+  offering columns on `products`, no onboarding columns on `business_settings`,
+  and a 2-column `public_feature_flags()` — so code that works locally
+  42P01/42703s in production. The apply procedure (approval →
+  `make migrate-cloud` → ledger reconcile) is spelled out where the claim used
+  to be.
+- **Four new schema facts recorded**, each with the reasoning that makes it
+  worth knowing rather than a changelog line: the widened
+  `public_feature_flags()` and **why the return list is the contract** (an
+  anonymous table read on `app_settings` returns zero rows and no error, which
+  a caller reads as "not configured"); why `enable_onboarding_tour` is
+  deliberately outside it; the two `business_settings` onboarding columns and
+  the upsert-not-update rule that follows from their lazy row; and
+  `idx_branches_business_id_live`, because Postgres does not auto-index FKs and
+  the checklist counts branches on every dashboard load.
+- **Two dead "Active work" notes removed.** Both said "delete this note when
+  merged" and both features had merged. Replaced with one accurate banner about
+  the migration queue and which features ship dark.
+- **`tech-debt.md`:** TD-011 re-scoped from three migrations to the real queue
+  and raised to 🔴; new **TD-019** (`safeNext` is customer-scoped, so an owner
+  who signs up from `/for-business` is not returned to the wizard the page was
+  describing) and **TD-020** (the surfaces shipped without a browser pass, with
+  the note that a cached Playwright chromium turned out to exist during the
+  landing redesign — worth re-checking before assuming it cannot be done).
+- **One code change:** the landing's `<h1>` carried `font-display`, which
+  `@layer base` already applies to every heading (`globals.css:238`). Removed;
+  the rendered markup is byte-identical apart from that class.
+- Verified: `yarn lint` + **2213** tests + a clean `yarn build`, plus a
+  production check that the landing headline still renders with its type intact.
+- **Not in scope:** applying the migrations to cloud — that needs credentials
+  and human approval, and making it visible is the point of the fix.
+
 ## 2026-08-05 — PR #29 review fixes (feat/how-to-register)
 
 > Fixes from the react-doctor + api-doctor review. **Edits the unmerged

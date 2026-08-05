@@ -31,7 +31,7 @@ planned work. Supersedes the old `roadmap.md` (merged in below).
 | TD-008 | 🟢  | Validation   | `follows` POST lacks UUID validation             | 🔲 Open |
 | TD-009 | 🟠  | Architecture | Two auth helpers (`assertAuthorized` vs `getCurrentUser`) | 🔲 Open |
 | TD-010 | 🟠  | Architecture | Dual profile-creation paths (trigger + signup insert) | 🔲 Open |
-| TD-011 | 🟠  | Architecture | Migration drift — code depends on un-applied migrations | 🔲 Open |
+| TD-011 | 🔴  | Architecture | Migration drift — local is 16 migrations ahead of cloud | 🔲 Open |
 | TD-012 | 🟢  | Architecture | Stale empty `database.types.ts` at repo root     | 🔲 Open |
 | TD-013 | 🟢  | Code quality | Response-envelope drift in web routes            | 🔲 Open |
 | TD-014 | 🟠  | UI/UX        | No `loading.tsx` / streaming states              | 🔲 Open |
@@ -39,6 +39,8 @@ planned work. Supersedes the old `roadmap.md` (merged in below).
 | TD-016 | 🟢  | UI/UX        | Uneven accessibility coverage                    | 🔲 Open |
 | TD-017 | 🔴  | Architecture | Web billing/subscription routes query non-existent `subscriptions` table | 🔲 Open |
 | TD-018 | 🟠  | Security     | Mobile protected routes not status-gated (deactivate/archive enforced app-side only) | 🔲 Open |
+| TD-019 | 🟢  | UX           | `safeNext` is customer-scoped — an owner is not returned to the wizard after signup | 🔲 Open |
+| TD-020 | 🟢  | Verification | Surfaces shipped without a browser pass (auth-gated in CI, no headless browser) | 🔲 Open |
 
 ---
 
@@ -141,11 +143,30 @@ The `handle_new_user` trigger and the signup route's manual `profiles` insert bo
 create the profile row → guaranteed PK conflict → misleading 500 path and a
 redundant write. Let the trigger own profile creation (ties to TD-003).
 
-#### TD-011 · 🟠 · Migration drift
+#### TD-011 · 🔴 · Migration drift — local is 16 migrations ahead of cloud
 
-CLAUDE.md lists several "pending `migrate-up`" migrations that route code already
-depends on (`requires_follow`, `increment_coupon_redemptions`, promo-boost).
-Confirm prod has them applied or those routes 500.
+**Re-scoped 2026-08-05.** The original entry was three migrations; it is now the
+whole queue after `20260717082537`, the last version confirmed on
+`ilokal-database`. Merged to `main` and applied **locally only**:
+
+`20260717093122` · `20260723000000` · `20260725000000` · `20260727000000`–
+`20260727000006` · `20260801061117` · `20260801064656` · `20260802034107` ·
+`20260804061500` · `20260804233000` · `20260805090000`
+
+**What breaks in production until they land** — not hypothetical, these are
+tables and columns live code selects from: no `events` / `booking_requests` /
+`product_sections` tables, no `products.kind` / `booking_mode` / offering
+columns, no `business_settings` onboarding columns, and a 2-column
+`public_feature_flags()` (so the public `/for-business` page shows the strict
+"permits required, review pending" copy, and `getRegistrationSettings` falls
+back to a table read anonymous callers cannot see).
+
+**Fix:** human approval → `make migrate-cloud` → rewrite
+`supabase_migrations.schema_migrations` to each local file's version, or the
+next `db push` re-applies everything. Then re-confirm and shrink this entry.
+Note the ordering constraint recorded in the 2026-08-05 CHANGELOG entry: the
+cloud apply should precede the app deploy, or anonymous visitors see the strict
+registration copy.
 
 #### TD-012 · 🟢 · Stale `database.types.ts`
 
@@ -307,6 +328,43 @@ deactivated or archived user:
   self-reactivate; and/or (b) revoke sessions server-side on delete via the admin
   client (`auth.admin` — ban or sign-out). Deferred from the initial account-management
   endpoint PR to keep that change non-cross-cutting.
+
+---
+
+## Audit log — 2026-08-05 (standards sweep, onboarding + /for-business)
+
+Scope: the 11 commits from the onboarding, registration-cache, leaflet and
+`/for-business` work, swept against `CLAUDE.md`. **No standard is broken by the
+code** — the findings were documentation drift (folded into TD-011 and fixed in
+`CLAUDE.md` on `chore/standards-debt`) plus the two items below.
+
+#### TD-019 · 🟢 · `safeNext` is customer-scoped
+
+[safeNext](../../lib/utils/safeNext.ts) validates and returns a same-origin
+`?next=`, but only the CUSTOMER paths honour it (`SignupForm` applies it when
+`result.role === 'app_user'`). So an owner who arrives at `/for-business`,
+presses "Create an account" and signs up lands on their dashboard rather than
+back in the registration wizard they were reading about — the page's own CTA
+loses its thread.
+
+**Fix:** honour a validated `next` for `business_owner` too, and have
+`/for-business` pass `?next=/business/registration` for anonymous visitors. The
+guard already rejects off-origin, backslash and control-character paths, so the
+work is plumbing, not validation.
+
+#### TD-020 · 🟢 · Surfaces shipped without a browser pass
+
+This environment has no login path and no headless browser, so several surfaces
+are verified only by unit tests, a production build and (where public) a curl
+smoke. Outstanding: the onboarding tour spotlight (its whole failure mode is
+measurement, which happy-dom cannot model), the setup checklist and welcome
+ring, the registration gallery step against a real storage quota, the leaflet
+z-index containment, and `/for-business` at 320/768/1280 in both themes.
+
+**Fix:** one manual pass per surface, or wire a headless browser into CI. Note
+that a cached Playwright chromium turned out to be available during the landing
+redesign (2026-08-01) — worth checking again before assuming it cannot be done
+here.
 
 ---
 

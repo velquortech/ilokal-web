@@ -1,5 +1,74 @@
 # Changelog
 
+## 2026-08-05 — Oversized photos are now resized, not rejected (feat/image-compression)
+
+> Client-side only. No schema, API or auth change. Phases 1–2 of
+> [`.claude/IMAGE_COMPRESSION.md`](.claude/IMAGE_COMPRESSION.md) (local, not
+> committed); the remaining upload surfaces are phase 2's tail.
+
+- **🔴 A phone photo could not be uploaded at all.** The 2 MB cap is enforced in
+  four independent places — the registration Zod schema, the gallery's own
+  filter, three Server Actions and three route handlers — and a modern phone
+  photo is 3–6 MB. So an owner photographing their own shop, which is *the* way
+  an interior image gets produced, was told the picture was invalid with no way
+  forward. The registration gallery was the worst of it: it needs **at least
+  four** such photos, and it silently dropped the oversized ones and reported a
+  count.
+- **The server already knew how to fix this and never got the chance.**
+  `convertToWebP` downscales every display image at write time (512/1200/1600),
+  so a 5 MB photo would land in storage at a few hundred KB. It was rejected
+  before it could be transported — Server Actions cap at 3 MB, Vercel functions
+  at 4.5 MB. **The cap is a transport limit being enforced against the user as
+  if it were a rule about their photo.**
+- **New `lib/utils/compressImage.ts`** — one function, `createImageBitmap` +
+  canvas, no new dependency. Decode → downscale → encode, stepping down a fixed
+  quality ladder, then halving the dimension cap once before giving up.
+- **A fixed ladder, not a binary search:** a search costs ~7 encodes of a
+  full-resolution bitmap on a phone and lands within a few percent of the same
+  size.
+- **It never throws and never makes things worse.** Every failure path returns
+  the ORIGINAL file so the existing validation still applies — a compressor that
+  threw would turn a rejected upload into a broken form. Four things it
+  deliberately refuses to touch: **PDFs** (the licence/tax-certificate path
+  uploads raw bytes), **HEIC** (Chrome and Firefox cannot decode it, so it says
+  so by name instead of blaming the size), **animated GIF/WebP** (canvas
+  captures one frame, and the server's pipeline deliberately PRESERVES
+  animation — flattening here would be a silent regression), and anything
+  already under the cap.
+- **`imageOrientation: 'from-image'` is load-bearing.** Drawing to a canvas
+  drops EXIF, so without it an iPhone portrait uploads rotated 90°.
+- **WebP, not JPEG**, because a PNG logo re-encoded as JPEG gets a black
+  background where its transparency was.
+- **Wired into the shared `ImageUploadField`** (both product dialogs inherit it)
+  and all three registration inputs — logo, banner, and the interior batch. Each
+  compresses BEFORE the size check, shows a busy state while it works (a 5 MB
+  photo takes a beat, and a frozen-looking control at that moment reads as a
+  hang), and reports what happened: "Resized from 4.7 MB to 0.9 MB."
+- **The failure message now names the reason.** HEIC and animation cannot be
+  fixed by trying again, and an owner cannot tell which one they hit from a
+  size message.
+- **A dead branch was found by its own test.** The first draft guarded against
+  an encode coming back LARGER than the input — real for already-optimised
+  JPEGs. But compression only runs when the file is over the cap, so any result
+  accepted (`≤ maxBytes`) is smaller by construction; the guard was
+  unreachable. Removed rather than kept for comfort, with the reasoning left in
+  place so it is not re-added.
+- **Tests (+17, 2213 → 2230):** the round trip and both sizes reported; the
+  ladder stopping at the rung that fits; the dimension halving; PDFs, HEIC and
+  animated GIFs left untouched (with a single-frame GIF still compressible);
+  and four never-worse paths — encoder returns null, encoder throws, result
+  still too big, result bigger than the input. The canvas encode is injected,
+  because happy-dom has no `createImageBitmap` and the stack is frozen, so the
+  alternative to a seam is no test at all.
+- Verified: `yarn lint` + **2230** tests + a clean `yarn build`.
+- **Not verified — needs a browser:** the actual encode. happy-dom has no
+  canvas, so the tests pin the decisions, not the pixels. Worth a real phone
+  photo through the registration gallery before merge, and an iPhone portrait to
+  confirm the orientation fix.
+- **Remaining (phase 2's tail):** profile logo/gallery uploaders, branch create
+  and edit, the event form, and both avatar inputs still reject rather than
+  compress — same one-line call each.
+
 ## 2026-08-05 — PR #29 review fixes (feat/how-to-register)
 
 > Fixes from the react-doctor + api-doctor review. **Edits the unmerged

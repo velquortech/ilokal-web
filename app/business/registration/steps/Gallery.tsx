@@ -10,6 +10,11 @@ import { useMultiStepForm } from '../provider/registration-form-provider';
 import { Field, FieldError } from '@/components/ui/field';
 import { cn } from '@/lib/utils';
 import { MAX_FILE_SIZE } from '../validator/business-registration-form-schema';
+import {
+  compressImage,
+  describeCompression,
+  COMPRESSION_PRESETS,
+} from '@/lib/utils/compressImage';
 
 export function ShopGallery() {
   return (
@@ -145,14 +150,24 @@ function ShopLogo() {
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
+              onChange={async (e) => {
+                const picked = e.target.files?.[0];
+                if (!picked) return;
+
+                // Compressed first: a phone photo is 3–6 MB, and the 2 MB cap
+                // is a transport limit rather than a rule about the picture.
+                const result = await compressImage(picked, {
+                  maxBytes: MAX_FILE_SIZE,
+                  maxDimension: COMPRESSION_PRESETS.logo,
+                });
+                const file = result.file;
 
                 if (file.size > MAX_FILE_SIZE) {
                   form.setError('shop_logo', {
                     type: 'manual',
-                    message: 'Image must be 2MB or less',
+                    message:
+                      describeCompression(result, '2 MB') ??
+                      'Image must be 2MB or less',
                   });
                   if (fileInputRef.current) fileInputRef.current.value = '';
                   return;
@@ -269,14 +284,24 @@ function ShopBanner() {
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
+              onChange={async (e) => {
+                const picked = e.target.files?.[0];
+                if (!picked) return;
+
+                // Compressed first: a phone photo is 3–6 MB, and the 2 MB cap
+                // is a transport limit rather than a rule about the picture.
+                const result = await compressImage(picked, {
+                  maxBytes: MAX_FILE_SIZE,
+                  maxDimension: COMPRESSION_PRESETS.hero,
+                });
+                const file = result.file;
 
                 if (file.size > MAX_FILE_SIZE) {
                   form.setError('shop_banner', {
                     type: 'manual',
-                    message: 'Image must be 2MB or less',
+                    message:
+                      describeCompression(result, '2 MB') ??
+                      'Image must be 2MB or less',
                   });
                   if (fileInputRef.current) fileInputRef.current.value = '';
                   return;
@@ -353,18 +378,45 @@ function InteriorImages() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const interiorImages = form.watch('interior_images') || [];
   const [sizeError, setSizeError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAddImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const allFiles = Array.from(e.target.files || []);
     if (!allFiles.length) return;
 
     setSizeError(null);
-    const validFiles = allFiles.filter((f) => f.size <= MAX_FILE_SIZE);
-    const rejectedCount = allFiles.length - validFiles.length;
+    setBusy(true);
 
-    if (rejectedCount > 0) {
+    // Compressed BEFORE the size filter. This step asks for at least FOUR
+    // photos of the shop, and a phone takes 3–6 MB pictures — so the filter
+    // used to drop most of what an owner selected and report a count, which is
+    // the least useful thing it could say at the moment it happens.
+    const processed = await Promise.all(
+      allFiles.map((file) =>
+        compressImage(file, {
+          maxBytes: MAX_FILE_SIZE,
+          maxDimension: COMPRESSION_PRESETS.interior,
+        }),
+      ),
+    );
+    setBusy(false);
+
+    const validFiles = processed
+      .filter((result) => result.file.size <= MAX_FILE_SIZE)
+      .map((result) => result.file);
+    const rejected = processed.filter(
+      (result) => result.file.size > MAX_FILE_SIZE,
+    );
+
+    if (rejected.length > 0) {
+      // Names the actual reason for the first failure rather than restating
+      // the rule: HEIC and animation are unfixable by trying again, and the
+      // owner cannot tell which they hit from a size message.
+      const reason = describeCompression(rejected[0], '2 MB');
       setSizeError(
-        `${rejectedCount} image${rejectedCount > 1 ? 's' : ''} exceeded the 2MB limit and ${rejectedCount > 1 ? 'were' : 'was'} not added`,
+        rejected.length === 1
+          ? (reason ?? 'That image could not be added.')
+          : `${rejected.length} images could not be added. ${reason ?? ''}`.trim(),
       );
     }
 
@@ -449,6 +501,15 @@ function InteriorImages() {
               onChange={handleAddImages}
             />
 
+            {busy && (
+              <p
+                className="text-muted-foreground text-xs"
+                role="status"
+                aria-live="polite"
+              >
+                Resizing your photos…
+              </p>
+            )}
             {sizeError && <FieldError errors={[{ message: sizeError }]} />}
             {fieldState.error && <FieldError errors={[fieldState.error]} />}
           </div>

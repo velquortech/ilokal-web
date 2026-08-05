@@ -9,6 +9,7 @@
 
 import { redirect } from 'next/navigation';
 import { isRedirectError } from 'next/dist/client/components/redirect-error';
+import { cache } from 'react';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { User } from '@/lib/types/user';
 import { ROUTES } from '@/config/routeConfig';
@@ -18,7 +19,13 @@ import { isDynamicUsageError } from '@/lib/utils/dynamicUsage';
  * Fetch the current user from the server session
  * Returns null if not authenticated
  */
-export async function getCurrentUser(): Promise<User | null> {
+/**
+ * `React.cache`d: a single public render asks for the session twice — once in
+ * the page, once in `PublicShell` — and each call is a GoTrue round trip plus a
+ * `profiles` select. Deduped per request; this module is not `'use server'`, so
+ * the wrap is safe here.
+ */
+export const getCurrentUser = cache(async (): Promise<User | null> => {
   try {
     const supabase = await createServerSupabaseClient();
 
@@ -61,7 +68,7 @@ export async function getCurrentUser(): Promise<User | null> {
     console.error('[getCurrentUser] Error:', error);
     return null;
   }
-}
+});
 
 /**
  * Verify that the current user is an admin

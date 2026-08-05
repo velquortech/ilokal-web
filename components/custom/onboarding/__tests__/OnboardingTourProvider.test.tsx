@@ -35,6 +35,12 @@ vi.mock('@/components/ui/sidebar', () => ({
   useSidebar: () => sidebar,
 }));
 
+const replace = vi.fn();
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace, push: vi.fn(), refresh: vi.fn() }),
+}));
+
 const completeAction = vi.fn().mockResolvedValue({ success: true });
 
 vi.mock('@/app/actions/onboardingActions', () => ({
@@ -98,6 +104,7 @@ const button = (label: string) =>
 
 beforeEach(() => {
   vi.useFakeTimers();
+  replace.mockClear();
   completeAction.mockClear();
   window.localStorage.clear();
   sidebar.setOpen = vi.fn();
@@ -243,6 +250,36 @@ describe('OnboardingTourProvider', () => {
     });
     act(() => button('Skip')?.click());
     expect(completeAction).not.toHaveBeenCalled();
+  });
+
+  it('strips the welcome marker even when the checklist is not rendered', () => {
+    // The strip used to live in `SetupChecklist`, which `page.tsx` skips
+    // entirely for a dismissed checklist on a verified shop — so on that path
+    // `?welcome=1` stayed in the URL and in history, and a back-navigation
+    // replayed the invitation. `TourWelcomeTrigger` always renders.
+    render(
+      <OnboardingTourProvider businessId={BUSINESS_ID} enabled>
+        <TourWelcomeTrigger welcome cleanUrl={`/business/${BUSINESS_ID}`} />
+      </OnboardingTourProvider>,
+    );
+
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(replace).toHaveBeenCalledWith(`/business/${BUSINESS_ID}`, {
+      scroll: false,
+    });
+  });
+
+  it('does not touch the URL without a marker', () => {
+    render(
+      <OnboardingTourProvider businessId={BUSINESS_ID} enabled>
+        <TourWelcomeTrigger
+          welcome={false}
+          cleanUrl={`/business/${BUSINESS_ID}`}
+        />
+      </OnboardingTourProvider>,
+    );
+
+    expect(replace).not.toHaveBeenCalled();
   });
 
   it('does not consume the tour when there was nothing to show', () => {

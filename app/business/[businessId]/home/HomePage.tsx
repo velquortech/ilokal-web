@@ -114,15 +114,23 @@ export default function BusinessHome({
         </Card>
       )}
 
-      <TourDialog
-        isOpen={showTour}
-        onClose={dismissTour}
-        onStart={handleStartRegistration}
-        title="Welcome to iLokal Business!"
-        description="Transform your local business with our powerful e-commerce platform. Register your shop to get started."
-        features={TOUR_FEATURES}
-        requireDocuments={requireDocuments}
-      />
+      {/* PRE-registration only. Its copy is "Register your shop to get
+          started" and its primary action pushes the wizard, so for a shop that
+          already exists it is a dead end back into a form the owner just
+          submitted — and since the post-registration invite now mounts on this
+          same page, a pending shop got two stacked modals with competing focus
+          traps 800 ms after arriving. */}
+      {!business && (
+        <TourDialog
+          isOpen={showTour}
+          onClose={dismissTour}
+          onStart={handleStartRegistration}
+          title="Welcome to iLokal Business!"
+          description="Transform your local business with our powerful e-commerce platform. Register your shop to get started."
+          features={TOUR_FEATURES}
+          requireDocuments={requireDocuments}
+        />
+      )}
     </div>
   );
 }

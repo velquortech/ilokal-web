@@ -1,6 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -67,7 +74,13 @@ function useAnchorRect(id: TourStepId | null): {
   // dimensions.
   const [viewport, setViewport] = useState<Viewport | null>(null);
 
-  useEffect(() => {
+  // `useLayoutEffect`, not `useEffect`: the first measurement has to land
+  // BEFORE paint. With a passive effect the frame where the overlay first
+  // renders draws the ring at (0,0) with a zero box and the full-screen shadow,
+  // and `motion-safe:transition-all` then animates it in from the corner. This
+  // component never server-renders (the provider mounts it on a click), so
+  // there is no SSR warning to trade away.
+  useLayoutEffect(() => {
     if (!id || typeof window === 'undefined') {
       setRect(null);
       setViewport(null);
@@ -197,8 +210,12 @@ function useAnchorGeometry(
       anchor: {
         left: left + width / 2,
         top: Math.max(0, top + height - 8),
-        width: 0,
-        height: 0,
+        // 1px, not 0: floating-ui's `autoUpdate` installs its movement observer
+        // via an IntersectionObserver that bails on a zero-size reference, so a
+        // 0x0 anchor gets no reposition signal while the measure loop moves it
+        // during the smooth scroll.
+        width: 1,
+        height: 1,
       },
       oversized: true,
     };
@@ -373,6 +390,8 @@ export function TourOverlay({
   const isLast = index === visible.length - 1;
 
   return (
+    // With outside interaction prevented below, the only path left to
+    // `onOpenChange(false)` is Esc — which IS a deliberate answer, so it skips.
     <Popover open modal onOpenChange={(o) => !o && onSkip()}>
       {/* The highlight: one fixed box cutting a hole in the dim layer with an
           outward box-shadow (not a filter — no per-frame repaint of the
@@ -408,15 +427,25 @@ export function TourOverlay({
       </PopoverAnchor>
 
       <PopoverContent
+        // 🔴 Without this, a pointer-down ANYWHERE outside the card — including
+        // on the ringed nav link the step is inviting the owner to look at —
+        // reached `onOpenChange(false)` and settled the tour: marker written,
+        // Server Action posted, never offered again. The spotlight is a
+        // deliberate flow, so only Skip, Done and Esc end it.
+        onInteractOutside={(event) => event.preventDefault()}
         side={oversized ? 'top' : current.side}
         align={oversized ? 'center' : 'start'}
         sideOffset={oversized ? 16 : 12}
         collisionPadding={16}
         // `sticky="always"` keeps the card against the anchor while the page
-        // scrolls; the max-height is the last line of defence — a card taller
-        // than the window would otherwise push its own buttons off the edge,
-        // which is how the first version showed nothing but Skip and Next.
+        // scrolls; `updatePositionStrategy="always"` keeps it following while
+        // the anchor MOVES, which it does on every step change (the measure
+        // loop rewrites left/top through the smooth scroll). The max-height is
+        // the last line of defence — a card taller than the window would push
+        // its own buttons off the edge, which is how the first version showed
+        // nothing but Skip and Next.
         sticky="always"
+        updatePositionStrategy="always"
         className="z-50 max-h-[calc(100dvh-2rem)] w-80 overflow-y-auto"
         aria-label="Dashboard tour"
       >

@@ -125,10 +125,9 @@ export async function getOnboardingProgress(
      * `status='active'` is part of "done", not decoration:
      * `sync_product_availability` sets `is_available = (status = 'active')`, so
      * an `unlisted` or `disabled` offering is invisible on the public page —
-     * exactly the state this step exists to move the owner out of. The same
-     * number drives the dashboard's empty state.
+     * exactly the state this step exists to move the owner out of.
      */
-    const offeringCountRead = async () => {
+    const activeOfferingCount = async () => {
       const { count, error } = await supabase
         .from('products')
         .select('id', { count: 'exact', head: true })
@@ -140,34 +139,54 @@ export async function getOnboardingProgress(
     };
 
     /**
-     * The full coupon access invariant, not just `published`: `mobile_deals`
-     * also requires `start_date <= now <= expiry_date`, so an expired or
-     * not-yet-started deal reaches nobody — and this row's own copy promises it
-     * reaches the Deals feed.
+     * Deliberately WITHOUT the status filter, and deliberately a second read.
+     *
+     * The dashboard's empty state asks a different question from the checklist
+     * row: "has this owner added anything at all", not "is anything visible to
+     * a shopper". Sharing the active count told a shop whose whole catalogue is
+     * `unlisted` that it had "No products yet" and offered to add a first one —
+     * a narrower rerun of the bug the empty state was gated to fix.
      */
-    const livePromoCount = async () => {
-      const nowIso = new Date().toISOString();
+    const totalOfferingCount = async () => {
+      const { count, error } = await supabase
+        .from('products')
+        .select('id', { count: 'exact', head: true })
+        .eq('business_id', businessId)
+        .is('archived_at', null);
+      if (error) throw error;
+      return count ?? 0;
+    };
+
+    /**
+     * "Has ever published one", NOT "has one live right now".
+     *
+     * The live window (`start_date <= now <= expiry_date`) was tried and
+     * reverted: it makes done-ness expire with the clock, so the moment a
+     * mature shop's last deal ran out the completed checklist reappeared,
+     * telling an owner who had done the step years ago to publish their first
+     * deal. A setup checklist records that a thing was learned; monitoring
+     * whether a deal is currently running is the deals page's job.
+     */
+    const publishedPromoCount = async () => {
       const { count, error } = await supabase
         .from('coupons')
         .select('id', { count: 'exact', head: true })
         .eq('business_id', businessId)
         .eq('status', 'published')
-        .is('archived_at', null)
-        .lte('start_date', nowIso)
-        .gte('expiry_date', nowIso);
+        .is('archived_at', null);
       if (error) throw error;
       return count ?? 0;
     };
 
-    const [business, branches, settings, offerings, promos] = await Promise.all(
-      [
+    const [business, branches, settings, offerings, allOfferings, promos] =
+      await Promise.all([
         businessRead(),
         pinnedBranchCount(),
         settingsRead(),
-        offeringCountRead(),
-        livePromoCount(),
-      ],
-    );
+        activeOfferingCount(),
+        totalOfferingCount(),
+        publishedPromoCount(),
+      ]);
 
     if (!business) return { ...EMPTY_ONBOARDING_PROGRESS, failed: true };
 
@@ -246,6 +265,7 @@ export async function getOnboardingProgress(
       complete: completed === actionable.length,
       failed: false,
       offeringCount: offerings,
+      totalOfferingCount: allOfferings,
     };
   } catch (err) {
     console.error('[getOnboardingProgress]', describeDbError(err));

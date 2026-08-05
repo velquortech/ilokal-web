@@ -5,9 +5,9 @@
  *
  * The behaviours worth pinning are the ones that lie when they break: a failed
  * read must NOT render as unchecked boxes (that tells the owner to redo
- * finished work), the welcome marker must be consumed exactly once (a
- * refreshable welcome is a welcome that never ends), and dismissal is keyed
- * per business (an owner with two shops sets up each one).
+ * finished work), and dismissal is keyed per business (an owner with two shops
+ * sets up each one). Consuming the welcome marker is NOT this card's job —
+ * `TourWelcomeTrigger` owns it, because that component always renders.
  *
  * Driven with `react-dom/client` + happy-dom, per repo convention — the stack
  * is frozen and @testing-library's peer isn't installed.
@@ -80,6 +80,7 @@ const progressWith = (
   complete: false,
   failed: false,
   offeringCount: 0,
+  totalOfferingCount: 0,
   ...overrides,
 });
 
@@ -141,22 +142,16 @@ describe('SetupChecklist', () => {
     render({
       progress: progressWith({ complete: true, completed: 2 }),
       welcome: true,
-      cleanUrl: `/business/${BUSINESS_ID}`,
     });
 
     expect(container.textContent).toContain('Your shop is registered');
   });
 
-  it('consumes the welcome marker by replacing the URL, once', () => {
-    const cleanUrl = `/business/${BUSINESS_ID}?branch=abc`;
-    render({ welcome: true, cleanUrl });
-
-    expect(replace).toHaveBeenCalledTimes(1);
-    expect(replace).toHaveBeenCalledWith(cleanUrl, { scroll: false });
-  });
-
-  it('does not touch the URL when there is no welcome marker', () => {
-    render({});
+  it('leaves the URL alone — the marker is not this card\u2019s to consume', () => {
+    // Stripping `?welcome=1` moved to `TourWelcomeTrigger`, which renders
+    // unconditionally. This card does not: it is absent for a dismissed
+    // checklist, and a one-shot job stranded there never ran on that path.
+    render({ welcome: true });
 
     expect(replace).not.toHaveBeenCalled();
   });

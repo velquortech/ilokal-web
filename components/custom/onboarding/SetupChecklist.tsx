@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { ArrowRight, Check, CircleAlert, Clock, Compass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,7 +27,6 @@ export function SetupChecklist({
   businessId,
   progress,
   welcome = false,
-  cleanUrl,
   dismissed = false,
 }: {
   businessId: string;
@@ -41,8 +39,6 @@ export function SetupChecklist({
    * before it knows.
    */
   welcome?: boolean;
-  /** Same URL with `?welcome` removed; every other param preserved. */
-  cleanUrl?: string;
   /**
    * `business_settings.onboarding_checklist_dismissed_at != null`, read on the
    * server — so hiding the card on one device hides it on every device. Seeds
@@ -51,7 +47,6 @@ export function SetupChecklist({
    */
   dismissed?: boolean;
 }) {
-  const router = useRouter();
   const { enabled: tourEnabled, startTour } = useOnboardingTourContext();
 
   // Seeded from the SERVER's answer, so both renders agree. The localStorage
@@ -72,12 +67,9 @@ export function SetupChecklist({
     );
   }, [businessId, dismissed]);
 
-  // Consume the one-shot marker: keep the welcome state for this visit, then
-  // strip the param so a refresh, a bookmark or a shared link cannot replay it.
-  useEffect(() => {
-    if (!welcome || !cleanUrl) return;
-    router.replace(cleanUrl, { scroll: false });
-  }, [welcome, cleanUrl, router]);
+  // The marker itself is stripped by `TourWelcomeTrigger`, which renders
+  // unconditionally — this card does not, so it cannot be trusted with a
+  // one-shot job. `welcomed` above is snapshotted at mount for the same reason.
 
   const dismiss = () => {
     setHidden(true);

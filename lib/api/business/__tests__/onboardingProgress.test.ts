@@ -229,17 +229,41 @@ describe('getOnboardingProgress', () => {
     ]);
   });
 
-  it('does not count a promo outside its own date window', async () => {
-    // The row's copy promises the deal reaches the Deals feed, and
-    // `mobile_deals` also requires `start_date <= now <= expiry_date` — so an
-    // expired or scheduled-for-later coupon reaches nobody and is not done.
+  it('counts a promo the owner ever published, expired or not', async () => {
+    // The live window (`start_date <= now <= expiry_date`) was tried and
+    // reverted: it makes done-ness expire with the CLOCK, so the moment a
+    // mature shop's last deal ran out the completed checklist reappeared and
+    // told the owner to publish their first one. A setup checklist records that
+    // a thing was learned; whether a deal is running now is the deals page's
+    // job.
     const { queries } = mockTables(COMPLETE);
 
     await getOnboardingProgress(BUSINESS_ID, VOCAB);
 
     const coupons = queryFor(queries, 'coupons');
-    expect(coupons.lte.map(([column]) => column)).toContain('start_date');
-    expect(coupons.gte.map(([column]) => column)).toContain('expiry_date');
+    expect(coupons.lte).toHaveLength(0);
+    expect(coupons.gte).toHaveLength(0);
+  });
+
+  it('counts offerings twice, because the two consumers ask different things', async () => {
+    // The checklist row asks "is anything VISIBLE to a shopper"
+    // (`status='active'`); the dashboard's empty state asks "has this owner
+    // added anything AT ALL". Sharing one number told a shop whose whole
+    // catalogue is `unlisted` that it had "No products yet".
+    const { queries } = mockTables(COMPLETE);
+
+    const progress = await getOnboardingProgress(BUSINESS_ID, VOCAB);
+
+    const productReads = queries.filter((query) => query.table === 'products');
+    expect(productReads).toHaveLength(2);
+    expect(
+      productReads.filter((read) =>
+        read.eq.some(
+          ([column, value]) => column === 'status' && value === 'active',
+        ),
+      ),
+    ).toHaveLength(1);
+    expect(progress.totalOfferingCount).toBe(12);
   });
 
   it('only counts offerings a shopper can actually see', async () => {

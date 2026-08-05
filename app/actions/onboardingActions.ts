@@ -25,6 +25,7 @@
  */
 
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
+import { businessIdSchema } from '@/lib/validation/business';
 import { rateLimit } from '@/app/api/helpers/rateLimit';
 import {
   markTourCompleted,
@@ -46,7 +47,19 @@ function fail(code: string, message: string): ApiResponse<never> {
 }
 
 async function guard(businessId: string): Promise<Guard> {
-  // Validates the id's shape and proves the caller owns that exact shop.
+  // BEFORE `verifyBusinessOwner`, not inside it: that helper treats a FALSY id
+  // as "no argument" and falls back to whichever shop `.limit(1)` returns, so
+  // an empty string from a caller would authorize — and then stamp — the wrong
+  // shop for an owner who holds two. Exactly the multi-shop bug the event
+  // actions shipped with, reachable here through a publicly invocable endpoint.
+  if (!businessIdSchema.safeParse(businessId).success) {
+    return {
+      ok: false,
+      response: fail('VALIDATION_ERROR', 'Invalid business id.'),
+    };
+  }
+
+  // Proves the caller owns that exact shop.
   const verify = await verifyBusinessOwner(businessId);
   if (!verify.authorized) {
     // `verifyBusinessOwner`'s error is a union that also has a `NextResponse`

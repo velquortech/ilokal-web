@@ -48,10 +48,17 @@ export interface OnboardingProgress {
    */
   failed: boolean;
   /**
-   * Live offering count, surfaced because the dashboard's empty state needs
-   * the same number and must not pay for a second round trip to get it.
+   * Offerings a shopper can actually see (`status='active'`) — what the
+   * checklist row is asking about.
    */
   offeringCount: number;
+  /**
+   * Every live offering regardless of status. The dashboard's empty state asks
+   * a different question — "has this owner added anything at all" — and using
+   * the active count told a shop whose whole catalogue is `unlisted` that it
+   * had none.
+   */
+  totalOfferingCount: number;
 }
 
 /**
@@ -85,4 +92,5 @@ export const EMPTY_ONBOARDING_PROGRESS: OnboardingProgress = {
   complete: false,
   failed: true,
   offeringCount: 0,
+  totalOfferingCount: 0,
 };

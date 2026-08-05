@@ -57,6 +57,23 @@ beforeEach(() => {
 });
 
 describe('completeOnboardingTourAction', () => {
+  it('refuses a malformed id BEFORE the ownership helper sees it', async () => {
+    // `verifyBusinessOwner(businessId?)` treats a FALSY id as "no argument" and
+    // falls back to whichever shop `.limit(1)` returns — so an empty string
+    // reaching it authorizes, and then stamps, the wrong shop for an owner who
+    // holds two. These are publicly invocable endpoints.
+    authorized();
+
+    for (const bad of ['', 'not-a-uuid', '../../etc']) {
+      const result = await completeOnboardingTourAction(bad);
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe('VALIDATION_ERROR');
+    }
+
+    expect(mockedVerify).not.toHaveBeenCalled();
+    expect(mockedTour).not.toHaveBeenCalled();
+  });
+
   it('proves ownership of the shop the caller named', async () => {
     authorized();
 

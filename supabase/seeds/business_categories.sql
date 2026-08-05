@@ -35,9 +35,35 @@ BEGIN
     -- services and a pharmacy's shelves alike, and pinning it to either takes
     -- it from the other. NULL means "offered to every vertical".
     UPDATE categories SET business_type_id = COALESCE(business_type_id, food_id)
-     WHERE slug = 'food-beverages';
+     WHERE slug IN (
+       'food-beverages',
+       -- 20260805120000
+       'meals-rice-dishes', 'snacks-street-food', 'drinks-beverages',
+       'bakery-pastries', 'pasalubong-delicacies');
     UPDATE categories SET business_type_id = COALESCE(business_type_id, retail_id)
-     WHERE slug IN ('clothing-apparel', 'electronics-gadgets', 'home-living');
+     WHERE slug IN (
+       'clothing-apparel', 'electronics-gadgets', 'home-living',
+       -- 20260805120000
+       'groceries-essentials', 'handicrafts-souvenirs', 'books-stationery',
+       'toys-hobbies',
+       -- 20260805130000
+       'auto-motor-parts', 'hardware-construction', 'agri-pet-supplies',
+       'medicine-pharmacy', 'sports-outdoor', 'bags-footwear', 'baby-kids',
+       'jewelry-accessories', 'plants-garden');
+
+    -- Services and Tourism had NO categories of their own until 20260805120000
+    -- — their pickers offered the single global row and nothing else.
+    UPDATE categories SET business_type_id = COALESCE(business_type_id, services_id)
+     WHERE slug IN (
+       'hair-grooming', 'spa-massage', 'nails-lashes', 'fitness-classes',
+       'repairs-maintenance', 'laundry-cleaning');
+    UPDATE categories SET business_type_id = COALESCE(business_type_id, tourism_id)
+     WHERE slug IN (
+       'rooms-stays', 'tours-day-trips', 'workshops-experiences',
+       'vehicle-rental', 'event-spaces', 'tickets-entry');
+
+    -- 'gift-sets-bundles' and 'other' stay global for the same reason as
+    -- Health & Beauty: they belong in every vertical's picker.
 
     -- 1b. Offering vocabulary per vertical (see 20260727000001).
     --
@@ -120,6 +146,48 @@ BEGIN
     (retail_id, 'Clothing & Apparel', 'Fashion boutiques and apparel shops for everyday wear.', 'https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
     (retail_id, 'Bookstore / Stationery', 'Shops selling books, magazines, and writing supplies.', 'https://images.unsplash.com/photo-1512820790803-83ca734da794');
     END IF;
+
+    -- 3a. Retail trades added by 20260805130000 (auto supply, hardware,
+    -- agrivet, pharmacy, pet, sports). Deliberately OUTSIDE the guard above:
+    -- that block skips entirely once ANY retail category exists, so appending
+    -- to it would be a no-op on every database that has ever been seeded.
+    -- Guarded per row instead — `business_categories.name` has no UNIQUE, so
+    -- ON CONFLICT is unavailable (same reason subscription_plans.sql uses this
+    -- shape).
+    --
+    -- ⚠️ image_url must be non-NULL: the registration step renders
+    -- <Image src={imageURL}> with no fallback.
+    --
+    -- images.unsplash.com only. A host must be in imageRemotePatterns AND must
+    -- not redirect off it — CSP re-checks every hop, which is how a picsum
+    -- first cut (allowlisted, but 302s to fastly.picsum.photos) broke all six.
+    -- `h=1200` forces a 4:3 crop: the card top-crops with no object-cover, so a
+    -- portrait source would show only its ceiling. See 20260805130000.
+    INSERT INTO business_categories (business_type_id, name, description, image_url)
+    SELECT retail_id, v.name, v.description, v.image_url
+    FROM (VALUES
+      ('Auto Supply / Motor Parts',
+       'Shops selling car and motorcycle parts, oils, batteries, and accessories.',
+       'https://images.unsplash.com/photo-1777213003360-0419fd2fbfdf?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      ('Hardware / Construction Supply',
+       'Tools, paint, plumbing, electrical, and building materials.',
+       'https://images.unsplash.com/photo-1759200165738-6366977a73c6?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      ('Agrivet / Farm Supply',
+       'Feeds, fertilizer, seeds, and veterinary supplies for farms and pets.',
+       'https://images.unsplash.com/photo-1756158450046-24e51d854f71?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      ('Pharmacy / Drugstore',
+       'Over-the-counter medicine, first aid, and everyday medical supplies.',
+       'https://images.unsplash.com/photo-1580281657529-557a6abb6387?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      ('Pet Shop',
+       'Pet food, grooming supplies, accessories, and small animal care.',
+       'https://images.unsplash.com/photo-1516453734593-8d198ae84bcf?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      ('Sports & Outdoor Shop',
+       'Sportswear, equipment, camping gear, and outdoor supplies.',
+       'https://images.unsplash.com/photo-1768145488772-db787036bb13?q=80&w=1600&h=1200&fit=crop&auto=format')
+    ) AS v(name, description, image_url)
+    WHERE NOT EXISTS (
+      SELECT 1 FROM business_categories existing WHERE existing.name = v.name
+    );
 
     -- 4. Insert Categories for Services (skip if already seeded)
     IF NOT EXISTS (SELECT 1 FROM business_categories WHERE business_type_id = services_id) THEN

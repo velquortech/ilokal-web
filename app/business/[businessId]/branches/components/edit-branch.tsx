@@ -26,6 +26,7 @@ import {
   uploadBranchImageAction,
 } from '../../actions/branchActions';
 import type { Branch, UpdateBranchRequest } from '@/lib/types';
+import { compressImage, COMPRESSION_PRESETS } from '@/lib/utils/compressImage';
 
 interface EditBranchDialogProps {
   children: React.ReactNode;
@@ -76,10 +77,15 @@ export function EditBranchDialog({
   });
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const picked = e.target.files?.[0];
+    if (!picked) return;
     setCoverUploading(true);
     try {
+      // `uploadBranchImageAction` caps at 2 MB; this is what lets a phone photo
+      // reach it. The server still re-encodes to WebP and owns the result.
+      const { file } = await compressImage(picked, {
+        maxDimension: COMPRESSION_PRESETS.hero,
+      });
       const fd = new FormData();
       fd.append('file', file);
       const res = await uploadBranchImageAction(fd);
@@ -102,7 +108,10 @@ export function EditBranchDialog({
     setGalleryUploading(true);
     try {
       const newUrls: string[] = [];
-      for (const file of files) {
+      for (const picked of files) {
+        const { file } = await compressImage(picked, {
+          maxDimension: COMPRESSION_PRESETS.hero,
+        });
         const fd = new FormData();
         fd.append('file', file);
         const res = await uploadBranchImageAction(fd);

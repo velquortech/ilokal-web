@@ -37,7 +37,7 @@ planned work. Supersedes the old `roadmap.md` (merged in below).
 | TD-008 | 🟢  | Validation   | `follows` POST lacks UUID validation             | 🔲 Open |
 | TD-009 | 🟠  | Architecture | Two auth helpers (`assertAuthorized` vs `getCurrentUser`) | 🔲 Open |
 | TD-010 | 🟠  | Architecture | Dual profile-creation paths (trigger + signup insert) | 🔲 Open |
-| TD-011 | 🔴  | Architecture | Migration drift — local is 16 migrations ahead of cloud | 🔲 Open |
+| TD-011 | 🔴  | Architecture | Migration drift — local is 18 migrations ahead of cloud | 🔲 Open |
 | TD-012 | 🟢  | Architecture | Stale empty `database.types.ts` at repo root     | 🔲 Open |
 | TD-013 | 🟢  | Code quality | Response-envelope drift in web routes            | 🔲 Open |
 | TD-014 | 🟠  | UI/UX        | No `loading.tsx` / streaming states              | ✅ Fixed 2026-07-24 |
@@ -149,7 +149,7 @@ The `handle_new_user` trigger and the signup route's manual `profiles` insert bo
 create the profile row → guaranteed PK conflict → misleading 500 path and a
 redundant write. Let the trigger own profile creation (ties to TD-003).
 
-#### TD-011 · 🔴 · Migration drift — local is 16 migrations ahead of cloud
+#### TD-011 · 🔴 · Migration drift — local is 18 migrations ahead of cloud
 
 **Re-scoped 2026-08-05.** The original entry was three migrations; it is now the
 whole queue after `20260717082537`, the last version confirmed on
@@ -158,6 +158,12 @@ whole queue after `20260717082537`, the last version confirmed on
 `20260717093122` · `20260723000000` · `20260725000000` · `20260727000000`–
 `20260727000006` · `20260801061117` · `20260801064656` · `20260802034107` ·
 `20260804061500` · `20260804233000` · `20260805090000`
+
+Plus two on `feat/image-compression`, not yet on `main` —
+`20260805120000` · `20260805130000`. Both are **data-only** (rows in
+`categories` / `business_categories`, no DDL), so unlike the queue above they
+break nothing in production by their absence; cloud simply keeps the thin
+category pickers they exist to fix.
 
 **What breaks in production until they land** — not hypothetical, these are
 tables and columns live code selects from: no `events` / `booking_requests` /

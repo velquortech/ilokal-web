@@ -3,7 +3,7 @@
 <!-- TEMP: remove once the migration queue below is empty on cloud -->
 > **⚠️ The database this file describes is AHEAD of cloud.** Events, the
 > offerings model, product sections, bookings and the onboarding work have all
-> merged to `main`, but **16 migrations after `20260717082537` are not confirmed
+> merged to `main`, but **18 migrations after `20260717082537` are not confirmed
 > applied to `ilokal-database`** — see "Migration state" under Schema state for
 > the queue and the apply procedure. Read that before writing any query against
 > a table those migrations touch, and before assuming a feature flag exists.
@@ -206,7 +206,7 @@ Key facts about the current normalized schema (as of 2026-06-08):
 - **Deals promotion** — the explore feed (`/api/mobile/deals`) sizes bento cards by `subscription_plans.features_promo_boost` (boolean, `20260530000002`), NOT by `price`. The anon feed reads promoted subs via the public SELECT policy in `20260530000003` (active subs on promo-boost plans only). Set the flag on new promoted plans, or they silently won't get boosted.
 - **Coupon access invariant** — every route that fetches a coupon for display or redemption must filter `.eq('status', 'published').is('archived_at', null).lte('start_date', now)`. Omitting any of the three allows draft, archived, or not-yet-active coupons to be acted on.
 - **`increment_coupon_redemptions(p_coupon_id uuid)`** — SECURITY DEFINER RPC (`20260527000001`). Call via `supabase.rpc('increment_coupon_redemptions', { p_coupon_id })` after inserting into `user_redemptions`. Returns `true` if incremented, `false` if global cap already hit. Must be SECURITY DEFINER — authenticated users have no UPDATE policy on `coupons`. Only the **global** cap is race-safe via this RPC; the per-user cap in the redeem route is a non-atomic count-then-insert (TOCTOU) — concurrent redeems by one user can slip past it.
-- **⚠️ Migration state (2026-08-05): local is 16 migrations AHEAD of cloud.**
+- **⚠️ Migration state (2026-08-05): local is 18 migrations AHEAD of cloud.**
   Cloud (`ilokal-database`) was last confirmed in sync at `20260717082537`.
   Everything after that is applied **locally only** and needs human approval →
   `make migrate-cloud` → a `supabase_migrations.schema_migrations` ledger
@@ -220,12 +220,18 @@ Key facts about the current normalized schema (as of 2026-06-08):
   `20260801061117` (product sections) · `20260801064656` (category scoping) ·
   `20260802034107` (events) · `20260804061500` (events review fixes) ·
   `20260804233000` (onboarding state) · `20260805090000` (public registration
-  flags).
+  flags) · `20260805120000` (offering categories for every vertical) ·
+  `20260805130000` (retail trades: auto supply, hardware, agrivet, pharmacy,
+  pet, sports).
   **Until they land, cloud has no events tables, no `product_sections`, no
   `booking_requests`, no offering columns and a 2-column
   `public_feature_flags()`** — so a query written against any of those works
   locally and 42P01/42703s in production. Verify against the live DB, not
   against this list, before assuming.
+  The last two are **data-only** (rows in `categories` / `business_categories`,
+  no DDL), so cloud does not error without them — it just offers a Services or
+  Tourism shop a single offering category, and has no shop type an auto supply
+  store can register as.
 - **Notable DB facts (through `20260717082537`, confirmed on both):**
   `sync_role_to_jwt` trigger (role/status → JWT `app_metadata`),
   `increment_coupon_redemptions` RPC, `UNIQUE ratings(user_id, product_id)`,

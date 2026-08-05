@@ -109,4 +109,52 @@ describe('ApplicationSuccessDialog', () => {
 
     expect(push).toHaveBeenCalledWith(ROUTES.BUSINESS.home);
   });
+
+  it('shows it is working while the dashboard loads', () => {
+    // The dashboard is a server component that fetches analytics, branches and
+    // the checklist before it can paint, so this is a real wait — and an
+    // unchanged button through it reads as a dead control.
+    render({ businessId: BUSINESS_ID, status: 'verified' });
+
+    act(() => primaryButton().click());
+
+    // Latched, not tied to a transition's pending window: the wait ends when
+    // this dialog is replaced by the dashboard, so the busy state has to
+    // outlive the click.
+    expect(primaryButton().textContent).toContain('Opening your dashboard');
+    expect(primaryButton().disabled).toBe(true);
+    expect(primaryButton().getAttribute('aria-busy')).toBe('true');
+  });
+
+  it('hands the control back if the navigation never arrives', () => {
+    // The dialog blocks Esc and outside clicks, so a spinner that never ends
+    // is a modal the owner cannot leave.
+    vi.useFakeTimers();
+    try {
+      render({ businessId: BUSINESS_ID, status: 'verified' });
+      act(() => primaryButton().click());
+      expect(primaryButton().disabled).toBe(true);
+
+      act(() => {
+        vi.advanceTimersByTime(20_000);
+      });
+
+      expect(primaryButton().disabled).toBe(false);
+      expect(primaryButton().textContent).toContain('Go to dashboard');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('cannot be double-clicked into two navigations', () => {
+    render({ businessId: BUSINESS_ID, status: 'verified' });
+
+    act(() => {
+      const button = primaryButton();
+      button.click();
+      button.click();
+    });
+
+    expect(push).toHaveBeenCalledTimes(1);
+  });
 });

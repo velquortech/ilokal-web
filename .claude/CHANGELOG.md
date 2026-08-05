@@ -1,5 +1,84 @@
 # Changelog
 
+## 2026-08-05 — PR #29 review fixes (feat/how-to-register)
+
+> Fixes from the react-doctor + api-doctor review. **Edits the unmerged
+> `20260805090000` migration in place** (not on cloud) and re-verified against
+> the live database. Approval + `make migrate-cloud` still required.
+
+- **⛔ The page's own CTA re-created the dead-end it exists to remove.** It
+  branched on `Boolean(user)`, so a signed-in **customer** got "Start
+  registering" → the wizard, and `roleAllowedForPath` admits only
+  `business_owner`/`admin`, so the proxy bounced them to `/home` with no
+  explanation. One click away: `CustomerFooter`'s "List your business" renders
+  for every session on /explore. It branches on ROLE now, and a customer is told
+  *why* the button says "create an account".
+- **🔴 The reader was coupled to a migration that exists only on local.** If the
+  app shipped first, the old 2-column RPC resolved *successfully* without the
+  registration keys and both fell to strict fallbacks — regressing
+  **authenticated** flows that previously worked: the wizard would grow a
+  Documents step and the success dialog would promise a review again. It now
+  falls through to the old table read when the RPC row lacks the keys, so the
+  deploy order is no longer load-bearing for signed-in users.
+- **🔴 `/for-business` was missing from the proxy matcher** while reading the
+  session for its CTA and its owner redirect. Unmatched, nothing refreshes an
+  expiring token — the RSC cannot write the rotated cookie — so a live owner
+  session renders as anonymous. The same note `proxy.ts` already carries for
+  `/explore`.
+- **🔴 The widened RPC silently broke the repo's own contract test.**
+  `events.test.sql` asserted `public_feature_flags` exposes **exactly 2**
+  columns, so that suite aborted at block 6c and blocks 7–8 never ran. Updated
+  to 4, with the two new columns asserted anon-readable — and a new assertion
+  that `enable_onboarding_tour` stays **out** of the return list, since "the
+  list is the contract" only means something if something is deliberately
+  excluded.
+- **A malformed flag row could flip a switch or black out the others.**
+  `get_app_setting_bool` cast `(value #>> '{}')::boolean`, and Postgres accepts
+  `'yes'`/`'on'`/`'1'` — looser than the TypeScript check it replaced. Worse,
+  an uncastable value raised 22P02, and since all four flags now come from ONE
+  call, a bad registration row would have blanked events and bookings for every
+  anonymous visitor. Only a real JSON boolean counts now; verified by setting
+  `'"maybe"'` and watching the other three survive.
+- **The migration is transactional and keeps its owner.** `DROP` + `CREATE`
+  outside a transaction leaves a window where the function is missing and every
+  anonymous caller gets PGRST202 — all four flags failing closed at once. And a
+  drop resets the OWNER, which matters here: this is SECURITY DEFINER and calls
+  `get_app_setting_bool`, whose EXECUTE is revoked from anon. `BEGIN`/`COMMIT`
+  plus an explicit `ALTER FUNCTION … OWNER TO postgres`.
+- **Four flag reads and two session lookups per render, now one each.** A single
+  public page asked for the flags four times (the copy, twice inside
+  `PublicShell`, and the metadata) and for the session twice. A `React.cache`d
+  private reader in `appSettings` — `'use server'` constrains exports, not
+  internals — and `getCurrentUser` wrapped in `React.cache`, which helps every
+  surface that composes the shell.
+- **The share card claimed a step count the page could contradict.** Static
+  `metadata` said "four steps" while the spine renders `{steps.length}`; it is
+  `generateMetadata` now, reading the same flag. Same for the hero and the final
+  CTA, which had the count typed into their prose.
+- **Also:** the page has an `<h1>` (nothing in `PublicShell` renders one, and
+  every peer public page has one); `PublicShell` moved to a `layout.tsx` with a
+  `loading.tsx`, so the chrome no longer waits on the page's own reads;
+  `bg-[#D70005]` on a dark surface replaced with `bg-primary` (the raw hex
+  measures 3.23:1 there, which CLAUDE.md forbids) and the invented
+  `dark:bg-[#2A2724]` with the card token; both CTAs got a ring-offset colour, so
+  the focus indicator is not a white halo on white; the landing's "What you'll
+  need" link deep-links to `#what-you-need` instead of duplicating the button's
+  href beside it, and uses `outline-hidden` so the ring survives forced-colors
+  mode; `OnboardingSection` — a client component — stopped importing `getSteps`,
+  which pulled the whole wizard including the map picker into the dashboard
+  bundle; and the owner redirect uses a narrow `getOwnedBusinessId` that logs
+  instead of `getMyBusinesses().catch(() => null)` with its `select('*')` and
+  three storage resolutions.
+- **Tests (+7, 2206 → 2213):** the role branch and the customer's explanatory
+  note; the prose count following the flag; the `<h1>`; the RPC named
+  explicitly (a typo previously passed by falling through to the fallbacks);
+  the pre-migration RPC shape falling back to the table, and staying strict when
+  neither source can answer; plus the contract sweep extended to the page itself
+  and to the proxy matcher.
+- Verified: `yarn lint` + **2213** tests + a clean `yarn build` + the events SQL
+  suite green, plus a production smoke confirming the `<h1>`, the interpolated
+  OG description ("Ten minutes, 4 steps"), and the deep link.
+
 ## 2026-08-05 — A public page for how to register, and the CTAs that led nowhere (feat/how-to-register)
 
 > **ONE migration (`20260805090000_public_registration_flags.sql`) — widens an

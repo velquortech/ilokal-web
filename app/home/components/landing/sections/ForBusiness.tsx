@@ -55,11 +55,15 @@ export function ForBusiness() {
                 List your business
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
-              {/* This block answers "should I?"; the page answers "how?" —
-                  and unlike the wizard it is readable without an account. */}
+              {/* Deep-links to the section it names. Pointing it at the same
+                  href as the button above would have given a keyboard or
+                  screen-reader user two adjacent links, differently labelled,
+                  going to one place. `outline-hidden`, not `outline-none`:
+                  the ring is a box-shadow and is dropped in forced-colors
+                  mode. */}
               <Link
-                href={ROUTES.PUBLIC.FOR_BUSINESS}
-                className="text-[0.9375rem] font-semibold text-[#1A1A1A] underline underline-offset-4 hover:text-[#D70005] focus-visible:ring-2 focus-visible:ring-[#D70005] focus-visible:outline-none dark:text-[#F7F5EF] dark:hover:text-[#FEE87B]"
+                href={`${ROUTES.PUBLIC.FOR_BUSINESS}#what-you-need`}
+                className="text-[0.9375rem] font-semibold text-[#1A1A1A] underline underline-offset-4 hover:text-[#D70005] focus-visible:ring-2 focus-visible:ring-[#D70005] focus-visible:outline-hidden dark:text-[#F7F5EF] dark:hover:text-[#FEE87B]"
               >
                 What you&rsquo;ll need
               </Link>

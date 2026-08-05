@@ -71,32 +71,33 @@ export default async function Page({
   const needsProgress =
     !onboardingState.checklistDismissed || business.status !== 'verified';
 
-  const vocabulary = await getOfferingVocabulary(businessId);
-  const progress = needsProgress
-    ? await getOnboardingProgress(businessId, vocabulary)
-    : null;
-
-  // `undefined`, not `false`, when the count is unknown: a failed read must not
-  // put "No products yet" beside the checklist's own "we couldn't load" card.
-  const hasOfferings =
-    progress && !progress.failed ? progress.offeringCount > 0 : undefined;
+  // STARTED, not awaited: the analytics fetch below is the page's real payload
+  // and must not queue behind the checklist's derivation. Both are in flight
+  // together, and each branch awaits the pair it needs.
+  const progressPromise = needsProgress
+    ? getOfferingVocabulary(businessId).then((vocabulary) =>
+        getOnboardingProgress(businessId, vocabulary),
+      )
+    : Promise.resolve(null);
 
   const welcome = sp[ONBOARDING_WELCOME_PARAM] === '1';
   const cleanUrl = welcome
     ? businessPathWithoutWelcome(businessId, sp)
     : undefined;
 
-  const checklist = (
+  const renderChecklist = (progress: Awaited<typeof progressPromise>) => (
     <>
-      {/* Renders nothing. Kept beside the card rather than inside it so a
-          dismissed or already-complete checklist cannot cancel the tour. */}
-      <TourWelcomeTrigger welcome={welcome} />
+      {/* Renders nothing, and is NOT inside the card: it owns both one-shot
+          jobs — offering the tour and stripping the welcome marker — and the
+          card is absent whenever the checklist has been dismissed. Leaving the
+          strip in there left `?welcome=1` in the URL and history on that path,
+          so a back-navigation replayed the invitation. */}
+      <TourWelcomeTrigger welcome={welcome} cleanUrl={cleanUrl} />
       {progress && (
         <SetupChecklist
           businessId={businessId}
           progress={progress}
           welcome={welcome}
-          cleanUrl={cleanUrl}
           dismissed={onboardingState.checklistDismissed}
         />
       )}
@@ -104,10 +105,23 @@ export default async function Page({
   );
 
   if (business.status !== 'verified') {
-    const { requireBusinessDocuments } = await getRegistrationSettings();
+    const [progress, { requireBusinessDocuments }] = await Promise.all([
+      progressPromise,
+      getRegistrationSettings(),
+    ]);
+
+    // `undefined`, not `false`, when the count is unknown: a failed read must
+    // not put "No products yet" beside the checklist's own "we couldn't load"
+    // card. The TOTAL count, not the active one — the empty state asks whether
+    // anything has been added, not whether it is visible.
+    const hasOfferings =
+      progress && !progress.failed
+        ? progress.totalOfferingCount > 0
+        : undefined;
+
     return (
       <div className="flex w-full flex-1 flex-col space-y-6">
-        {checklist}
+        {renderChecklist(progress)}
         <BusinessHome
           requireDocuments={requireBusinessDocuments}
           hasOfferings={hasOfferings}
@@ -118,9 +132,10 @@ export default async function Page({
 
   // Branch mode: fetch analytics scoped to that branch + branch name
   if (branchId) {
-    const [analyticsResult, branchResult] = await Promise.all([
+    const [analyticsResult, branchResult, progress] = await Promise.all([
       getBusinessAnalyticsDashboardAction(businessId, branchId),
       getBusinessBranchByIdAction(branchId),
+      progressPromise,
     ]);
 
     const data = analyticsResult.success
@@ -132,7 +147,7 @@ export default async function Page({
 
     return (
       <div className="w-full space-y-6">
-        {checklist}
+        {renderChecklist(progress)}
         <AnalyticsDashboard
           data={data}
           businessId={businessId}
@@ -144,9 +159,10 @@ export default async function Page({
   }
 
   // All-branches mode: fetch business-wide analytics + branch list for summary
-  const [analyticsResult, branchesResult] = await Promise.all([
+  const [analyticsResult, branchesResult, progress] = await Promise.all([
     getBusinessAnalyticsDashboardAction(businessId),
     getBusinessBranchesAction({ per_page: 50, status: 'all' }),
+    progressPromise,
   ]);
 
   const data = analyticsResult.success ? analyticsResult.data! : emptyDashboard;
@@ -156,7 +172,7 @@ export default async function Page({
 
   return (
     <div className="w-full space-y-6">
-      {checklist}
+      {renderChecklist(progress)}
       <AnalyticsDashboard
         data={data}
         businessId={businessId}

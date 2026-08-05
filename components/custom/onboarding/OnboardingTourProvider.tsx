@@ -97,7 +97,19 @@ export function OnboardingTourProvider({
   // worth a toast — the owner did not ask for a save.
   const record = useCallback(() => {
     if (!businessId) return;
-    void completeOnboardingTourAction(businessId).catch(() => {});
+    void completeOnboardingTourAction(businessId)
+      .then((result) => {
+        // A refusal (`FORBIDDEN`, `RATE_LIMITED`) and a failed write both
+        // RESOLVE, so `.catch()` alone would drop the only signal that explains
+        // why the tour is offered again on the owner's next device.
+        if (!result.success || result.data?.recorded === false) {
+          console.warn(
+            '[OnboardingTour] answer not recorded:',
+            result.error?.code ?? 'write failed',
+          );
+        }
+      })
+      .catch(() => {});
   }, [businessId]);
 
   const { phase, invite, start, dismiss, finish, abort } = useOnboardingTour(
@@ -119,8 +131,16 @@ export function OnboardingTourProvider({
     }
     if (!wasActive.current) return;
     wasActive.current = false;
-    returnFocus.current?.focus?.();
+
+    const target = returnFocus.current;
     returnFocus.current = null;
+    // A DETACHED node (a menu item that has since unmounted) and `<body>` are
+    // both useless targets — focusing body drops the keyboard user to the top
+    // of the document, which is worse than leaving focus where the overlay put
+    // it. `<body>` gets recorded whenever `remember()` runs from a mount effect,
+    // which is exactly what the welcome arrival does.
+    if (!target || !target.isConnected || target === document.body) return;
+    target.focus?.();
   }, [phase]);
 
   const remember = (element?: unknown) => {
@@ -158,19 +178,22 @@ export function OnboardingTourProvider({
     [enabled, businessId, startTour, requestWelcome],
   );
 
-  // Keyed on the flag VALUES, not the record's identity: the server layout
-  // builds a fresh `flags` object on every RSC render — including the
-  // `router.replace` that consumes the welcome marker — and a new identity here
-  // restarts the overlay's settle timer and re-fires `scrollIntoView` mid-tour.
+  // Keyed on VALUES, never on object identity. Both `flags` and `vocabulary`
+  // are deserialised fresh from the RSC payload on every layout render —
+  // including the `router.replace` that consumes the welcome marker — and a new
+  // `steps` identity restarts the overlay's settle timer and re-fires
+  // `scrollIntoView` mid-step. `resolveTourSteps` reads exactly two vocabulary
+  // fields, so those two strings are the whole dependency.
   const bookings = flags.enable_bookings === true;
   const events = flags.enable_events === true;
+  const { catalogue, plural } = vocabulary;
   const steps = useMemo(
     () =>
       resolveTourSteps({
         vocabulary,
         flags: { enable_bookings: bookings, enable_events: events },
       }),
-    [vocabulary, bookings, events],
+    [catalogue, plural, bookings, events],
   );
 
   return (
@@ -197,6 +220,13 @@ export function OnboardingTourProvider({
             <Button variant="ghost" onClick={dismiss}>
               Not now
             </Button>
+            {/* `start`, not `startTour`: there is nothing to record. This
+                button unmounts with the dialog, and the welcome arrival has no
+                persistent trigger behind it — `remember()` ran from a mount
+                effect, when `document.activeElement` was `<body>`. The restore
+                effect above rejects both a detached node and `<body>`, so focus
+                simply stays where the tour leaves it, which beats throwing the
+                keyboard user to the top of the document. */}
             <Button onClick={start}>Take the tour</Button>
           </DialogFooter>
         </DialogContent>

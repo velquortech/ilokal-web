@@ -1,5 +1,86 @@
 # Changelog
 
+## 2026-08-05 — PR #27 review round 2 (feat/business-onboarding)
+
+> Fixes from the second react-doctor + api-doctor pass. Round 1's fixes were
+> verified as landed; these are the defects those fixes introduced, plus one
+> they did not reach. No schema change — the `20260804233000` approval gate is
+> unchanged.
+
+- **🔴 Clicking outside the tour card consumed the tour.** `onOpenChange` routed
+  Radix's outside-pointer dismissal into `onSkip`, which **settles** — marker
+  written, Server Action posted, never offered again. So a pointer-down anywhere
+  outside the card, *including on the ringed nav link the step is pointing at*,
+  ended onboarding permanently. That is the precise rule round 1's `abort()` was
+  added to enforce, on a far more reachable path than the no-anchor case it
+  fixed. `onInteractOutside` is prevented now; only Skip, Done and Esc end the
+  tour, and Esc still counts as an answer because it is one.
+- **🔴 The empty-`businessId` hole in the shared guard.**
+  `verifyBusinessOwner(businessId?)` treats a FALSY id as *no argument* and falls
+  back to whichever shop `.limit(1)` returns — so `completeOnboardingTourAction('')`
+  from a two-shop owner authorized, and stamped, the wrong shop. These are
+  publicly invocable endpoints. New `businessIdSchema` (`lib/validation/business.ts`)
+  rejects before the helper is ever called.
+- **The promo step expired with the clock.** Round 1 added the live window
+  (`start_date <= now <= expiry_date`) so the row could not tick for a deal
+  reaching nobody — but that made done-ness *un-do itself*: the moment a mature
+  shop's last deal ran out, the completed checklist reappeared telling an owner
+  who did the step years ago to publish their first deal, with no action of
+  theirs. Reverted to "has ever published one", with the reasoning recorded in
+  the query so it is not re-tried a third time: a setup checklist records that a
+  thing was learned; whether a deal is running now is the deals page's job.
+- **`.eq('status','active')` broke the empty state it shares a number with.**
+  That filter is right for the checklist row and wrong for the dashboard, which
+  asks "has this owner added anything at all" — so a shop whose whole catalogue
+  is `unlisted` was told "No products yet". There are two head-only counts now,
+  `offeringCount` (active) and `totalOfferingCount` (any), and the empty state
+  reads the second.
+- **The welcome marker was stranded in a component that does not always
+  render.** `page.tsx` skips `SetupChecklist` entirely for a dismissed checklist
+  on a verified shop, and the `?welcome=1` strip lived inside it — so on that
+  path the marker stayed in the URL and in history, and a back-navigation
+  replayed the invitation. Moved into `TourWelcomeTrigger`, which renders
+  unconditionally and already owned the other one-shot job. Both are now
+  ref-guarded rather than dep-guarded: `useRouter()`'s identity is not something
+  to bet a repeated `replace` on, and the test proved it fires twice.
+- **A pending shop got two stacked modals.** The post-registration invite now
+  mounts on the same page as `BusinessHome`, which was still mounting the
+  **pre-registration** `TourDialog` unconditionally — so 800 ms after arriving,
+  an owner saw a second Radix modal saying "Register your shop to get started",
+  for the shop they had just registered, with two competing focus traps. Gated on
+  `!business`, which is the only state that dialog's copy describes.
+- **The memo fix keyed on flag values but left `vocabulary`** — also a fresh
+  object per RSC render, so the same defect survived under a different name.
+  `resolveTourSteps` reads exactly two fields; those two strings are the deps.
+- **The end-of-tour focus return could land on `<body>`.** On the welcome path
+  `remember()` runs from a mount effect, when `document.activeElement` IS body —
+  an `HTMLElement`, so the `instanceof` guard passed it. The restore now rejects
+  both `<body>` and a disconnected node, and leaves focus where the tour ends,
+  which beats throwing a keyboard user to the top of the document.
+- **The oversized-step anchor was 0×0**, and floating-ui's `autoUpdate` skips
+  its movement observer on a zero-size reference — so the card had no reposition
+  signal while the measure loop moved the anchor through the smooth scroll. 1×1
+  now, plus `updatePositionStrategy="always"`.
+- **The first frame painted before the first measurement.** The measure loop was
+  a passive effect, so the frame where the overlay mounts drew the ring at (0,0)
+  with the full-screen shadow and `motion-safe:transition-all` animated it in
+  from the corner. `useLayoutEffect` — this component never server-renders.
+- **Also:** the dashboard starts the checklist derivation without awaiting it and
+  joins it to the analytics `Promise.all`, instead of putting five queries ahead
+  of the page's real payload; and a failed or refused tour write is logged the
+  way the dismissal already was (both RESOLVE, so `.catch()` never saw them).
+- **Tests (+12, 2177 → 2189):** an outside pointer-down leaves the tour running;
+  a malformed id is refused before `verifyBusinessOwner` is called; the promo
+  count carries no date filters; two product reads with exactly one status
+  filter; the marker is stripped with the checklist absent and not touched
+  without a marker; plus the checklist's own marker tests inverted to assert it
+  no longer owns that job.
+- Verified: `yarn lint` + **2189** tests + a clean `yarn build` + the SQL suite
+  green.
+- **Unchanged and still required:** human approval for `20260804233000`, then
+  `make migrate-cloud` + a ledger reconcile, with the cloud apply landing before
+  the app deploy.
+
 ## 2026-08-05 — Leaflet was painting over the navigation bar (feat/business-onboarding)
 
 > Two class attributes and a contract test. No schema, API or auth change.

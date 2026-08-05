@@ -235,6 +235,35 @@ describe('TourOverlay', () => {
     expect(onSkip).toHaveBeenCalledTimes(1);
   });
 
+  it('does not end the tour when the owner clicks outside the card', () => {
+    // `onSkip` SETTLES — marker written, Server Action posted, never offered
+    // again. Routing Radix's outside-dismissal into it meant a pointer-down on
+    // the very nav link the spotlight is pointing at consumed onboarding.
+    paintAnchors(['a']);
+    const onSkip = vi.fn();
+    const onAbort = vi.fn();
+
+    render(
+      <TourOverlay
+        steps={[step('a')]}
+        onFinish={vi.fn()}
+        onSkip={onSkip}
+        onAbort={onAbort}
+      />,
+    );
+
+    act(() => {
+      document.body.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true }),
+      );
+    });
+
+    expect(onSkip).not.toHaveBeenCalled();
+    expect(onAbort).not.toHaveBeenCalled();
+    // ...and the card is still there to carry on with.
+    expect(text()).toContain('Step 1 of 1');
+  });
+
   it('clamps the step index when the visible set shrinks', () => {
     // The visible set is recomputed whenever `steps` changes identity. An index
     // left past the end renders nothing while the phase stays 'running', at
@@ -347,8 +376,11 @@ describe('TourOverlay', () => {
     );
 
     expect(highlightBox()?.height).toBe('700px');
-    expect(anchorBox()?.width).toBe('0px');
-    expect(anchorBox()?.height).toBe('0px');
+    // 1px, not 0: floating-ui's autoUpdate skips its movement observer on a
+    // zero-size reference, so a 0x0 anchor gets no reposition signal while the
+    // measure loop moves it during the smooth scroll.
+    expect(anchorBox()?.width).toBe('1px');
+    expect(anchorBox()?.height).toBe('1px');
     // Bottom-centre of the visible area, so the card opens upward into the
     // window rather than off the top of it.
     expect(anchorBox()?.left).toBe('500px');

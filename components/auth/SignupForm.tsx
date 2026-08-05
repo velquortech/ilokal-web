@@ -79,6 +79,13 @@ function SignupFormContent() {
     watch,
   } = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
+    // Business Owner, not Customer. Signup is reached almost entirely from the
+    // "List your business" CTAs — a shopper can browse, search, and read every
+    // shop page without an account at all, so the person who arrives here on
+    // purpose is usually an owner. It is also the costlier default to get
+    // wrong: a customer who lands on the wizard has to back out of a
+    // multi-step form, while an owner who misses the toggle gets an account
+    // that cannot register a shop.
     defaultValues: { role: 'business_owner' },
     mode: 'onBlur',
   });

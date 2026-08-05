@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Dialog,
@@ -8,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Clock, Store } from 'lucide-react';
+import { CheckCircle, Clock, Loader2, Store } from 'lucide-react';
 import { ROUTES, businessWelcomePath } from '@/config/routeConfig';
 import {
   Card,
@@ -18,6 +19,13 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { VisuallyHidden } from 'radix-ui';
+
+/**
+ * How long the button stays busy before handing itself back. Long enough to
+ * cover a slow dashboard on a bad connection, short enough that a navigation
+ * which never arrives does not strand the owner in a dialog they cannot close.
+ */
+const NAVIGATION_FAILSAFE_MS = 15_000;
 
 /**
  * This dialog used to hardcode "Your shop registration is under review", a
@@ -50,12 +58,44 @@ export function ApplicationSuccessDialog({
   const isVerified = status === 'verified';
   const isPending = status === 'pending';
 
+  /**
+   * The dashboard is a server component that fetches analytics, branches and
+   * the setup checklist before it can paint, so this navigation is a real
+   * second or two — during which the button did nothing visible and the dialog
+   * sat there looking broken.
+   *
+   * A latch rather than `useTransition`'s `isPending`: the wait ends when this
+   * dialog is replaced by the dashboard, so the busy state should last until
+   * the component goes away, and a ref-backed latch also makes a double-click
+   * unable to queue a second push even before React commits the disabled
+   * attribute. The failsafe below is the price — without it, a navigation that
+   * never resolves would leave the owner staring at a dead spinner.
+   */
+  const [isNavigating, setIsNavigating] = useState(false);
+  const navigated = useRef(false);
+
+  useEffect(() => {
+    if (!isNavigating) return;
+    // If we are still mounted this long after pushing, the navigation is not
+    // coming. Give the control back rather than trapping the owner in a modal
+    // with no way out — it prevents `onEscapeKeyDown` and outside clicks.
+    const failsafe = setTimeout(() => {
+      navigated.current = false;
+      setIsNavigating(false);
+    }, NAVIGATION_FAILSAFE_MS);
+    return () => clearTimeout(failsafe);
+  }, [isNavigating]);
+
   const handleGoHome = () => {
+    if (navigated.current) return;
+    navigated.current = true;
+    setIsNavigating(true);
+
     // Straight to the dashboard, carrying the one-shot welcome marker. NOT
     // `/business` — that resolver answers with a fresh `redirect()` and drops
     // every search param, so the marker would never arrive. With no id (a
-    // resumed submit that lost its marker) fall back to the resolver: the owner
-    // still lands on their dashboard, just without the welcome.
+    // resumed submit that lost its marker) fall back to the resolver: the
+    // owner still lands on their dashboard, just without the welcome.
     router.push(
       businessId ? businessWelcomePath(businessId) : ROUTES.BUSINESS.home,
     );
@@ -207,8 +247,24 @@ export function ApplicationSuccessDialog({
           )}
 
           <div className="mt-8 flex justify-center">
-            <Button onClick={handleGoHome}>
-              {isVerified ? 'Go to dashboard' : 'Return to Dashboard'}
+            {/* Disabled while navigating so a second click cannot queue a
+                second push, and `aria-busy` so the wait is announced rather
+                than only drawn. */}
+            <Button
+              onClick={handleGoHome}
+              disabled={isNavigating}
+              aria-busy={isNavigating}
+            >
+              {isNavigating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                  Opening your dashboard…
+                </>
+              ) : isVerified ? (
+                'Go to dashboard'
+              ) : (
+                'Return to Dashboard'
+              )}
             </Button>
           </div>
         </div>

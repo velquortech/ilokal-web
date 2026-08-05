@@ -98,6 +98,19 @@ describe('files it must not touch', () => {
 });
 
 describe('compressing', () => {
+  it('starts high, because the server re-encodes anyway', async () => {
+    // This pass only has to clear the transport cap; the server owns the
+    // stored artefact at quality 80. Quality given away here is given away
+    // twice.
+    const file = makeFile(5 * MB);
+    const encoder = encoderReturning(() => MB);
+
+    await compressImage(file, { encoder });
+
+    const firstQuality = (encoder as ReturnType<typeof vi.fn>).mock.calls[0][2];
+    expect(firstQuality).toBeGreaterThanOrEqual(0.9);
+  });
+
   it('shrinks an oversized photo and reports both sizes', async () => {
     const file = makeFile(5 * MB);
     const encoder = encoderReturning(() => MB);
@@ -115,7 +128,7 @@ describe('compressing', () => {
     const file = makeFile(5 * MB);
     // Fits on the second rung.
     const encoder = encoderReturning((quality) =>
-      quality >= 0.82 ? 3 * MB : MB,
+      quality >= 0.92 ? 3 * MB : MB,
     );
 
     const result = await compressImage(file, { encoder });
@@ -201,8 +214,8 @@ describe('never makes it worse', () => {
 
     expect(result.outcome).toBe('failed');
     expect(result.file).toBe(file);
-    // Two dimension passes × four quality rungs.
-    expect(encoder).toHaveBeenCalledTimes(8);
+    // Two dimension passes × five quality rungs.
+    expect(encoder).toHaveBeenCalledTimes(10);
   });
 });
 

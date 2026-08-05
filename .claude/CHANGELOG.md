@@ -65,9 +65,30 @@
   canvas, so the tests pin the decisions, not the pixels. Worth a real phone
   photo through the registration gallery before merge, and an iPhone portrait to
   confirm the orientation fix.
-- **Remaining (phase 2's tail):** profile logo/gallery uploaders, branch create
-  and edit, the event form, and both avatar inputs still reject rather than
-  compress — same one-line call each.
+- **Every image surface now compresses** (phase 2 complete): the shared
+  `ImageUploadField` (which the event form and both product dialogs mount), all
+  three registration inputs, the profile logo and gallery uploaders, the
+  personal avatar, the admin avatar, branch create (cover + gallery) and branch
+  edit (cover + gallery). Documents — the licence, tax certificate and branch
+  documents — are deliberately untouched: a PDF through a canvas is a corrupt
+  PDF.
+- **The quality ladder starts at 0.92, not 0.82.** This pass exists only to
+  clear the transport cap; the server re-encodes at quality 80 and owns the
+  stored artefact, so every point given away here is given away **twice**.
+  Starting high hands the server a cleaner source at almost the same transport
+  size, and the lower rungs still catch photos that need them.
+- **Nothing converts an under-cap file.** Client conversion for a file that
+  already fits buys zero storage or delivery benefit — the server's WebP output
+  is identical either way — while adding a second lossy pass and a decode on the
+  owner's phone. The compressor exists for transport; the server owns quality.
+- **A contract sweep pins it:** every image surface calls `compressImage`, none
+  hand-rolls `createImageBitmap` or `toBlob` (the EXIF, animation and alpha
+  traps get solved once or not at all), the two document surfaces do NOT call
+  it, and the event form mounts the shared field rather than growing its own
+  file input.
+- **The build caught what the tests could not:** a `const result` in the admin
+  avatar handler collided with the existing `result` from `response.json()`.
+  Vitest never loads that component; Turbopack does.
 
 ## 2026-08-05 — PR #29 review fixes (feat/how-to-register)
 

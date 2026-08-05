@@ -34,8 +34,14 @@ export const COMPRESSION_PRESETS = {
  * Tried in order until the result fits. A fixed ladder rather than a binary
  * search: a search costs ~7 encodes of a full-resolution bitmap on a phone, the
  * ladder costs at most 4, and they land within a few percent of each other.
+ *
+ * It starts HIGH on purpose. This pass exists only to get the file under the
+ * transport cap — the server re-encodes at quality 80 and owns the stored
+ * artefact — so every point of quality given away here is given away twice.
+ * Starting at 0.92 hands the server a cleaner source at almost the same
+ * transport size; the lower rungs are there for photos that need them.
  */
-const QUALITY_LADDER = [0.82, 0.7, 0.6, 0.5] as const;
+const QUALITY_LADDER = [0.92, 0.82, 0.7, 0.6, 0.5] as const;
 
 /** Browsers cannot decode these, so there is nothing to compress. */
 const UNDECODABLE = ['image/heic', 'image/heif'];

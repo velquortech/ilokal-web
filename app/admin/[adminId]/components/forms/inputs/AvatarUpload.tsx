@@ -5,6 +5,12 @@ import { Upload, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AvatarImage } from '@/components/custom/AvatarImage';
 import { ROUTES } from '@/config/routeConfig';
+import {
+  compressImage,
+  describeCompression,
+  COMPRESSION_PRESETS,
+  MAX_UPLOAD_BYTES,
+} from '@/lib/utils/compressImage';
 
 export interface AvatarUploadProps {
   value: string | null;
@@ -37,22 +43,31 @@ export function AvatarUpload({
   }, [value, currentAvatarUrl, uploading]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const picked = e.target.files?.[0];
+    if (!picked) return;
 
     try {
       setUploading(true);
       setError(null);
 
-      // Validate file (client-side pre-check)
-      const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-      if (file.size > MAX_FILE_SIZE) {
-        setError('File size must be less than 2MB');
+      if (!picked.type.startsWith('image/')) {
+        setError('Please upload an image file');
         return;
       }
 
-      if (!file.type.startsWith('image/')) {
-        setError('Please upload an image file');
+      // Compressed BEFORE the size check: an avatar is almost always a photo
+      // straight off a phone, and the route caps at 2 MB. Says why when it
+      // cannot help (HEIC, animation) rather than repeating the size rule.
+      const compression = await compressImage(picked, {
+        maxBytes: MAX_UPLOAD_BYTES,
+        maxDimension: COMPRESSION_PRESETS.avatar,
+      });
+      const file = compression.file;
+
+      if (file.size > MAX_UPLOAD_BYTES) {
+        setError(
+          describeCompression(compression) ?? 'File size must be less than 2MB',
+        );
         return;
       }
 

@@ -1,26 +1,16 @@
 # CLAUDE.md — iLokal Web
 
-<!-- TEMP: remove when events merge -->
-> **Active work:** Events — built, local only. `/explore` dateline banner,
-> `/events`, `/events/[eventId]`, `/events/nearby`, owner proposals at
-> `/business/[id]/events`, admin review at `/admin/[id]/events`, and
-> `GET /api/mobile/events/nearby`. Ships dark behind
-> `app_settings.enable_events`. **The approval gate is a DB trigger, not RLS
-> alone** — RLS cannot restrict a column, so an owner would otherwise be able
-> to `PATCH status='approved'` through PostgREST. Migration
-> `20260802034107_events.sql` **needs human approval + `make migrate-cloud`**.
-> Plan and parity table: [`.claude/EVENTS.md`](.claude/EVENTS.md) (local, not
-> committed); what landed is in `.claude/CHANGELOG.md`. Delete this note when
-> merged.
-
-<!-- TEMP: remove when the offerings model is merged -->
-> **Active work:** Offerings model — generalizing the product-only catalogue to
-> serve services/rentals (van rental, salon, tours). `products` carries
-> `kind` (product|service) and `booking_mode`; `businesses.offering_mode` and
-> `business_types.offering_profile` drive per-vertical vocabulary. Bookings
-> ship dark behind `app_settings.enable_bookings`. Decision record and phased
-> plan are kept local (not committed); see `.claude/CHANGELOG.md` for what
-> landed. Delete this note when finished.
+<!-- TEMP: remove once the migration queue below is empty on cloud -->
+> **⚠️ The database this file describes is AHEAD of cloud.** Events, the
+> offerings model, product sections, bookings and the onboarding work have all
+> merged to `main`, but **16 migrations after `20260717082537` are not confirmed
+> applied to `ilokal-database`** — see "Migration state" under Schema state for
+> the queue and the apply procedure. Read that before writing any query against
+> a table those migrations touch, and before assuming a feature flag exists.
+>
+> Features that ship **dark** behind `app_settings`: events
+> (`enable_events`), bookings (`enable_bookings`). The onboarding tour
+> (`enable_onboarding_tour`) ships **on**, seeded by its own migration.
 
 ## Commands
 
@@ -216,13 +206,53 @@ Key facts about the current normalized schema (as of 2026-06-08):
 - **Deals promotion** — the explore feed (`/api/mobile/deals`) sizes bento cards by `subscription_plans.features_promo_boost` (boolean, `20260530000002`), NOT by `price`. The anon feed reads promoted subs via the public SELECT policy in `20260530000003` (active subs on promo-boost plans only). Set the flag on new promoted plans, or they silently won't get boosted.
 - **Coupon access invariant** — every route that fetches a coupon for display or redemption must filter `.eq('status', 'published').is('archived_at', null).lte('start_date', now)`. Omitting any of the three allows draft, archived, or not-yet-active coupons to be acted on.
 - **`increment_coupon_redemptions(p_coupon_id uuid)`** — SECURITY DEFINER RPC (`20260527000001`). Call via `supabase.rpc('increment_coupon_redemptions', { p_coupon_id })` after inserting into `user_redemptions`. Returns `true` if incremented, `false` if global cap already hit. Must be SECURITY DEFINER — authenticated users have no UPDATE policy on `coupons`. Only the **global** cap is race-safe via this RPC; the per-user cap in the redeem route is a non-atomic count-then-insert (TOCTOU) — concurrent redeems by one user can slip past it.
-- **Migration state (2026-07-17):** local and cloud (`ilokal-database`) are fully in
-  sync through `20260717082537` — no pending migrations. Notable recent DB facts:
+- **⚠️ Migration state (2026-08-05): local is 16 migrations AHEAD of cloud.**
+  Cloud (`ilokal-database`) was last confirmed in sync at `20260717082537`.
+  Everything after that is applied **locally only** and needs human approval →
+  `make migrate-cloud` → a `supabase_migrations.schema_migrations` ledger
+  reconcile (the Supabase MCP records its own timestamp as the version, so the
+  ledger must be rewritten to the local file's version or the next `db push`
+  re-applies everything). Apply in timestamp order:
+  `20260717093122` (role from JWT metadata) · `20260723000000` (registration
+  gating flags) · `20260725000000` (rating summary RPC) · `20260727000000`–
+  `20260727000006` (offerings discriminators, vertical profiles, quote pricing,
+  service attributes, mobile columns, booking requests, public info RPC) ·
+  `20260801061117` (product sections) · `20260801064656` (category scoping) ·
+  `20260802034107` (events) · `20260804061500` (events review fixes) ·
+  `20260804233000` (onboarding state) · `20260805090000` (public registration
+  flags).
+  **Until they land, cloud has no events tables, no `product_sections`, no
+  `booking_requests`, no offering columns and a 2-column
+  `public_feature_flags()`** — so a query written against any of those works
+  locally and 42P01/42703s in production. Verify against the live DB, not
+  against this list, before assuming.
+- **Notable DB facts (through `20260717082537`, confirmed on both):**
   `sync_role_to_jwt` trigger (role/status → JWT `app_metadata`),
   `increment_coupon_redemptions` RPC, `UNIQUE ratings(user_id, product_id)`,
   the `20260717*` hardening set (see "API security & performance standards"
   below), and pg_cron jobs `process-notification-outbox` (every minute) +
   `prune-notification-outbox` (daily).
+- **`public_feature_flags()`** (widened `20260805090000`) — SECURITY DEFINER,
+  granted to anon: returns **exactly four** booleans (`enable_events`,
+  `enable_bookings`, `require_business_documents`, `auto_verify_businesses`).
+  **The return list is the public contract**, which is why flags are read
+  through it rather than from `app_settings`: that table is readable `TO
+  authenticated` only, so an anonymous table read returns zero rows and **no
+  error**, and a caller reads that as "not configured". `enable_onboarding_tour`
+  is deliberately NOT in the list — it is owner-facing, read from the table, and
+  fails closed. `get_app_setting_bool` counts only a real JSON boolean; anything
+  else takes the default, because all four flags come from one call and an
+  uncastable value used to error the whole RPC.
+- **`business_settings` onboarding columns** (`20260804233000`) —
+  `onboarding_tour_completed_at` and `onboarding_checklist_dismissed_at`,
+  nullable, NULL = not answered. The only STORED onboarding facts; every
+  checklist item is derived. No new policy was needed: the owner `FOR ALL`
+  policy already carries an explicit `WITH CHECK`. Written by upsert, never
+  update — the settings row is created lazily. The same migration seeds
+  `app_settings.enable_onboarding_tour = true` and adds
+  `idx_branches_business_id_live` (partial, `archived_at IS NULL`), because the
+  checklist counts pinned branches per shop on every dashboard load and
+  Postgres does not auto-index FKs.
 - **`ratings`/`business_ratings` INSERT gate (SEC-4, `20260717080351`)** — a
   non-admin can only create a rating for a business they have redeemed a coupon
   from (RESTRICTIVE RLS policy via `has_redeemed_from_business()`). Rating
@@ -247,7 +277,8 @@ Key facts about the current normalized schema (as of 2026-06-08):
 ## API security & performance standards
 
 Standards established by the 2026-07-17 perf/security audit (branch
-`perf/security-hardening`, full log in `.claude/PERFORMANCE_AUDIT.md`). All new
+`perf/security-hardening`; the audit doc was local and is gone — the findings
+and what landed are in the four 2026-07-17 `.claude/CHANGELOG.md` entries). All new
 code must follow these:
 
 - **RLS policies: always wrap auth functions** — write `(select auth.uid())` /
@@ -319,7 +350,6 @@ Always loaded:
 @.claude/docs/protected-routes.md
 @.claude/docs/auth-rate-limits.md
 @.claude/CHANGELOG.md
-@.claude/skill.md
 
 Load on request (read when topic is relevant):
 - `.claude/docs/architecture.md` — system design, auth flow diagrams

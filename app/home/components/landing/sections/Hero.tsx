@@ -56,7 +56,7 @@ export function Hero() {
               the wrap caps at 1200px, so the column stops growing while
               `8.5vw` keeps going — at 1440 that pushed "The best spots" onto
               its own two lines. The lg ramp is sized off the column. */}
-          <h1 className="font-display mt-5 text-[clamp(2.75rem,8.5vw,6.75rem)] leading-[0.9] font-bold tracking-[-0.045em] text-[#1A1A1A] lg:text-[clamp(3rem,4.4vw,3.75rem)] dark:text-[#F7F5EF]">
+          <h1 className="mt-5 text-[clamp(2.75rem,8.5vw,6.75rem)] leading-[0.9] font-bold tracking-[-0.045em] text-[#1A1A1A] lg:text-[clamp(3rem,4.4vw,3.75rem)] dark:text-[#F7F5EF]">
             {HEADLINE.map((line, i) => (
               <span key={line} className="il-rise block" style={rise(i + 1)}>
                 {/* The turn lands on the last line, so it gets the brand red. */}

@@ -62,8 +62,11 @@ describe('CustomerFooter', () => {
     expect(all).toContain(ROUTES.EXPLORE.DEALS);
   });
 
-  it('carries the business-registration CTA', () => {
-    expect(hrefs()).toContain(ROUTES.BUSINESS.registration);
+  it('sends "List your business" somewhere a logged-out reader can read', () => {
+    // NOT the wizard: `/business` is a protected prefix, so that link bounced
+    // an anonymous visitor to /sign-in having explained nothing.
+    expect(hrefs()).toContain(ROUTES.PUBLIC.FOR_BUSINESS);
+    expect(hrefs()).not.toContain(ROUTES.BUSINESS.registration);
   });
 
   it('makes landing-section anchors absolute, never bare hashes', () => {

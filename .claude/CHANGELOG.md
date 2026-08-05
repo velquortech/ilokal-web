@@ -1,5 +1,169 @@
 # Changelog
 
+## 2026-08-05 — PR #29 review fixes (feat/how-to-register)
+
+> Fixes from the react-doctor + api-doctor review. **Edits the unmerged
+> `20260805090000` migration in place** (not on cloud) and re-verified against
+> the live database. Approval + `make migrate-cloud` still required.
+
+- **⛔ The page's own CTA re-created the dead-end it exists to remove.** It
+  branched on `Boolean(user)`, so a signed-in **customer** got "Start
+  registering" → the wizard, and `roleAllowedForPath` admits only
+  `business_owner`/`admin`, so the proxy bounced them to `/home` with no
+  explanation. One click away: `CustomerFooter`'s "List your business" renders
+  for every session on /explore. It branches on ROLE now, and a customer is told
+  *why* the button says "create an account".
+- **🔴 The reader was coupled to a migration that exists only on local.** If the
+  app shipped first, the old 2-column RPC resolved *successfully* without the
+  registration keys and both fell to strict fallbacks — regressing
+  **authenticated** flows that previously worked: the wizard would grow a
+  Documents step and the success dialog would promise a review again. It now
+  falls through to the old table read when the RPC row lacks the keys, so the
+  deploy order is no longer load-bearing for signed-in users.
+- **🔴 `/for-business` was missing from the proxy matcher** while reading the
+  session for its CTA and its owner redirect. Unmatched, nothing refreshes an
+  expiring token — the RSC cannot write the rotated cookie — so a live owner
+  session renders as anonymous. The same note `proxy.ts` already carries for
+  `/explore`.
+- **🔴 The widened RPC silently broke the repo's own contract test.**
+  `events.test.sql` asserted `public_feature_flags` exposes **exactly 2**
+  columns, so that suite aborted at block 6c and blocks 7–8 never ran. Updated
+  to 4, with the two new columns asserted anon-readable — and a new assertion
+  that `enable_onboarding_tour` stays **out** of the return list, since "the
+  list is the contract" only means something if something is deliberately
+  excluded.
+- **A malformed flag row could flip a switch or black out the others.**
+  `get_app_setting_bool` cast `(value #>> '{}')::boolean`, and Postgres accepts
+  `'yes'`/`'on'`/`'1'` — looser than the TypeScript check it replaced. Worse,
+  an uncastable value raised 22P02, and since all four flags now come from ONE
+  call, a bad registration row would have blanked events and bookings for every
+  anonymous visitor. Only a real JSON boolean counts now; verified by setting
+  `'"maybe"'` and watching the other three survive.
+- **The migration is transactional and keeps its owner.** `DROP` + `CREATE`
+  outside a transaction leaves a window where the function is missing and every
+  anonymous caller gets PGRST202 — all four flags failing closed at once. And a
+  drop resets the OWNER, which matters here: this is SECURITY DEFINER and calls
+  `get_app_setting_bool`, whose EXECUTE is revoked from anon. `BEGIN`/`COMMIT`
+  plus an explicit `ALTER FUNCTION … OWNER TO postgres`.
+- **Four flag reads and two session lookups per render, now one each.** A single
+  public page asked for the flags four times (the copy, twice inside
+  `PublicShell`, and the metadata) and for the session twice. A `React.cache`d
+  private reader in `appSettings` — `'use server'` constrains exports, not
+  internals — and `getCurrentUser` wrapped in `React.cache`, which helps every
+  surface that composes the shell.
+- **The share card claimed a step count the page could contradict.** Static
+  `metadata` said "four steps" while the spine renders `{steps.length}`; it is
+  `generateMetadata` now, reading the same flag. Same for the hero and the final
+  CTA, which had the count typed into their prose.
+- **Also:** the page has an `<h1>` (nothing in `PublicShell` renders one, and
+  every peer public page has one); `PublicShell` moved to a `layout.tsx` with a
+  `loading.tsx`, so the chrome no longer waits on the page's own reads;
+  `bg-[#D70005]` on a dark surface replaced with `bg-primary` (the raw hex
+  measures 3.23:1 there, which CLAUDE.md forbids) and the invented
+  `dark:bg-[#2A2724]` with the card token; both CTAs got a ring-offset colour, so
+  the focus indicator is not a white halo on white; the landing's "What you'll
+  need" link deep-links to `#what-you-need` instead of duplicating the button's
+  href beside it, and uses `outline-hidden` so the ring survives forced-colors
+  mode; `OnboardingSection` — a client component — stopped importing `getSteps`,
+  which pulled the whole wizard including the map picker into the dashboard
+  bundle; and the owner redirect uses a narrow `getOwnedBusinessId` that logs
+  instead of `getMyBusinesses().catch(() => null)` with its `select('*')` and
+  three storage resolutions.
+- **Tests (+7, 2206 → 2213):** the role branch and the customer's explanatory
+  note; the prose count following the flag; the `<h1>`; the RPC named
+  explicitly (a typo previously passed by falling through to the fallbacks);
+  the pre-migration RPC shape falling back to the table, and staying strict when
+  neither source can answer; plus the contract sweep extended to the page itself
+  and to the proxy matcher.
+- Verified: `yarn lint` + **2213** tests + a clean `yarn build` + the events SQL
+  suite green, plus a production smoke confirming the `<h1>`, the interpolated
+  OG description ("Ten minutes, 4 steps"), and the deep link.
+
+## 2026-08-05 — A public page for how to register, and the CTAs that led nowhere (feat/how-to-register)
+
+> **ONE migration (`20260805090000_public_registration_flags.sql`) — widens an
+> existing SECURITY DEFINER function's return list. No table, column or policy
+> change.** Applied on LOCAL ONLY. ⚠️ **Needs human approval before merge, then
+> `make migrate-cloud` + a ledger reconcile.** Parity table (HR1–HR17) and the
+> phased plan: [`.claude/HOW_TO_REGISTER.md`](.claude/HOW_TO_REGISTER.md)
+> (local, not committed).
+
+- **🔴 Every public "List your business" CTA dead-ended at a sign-in wall.** All
+  six of them — the landing nav, the landing hero, the business block, the final
+  CTA, the explore nav and the explore footer — pointed at
+  `ROUTES.BUSINESS.registration`. But `/business` is a wholesale protected prefix
+  and the wizard's layout calls `getMyBusinesses()`, which throws
+  unauthenticated. A stranger clicking the site's primary business CTA was
+  bounced to `/sign-in` having been told nothing about what registering
+  involves. **That, not the absence of a page, is what this fixes.**
+- **New `/for-business`** — a public route, deliberately NOT under `/business`:
+  a page for logged-out visitors placed inside a protected prefix is a page its
+  own audience cannot open, and carving a marketing exception into a security
+  prefix trades the wrong thing.
+- **The page is generated from the wizard, not written alongside it.** The steps
+  come from the wizard's own metadata, so the page cannot describe a flow the
+  product no longer has — and it shows the **real fields** each step asks for
+  (`Map pin`, `Photos of the shop (4 or more)`), because the four-photo minimum
+  is what people discover at step three and abandon over.
+- **New `data/stepMeta.ts` splits the step titles from the step COMPONENTS.**
+  `steps.tsx` carried both, so naming the steps anywhere else meant pulling the
+  whole client-side form into that bundle — the reason a marketing page would
+  otherwise have been given its own hand-typed copy of the list. The wizard now
+  builds its components around the same metadata, keyed by a step-id union, so a
+  new step is a compile error until it has both a component and a description.
+- **Nothing factual on the page is hardcoded.** The documents line reads
+  `require_business_documents` — off for the MVP, so it says "No permits or
+  paperwork", and it says the opposite the day an admin flips it. The
+  after-submit copy reads `auto_verify_businesses`: promising a 24–48 hour
+  review on an indexed page would be the exact lie ON18 just removed from the
+  success dialog, with a bigger audience.
+- **🔴 Which is how the smoke test caught a live one.** A production build of
+  the page told every anonymous visitor they needed a **business permit** and a
+  **review**, while the database said `require_business_documents = false` and
+  `auto_verify_businesses = true`. Cause: `getRegistrationSettings` read
+  `app_settings` directly, and that table is readable `TO authenticated` only —
+  so an anonymous caller gets **zero rows and no error**, which the function read
+  as "not configured" and answered with its strict fallbacks. Invisible while
+  both callers were behind auth. The migration widens the existing
+  `public_feature_flags()` RPC (fixed return list, so a future settings row stays
+  private by default) and the reader goes through it — the same trap, and the
+  same fix, as the events flags.
+- **Design.** Reuses the landing's own primitives and the public shell rather
+  than a second set: one Cornsilk "before you start" card (Charcoal on Cornsilk
+  is 14.12:1), a numbered spine — numbering earns its place because the wizard
+  IS a sequence, which is also why the landing's business block stays a
+  three-line teaser and does not repeat these — and field names set in mono so
+  they read as the form rather than as prose. **No `.il-reveal`**: those rules
+  are scoped to `[data-ilokal-root]`, which this page is not inside, so they
+  would have silently done nothing. The FAQ is native `<details>`, so the page
+  ships no JavaScript of its own.
+- **The FAQ answers only what the schema or the flow can back.** No pricing
+  question: there is no billing surface in this app, and "free forever" on an
+  indexed page is a commercial promise, not a product fact.
+- **`RegistrationSteps` stopped claiming progress nobody has made.** It printed
+  "Step 1 of N" from a prop that was defaulted and that no caller ever passed,
+  while every row rendered identically — a static list wearing a progress
+  indicator's clothes. It reads the step count now. And the dashboard's "Learn
+  More", a `<Button>` with no handler since it was written, finally has a
+  destination.
+- **Tests (+20, 2186 → 2206):** the step spine grows from four to five the
+  moment the documents flag flips and names the Documents step only then; the
+  prerequisites and after-submit copy fork on their flags and never render both
+  variants; the hero survives `renderToStaticMarkup` with no `opacity:0`; and a
+  contract sweep over the whole landing and customer directories — not a list of
+  known files, which is how the first version of it passed while the hero and
+  final CTA still pointed at the wizard — asserts no public surface links a
+  logged-out visitor into the protected prefix.
+- Verified: `yarn lint` + **2206** tests + a clean `yarn build`, plus a real
+  production smoke: `/for-business` 200 for an anonymous visitor rendering the
+  four steps, "No permits or paperwork" and "goes live right away"; `/home` and
+  `/explore` each carrying links to it and **zero** remaining links to
+  `/business/registration`.
+- **Not done:** the cloud apply (needs approval); threading `?next=` so signup
+  returns an owner to the wizard (`safeNext` is customer-scoped today, so the
+  anonymous CTA goes to signup plainly); and a browser pass at 320/768/1280 in
+  both themes.
+
 ## 2026-08-05 — "Go to dashboard" looked dead while it worked (feat/business-onboarding)
 
 > One button. No schema, API or auth change.

@@ -1,23 +1,33 @@
 import { cn } from '@/lib/utils';
-import { getSteps } from '@/app/business/registration/data/steps';
+import { getRegistrationStepMeta } from '@/app/business/registration/data/stepMeta';
 
+/**
+ * The steps of the registration wizard, listed for someone who has not started
+ * it — so there is no current step to be on.
+ *
+ * It used to print "Step 1 of N" from a prop that was defaulted and that no
+ * caller ever passed, while every row rendered identically: a static list
+ * wearing a progress indicator's clothes. The plain count is the honest version
+ * of the same information.
+ *
+ * Reads `stepMeta`, not `getSteps` — it needs the titles, not the wizard's
+ * client components.
+ */
 export function RegistrationSteps({
-  currentStep = 1,
   requireDocuments = true,
 }: {
-  currentStep?: number;
   requireDocuments?: boolean;
 }) {
-  const steps = getSteps(requireDocuments);
+  const steps = getRegistrationStepMeta(requireDocuments);
   return (
     <div className="flex h-full flex-1">
       <div className="bg-card w-full space-y-6 rounded-xl border p-6 shadow-sm">
         <div className="flex items-center justify-between">
           <p className="text-foreground text-xl font-semibold tracking-tight">
-            Registration Progress
+            What registration asks for
           </p>
           <span className="text-muted-foreground text-xs font-medium">
-            Step {currentStep} of {steps.length}
+            {steps.length} steps
           </span>
         </div>
 
@@ -32,7 +42,7 @@ export function RegistrationSteps({
             const stepNumber = index + 1;
             return (
               <div
-                key={step.title}
+                key={step.id}
                 className={cn(
                   'relative flex items-center gap-4 opacity-100 transition-opacity duration-300',
                 )}

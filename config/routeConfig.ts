@@ -29,6 +29,15 @@ export const ROUTES = {
   // Public marketing surface (anonymous, no auth)
   PUBLIC: {
     LANDING: LANDING_PATH,
+    /**
+     * How to register, for owners who have not signed up yet.
+     *
+     * Deliberately NOT under `/business` — that whole prefix is protected
+     * (`lib/utils/protectedRoutes.ts`), so a page for logged-out visitors
+     * placed there would bounce the only audience it is written for to
+     * `/sign-in`. Which is the bug this page exists to fix.
+     */
+    FOR_BUSINESS: '/for-business',
   },
 
   // Dashboard/Protected routes by role

@@ -43,7 +43,9 @@ export const PUBLIC_NAV_LINKS: NavLink[] = [
   // The real feed, not the landing's `#deals` teaser — same call as the footer.
   { href: ROUTES.EXPLORE.DEALS, label: 'Deals' },
   { href: landingSectionPath('voices'), label: 'Voices' },
-  { href: landingSectionPath('businesses'), label: 'For Businesses' },
+  // The page, not the landing's `#businesses` teaser: that block answers
+  // "should I?", and this link is clicked by someone asking "how?".
+  { href: ROUTES.PUBLIC.FOR_BUSINESS, label: 'For Businesses' },
 ];
 
 const linkAction =
@@ -77,8 +79,10 @@ export function PublicNav() {
             <Link href={ROUTES.AUTH.SIGNUP} style={s(linkAction)}>
               Sign Up
             </Link>
+            {/* The explainer, not the wizard: this nav renders for anonymous
+                visitors, and the wizard is behind a protected prefix. */}
             <Link
-              href={ROUTES.BUSINESS.registration}
+              href={ROUTES.PUBLIC.FOR_BUSINESS}
               className="il-btn-primary"
               style={s(primaryAction)}
             >

@@ -16,14 +16,16 @@ vi.mock('@/supabase/server', () => ({ createServerSupabaseClient: vi.fn() }));
 const mockedCreateClient = vi.mocked(createServerSupabaseClient);
 
 function mockSettingsRows(
-  rows: { key: string; value: unknown }[] | null,
+  row: Record<string, unknown> | null,
   error: { message: string } | null = null,
 ) {
+  // Through the RPC, not a table read: `app_settings` is readable TO
+  // authenticated only, so a table read answers an ANONYMOUS caller with zero
+  // rows and no error — which the old implementation turned into the strict
+  // fallbacks on a public page. See 20260805090000.
   const supabase = {
-    from: vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        in: vi.fn().mockResolvedValue({ data: rows, error }),
-      }),
+    rpc: vi.fn().mockReturnValue({
+      maybeSingle: vi.fn().mockResolvedValue({ data: row, error }),
     }),
   };
   mockedCreateClient.mockResolvedValue(
@@ -31,6 +33,7 @@ function mockSettingsRows(
       ReturnType<typeof createServerSupabaseClient>
     >,
   );
+  return supabase;
 }
 
 beforeEach(() => {
@@ -39,10 +42,10 @@ beforeEach(() => {
 
 describe('getRegistrationSettings', () => {
   it('returns the stored boolean values', async () => {
-    mockSettingsRows([
-      { key: 'require_business_documents', value: false },
-      { key: 'auto_verify_businesses', value: true },
-    ]);
+    mockSettingsRows({
+      require_business_documents: false,
+      auto_verify_businesses: true,
+    });
 
     await expect(getRegistrationSettings()).resolves.toEqual({
       requireBusinessDocuments: false,
@@ -51,7 +54,7 @@ describe('getRegistrationSettings', () => {
   });
 
   it('falls back to strict defaults when rows are missing', async () => {
-    mockSettingsRows([]);
+    mockSettingsRows(null);
 
     await expect(getRegistrationSettings()).resolves.toEqual({
       requireBusinessDocuments: true,
@@ -69,10 +72,10 @@ describe('getRegistrationSettings', () => {
   });
 
   it('ignores non-boolean values per key', async () => {
-    mockSettingsRows([
-      { key: 'require_business_documents', value: 'yes' },
-      { key: 'auto_verify_businesses', value: true },
-    ]);
+    mockSettingsRows({
+      require_business_documents: 'yes',
+      auto_verify_businesses: true,
+    });
 
     await expect(getRegistrationSettings()).resolves.toEqual({
       requireBusinessDocuments: true, // fallback — 'yes' is not boolean

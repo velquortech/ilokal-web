@@ -294,6 +294,9 @@ export const config = {
     // these paths, so no redirect or role gate applies — refresh only.
     '/explore',
     '/explore/:path+',
+    // Same reason: `/for-business` reads the session to pick its CTA and to
+    // redirect an owner who already has a shop.
+    '/for-business',
     '/api/admin',
     '/api/admin/:path+',
     '/api/protected/:path+',

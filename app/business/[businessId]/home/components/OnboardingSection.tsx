@@ -4,8 +4,14 @@ import { Clock, DollarSign, CheckCircle2, ArrowRight, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getSteps } from '@/app/business/registration/data/steps';
+// `stepMeta`, not `steps`: this file is a CLIENT component, and `steps.tsx`
+// carries the wizard's step COMPONENTS — importing it pulled the whole
+// registration form, map picker included, into the dashboard bundle for the
+// sake of a list of titles.
+import { getRegistrationStepMeta } from '@/app/business/registration/data/stepMeta';
 import Image from 'next/image';
+import Link from 'next/link';
+import { ROUTES } from '@/config/routeConfig';
 
 interface OnboardingSectionProps {
   onStartTour: () => void;
@@ -70,8 +76,11 @@ export function OnboardingSection({ onStartTour }: OnboardingSectionProps) {
               Start Registration
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            <Button size="lg" variant="outline">
-              Learn More
+            {/* Was a `<Button>` with no handler and no link — inert since it
+                was written. It now goes to the page that answers the question
+                it asks. */}
+            <Button size="lg" variant="outline" asChild>
+              <Link href={ROUTES.PUBLIC.FOR_BUSINESS}>Learn More</Link>
             </Button>
           </div>
         </div>
@@ -92,7 +101,7 @@ export function OnboardingCard({
           Registration Progress
         </p>
         <div className="space-y-4">
-          {getSteps(requireDocuments).map((step, index) => (
+          {getRegistrationStepMeta(requireDocuments).map((step, index) => (
             <div key={step.title} className="flex items-center gap-5">
               <div className="bg-primary/20 flex size-6 items-center justify-center rounded-full text-xs font-medium">
                 {index + 1}

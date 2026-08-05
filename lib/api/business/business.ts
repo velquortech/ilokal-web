@@ -218,6 +218,38 @@ export async function getBusiness(id: string) {
 }
 
 // 3. READ: Get all businesses for the current owner
+/**
+ * Just the id of the shop this owner has, or null.
+ *
+ * `getMyBusinesses` reads `select('*')` and resolves three storage URLs, which
+ * is a lot of work for a caller that only wants to know whether to redirect.
+ * Same scope as that query — live rows, owner-scoped — so the two cannot
+ * disagree about whether a shop exists.
+ */
+export async function getOwnedBusinessId(
+  ownerId: string,
+): Promise<string | null> {
+  try {
+    const supabase = await createServerSupabaseClient();
+
+    const { data, error } = await supabase
+      .from('businesses')
+      .select('id')
+      .eq('owner_id', ownerId)
+      .is('archived_at', null)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data?.id ?? null;
+  } catch (err) {
+    // Logged, not swallowed silently: a transient failure and "no shop" lead
+    // to the same render, and only one of them is worth knowing about.
+    console.error('[getOwnedBusinessId]', err);
+    return null;
+  }
+}
+
 export async function getMyBusinesses() {
   const supabase = await createServerSupabaseClient();
 

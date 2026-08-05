@@ -51,8 +51,11 @@ export function FinalCta() {
               Explore shops
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
+            {/* The explainer, not the wizard: `/business` is a protected
+                prefix, so this button bounced a logged-out reader to /sign-in
+                with nothing explained. */}
             <Link
-              href={ROUTES.BUSINESS.registration}
+              href={ROUTES.PUBLIC.FOR_BUSINESS}
               className="inline-flex items-center rounded-full border border-[#FEF8D6]/45 px-8 py-4 text-base font-semibold text-[#FEF8D6] transition-colors hover:border-[#FEF8D6] hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-[#FEF8D6] focus-visible:ring-offset-2 focus-visible:ring-offset-[#D70005] focus-visible:outline-none"
             >
               List your business

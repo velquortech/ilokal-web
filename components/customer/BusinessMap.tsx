@@ -90,7 +90,14 @@ export function BusinessMap({ branches }: BusinessMapProps) {
 
   return (
     <div className="space-y-2">
-      <div className="h-72 overflow-hidden rounded-xl border">
+      {/* `isolate` is load-bearing, not decoration. Leaflet gives its own panes
+          `z-index: 400` and its control corners `1000` — both far above the
+          sticky header's `z-50`, and without a stacking context here those
+          numbers compete with the header directly, so the map painted straight
+          over the nav. `isolation: isolate` + `z-0` contains them: leaflet's
+          layers still stack correctly against each other, but the whole map now
+          sits below the chrome. */}
+      <div className="relative isolate z-0 h-72 overflow-hidden rounded-xl border">
         <MapContainer
           center={center}
           zoom={14}

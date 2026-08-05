@@ -3,9 +3,30 @@
 import { useEffect, useRef, useState } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { BusinessProps } from '../validator/business-registration-form-schema';
+import { putFiles, getFiles, removeFiles, clearAllFiles } from './fileCache';
 
 const FORM_CACHE_KEY = 'ilokal-business-registration-cache';
-const FILE_CACHE_PREFIX = 'ilokal-file-cache-';
+
+/**
+ * Legacy localStorage keys, kept only to be READ ONCE and then deleted.
+ *
+ * File bytes used to be base64'd into localStorage, which threw
+ * `QuotaExceededError` for every conforming `interior_images` selection (four
+ * files of up to 2 MB is ~21 MB against a ~5 MB quota — see `fileCache.ts`).
+ * The bytes live in IndexedDB now. This prefix survives so an owner who is
+ * mid-registration when this ships keeps whatever small files DID fit, and so
+ * the dead entries stop occupying the quota for everything else that uses it.
+ * Safe to delete this migration path once it has been in production a release.
+ */
+const LEGACY_FILE_CACHE_PREFIX = 'ilokal-file-cache-';
+
+const LEGACY_FILE_FIELDS = [
+  'shop_logo',
+  'shop_banner',
+  'business_license',
+  'tax_certificate',
+  'interior_images',
+] as const;
 
 interface FileMetadata {
   name: string;
@@ -132,32 +153,14 @@ export function useFormCache(form: UseFormReturn<BusinessProps>) {
     }
   };
 
-  // Restore file from cache
-  const restoreFileFromCache = async (
-    fieldName: string,
-    metadata: FileMetadata,
-  ): Promise<File | null> => {
-    if (typeof window === 'undefined') return null;
-
-    try {
-      const cacheKey = `${FILE_CACHE_PREFIX}${fieldName}`;
-      const cachedFile = localStorage.getItem(cacheKey);
-
-      if (cachedFile) {
-        const { dataURL } = JSON.parse(cachedFile);
-        const blob = await dataURLtoBlob(dataURL);
-        return new File([blob], metadata.name, {
-          type: metadata.type,
-          lastModified: metadata.lastModified,
-        });
-      }
-    } catch (error: unknown) {
-      console.error(`Failed to restore file ${fieldName}:`, error);
-    }
-    return null;
-  };
-
-  // Restore multiple files
+  /**
+   * Read a field's files back.
+   *
+   * IndexedDB first; a legacy localStorage entry is used only if IndexedDB has
+   * nothing, and is deleted either way (see `LEGACY_FILE_CACHE_PREFIX`). The
+   * metadata argument supplies the names and timestamps, because the store
+   * holds bytes and the form cache holds the labels.
+   */
   const restoreFilesFromCache = async (
     fieldName: string,
     filesMetadata: FileMetadata[],
@@ -165,82 +168,88 @@ export function useFormCache(form: UseFormReturn<BusinessProps>) {
     if (typeof window === 'undefined') return [];
 
     try {
-      const cacheKey = `${FILE_CACHE_PREFIX}${fieldName}`;
-      const cachedFiles = localStorage.getItem(cacheKey);
+      const stored = await getFiles(fieldName);
+      if (stored.length > 0) return stored;
 
-      if (cachedFiles) {
-        const { dataURLs }: { dataURLs: string[] } = JSON.parse(cachedFiles);
-
-        const files = await Promise.all(
-          dataURLs.map(async (dataURL, i) => {
-            const blob = await dataURLtoBlob(dataURL);
-            return new File([blob], filesMetadata[i].name, {
-              type: filesMetadata[i].type,
-              lastModified: filesMetadata[i].lastModified,
-            });
-          }),
-        );
-
-        return files;
-      }
+      return readLegacyFiles(fieldName, filesMetadata);
     } catch (error: unknown) {
-      console.error(`Failed to restore files ${fieldName}:`, error);
+      console.warn(`[useFormCache] could not restore ${fieldName}:`, error);
+      return [];
     }
-    return [];
   };
 
-  // Clear file cache
+  /** Clear one field. Fire-and-forget so the caller's signature is unchanged. */
   const clearFileCache = (fieldName: string) => {
     if (typeof window === 'undefined') return;
-    try {
-      localStorage.removeItem(`${FILE_CACHE_PREFIX}${fieldName}`);
-    } catch (error: unknown) {
-      console.error(`Failed to clear file cache for ${fieldName}:`, error);
-    }
+    void removeFiles(fieldName);
+    purgeLegacyKey(fieldName);
   };
 
-  // Cache individual file as DataURL
   const cacheFile = async (fieldName: string, file: File) => {
     if (typeof window === 'undefined') return;
-
-    try {
-      const dataURL = await fileToDataURL(file);
-      localStorage.setItem(
-        `${FILE_CACHE_PREFIX}${fieldName}`,
-        JSON.stringify({ dataURL }),
-      );
-    } catch (error: unknown) {
-      console.error(`Failed to cache file ${fieldName}:`, error);
-    }
+    await putFiles(fieldName, [file]);
   };
 
-  // Cache multiple files
   const cacheFiles = async (fieldName: string, files: File[]) => {
     if (typeof window === 'undefined') return;
+    await putFiles(fieldName, files);
+  };
+
+  /**
+   * One-time read of the old base64 entries.
+   *
+   * Anything large never made it in — the write threw — so in practice this
+   * recovers a logo or a banner, not a gallery. It purges as it reads, so the
+   * dead bytes stop counting against the origin's localStorage quota.
+   */
+  const readLegacyFiles = (
+    fieldName: string,
+    filesMetadata: FileMetadata[],
+  ): File[] => {
+    const key = `${LEGACY_FILE_CACHE_PREFIX}${fieldName}`;
 
     try {
-      const dataURLs = await Promise.all(
-        files.map((file) => fileToDataURL(file)),
-      );
-      localStorage.setItem(
-        `${FILE_CACHE_PREFIX}${fieldName}`,
-        JSON.stringify({ dataURLs }),
-      );
+      const raw = localStorage.getItem(key);
+      if (!raw) return [];
+
+      const parsed: { dataURL?: string; dataURLs?: string[] } = JSON.parse(raw);
+      const dataURLs =
+        parsed.dataURLs ?? (parsed.dataURL ? [parsed.dataURL] : []);
+
+      const files = dataURLs.flatMap((dataURL, i) => {
+        const metadata = filesMetadata[i];
+        if (!metadata) return [];
+        return [
+          new File([dataURLtoBlob(dataURL)], metadata.name, {
+            type: metadata.type,
+            lastModified: metadata.lastModified,
+          }),
+        ];
+      });
+
+      // Migrate forward so the next reload comes from IndexedDB.
+      if (files.length > 0) void putFiles(fieldName, files);
+      return files;
     } catch (error: unknown) {
-      console.error(`Failed to cache files ${fieldName}:`, error);
+      console.warn(
+        `[useFormCache] legacy cache for ${fieldName} unusable:`,
+        error,
+      );
+      return [];
+    } finally {
+      purgeLegacyKey(fieldName);
     }
   };
 
-  // Helper: Convert File to DataURL
-  const fileToDataURL = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+  const purgeLegacyKey = (fieldName: string) => {
+    try {
+      localStorage.removeItem(`${LEGACY_FILE_CACHE_PREFIX}${fieldName}`);
+    } catch {
+      // Storage unavailable; there is nothing occupying the quota either.
+    }
+  };
 
-  // Helper: Convert DataURL to Blob
+  // Helper: Convert DataURL to Blob (legacy entries only)
   const dataURLtoBlob = (dataURL: string): Blob => {
     const [header, base64] = dataURL.split(',');
     const mimeMatch = header.match(/data:([^;]+)/);
@@ -304,12 +313,16 @@ export function useFormCache(form: UseFormReturn<BusinessProps>) {
             for (const field of singleFileFields) {
               const metadata = fileMetadata[field as SingleFileField];
               if (metadata) {
-                const p = restoreFileFromCache(field, metadata).then((file) => {
-                  if (cancelled) return;
-                  if (file) {
-                    form.setValue(field, file);
-                  }
-                });
+                // Single fields are stored as a one-element list, so one code
+                // path covers both shapes.
+                const p = restoreFilesFromCache(field, [metadata]).then(
+                  (files) => {
+                    if (cancelled) return;
+                    if (files[0]) {
+                      form.setValue(field, files[0]);
+                    }
+                  },
+                );
                 restorePromises.push(p);
               }
             }
@@ -380,11 +393,11 @@ export function useFormCache(form: UseFormReturn<BusinessProps>) {
     if (typeof window === 'undefined') return;
     try {
       localStorage.removeItem(FORM_CACHE_KEY);
-      localStorage.removeItem(`${FILE_CACHE_PREFIX}shop_logo`);
-      localStorage.removeItem(`${FILE_CACHE_PREFIX}shop_banner`);
-      localStorage.removeItem(`${FILE_CACHE_PREFIX}business_license`);
-      localStorage.removeItem(`${FILE_CACHE_PREFIX}tax_certificate`);
-      localStorage.removeItem(`${FILE_CACHE_PREFIX}interior_images`);
+      // Both stores: the bytes live in IndexedDB, and any legacy localStorage
+      // entry has to go too or a completed registration keeps 5 MB of dead
+      // base64 for the rest of the origin's life.
+      void clearAllFiles();
+      for (const field of LEGACY_FILE_FIELDS) purgeLegacyKey(field);
     } catch (error: unknown) {
       console.error('Failed to clear cache:', error);
     }

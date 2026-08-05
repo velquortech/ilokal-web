@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRef } from 'react';
 import {
   UserIcon,
   Settings,
@@ -9,6 +10,7 @@ import {
   LogOut,
   Loader2,
   ChevronsUpDown,
+  Compass,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -26,20 +28,33 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUser } from '@/providers/UserContext';
 import { useBusinessShop } from '@/providers/BusinessProvider';
 import { businessPath, ROUTES } from '@/config/routeConfig';
+import { useOnboardingTourContext } from '@/components/custom/onboarding/OnboardingTourProvider';
 
 export function UserMenu() {
   const { logout, isLoggingOut } = useAuth();
   const user = useUser();
   const isMobile = useIsMobile();
   const { business } = useBusinessShop();
+  const { enabled: tourEnabled, startTour } = useOnboardingTourContext();
   const bid = business?.id;
   const bPath = (...segs: string[]) =>
     bid ? businessPath(bid, ...segs) : `/business/${segs.join('/')}`;
+
+  // The tour is started from `onCloseAutoFocus`, not from the item's `onSelect`.
+  // Radix restores focus to the trigger when the menu UNMOUNTS — after its exit
+  // animation — so starting earlier means (a) that late restore steals focus out
+  // of the tour card, and (b) the element recorded for the end-of-tour restore
+  // is a menu item that no longer exists. Preventing the default here hands the
+  // whole focus decision to the tour, and the trigger is a live node to return
+  // to.
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const startAfterClose = useRef(false);
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <SidebarMenuButton
+          ref={triggerRef}
           size="lg"
           className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
         >
@@ -62,6 +77,12 @@ export function UserMenu() {
         side={isMobile ? 'bottom' : 'right'}
         align="end"
         sideOffset={4}
+        onCloseAutoFocus={(event) => {
+          if (!startAfterClose.current) return;
+          startAfterClose.current = false;
+          event.preventDefault();
+          startTour(triggerRef.current);
+        }}
       >
         <DropdownMenuLabel className="inline-flex items-center gap-2 font-normal">
           <Avatar className="h-8 w-8 rounded-lg">
@@ -99,6 +120,19 @@ export function UserMenu() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
+        {/* Absent, not disabled, when the kill switch is off — a menu entry
+            that opens nothing is worse than one that isn't there. */}
+        {tourEnabled && (
+          <DropdownMenuItem
+            onSelect={() => {
+              // Deferred to `onCloseAutoFocus` above — see the note there.
+              startAfterClose.current = true;
+            }}
+          >
+            <Compass className="mr-2 h-4 w-4" />
+            Replay tour
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem asChild>
           <Link href={bPath('help')}>
             <HelpCircle className="mr-2 h-4 w-4" />

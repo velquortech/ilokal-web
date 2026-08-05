@@ -1,5 +1,657 @@
 # Changelog
 
+## 2026-08-05 — PR #27 review round 2 (feat/business-onboarding)
+
+> Fixes from the second react-doctor + api-doctor pass. Round 1's fixes were
+> verified as landed; these are the defects those fixes introduced, plus one
+> they did not reach. No schema change — the `20260804233000` approval gate is
+> unchanged.
+
+- **🔴 Clicking outside the tour card consumed the tour.** `onOpenChange` routed
+  Radix's outside-pointer dismissal into `onSkip`, which **settles** — marker
+  written, Server Action posted, never offered again. So a pointer-down anywhere
+  outside the card, *including on the ringed nav link the step is pointing at*,
+  ended onboarding permanently. That is the precise rule round 1's `abort()` was
+  added to enforce, on a far more reachable path than the no-anchor case it
+  fixed. `onInteractOutside` is prevented now; only Skip, Done and Esc end the
+  tour, and Esc still counts as an answer because it is one.
+- **🔴 The empty-`businessId` hole in the shared guard.**
+  `verifyBusinessOwner(businessId?)` treats a FALSY id as *no argument* and falls
+  back to whichever shop `.limit(1)` returns — so `completeOnboardingTourAction('')`
+  from a two-shop owner authorized, and stamped, the wrong shop. These are
+  publicly invocable endpoints. New `businessIdSchema` (`lib/validation/business.ts`)
+  rejects before the helper is ever called.
+- **The promo step expired with the clock.** Round 1 added the live window
+  (`start_date <= now <= expiry_date`) so the row could not tick for a deal
+  reaching nobody — but that made done-ness *un-do itself*: the moment a mature
+  shop's last deal ran out, the completed checklist reappeared telling an owner
+  who did the step years ago to publish their first deal, with no action of
+  theirs. Reverted to "has ever published one", with the reasoning recorded in
+  the query so it is not re-tried a third time: a setup checklist records that a
+  thing was learned; whether a deal is running now is the deals page's job.
+- **`.eq('status','active')` broke the empty state it shares a number with.**
+  That filter is right for the checklist row and wrong for the dashboard, which
+  asks "has this owner added anything at all" — so a shop whose whole catalogue
+  is `unlisted` was told "No products yet". There are two head-only counts now,
+  `offeringCount` (active) and `totalOfferingCount` (any), and the empty state
+  reads the second.
+- **The welcome marker was stranded in a component that does not always
+  render.** `page.tsx` skips `SetupChecklist` entirely for a dismissed checklist
+  on a verified shop, and the `?welcome=1` strip lived inside it — so on that
+  path the marker stayed in the URL and in history, and a back-navigation
+  replayed the invitation. Moved into `TourWelcomeTrigger`, which renders
+  unconditionally and already owned the other one-shot job. Both are now
+  ref-guarded rather than dep-guarded: `useRouter()`'s identity is not something
+  to bet a repeated `replace` on, and the test proved it fires twice.
+- **A pending shop got two stacked modals.** The post-registration invite now
+  mounts on the same page as `BusinessHome`, which was still mounting the
+  **pre-registration** `TourDialog` unconditionally — so 800 ms after arriving,
+  an owner saw a second Radix modal saying "Register your shop to get started",
+  for the shop they had just registered, with two competing focus traps. Gated on
+  `!business`, which is the only state that dialog's copy describes.
+- **The memo fix keyed on flag values but left `vocabulary`** — also a fresh
+  object per RSC render, so the same defect survived under a different name.
+  `resolveTourSteps` reads exactly two fields; those two strings are the deps.
+- **The end-of-tour focus return could land on `<body>`.** On the welcome path
+  `remember()` runs from a mount effect, when `document.activeElement` IS body —
+  an `HTMLElement`, so the `instanceof` guard passed it. The restore now rejects
+  both `<body>` and a disconnected node, and leaves focus where the tour ends,
+  which beats throwing a keyboard user to the top of the document.
+- **The oversized-step anchor was 0×0**, and floating-ui's `autoUpdate` skips
+  its movement observer on a zero-size reference — so the card had no reposition
+  signal while the measure loop moved the anchor through the smooth scroll. 1×1
+  now, plus `updatePositionStrategy="always"`.
+- **The first frame painted before the first measurement.** The measure loop was
+  a passive effect, so the frame where the overlay mounts drew the ring at (0,0)
+  with the full-screen shadow and `motion-safe:transition-all` animated it in
+  from the corner. `useLayoutEffect` — this component never server-renders.
+- **Also:** the dashboard starts the checklist derivation without awaiting it and
+  joins it to the analytics `Promise.all`, instead of putting five queries ahead
+  of the page's real payload; and a failed or refused tour write is logged the
+  way the dismissal already was (both RESOLVE, so `.catch()` never saw them).
+- **Tests (+12, 2177 → 2189):** an outside pointer-down leaves the tour running;
+  a malformed id is refused before `verifyBusinessOwner` is called; the promo
+  count carries no date filters; two product reads with exactly one status
+  filter; the marker is stripped with the checklist absent and not touched
+  without a marker; plus the checklist's own marker tests inverted to assert it
+  no longer owns that job.
+- Verified: `yarn lint` + **2189** tests + a clean `yarn build` + the SQL suite
+  green.
+- **Unchanged and still required:** human approval for `20260804233000`, then
+  `make migrate-cloud` + a ledger reconcile, with the cloud apply landing before
+  the app deploy.
+
+## 2026-08-05 — Leaflet was painting over the navigation bar (feat/business-onboarding)
+
+> Two class attributes and a contract test. No schema, API or auth change.
+
+- **🔴 The branch map on `/explore/[businessId]` rendered on top of the sticky
+  header.** Scrolling a shop page put map tiles over Home / Explore / Nearby /
+  Deals / Events, so the nav was unusable while the map was in view.
+- **Cause: leaflet hardcodes its own z-indexes and nothing contained them.**
+  `.leaflet-pane` is `z-index: 400` and `.leaflet-top` / `.leaflet-bottom` are
+  `1000` (from `leaflet/dist/leaflet.css`), against a header at `z-50`. Those
+  numbers are only meant to order leaflet's layers against each other, but with
+  no stacking context on the map's wrapper they compete with the whole document —
+  and 400 beats 50. Raising the header instead would have been a losing game: the
+  next dialog or popover would need to outrank 1000 too.
+- **Fix: `isolation: isolate` + `z-0` on the map's own wrapper**, so leaflet's
+  400 and 1000 resolve *inside* that box and the box itself sits at `z-0` against
+  the page. Applied to `BusinessMap` (the reported bug) and to the shared
+  `LocationPicker`'s root — the latter covers all four of its call sites at once,
+  including the event dialog, where the same 1000 would have outranked a Radix
+  dialog's own chrome. It is also why the picker's `z-[1000]` hint badge still
+  works: it now competes with the tiles and nothing else.
+- **Tests (+2, 2183 → 2185):** `mapPicker.contract` asserts both the shared
+  picker and the public branch map carry `isolate` + `z-0`, so a future class
+  sweep cannot quietly delete the containment and put the map back over the nav.
+- Verified: `yarn lint` + **2185** tests + a clean `yarn build` green.
+- **Not verified — needs a browser:** the stacking itself. happy-dom has no
+  layout or paint, so the test pins the declaration, not the result.
+
+## 2026-08-05 — PR #27 review hardening (feat/business-onboarding)
+
+> Fixes from the react-doctor + api-doctor review of the whole onboarding
+> branch. **Edits the unmerged `20260804233000` migration in place** (it is not
+> on cloud) — it still needs human approval + `make migrate-cloud` + a ledger
+> reconcile before merge.
+
+- **🔴 The outage-vs-empty lie was fixed for the checklist and reintroduced one
+  component down.** `hasOfferings` defaulted to `false`, and a failed
+  `getOnboardingProgress` reports `offeringCount: 0` — so on any read outage a
+  pending shop got "We couldn't load your setup checklist" stacked directly on
+  "No products yet. Your shop dashboard is empty", for a shop that may have 200
+  offerings. `hasOfferings` is now **`boolean | undefined`**, where `undefined`
+  means *unknown*, and `HomePage` tests `=== false` / `=== true`, so an outage
+  renders neither the empty state nor the analytics-lock card.
+- **🔴 A tour with nothing to point at consumed itself.** The "no anchor
+  measures" exit called `onSkip`, which settles — writing the seen marker AND
+  posting the Server Action. An owner clicking "Take the tour" on a layout where
+  no anchor renders saw nothing happen and would never be offered it again. New
+  `abort()` closes without recording; the overlay takes an explicit `onAbort`.
+- **🔴 The step index was never clamped when the visible set shrank.** A shorter
+  list left `current` undefined, the overlay returned `null` with `phase` still
+  `'running'`, and `startTour()` was then a no-op — the tour was dead until the
+  provider remounted. Clamped in the same effect that recomputes the set.
+- **🔴 The migration now says out loud what it needs.** Approval + cloud apply +
+  ledger reconcile, and specifically that **the cloud apply must land before the
+  app deploy**: without the columns `getOnboardingState` errors 42703 on every
+  dashboard load and both writers silently return `ok:false`.
+- **Three checklist items ticked for states that reach nobody.** The promo count
+  only checked `published`, but `mobile_deals` also requires `start_date <= now
+  <= expiry_date`, so an expired or scheduled deal marked "reaches the app's
+  Deals feed" done. The offering count ignored `products.status`, so a shop whose
+  only offerings are `unlisted`/`disabled` — both `is_available = false` via
+  `sync_product_availability` — was told the step was done while its public page
+  was empty (and the same count feeds the empty state). And the verification
+  row's nested ternaries told a **suspended** shop "Verification in review —
+  nothing to do"; it is a `Record` over the status union now, so a new status is
+  a compile error.
+- **`branches.business_id` was unindexed** and the checklist counts it per
+  dashboard load — Postgres does not auto-index FKs. Partial index (`WHERE
+  archived_at IS NULL`, matching the query) added to the same migration.
+- **🔴 The tour flag's default direction was unsafe, so the row is seeded
+  instead.** `app_settings` is readable `TO authenticated` only, so a caller on
+  the `anon` role gets zero rows and **no error** — and an ON-when-absent reader
+  turns that into "enabled", silently defeating an admin who switched it off.
+  Exactly the trap that moved `readFlag` onto the `public_feature_flags` RPC. The
+  migration now seeds `enable_onboarding_tour = true` (`ON CONFLICT DO NOTHING`,
+  so an admin's choice survives a re-run), which makes "absent" unreachable and
+  lets the reader **fail closed** like its siblings. It also now requires a real
+  boolean `true`, not a truthy value.
+- **Focus return after the tour was pointing at a detached node.** Radix restores
+  focus on menu UNMOUNT, after the exit animation, so the `requestAnimationFrame`
+  start recorded a menu item that no longer existed — and Radix's own late
+  restore punched focus out of the open tour card. The tour is started from
+  `onCloseAutoFocus` with `preventDefault()` now, and `startTour(element)` takes
+  the trigger explicitly.
+- **The test caught a live bug in that same fix:** `startTour` is passed straight
+  to `onClick` in two places, so its first argument is routinely a click EVENT.
+  The element is now validated with `instanceof HTMLElement` rather than
+  truthiness, which is what makes the focus return work from the card as well.
+- **The step-resolution memo keyed on the `flags` OBJECT identity**, which the
+  server layout re-creates on every RSC render — including the `router.replace`
+  that consumes the welcome marker. Each new identity restarted the overlay's
+  380 ms settle timer and re-fired `scrollIntoView` mid-tour. Keyed on the flag
+  values now.
+- **The geometry memo read `window.innerWidth/Height` but was keyed on the rect
+  alone**, so a height-only resize kept pre-resize dimensions for both the
+  viewport clipping and the oversize decision. Viewport size is tracked by the
+  same measure loop and is part of the deps.
+- **`onFinish()` was called inside a `setIndex` updater.** Updaters must be pure
+  and StrictMode invokes them twice, which would double-fire the settle (a
+  localStorage write plus a rate-limited action).
+- **Also:** `role="region"` on the checklist card (`Card` is a bare `<div>`,
+  where ARIA prohibits naming, so `aria-labelledby` alone was dropped — the
+  landing claim-code defect again); the dashboard reads the stored answers FIRST
+  and skips the five-read derivation when the card cannot render; `EmptyState`
+  takes the vocabulary, so a salon no longer reads "No products yet / Add First
+  Product"; a refused dismissal (`FORBIDDEN`/`RATE_LIMITED` resolve rather than
+  reject) is logged instead of dropped; the onboarding writers no longer touch
+  `updated_at`, which means "the owner changed a setting"; the actions treat a
+  missing user id as unauthorized rather than skipping the flood guard, and
+  narrow `verifyBusinessOwner`'s error union instead of casting it; and the
+  IndexedDB store resolves writes from `tx.oncomplete`, so a commit-time quota
+  abort is no longer reported as a successful cache.
+- **Tests (+6, 2177 → 2183):** abort records nothing and leaves the tour on
+  offer; a no-anchor tour does not consume it; the index clamps when the set
+  shrinks; the promo date window and the `status='active'` offering filter; the
+  suspended label; plus the SQL suite gained assertions that
+  `branches.business_id` is indexed and the flag row is seeded, and the
+  appSettings tests were inverted to the fail-closed contract.
+- Verified: `yarn lint` + **2183** tests + a clean `yarn build` + the SQL suite
+  green, with the new index and the seeded flag applied to the local DB.
+- **Not re-run:** `make migrate-reset`. The migration is `ADD COLUMN IF NOT
+  EXISTS` / `CREATE INDEX IF NOT EXISTS` / `INSERT … ON CONFLICT DO NOTHING` and
+  no seed touches these columns, so a reset would only re-prove ordering — and
+  it would wipe the dev database unasked.
+
+## 2026-08-05 — Tour step card was rendering outside the viewport (feat/business-onboarding)
+
+> Presentational fix to the phase-2 overlay. No schema, API or auth change.
+
+- **🔴 The first tour step opened above the top of the window.** All that was
+  visible was its Skip/Next row, hanging off the browser edge; the step's title
+  and body were off-screen entirely.
+- **Cause: the card was anchored to an element the size of the viewport.** The
+  highlight box doubled as the popover anchor, and step one points at the setup
+  checklist — ~680px tall and nearly full width. There is no side of a box that
+  size with room for a 320px card, so Radix's collision logic flipped it to the
+  top, where there was no room either, and it clipped at the window edge.
+  Anchoring a popover to something almost as large as the space it must fit into
+  has no correct answer; the anchor was the wrong shape, not the placement.
+- **Highlight and anchor are now two boxes with two jobs.** The ring still
+  outlines the element. The anchor **collapses to a zero-size point** at the
+  bottom-centre of the element's visible area once it exceeds half the viewport
+  in either direction, and the card opens upward from there — over the thing it
+  describes, but always inside the window. Small anchors (nav links, the branch
+  switcher, the bell) are unchanged: ring and anchor stay the same rect and keep
+  the step's own preferred side.
+- **The ring is clipped to the viewport too.** An anchor starting above the fold
+  or running past the bottom would otherwise draw at a negative offset, putting
+  both the ring and the card hanging off it outside the window. An anchor
+  scrolled fully out of view yields no ring and no anchor rather than a box at
+  (0,0).
+- **Two smaller belts on the card itself:** `sticky="always"` keeps it against
+  the anchor while the page scrolls, and `max-h-[calc(100dvh-2rem)]` with
+  internal scrolling means a card taller than the window scrolls instead of
+  pushing its own buttons off the edge — which is the shape of the original
+  symptom.
+- **Tests (+3, 2174 → 2177):** a small anchor keeps its own box; a
+  viewport-sized anchor collapses to a point at the expected coordinates while
+  the ring still covers the full element; an anchor half above the top edge has
+  its ring clipped to the visible intersection.
+- Verified: `yarn lint` + **2177** tests + a clean `yarn build` green.
+- **Not verified — needs a browser:** the placement itself. happy-dom has no
+  layout engine, so the tests pin the geometry this code computes, not what
+  floating-ui finally paints.
+
+## 2026-08-04 — Registration `QuotaExceededError`: picked files move to IndexedDB (feat/business-onboarding)
+
+> **No schema, API-contract or auth change.** Client-side storage only. LOW risk,
+> and it fixes a path that could not succeed.
+
+- **🔴 Registering a business threw `QuotaExceededError` on the gallery step.**
+  `useFormCache` cached picked files by base64-ing them into **localStorage**.
+  localStorage holds strings, so a file pays +33% for base64 and browsers then
+  count the string as UTF-16 (×2), against a ~5 MB quota. `step3Schema` requires
+  **at least four** interior images of up to 2 MB each — so the smallest
+  *conforming* selection is ~8 MB of bytes → ~10.7 MB of base64 → ~21 MB against
+  5 MB. This was not an edge case at the upper bound: the field the cache existed
+  for **could never have cached once**.
+- **It failed loudly and then silently.** The write was inside a `try/catch` that
+  logged with `console.error`, so Next's dev overlay surfaced it as an error the
+  owner saw mid-registration, while the actual consequence — the files not
+  surviving a reload — was invisible. The form itself was never blocked, which is
+  why this survived.
+- **New `app/business/registration/hooks/fileCache.ts` — an IndexedDB blob
+  store.** Native API, no new dependency (the stack is frozen). Blobs are stored
+  as blobs: no base64 inflation, no `atob` loop over megabytes, and a quota
+  measured in hundreds of MB. Keyed by form field, one entry per field.
+- **Best-effort by contract: every function resolves, never rejects.** The cache
+  exists so a reload does not lose a half-filled form; failing to cache must not
+  be able to break a registration. A browser with IndexedDB blocked (private
+  mode) or one that throws on `open` simply gets no caching — asserted both ways.
+- **`run()` reports transaction health separately from the result**, because a
+  successful `delete`/`clear` resolves `undefined` while a successful `put`
+  resolves the key — collapsing the two would have made every write report
+  failure.
+- **A 25 MB ceiling, and a stale entry is dropped rather than kept.** There is no
+  maximum image COUNT in the schema, only the 2 MB per-file cap, so forty photos
+  is representable. Past the ceiling nothing is cached and a warning says so —
+  and the previous entry is deleted, because restoring an older, smaller
+  selection over the one the owner can see in the form is worse than restoring
+  nothing.
+- **The legacy localStorage entries are read ONCE, then purged.** An owner
+  mid-registration keeps whatever small files did fit (in practice a logo or a
+  banner — anything larger never landed), and the dead base64 stops occupying the
+  origin's quota for everything else that uses it. Migrated forward on read, so
+  the next reload comes from IndexedDB. `clearCache()` now clears both stores;
+  leaving either behind means a completed registration holds megabytes of dead
+  bytes for the life of the origin.
+- **No caller changed.** `cacheFile`, `cacheFiles` and `clearFileCache` keep
+  their signatures, so `Gallery.tsx` and `Documents.tsx` are untouched —
+  `clearFileCache` stays sync and fires the async delete without awaiting it.
+  Single-file fields are stored as one-element lists, so one restore path covers
+  both shapes and `restoreFileFromCache` is gone.
+- **Tests (+17, 2157 → 2174):** `fileCache.test.ts` drives the store against a
+  minimal hand-rolled IndexedDB fake (happy-dom ships none, and `fake-indexeddb`
+  would be a new dependency) — a round trip of the exact four-2 MB-image payload
+  that used to throw, name/type/`lastModified` preserved, per-field keys not
+  merged, a new selection replacing rather than merging, an empty selection
+  treated as a removal, the ceiling dropping the stale entry, and four
+  degrade-quietly cases (no IndexedDB, `open` throwing, an unknown field, a
+  record whose blob did not survive). `fileCacheMigration.contract.test.ts`
+  sweeps the source so the old approach cannot come back: exactly ONE
+  `localStorage.setItem` in the hook and it writes the metadata key, no
+  `readAsDataURL` anywhere in the wizard, the legacy prefix only ever read and
+  removed, and the hook delegating to the one store module instead of touching
+  IndexedDB itself.
+- Verified: `yarn lint` + **2174** tests + a clean `yarn build` green.
+- **Not verified — needs a browser:** the actual gallery step. This environment
+  has no login path, and the failure being fixed is a browser storage quota,
+  which only a real browser enforces. **Restart `next dev`** before retrying —
+  `.next` was rebuilt.
+
+## 2026-08-04 — Onboarding phase 3: onboarding state moves off the device (feat/business-onboarding)
+
+> **ONE schema migration (`20260804233000_business_settings_onboarding_state.sql`)
+> — HIGH risk by policy (schema), applied + red-teamed on LOCAL ONLY.**
+> Additive: two nullable `timestamptz` columns, **no new policy, no index, no
+> backfill, no RLS change**. ⚠️ **Needs human approval before merge, then
+> `make migrate-cloud` + a `supabase_migrations.schema_migrations` ledger
+> reconcile.** Plan: [`.claude/ONBOARDING.md`](.claude/ONBOARDING.md) (local, not
+> committed).
+
+- **The two onboarding answers were per-BROWSER, which is the wrong unit** (D5 /
+  ON5). Dismissing the setup card on a phone and opening the dashboard on a
+  laptop asked again; taking the tour on one machine meant nothing on the next.
+  `business_settings` now carries `onboarding_tour_completed_at` and
+  `onboarding_checklist_dismissed_at`.
+- **Only these two facts are stored. Everything else stays derived.** The
+  checklist's six items still come from `businesses`, `branches`,
+  `business_settings`, `products` and `coupons` — storing "logo uploaded ✓"
+  duplicates a fact `logo_url` already holds and the two drift the first time an
+  owner deletes the logo. These are the only two with no other source.
+- **`business_settings`, not a new table** (CLAUDE.md §DRY — prove the existing
+  one cannot hold it). It is already keyed by `business_id`, already owner-scoped
+  and already the home for per-shop configuration; a parallel `onboarding_state`
+  table would have meant a second set of RLS, indexes, queries, service and UI
+  for two timestamps. **Not `profiles`**, because onboarding is per SHOP: an
+  owner with two shops sets up each one, and a user-keyed flag would report the
+  second shop as already onboarded.
+- **Checked before writing the migration, not assumed:** the owner policy
+  ("Owner manages own business settings", `FOR ALL`) does carry an **explicit
+  `WITH CHECK`**, verified against `pg_policy` on the live database rather than
+  the migration file — a `FOR ALL` policy silently reuses `USING` for writes,
+  which is the PR #18 lesson that cost `booking_requests` its owner UPDATE
+  policy. And its `auth.uid()` is already wrapped as `(select auth.uid())` by
+  `20260717000002`. So the write path needed nothing.
+- **Nullable with no default, and no backfill — none is possible.** The existing
+  markers live in browsers nobody can read. NULL means "not answered", so an
+  owner who dismissed the card before this migration is asked once more, on one
+  device; a `NOT NULL DEFAULT now()` would instead have claimed every shop on the
+  platform had already answered.
+- **🔴 `upsert`, never `update`.** The `business_settings` row is created lazily
+  on the owner's first save, so most shops have none at the moment they answer
+  the tour — an `update` would have reported success having written nothing,
+  which is precisely the silent failure this phase exists to remove. PostgREST's
+  upsert touches only the payload's columns, so hours, contact details and review
+  settings on an existing row survive; a test pins the payload's key set for that
+  reason.
+- **localStorage is kept, demoted to a LOCAL ECHO.** It can only ever add a
+  "seen"/"hidden" — never contradict the server. That is what keeps a device
+  quiet when the server write fails, and it is why the checklist's effect
+  recomputes `dismissed || <local key>` rather than only OR-ing in: the key is
+  per business, so switching shops must still be able to bring the card back.
+- **Seeded from the server, so nothing is painted and then yanked away.** The
+  card's `hidden` state and the tour's `seen` state both start from the server's
+  answer instead of `false`-then-corrected. An owner who answered elsewhere never
+  sees the invitation flicker while localStorage is consulted, and the server
+  HTML matches the first client render either way.
+- **One read, shared.** `getOnboardingState` is `React.cache`d because the
+  LAYOUT needs the tour flag (to seed the provider) and the PAGE needs the
+  dismissal flag (to seed the card) — two components that cannot pass props to
+  each other. `.maybeSingle()`, because a lazily-created row means "no row" is
+  *not answered*, not an error; `.single()` would raise PGRST116 and put every
+  brand-new shop's dashboard on the failure path.
+- **A failed read SHOWS the guidance.** Both flags read false and `failed: true`
+  is reported: wrongly showing a card is a small annoyance, while wrongly hiding
+  the setup checklist withholds the one thing a new owner needs.
+- **Two Server Actions, in `app/actions/` rather than under
+  `app/business/[businessId]/`** — the callers are shared components in
+  `components/custom/`, and a shared component reaching into one route's action
+  folder is how that folder stops being one route's (the same move
+  `notificationActions` made). Each validates the id's shape and proves ownership
+  with the **route segment's** id — a `verifyBusinessOwner()` with no argument
+  falls back to whichever shop `.limit(1)` returns, which is the multi-shop bug
+  the events actions shipped with — writes the **verified** id, and shares one
+  per-user flood-guard budget (Server-Action POSTs never reach the proxy's
+  limiter).
+- **Both writes are fire-and-forget, and say so.** The card is already gone and
+  the tour already closed by the time they run; a failed write is logged
+  server-side and reported as `{ recorded: false }` rather than thrown at the
+  page, and neither action calls `revalidatePath` — re-rendering the dashboard
+  under the owner to change nothing they can see is not a fix. The tour records
+  **once**: a replay settles again, but the server already holds the answer and
+  this is a rate-limited endpoint, not a heartbeat.
+- **Deliberately NOT behind `enable_onboarding_tour`.** A shop that answered
+  while the flag was on must still be able to record a dismissal if an admin
+  flips it mid-session, and neither write exposes anything.
+- **Tests (+25, 2132 → 2157, plus a new SQL suite):** `onboardingState`
+  (both markers from one row scoped to the shop, a missing row read as
+  not-answered rather than an error, `failed` on a query error and on a dead
+  client, the upsert's `onConflict`, the payload touching only its own column,
+  a failed write reported instead of thrown), `onboardingActions` (ownership
+  proved against the caller's id, the **verified** id written, refusal before any
+  write, the flood guard between auth and write, one shared budget),
+  `useOnboardingTour` (+3 — settles on the server's answer with no null phase,
+  records once across replays, never re-posts an answer the server holds),
+  `SetupChecklist` (+3 — the dismissal recorded server-side, seeded hidden from
+  the prop, the echo unable to resurrect it), `OnboardingTourProvider` (+2 — the
+  answer recorded once, and an owner who answered on another device not asked),
+  and `supabase/tests/onboarding_state.test.sql` (columns nullable/typed/
+  default-free, still exactly ONE policy on the table and it still has an
+  explicit `WITH CHECK`, the owner can record an answer, a **stranger can
+  neither read nor update** another shop's state, `get_business_public_info`
+  still returns exactly four columns and none is an onboarding one, no
+  anon-readable policy, anon still cannot read the table).
+- Verified: `yarn lint` + **2157** tests + a clean `yarn build` + `make
+  migrate-up` + `make generate-types` (a +6-line diff, both columns) + the new
+  SQL suite and the pre-existing `business_public_info` suite both green.
+- **Not done / not verified:** the cloud apply (needs approval); a full `make
+  migrate-reset` was **skipped** rather than run against the dev database
+  unasked — the migration is `ADD COLUMN IF NOT EXISTS` and no seed touches
+  either column, so the reset would only re-prove ordering; and the
+  cross-browser behaviour itself is unverified in a browser, since these
+  surfaces are behind auth and this environment has no login path.
+- **Next:** phase 4 (per-surface empty states, plus D6 "Learn More" and D8
+  `RegistrationSteps`).
+
+## 2026-08-04 — Onboarding phase 2: the post-registration guided tour (feat/business-onboarding)
+
+> **No schema migration.** A client overlay, one new flag reader, and
+> `data-tour` attributes on elements that already existed. LOW–MED risk (it
+> mounts across the business shell). Ships behind
+> `app_settings.enable_onboarding_tour`. Plan and parity table (ON3, ON4, ON7,
+> ON8, ON9, ON15, ON16): [`.claude/ONBOARDING.md`](.claude/ONBOARDING.md)
+> (local, not committed).
+
+- **The app had a tour, and the people who needed it could never see it.**
+  `TourDialog` is mounted only inside `BusinessHome`, which `page.tsx` stops
+  rendering the moment `status === 'verified'` — so on a default install
+  (`auto_verify_businesses` seeded true) the owner who most needs "here is
+  where things live" is the only one who cannot get it (D3). Its one primary
+  action sends you to `ROUTES.BUSINESS.registration`, i.e. back into the form
+  you just submitted (D2), and dismissing it wrote a device-wide
+  `hasSeenShopTour` with **no UI anywhere that reopens it** (D4). This is a
+  **second, separate** tour that begins where that one ends. The
+  pre-registration hero and `TourDialog` are untouched: different audience,
+  different CTA, its own hook, its own key.
+- **An invitation, not an ambush.** The welcome arrival opens a card — "Want a
+  quick tour?" / "Not now" — and the spotlight starts only if it is accepted. A
+  spotlight that seizes the page before the owner has looked at it is more
+  intrusive than asking, and skipping costs one click either way. It is offered
+  **only** on `?welcome=1`, the one visit provably following registration;
+  every other entry is click-started.
+- **`TourWelcomeTrigger` renders nothing, and sits BESIDE the checklist rather
+  than inside it.** The marker is read on the server and passed down (phase 1's
+  rule), so the trigger does not race `SetupChecklist`'s `router.replace` — and
+  a checklist that is hidden, dismissed or already complete cannot silently
+  cancel the tour by returning `null`.
+- **The invitation can be requested before the "already seen" read lands, and
+  is HELD rather than dropped.** The trigger is a deep child, so its effect runs
+  before the provider's storage read — dropping the request there means a
+  post-registration owner gets no onboarding at all on exactly the paint where
+  it matters.
+- **🔴 The step id IS the anchor, and a rename is a compile error.**
+  `TOUR_STEPS: Record<TourStepId, TourStep>` keyed by a string union;
+  `NavItem.tourId` is typed as `TourStepId`, so the three sidebar anchors break
+  the build if an id moves. `tourSteps.contract.test.ts` covers the rest by
+  sweeping `app`/`components` for each anchor and asserting `Nav.tsx` still
+  renders `data-tour={item.tourId}`. This is the `LandingSection` lesson —
+  renaming a section id without updating the union turned `/explore`'s nav into
+  dead links, twice.
+- **No new DOM.** Every anchor is an attribute on an element that already
+  exists: the nav links, the branch-switcher trigger, the header's notification
+  cluster, the setup card. Nothing is wrapped merely to be measured.
+- **A step whose anchor is not PAINTED is dropped, not pointed at.** Presence in
+  the DOM is not enough — the branch switcher is `hidden md:flex` and the bell
+  cluster `hidden sm:flex`, so both are real elements with a 0×0 box on a small
+  screen. The visible set is computed once, after a settle delay, from
+  `getBoundingClientRect`, and a dropped step is not counted either: "step 3 of
+  6" that skips a number is its own bug. With nothing paintable at all the tour
+  **ends quietly** instead of dimming the screen over an empty card.
+- **The measure loop stops on its own.** `getBoundingClientRect` per frame until
+  the box has held still for 20 frames, restarted by resize, by a
+  `ResizeObserver`, and by scroll **in the capture phase** — the dashboard
+  content is its own scroll container, so a bubbling scroll listener never sees
+  it. The settle delay before the first measurement is the `LocationPicker`
+  lesson: measuring inside a container that is still animating returns a stale
+  box.
+- **The sidebar is opened and then put back.** It is `defaultOpen={false}`, so
+  three anchors are bare icons when the tour starts; the prior state is captured
+  at mount and restored on exit — an owner who works with it collapsed should
+  not find it expanded because they watched a tour.
+- **Mobile gets a list, deliberately.** There the sidebar is a `Sheet` that is
+  not in the DOM until opened and half the anchors are hidden anyway; a
+  spotlight would point at nothing, and a broken spotlight is worse than no
+  spotlight. Same steps, same copy, as a numbered list.
+- **Copy comes from `useOfferingVocabulary()`** (ON6), so a salon's tour reads
+  "Service Menu" and talks about services; steps are filtered by the **same
+  `flags` record `BusinessSidebar` filters its nav by**, so the tour can never
+  narrate a route that 404s (ON7) — and a filtered-out step does not inflate the
+  step count.
+- **Replay from two places** (ON4): the user menu and the setup card. Both are
+  **absent**, not disabled, when the switch is off — a menu entry that opens
+  nothing is worse than one that is not there.
+- **The kill switch defaults ON, which is the opposite of the other two — on
+  purpose.** `enable_events` / `enable_bookings` gate features that ship dark
+  and enforce themselves in the database, so an unset flag must read as off. The
+  tour has no server side and nothing to leak; treating "never configured" as
+  off would ship a feature that only works after an admin finds a switch nobody
+  told them about. A real read **failure** still returns false — an overlay
+  painted over the dashboard is the one failure worth being timid about, and
+  turning it off without a deploy is what the flag is for. Read straight from
+  `app_settings` (readable `TO authenticated`) rather than widening the
+  anon-facing `public_feature_flags` RPC, which would need a migration to expose
+  something anonymous visitors have no use for. The admin **Features** card and
+  the action's key allowlist gained the key, so the row is created by the first
+  flip — no seed migration.
+- **a11y (ON16):** the step card is a Radix modal popover, so focus is trapped
+  and `Esc` skips; focus is returned to whatever started the tour (there is no
+  single trigger to hand back to, so the provider records `document.activeElement`
+  itself); the step is announced **once** as a single `aria-live="polite"`
+  `aria-atomic` region rather than as a title update and then a body update; the
+  highlight transition is `motion-safe:` only, and the scroll-into-view falls
+  back to `auto` under `prefers-reduced-motion`.
+- **Still device-scoped (ON5).** Dismissal is `ilokal-onboarding-tour:<id>`,
+  keyed per business so an owner with two shops onboards each one. Phase 3's
+  `business_settings.onboarding_tour_completed_at` changes where it is stored,
+  not what the key means. `useDashboardTour` / `hasSeenShopTour` were
+  deliberately **not** widened — sharing them would let one tour's dismissal
+  silence the other.
+- **Tests (+46, 2086 → 2132):** `tourSteps.contract` (order covers the union
+  exactly, every anchor resolves to a `data-tour` or a typed `tourId`, flags
+  name real keys, a non-`true` flag value is off, vocabulary reaches the copy,
+  no step resolves an empty string), `TourOverlay` (an unpainted anchor is
+  dropped and uncounted, nothing paintable ends the tour, forward/back/finish,
+  the sidebar restored to the owner's own state, exactly one live region, the
+  mobile list keeping every step), `useOnboardingTour` (the held request, never
+  re-offering after an answer, replay after "seen", per-business keys, the
+  switch off, and unusable storage read as *seen* rather than asking forever),
+  `OnboardingTourProvider` (offered only on the welcome arrival, not asked twice
+  across a remount, the spotlight starting on accept, nothing mounted with the
+  switch off, no id ⇒ disabled, focus returned), `UserMenu` (+2, the entry
+  present/absent by flag), `SetupChecklist` (+2, the anchor and the second
+  replay entry), and `appSettings` (+6, the inverted default and both
+  fail-closed paths).
+- Verified: `yarn lint` + **2132** tests + a clean `yarn build` green.
+- **Not verified — needs a browser:** the spotlight itself. It is behind auth
+  and this environment has no login path, so the cut-out, the popover's
+  collision flipping, the sidebar open/restore and the scroll-into-view have not
+  been watched on a real layout — which is exactly the class of defect a
+  measured overlay has.
+- **Next:** phase 3 (the two `business_settings` columns — HIGH risk, needs
+  approval), phase 4 (per-surface empty states, plus D6/D8 cleanup).
+
+## 2026-08-04 — Onboarding phase 1: the hand-off and a derived setup checklist (feat/business-onboarding)
+
+> **No schema migration.** Presentational + one new derived read. LOW risk.
+> Plan, parity table (ON1–ON20) and the remaining phases:
+> [`.claude/ONBOARDING.md`](.claude/ONBOARDING.md) (local, not committed).
+
+- **A business owner who finished registering was handed a dashboard and no
+  guidance.** `pending` got a bare `EmptyState`; `verified` got the analytics
+  page straight away. The only onboarding surface the app had — the hero,
+  `RegistrationSteps` and `TourDialog` — renders **before** you have a shop,
+  which is the one state that needs it least. Phase 1 fills the landing
+  moment; the guided tour is phase 2 and the persistence migration phase 3.
+- **🔴 The success dialog told most owners something false.** It hardcoded
+  "Your shop registration is under review", a 24–48 hour timeline and an
+  "Under Review → Shop Activated" tracker — but `auto_verify_businesses` is
+  seeded **true** (`20260723000000`), so `set_business_initial_status` had
+  already published the shop before that dialog painted. The owner was told to
+  wait for an approval that had happened, then landed on a dashboard for a
+  live shop. It now forks on the **persisted** status: `verified` → "Your shop
+  is live" with no timeline and no "Review Process" breakdown, `pending` →
+  today's copy unchanged.
+  The status is trustworthy because `createBusinessDraft` does
+  `.insert(...).select().single()` and PostgREST's `RETURNING` runs **after**
+  the trigger. A **resumed** submit is the one case with no status — the row
+  already existed and was never read back — and that path says "registration
+  received" rather than guessing, because guessing "under review" is the bug.
+- **🔴 `EmptyState` claimed an empty shop for any shop.** `HomePage` rendered
+  it whenever a business existed; nothing counted products. A shop with 200
+  offerings read "No products yet. Your shop dashboard is empty." It is now
+  gated on the derived count, and a pending shop that *does* have offerings is
+  told why the page is bare ("Analytics unlock once your shop is verified")
+  instead of getting a blank column.
+- **The welcome signal is a param, not a guess.** The dialog pushes
+  `businessWelcomePath(id)` — `?welcome=1` on the shop's **own** path, because
+  `/business` answers with `redirect(businessPath(id))` and a redirect drops
+  every search param, so a marker put there would never arrive. The dashboard
+  reads it on the SERVER from `searchParams` (not `useSearchParams()`, which
+  would force a Suspense boundary whose fallback has nothing to show yet) and
+  `router.replace`s a clean URL, so a refresh or a shared link cannot replay
+  it. `businessPathWithoutWelcome` strips only the marker — a `?branch=`
+  selection has to survive, or consuming the welcome would silently kick the
+  owner back to all-branches mode. `businesses.created_at` recency was
+  rejected: a heuristic with a clock in it, misfiring on a slow first login.
+- **The checklist is DERIVED, never stored.** Storing "logo uploaded ✓"
+  duplicates what `businesses.logo_url` already holds and the two drift the
+  first time an owner deletes the logo. `getOnboardingProgress` runs one
+  `Promise.all` of head-only counts (`select('id', { count: 'exact', head:
+  true })` — `select(...)` then `.length` is silently wrong past the PostgREST
+  1000-row cap) and never throws.
+  Six rows: profile, pinned branch, hours + contact, first offering, first
+  published deal, and verification. **Verification is read-only and excluded
+  from both sides of the ratio** — counting a step nobody can take leaves the
+  bar permanently short through no fault of theirs.
+- **"Done" means genuinely usable, which is narrower than "not null".** A
+  branch with no `location` is invisible to `nearby_businesses`, which filters
+  on it — an unpinned branch is not a finished step, it is a shop nobody can
+  find. A **draft** coupon reaches nobody, so only `status='published'` counts.
+  An **empty** `operating_hours` object is what a form that saved nothing
+  leaves behind and renders no hours at all. A whitespace-only description is
+  not a description. The settings row is created lazily, so it is read with
+  `.maybeSingle()` and "no row" is *not done*, not an error — `.single()`
+  would raise PGRST116 and fail the whole checklist.
+- **A failed read says so, and says it INSTEAD of the list.** `failed: true`
+  renders "we couldn't load your setup checklist" with no rows at all. Six
+  unchecked boxes and an outage look identical otherwise, and an unchecked box
+  tells the owner to redo work they already did — the `getEventStats` /
+  `getBookingStats` lesson. A half-built list is the same lie.
+- **Deliberately not flag-filtered.** Every item is part of being *sellable*
+  and none lives behind a kill switch. Events and bookings are **absent**
+  rather than conditionally present; adding one later means taking the same
+  `flags` record `BusinessSidebar` filters on, not a second source.
+- **Also:** the offering row's label comes from `useOfferingVocabulary()`, so a
+  salon reads "Add Service" and a rental firm "Add Vehicle"; dismissal is keyed
+  **per business** (`ilokal-onboarding-hidden:<id>`), so an owner with two
+  shops sets up each one; hidden state starts `false` and is corrected after
+  mount, so the server HTML and the first client render agree; the pre-
+  registration hero and `TourDialog` are **untouched** — different audience,
+  different CTA, no shared state.
+- **Tests (+37, 2049 → 2086):** `onboardingProgress` (head-only reads, per-shop
+  scope, unpinned branches and draft promos excluded, lazy settings row,
+  empty-hours and blank-string cases, vocabulary label, `failed` on a query
+  error / missing row / thrown client with `items` empty),
+  `SetupChecklist.test.tsx` (the failure state replaces the list, nothing
+  renders when complete, the marker is consumed by exactly one `replace`, no
+  replace without a marker, dismissal keyed per business, done-ness stated in
+  text because every tick is `aria-hidden`),
+  `application-success-dialog.test.tsx` (all three status forks and both push
+  targets), and `routeConfig` (+4 — the marker rides the shop path, stripping
+  keeps `?branch=`, repeated params survive).
+- Verified: `yarn lint` + **2086** tests + a clean `yarn build` green.
+- **Not verified — needs a browser:** the dashboard is behind auth and this
+  environment has no login path, so the card, the welcome ring and the
+  registration hand-off have not been clicked through.
+- **Next:** phase 2 (guided tour behind `enable_onboarding_tour`), phase 3 (the
+  two `business_settings` columns — HIGH risk, needs approval), phase 4
+  (per-surface empty states).
+
 ## 2026-08-04 — Event tables join the dashboard, and admin staff picks (feat/events-festivals)
 
 > **No schema migration.** Everything rides the table, policies, triggers and

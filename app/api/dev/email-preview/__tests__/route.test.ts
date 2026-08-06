@@ -45,4 +45,24 @@ describe('GET /api/dev/email-preview', () => {
     const res = GET(req('?template=nope'));
     expect(res.status).toBe(400);
   });
+
+  it('renders the menu-followup template with its sample props', async () => {
+    setNodeEnv('development');
+    const res = GET(req('?template=menu-followup'));
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain('The Artisan Roastery');
+    expect(body).toContain('/business/SAMPLE/product-catalogues');
+  });
+
+  it('threads the menu-followup query params (shop + noun)', async () => {
+    setNodeEnv('development');
+    const res = GET(
+      req('?template=menu-followup&shop=Nena%20Salon&noun=service%20menu'),
+    );
+    const body = await res.text();
+    expect(body).toContain('Nena Salon');
+    // The noun flows into the heading, title-cased.
+    expect(body).toContain('Service Menu');
+  });
 });

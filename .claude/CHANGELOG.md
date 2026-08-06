@@ -1,5 +1,58 @@
 # Changelog
 
+## 2026-08-06 — Menu follow-up, phase 2: the read side (feat/menu-followup-email)
+
+> **ONE migration (`20260806090000_menu_followup.sql`) — HIGH risk: a new
+> SECURITY DEFINER function that reads EVERY shop's owner email, plus a schema
+> column.** Applied + red-teamed on LOCAL ONLY. ⚠️ **Needs human approval before
+> merge, then `make migrate-cloud` + a ledger reconcile.** Additive: the column
+> is nullable, no backfill, no new policy. Plan (MF1–MF14):
+> [`.claude/MENU_FOLLOWUP.md`](.claude/MENU_FOLLOWUP.md) (local, not committed).
+
+- **The data source for the admin nudge feature.** `admin_businesses_missing_menu(p_search, p_only_no_promo)`
+  returns each **verified, non-archived** shop with **no live offering** — its
+  owner email, resolved offering noun, whether it has a live promo, and when it
+  was last reminded.
+- **Aggregated in SQL, not fetched-then-counted** — the standing analytics rule.
+  A `products` count per shop in Node would silently truncate at the PostgREST
+  1000-row cap and mislabel shops. "Live menu" = an `active`, non-archived
+  product (what a shopper sees — an `unlisted`/`disabled`/archived catalogue
+  renders empty, so it still counts as no menu); "live promo" = a `published`,
+  non-archived coupon inside its date window (the coupon-access invariant).
+- **SECURITY DEFINER, service_role only.** It reads owner emails across every
+  shop, which no RLS-scoped client can. EXECUTE is revoked from
+  public/anon/authenticated and granted to `service_role`; pinned
+  `search_path`. Red-teamed as `anon` and `authenticated` — both denied.
+- **The offering NOUN is resolved the dashboard's way** — the shop's
+  `offering_mode` picks the branch of its type's `offering_profile`, falling
+  back to "menu"/"listings" so the email never renders a blank noun. A salon
+  reads "Service Menu", not "Menu".
+- **`businesses.menu_reminder_sent_at`** (nullable, no default) ships in the
+  same migration because the RPC returns it — phase 4's send path writes it.
+  NULL = never reminded; a `DEFAULT now()` would have claimed every shop was
+  already nudged.
+- **`getBusinessesMissingMenu`** verifies admin BEFORE using the service-role
+  client (the ordering that keeps an unguarded owner-email read impossible), and
+  reports `{ rows, failed }` so the admin table can tell an outage from "no
+  shops need a nudge".
+- **Tests:** `supabase/tests/menu_followup.test.sql` (9 blocks — verified-only,
+  pending/archived/has-menu excluded, unlisted-only still listed, search, the
+  promo filter, every row carries an email + noun, and the grant matrix + the
+  SECURITY-DEFINER/search_path lint), run against the local stack and rolled
+  back; `menuFollowUpQuery.test.ts` (7 — the admin gate never reaching the RPC,
+  arg passthrough + trimming, the mapping, and outage-vs-empty). Verified:
+  `yarn lint` + **2326** tests + a clean `yarn build` + `make generate-types`
+  (the RPC is now typed in `database.ts`).
+- **Not done:** the cloud apply (needs approval); phase 4 (the send actions —
+  re-check "still no menu" at send time, per-admin rate limit, `{ sent, skipped,
+  failed }`) and phase 5 (the admin page/table/button). A full `make
+  migrate-reset` was **skipped** rather than run against the dev database
+  unasked — the migration is `ADD COLUMN IF NOT EXISTS` + `CREATE OR REPLACE`,
+  and no seed touches the column, so a reset would only re-prove ordering.
+- **Still open (product/legal):** MF11 — this is outbound unsolicited mail, so
+  the unsubscribe/CAN-SPAM stance is a real decision before phase 4 sends
+  anything at scale.
+
 ## 2026-08-06 — The gallery's "See All" went nowhere, and saving it deleted photos (develop)
 
 > **No schema, API-contract or auth change.** One new route, one new Server

@@ -617,6 +617,7 @@ export type Database = {
           interior_images: string[] | null
           location: Json | null
           logo_url: string | null
+          menu_reminder_sent_at: string | null
           offering_mode: string
           owner_id: string
           shop_name: string
@@ -637,6 +638,7 @@ export type Database = {
           interior_images?: string[] | null
           location?: Json | null
           logo_url?: string | null
+          menu_reminder_sent_at?: string | null
           offering_mode?: string
           owner_id: string
           shop_name: string
@@ -657,6 +659,7 @@ export type Database = {
           interior_images?: string[] | null
           location?: Json | null
           logo_url?: string | null
+          menu_reminder_sent_at?: string | null
           offering_mode?: string
           owner_id?: string
           shop_name?: string
@@ -1843,6 +1846,21 @@ export type Database = {
             }
             Returns: string
           }
+      admin_businesses_missing_menu: {
+        Args: { p_only_no_promo?: boolean; p_search?: string }
+        Returns: {
+          created_at: string
+          has_live_menu: boolean
+          has_live_promo: boolean
+          id: string
+          menu_reminder_sent_at: string
+          offering_noun: string
+          offering_plural: string
+          owner_email: string
+          owner_name: string
+          shop_name: string
+        }[]
+      }
       analytics_coupon_redemption_stats: {
         Args: { p_branch_id?: string; p_business_id: string }
         Returns: {

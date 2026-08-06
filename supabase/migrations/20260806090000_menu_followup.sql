@@ -50,9 +50,21 @@ COMMENT ON COLUMN public.businesses.menu_reminder_sent_at IS
 -- EXECUTE is revoked from everyone and granted to service_role only; the
 -- calling Server Action verifies admin BEFORE using the service-role client.
 -- ----------------------------------------------------------------------------
+-- Paginated: the list is fetched one page at a time, never fetched-whole and
+-- counted in Node — PostgREST caps at max_rows (1000), so a JS count would
+-- silently under-read on a platform whose whole job here is accumulating empty
+-- shops. The stat totals come from `admin_businesses_missing_menu_stats`
+-- (uncapped COUNT) and "send to all" from `admin_businesses_missing_menu_ids`.
+--
+-- Signature changed (limit/offset added), so the old 2-arg overload is dropped
+-- first — `CREATE OR REPLACE` would leave it as a second overload.
+DROP FUNCTION IF EXISTS public.admin_businesses_missing_menu(text, boolean);
+
 CREATE OR REPLACE FUNCTION public.admin_businesses_missing_menu(
-  p_search       text    DEFAULT NULL,
-  p_only_no_promo boolean DEFAULT false
+  p_search        text    DEFAULT NULL,
+  p_only_no_promo boolean DEFAULT false,
+  p_limit         integer DEFAULT 50,
+  p_offset        integer DEFAULT 0
 )
 RETURNS TABLE (
   id                    uuid,
@@ -128,13 +140,137 @@ AS $$
           AND c.expiry_date >= now()
       )
     )
-  ORDER BY b.created_at ASC NULLS LAST, b.id ASC;
+  ORDER BY b.created_at ASC NULLS LAST, b.id ASC
+  LIMIT GREATEST(p_limit, 0)
+  OFFSET GREATEST(p_offset, 0);
 $$;
 
-REVOKE ALL ON FUNCTION public.admin_businesses_missing_menu(text, boolean)
+REVOKE ALL ON FUNCTION
+  public.admin_businesses_missing_menu(text, boolean, integer, integer)
   FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.admin_businesses_missing_menu(text, boolean)
+GRANT EXECUTE ON FUNCTION
+  public.admin_businesses_missing_menu(text, boolean, integer, integer)
   TO service_role;
 
-COMMENT ON FUNCTION public.admin_businesses_missing_menu(text, boolean) IS
-  'Admin-only (service_role): verified, non-archived shops with no live offering, with owner email and resolved offering noun. Caller must verify admin before invoking.';
+COMMENT ON FUNCTION
+  public.admin_businesses_missing_menu(text, boolean, integer, integer) IS
+  'Admin-only (service_role): ONE PAGE of verified, non-archived shops with no live offering, with owner email and resolved offering noun. Caller must verify admin before invoking.';
+
+-- ----------------------------------------------------------------------------
+-- 3. Stat totals — uncapped COUNTs, so the cards never under-read past 1000.
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.admin_businesses_missing_menu_stats(
+  p_search        text    DEFAULT NULL,
+  p_only_no_promo boolean DEFAULT false
+)
+RETURNS TABLE (
+  total    bigint,
+  no_promo bigint,
+  reminded bigint
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  WITH missing AS (
+    SELECT
+      b.id,
+      b.menu_reminder_sent_at,
+      NOT EXISTS (
+        SELECT 1 FROM public.coupons c
+        WHERE c.business_id = b.id
+          AND c.status = 'published'
+          AND c.archived_at IS NULL
+          AND c.start_date <= now()
+          AND c.expiry_date >= now()
+      ) AS no_live_promo
+    FROM public.businesses b
+    WHERE b.status = 'verified'
+      AND b.archived_at IS NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM public.products pr
+        WHERE pr.business_id = b.id
+          AND pr.status = 'active'
+          AND pr.archived_at IS NULL
+      )
+      AND (p_search IS NULL OR b.shop_name ILIKE '%' || p_search || '%')
+      AND (
+        NOT p_only_no_promo
+        OR NOT EXISTS (
+          SELECT 1 FROM public.coupons c
+          WHERE c.business_id = b.id
+            AND c.status = 'published'
+            AND c.archived_at IS NULL
+            AND c.start_date <= now()
+            AND c.expiry_date >= now()
+        )
+      )
+  )
+  SELECT
+    count(*)                                     AS total,
+    count(*) FILTER (WHERE no_live_promo)        AS no_promo,
+    count(*) FILTER (WHERE menu_reminder_sent_at IS NOT NULL) AS reminded
+  FROM missing;
+$$;
+
+REVOKE ALL ON FUNCTION
+  public.admin_businesses_missing_menu_stats(text, boolean)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION
+  public.admin_businesses_missing_menu_stats(text, boolean)
+  TO service_role;
+
+COMMENT ON FUNCTION
+  public.admin_businesses_missing_menu_stats(text, boolean) IS
+  'Admin-only (service_role): uncapped counts for the menu follow-up stat cards.';
+
+-- ----------------------------------------------------------------------------
+-- 4. The id set for "send to all" — a single-row uuid[] (NOT a table), so it is
+--    not subject to PostgREST's row cap. Derived server-side so the button
+--    never trusts a client-supplied, page-capped list.
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.admin_businesses_missing_menu_ids(
+  p_search        text    DEFAULT NULL,
+  p_only_no_promo boolean DEFAULT false
+)
+RETURNS uuid[]
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT COALESCE(array_agg(b.id ORDER BY b.created_at ASC NULLS LAST, b.id ASC), '{}')
+  FROM public.businesses b
+  WHERE b.status = 'verified'
+    AND b.archived_at IS NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM public.products pr
+      WHERE pr.business_id = b.id
+        AND pr.status = 'active'
+        AND pr.archived_at IS NULL
+    )
+    AND (p_search IS NULL OR b.shop_name ILIKE '%' || p_search || '%')
+    AND (
+      NOT p_only_no_promo
+      OR NOT EXISTS (
+        SELECT 1 FROM public.coupons c
+        WHERE c.business_id = b.id
+          AND c.status = 'published'
+          AND c.archived_at IS NULL
+          AND c.start_date <= now()
+          AND c.expiry_date >= now()
+      )
+    );
+$$;
+
+REVOKE ALL ON FUNCTION
+  public.admin_businesses_missing_menu_ids(text, boolean)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION
+  public.admin_businesses_missing_menu_ids(text, boolean)
+  TO service_role;
+
+COMMENT ON FUNCTION
+  public.admin_businesses_missing_menu_ids(text, boolean) IS
+  'Admin-only (service_role): all matching shop ids for "send to all", server-derived so the button never trusts a page-capped client list.';

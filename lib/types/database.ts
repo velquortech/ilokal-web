@@ -1860,7 +1860,12 @@ export type Database = {
         }[]
       }
       admin_businesses_missing_menu: {
-        Args: { p_only_no_promo?: boolean; p_search?: string }
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_only_no_promo?: boolean
+          p_search?: string
+        }
         Returns: {
           created_at: string
           has_live_menu: boolean
@@ -1872,6 +1877,18 @@ export type Database = {
           owner_email: string
           owner_name: string
           shop_name: string
+        }[]
+      }
+      admin_businesses_missing_menu_ids: {
+        Args: { p_only_no_promo?: boolean; p_search?: string }
+        Returns: string[]
+      }
+      admin_businesses_missing_menu_stats: {
+        Args: { p_only_no_promo?: boolean; p_search?: string }
+        Returns: {
+          no_promo: number
+          reminded: number
+          total: number
         }[]
       }
       analytics_coupon_redemption_stats: {

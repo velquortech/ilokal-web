@@ -72,10 +72,12 @@ export function renderMenuFollowUpEmail({
   const safeApp = escapeHtml(appName);
   const safeName = recipientName ? escapeHtml(recipientName) : 'there';
 
-  // Title-cased per word for the heading and button ("…a Service Menu")
-  // without mutating the prop. Escaped input, so this only touches letters.
-  const nounTitle = safeNoun.replace(/\b\w/g, (character) =>
-    character.toUpperCase(),
+  // Title-cased per word for the heading and button ("…a Service Menu").
+  // Cased BEFORE escaping, not after: `\b\w` on an already-escaped string would
+  // upper-case the first letter of an entity (`&amp;` → `&Amp;`) and render it
+  // literally. Escape the cased result.
+  const nounTitle = escapeHtml(
+    offeringNoun.replace(/\b\w/g, (character) => character.toUpperCase()),
   );
 
   const subject = `Add your ${offeringNoun} on ${appName}`;

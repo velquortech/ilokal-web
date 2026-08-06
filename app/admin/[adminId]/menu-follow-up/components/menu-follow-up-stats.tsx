@@ -1,26 +1,28 @@
 import { StatCard } from '@/components/custom/StatCard';
 import { ListX, TicketX, MailCheck } from 'lucide-react';
-import type { MissingMenuBusiness } from '@/lib/api/admin/menuFollowUpQuery';
 
 /**
- * Counts across the WHOLE filtered set (not the current page). An em dash on a
- * failed read, so an outage never shows three confident zeros.
+ * Uncapped totals from the stats RPC (NOT counted from the fetched page, which
+ * PostgREST caps at 1000). An em dash on a failed read, so an outage never
+ * shows three confident zeros.
  */
 export function MenuFollowUpStats({
-  rows,
+  total,
+  noPromo,
+  reminded,
   failed,
 }: {
-  rows: MissingMenuBusiness[];
+  total: number;
+  noPromo: number;
+  reminded: number;
   failed: boolean;
 }) {
   const dash = (n: number) => (failed ? '—' : n);
-  const noPromo = rows.filter((r) => !r.has_live_promo).length;
-  const nudged = rows.filter((r) => r.menu_reminder_sent_at).length;
 
   const items = [
-    { title: 'Shops with no menu', icon: ListX, value: dash(rows.length) },
+    { title: 'Shops with no menu', icon: ListX, value: dash(total) },
     { title: 'Also no live deal', icon: TicketX, value: dash(noPromo) },
-    { title: 'Already reminded', icon: MailCheck, value: dash(nudged) },
+    { title: 'Already reminded', icon: MailCheck, value: dash(reminded) },
   ];
 
   return (

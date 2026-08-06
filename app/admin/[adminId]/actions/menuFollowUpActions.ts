@@ -30,6 +30,7 @@ import {
   businessProductCataloguesPath,
 } from '@/config/routeConfig';
 import { sendMenuFollowUpEmail } from '@/app/api/emails/sendMenuFollowUp';
+import { getMissingMenuIds } from '@/lib/api/admin/menuFollowUpQuery';
 import { z } from 'zod';
 
 const businessId = z.guid('Invalid business id');
@@ -116,12 +117,30 @@ async function sendToBusiness(
   if (!target.owner_email) {
     return { status: 'skipped', businessId: id, reason: 'NO_EMAIL' };
   }
-  // Cooldown = idempotency: a double-click or a re-run inside the window is a
-  // no-op rather than a second email.
-  if (
-    target.menu_reminder_sent_at &&
-    Date.now() - new Date(target.menu_reminder_sent_at).getTime() < COOLDOWN_MS
-  ) {
+
+  // 🔴 CLAIM before sending, atomically. The read→check→send→stamp above is a
+  // TOCTOU window: two tabs, a batch racing a single send, or two admins could
+  // all read a null/expired marker and all email the same owner. This one
+  // conditional UPDATE is the cross-process guard — only the writer whose
+  // predicate still holds wins the row. Idempotency for a double-click, too.
+  const cutoffIso = new Date(Date.now() - COOLDOWN_MS).toISOString();
+  const prior = target.menu_reminder_sent_at ?? null;
+  const nowIso = new Date().toISOString();
+
+  const { data: claimed, error: claimError } = await admin
+    .from('businesses')
+    .update({ menu_reminder_sent_at: nowIso })
+    .eq('id', id)
+    // Still within the cooldown ⇒ predicate fails ⇒ no row ⇒ someone already
+    // has it (or it was reminded recently).
+    .or(`menu_reminder_sent_at.is.null,menu_reminder_sent_at.lt.${cutoffIso}`)
+    .select('id');
+
+  if (claimError) {
+    console.error('[menuFollowUp:claim]', id, claimError);
+    return { status: 'failed', businessId: id, reason: 'CLAIM_FAILED' };
+  }
+  if (!claimed || claimed.length === 0) {
     return { status: 'skipped', businessId: id, reason: 'RECENTLY_SENT' };
   }
 
@@ -135,19 +154,17 @@ async function sendToBusiness(
   });
 
   if (!sent) {
-    // Not stamped: a send that never left must be retryable, or the owner is
-    // never reminded.
+    // The claim moved the marker forward but the email never left — restore the
+    // PRIOR value so the owner stays retryable rather than being silenced for a
+    // whole cooldown by a send that failed.
+    const { error: restoreError } = await admin
+      .from('businesses')
+      .update({ menu_reminder_sent_at: prior })
+      .eq('id', id);
+    if (restoreError) {
+      console.error('[menuFollowUp:restore]', id, restoreError);
+    }
     return { status: 'failed', businessId: id, reason: 'SEND_FAILED' };
-  }
-
-  const { error: stampError } = await admin
-    .from('businesses')
-    .update({ menu_reminder_sent_at: new Date().toISOString() })
-    .eq('id', id);
-  if (stampError) {
-    // The email went out; the stamp is best-effort. Log, but the send counts —
-    // reporting a failure here would invite a duplicate resend.
-    console.error('[menuFollowUp:stamp]', id, stampError);
   }
 
   return { status: 'sent', businessId: id };
@@ -191,45 +208,40 @@ export async function sendMenuFollowUpAction(
   return { ok: true, outcome };
 }
 
-export async function sendMenuFollowUpBatchAction(
-  ids: string[],
-): Promise<FollowUpBatchResult> {
-  const empty: FollowUpBatchResult = {
-    ok: false,
-    sent: 0,
-    skipped: 0,
-    failed: 0,
-    capped: 0,
-    outcomes: [],
-  };
+const EMPTY_BATCH: FollowUpBatchResult = {
+  ok: false,
+  sent: 0,
+  skipped: 0,
+  failed: 0,
+  capped: 0,
+  outcomes: [],
+};
 
-  const parsed = batchSchema.safeParse(ids);
-  // A list longer than the cap is not rejected outright — the first 100 are
-  // sent and the overflow is REPORTED, never silently dropped.
+const BATCH_CAP = 100;
+
+/**
+ * Send to a set of ids, assuming admin is already verified. Deduped, capped at
+ * BATCH_CAP with the overflow REPORTED (`capped`), sent sequentially so a burst
+ * of parallel Resend POSTs can't trip its rate limiter. Never throws.
+ */
+async function runBatch(
+  adminId: string,
+  ids: string[],
+  base: string,
+): Promise<FollowUpBatchResult> {
   const deduped = Array.from(new Set(ids)).filter(
     (v) => businessId.safeParse(v).success,
   );
-  if (!parsed.success && deduped.length === 0) {
-    return { ...empty, error: parsed.error.issues[0]?.message ?? 'Invalid' };
-  }
-
-  const gate = await requireAdmin();
-  if (!gate.ok) return { ...empty, error: gate.error };
-
-  const base = ctaBase();
-  if (!base) return { ...empty, error: 'Email base URL not configured' };
-
-  const CAP = 100;
-  const capped = Math.max(0, deduped.length - CAP);
+  const capped = Math.max(0, deduped.length - BATCH_CAP);
   if (capped > 0) {
-    console.warn(`[menuFollowUp:batch] capped ${capped} id(s) over ${CAP}`);
+    console.warn(
+      `[menuFollowUp:batch] capped ${capped} id(s) over ${BATCH_CAP}`,
+    );
   }
-  const batch = deduped.slice(0, CAP);
+  const batch = deduped.slice(0, BATCH_CAP);
 
   const admin = await createServerAdminClient();
   const outcomes: FollowUpOutcome[] = [];
-  // Sequential on purpose: a burst of parallel Resend POSTs is what its own
-  // rate limiter would throttle, and the volume here is admin-scale, not hot.
   for (const id of batch) {
     outcomes.push(await sendToBusiness(admin, id, base));
   }
@@ -237,7 +249,7 @@ export async function sendMenuFollowUpBatchAction(
   const count = (status: FollowUpOutcome['status']) =>
     outcomes.filter((o) => o.status === status).length;
 
-  revalidatePath(adminMenuFollowUpPath(gate.adminId));
+  revalidatePath(adminMenuFollowUpPath(adminId));
   return {
     ok: true,
     sent: count('sent'),
@@ -246,4 +258,52 @@ export async function sendMenuFollowUpBatchAction(
     capped,
     outcomes,
   };
+}
+
+export async function sendMenuFollowUpBatchAction(
+  ids: string[],
+): Promise<FollowUpBatchResult> {
+  const parsed = batchSchema.safeParse(ids);
+  const anyValid = ids.some((v) => businessId.safeParse(v).success);
+  if (!parsed.success && !anyValid) {
+    return {
+      ...EMPTY_BATCH,
+      error: parsed.error.issues[0]?.message ?? 'Invalid',
+    };
+  }
+
+  const gate = await requireAdmin();
+  if (!gate.ok) return { ...EMPTY_BATCH, error: gate.error };
+
+  const base = ctaBase();
+  if (!base) return { ...EMPTY_BATCH, error: 'Email base URL not configured' };
+
+  return runBatch(gate.adminId, ids, base);
+}
+
+/**
+ * "Send to all" over the current FILTER, not a client-supplied id list. The ids
+ * are derived server-side (`getMissingMenuIds`, itself admin-checked), so the
+ * button can never be handed a page-capped or tampered set — it names the
+ * filter, the server names the shops.
+ */
+export async function sendMenuFollowUpAllAction(opts: {
+  search?: string;
+  onlyNoPromo?: boolean;
+}): Promise<FollowUpBatchResult> {
+  const gate = await requireAdmin();
+  if (!gate.ok) return { ...EMPTY_BATCH, error: gate.error };
+
+  const base = ctaBase();
+  if (!base) return { ...EMPTY_BATCH, error: 'Email base URL not configured' };
+
+  const ids = await getMissingMenuIds({
+    search: opts.search,
+    onlyNoPromo: opts.onlyNoPromo,
+  });
+  if (ids.length === 0) {
+    return { ...EMPTY_BATCH, ok: true };
+  }
+
+  return runBatch(gate.adminId, ids, base);
 }

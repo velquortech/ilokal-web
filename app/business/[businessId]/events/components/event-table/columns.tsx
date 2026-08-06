@@ -63,13 +63,15 @@ export function getColumns(
           <EventStatusBadge status={row.original.status} />
           {/* The reason belongs on the row, not only in the bell — an owner
               should not have to find a notification to learn what to change. */}
+          {/* `whitespace-normal` overrides TableCell's inherited nowrap so the
+              note wraps within its cap instead of overflowing the column. */}
           {row.original.status === 'rejected' && row.original.review_note && (
-            <p className="text-destructive max-w-[14rem] text-xs">
+            <p className="text-destructive max-w-[14rem] text-xs whitespace-normal">
               “{row.original.review_note}”
             </p>
           )}
           {row.original.status === 'approved' && (
-            <p className="text-muted-foreground max-w-[14rem] text-xs">
+            <p className="text-muted-foreground max-w-[14rem] text-xs whitespace-normal">
               Editing sends it back for review.
             </p>
           )}

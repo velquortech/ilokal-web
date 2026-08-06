@@ -132,8 +132,10 @@ export function getReviewColumns(): ColumnDef<EventWithRefs>[] {
       cell: ({ row }) => (
         <div className="flex flex-col items-start gap-1">
           <EventStatusBadge status={row.original.status} />
+          {/* `whitespace-normal` overrides TableCell's inherited nowrap so the
+              note wraps within its cap instead of overflowing the column. */}
           {row.original.review_note && (
-            <p className="text-muted-foreground max-w-[12rem] text-xs italic">
+            <p className="text-muted-foreground max-w-[12rem] text-xs whitespace-normal italic">
               “{row.original.review_note}”
             </p>
           )}

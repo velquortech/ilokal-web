@@ -48,11 +48,21 @@ export function EventImageCell({ event }: { event: EventWithRefs }) {
 
 /** Name, with the description as the second line — the catalogue's shape. */
 export function EventTitleCell({ event }: { event: EventWithRefs }) {
+  // Bounded width, not just `min-w`. The table is auto-layout, so a cell's
+  // MAX-content drives the column: an unclamped description wants its whole
+  // length on one line, which stretched the Event column until the last three
+  // columns fell off the right edge. `max-w` caps that; `truncate` /
+  // `line-clamp-1` collapse the overflow into an ellipsis inside the cap.
   return (
-    <div className="min-w-[12rem]">
-      <div className="font-medium">{event.name}</div>
+    <div className="w-[14rem] max-w-[14rem] sm:w-[18rem] sm:max-w-[18rem]">
+      <div className="truncate font-medium" title={event.name}>
+        {event.name}
+      </div>
       {event.description && (
-        <p className="text-muted-foreground line-clamp-1 text-xs">
+        // `whitespace-normal` so the clamp gets a wrapping line to place its
+        // ellipsis on — `TableCell` inherits `whitespace-nowrap`, which would
+        // hard-clip the text with no ellipsis.
+        <p className="text-muted-foreground line-clamp-1 text-xs whitespace-normal">
           {event.description}
         </p>
       )}
@@ -71,7 +81,11 @@ export function EventWhenCell({ event }: { event: EventWithRefs }) {
   const phase = eventPhase(event);
 
   return (
-    <div className="flex min-w-[11rem] flex-col gap-1">
+    // Capped so a multi-day range wraps to two lines instead of stretching the
+    // column — same reason the title cell is bounded. `whitespace-normal`
+    // overrides `TableCell`'s inherited `whitespace-nowrap`, which otherwise
+    // keeps the range on one line and overflows it onto the next column.
+    <div className="flex w-[11rem] max-w-[11rem] flex-col gap-1 whitespace-normal">
       <span className="text-sm">{formatEventWhen(event)}</span>
       {phase === 'live' && event.status === 'approved' && (
         <Badge
@@ -96,7 +110,9 @@ export function EventVenueCell({ address }: { address: string }) {
       title={address}
     >
       <MapPin className="mt-0.5 size-3 shrink-0" aria-hidden />
-      <span className="line-clamp-2">{address}</span>
+      {/* `whitespace-normal` so the clamp can actually wrap to two lines —
+          `TableCell` inherits `whitespace-nowrap`, which would keep it on one. */}
+      <span className="line-clamp-2 whitespace-normal">{address}</span>
     </p>
   );
 }

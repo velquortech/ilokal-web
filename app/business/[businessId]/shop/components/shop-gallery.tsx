@@ -1,8 +1,13 @@
 import { Masonry } from '@/components/custom/Masonry';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, Image as ImageIcon } from 'lucide-react';
+import { ArrowRight, Image as ImageIcon } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { BusinessShop } from '@/providers/BusinessProvider';
+import {
+  businessBranchPath,
+  businessShopGalleryPath,
+} from '@/config/routeConfig';
 import type { Branch } from '@/lib/types';
 
 interface ShopGalleryProps {
@@ -37,13 +42,33 @@ export function ShopGallery({ business, branch }: ShopGalleryProps) {
   // Show a simple grid for 1–3 images (no masonry minimum needed)
   const hasAnyImages = rawImages.length > 0;
 
+  /**
+   * Where "Manage photos" goes has to fork on the SAME condition that chose the
+   * images above. A branch gallery is a different array on a different row
+   * (`branches.gallery_images`), edited in the branch editor — sending an owner
+   * looking at their branch photos to the business gallery would have them edit
+   * a set they cannot see.
+   */
+  const manageHref =
+    useBranchGallery && business?.id
+      ? businessBranchPath(business.id, branch!.id)
+      : business?.id
+        ? businessShopGalleryPath(business.id)
+        : null;
+
   return (
     <div className="space-y-4">
       <div className="inline-flex w-full items-center justify-between">
         <span className="font-medium">{label}</span>
-        {hasAnyImages && (
-          <Button size="sm">
-            See All <ChevronDown />
+        {manageHref && (
+          <Button size="sm" asChild>
+            {/* Was a handler-less `<Button>` with a ChevronDown — a control that
+                did nothing, wearing a disclosure icon while promising
+                navigation. */}
+            <Link href={manageHref}>
+              {hasAnyImages ? 'Manage photos' : 'Add photos'}
+              <ArrowRight />
+            </Link>
           </Button>
         )}
       </div>

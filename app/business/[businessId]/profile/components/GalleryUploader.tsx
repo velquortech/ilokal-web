@@ -6,19 +6,33 @@ import { ImagePlus, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { compressImage, COMPRESSION_PRESETS } from '@/lib/utils/compressImage';
+import { MAX_GALLERY_IMAGES } from '@/lib/validation/business';
 
-const MAX_IMAGES = 10;
+const MAX_IMAGES = MAX_GALLERY_IMAGES;
 
 interface GalleryUploaderProps {
   businessId: string;
   value: string[];
   onChange: (urls: string[]) => void;
+  /**
+   * Intercepts the ✕ instead of removing straight away.
+   *
+   * Omitted (the profile form) the removal is staged and only committed by that
+   * form's "Save changes", so a mis-click costs nothing. The gallery page saves
+   * on the spot AND deletes the file from storage, so there the same click is
+   * irreversible and has to be confirmed first.
+   */
+  onRequestRemove?: (url: string) => void;
+  /** Hidden by the gallery page, which prints its own richer counter. */
+  showCounter?: boolean;
 }
 
 export function GalleryUploader({
   businessId,
   value,
   onChange,
+  onRequestRemove,
+  showCounter = true,
 }: GalleryUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -70,6 +84,10 @@ export function GalleryUploader({
   };
 
   const removeImage = (url: string) => {
+    if (onRequestRemove) {
+      onRequestRemove(url);
+      return;
+    }
     onChange(value.filter((u) => u !== url));
   };
 
@@ -139,9 +157,12 @@ export function GalleryUploader({
         )}
       </div>
 
-      <p className="text-muted-foreground text-xs">
-        {value.length}/{MAX_IMAGES} photos · JPG, PNG or WebP · max 2 MB each
-      </p>
+      {showCounter && (
+        <p className="text-muted-foreground text-xs">
+          {value.length}/{MAX_IMAGES} photos · JPG, PNG or WebP · larger photos
+          are resized for you
+        </p>
+      )}
 
       <input
         ref={inputRef}

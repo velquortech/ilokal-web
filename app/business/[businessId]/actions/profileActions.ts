@@ -9,7 +9,7 @@ import {
   type UpdateBusinessProfileInput,
 } from '@/lib/validation/business';
 import { businessProfilePath } from '@/config/routeConfig';
-import { extractStoragePath } from '@/lib/utils/storage';
+import { extractStoragePath, storagePathsToDelete } from '@/lib/utils/storage';
 
 export async function updateBusinessProfileAction(
   businessId: string,
@@ -102,22 +102,27 @@ export async function updateBusinessProfileAction(
       }
     }
 
-    // Delete gallery images that were removed from the list
+    // Delete gallery images that were removed from the list.
+    //
+    // 🔴 This compared the two arrays DIRECTLY, and the column holds two
+    // representations of the same file: registration stores the raw path
+    // `storage.upload()` returns, the upload route and this action store the
+    // absolute public URL, and the read layer resolves paths to URLs on the way
+    // out. So the client always sent URLs, none of them matched the raw paths
+    // in the row, and the first profile save by any owner who registered
+    // through the wizard deleted their ENTIRE gallery out of the bucket while
+    // the row kept pointing at it. Both sides are normalised to a path now.
     if (interior_images !== undefined && current?.interior_images?.length) {
-      const newSet = new Set(interior_images ?? []);
-      const toDelete = (current.interior_images as string[]).filter(
-        (url) => !newSet.has(url),
+      const paths = storagePathsToDelete(
+        current.interior_images as string[],
+        interior_images ?? [],
+        'interior-images',
       );
-      if (toDelete.length > 0) {
-        const paths = toDelete
-          .map((url) => extractStoragePath(url, 'interior-images'))
-          .filter((p): p is string => p !== null);
-        if (paths.length > 0) {
-          supabase.storage
-            .from('interior-images')
-            .remove(paths)
-            .catch(() => {});
-        }
+      if (paths.length > 0) {
+        supabase.storage
+          .from('interior-images')
+          .remove(paths)
+          .catch(() => {});
       }
     }
 

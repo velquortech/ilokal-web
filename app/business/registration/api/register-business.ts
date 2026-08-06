@@ -33,6 +33,24 @@ export async function registerBusiness(
   return await apiClient.post('/api/web/businesses', meta);
 }
 
+/**
+ * Phase 3 — the menu entered in the wizard.
+ *
+ * Its own request, like the files, because one all-in-one POST is what 413'd
+ * in production. Safe to call twice: the server skips any name the business
+ * already has, so a retried submission cannot double the owner's menu.
+ */
+export async function createRegistrationOfferings(
+  businessId: string,
+  offerings: { name: string; price: number | null; on_request: boolean }[],
+  kind: 'product' | 'service',
+) {
+  return await apiClient.post(`/api/web/businesses/${businessId}/offerings`, {
+    offerings,
+    kind,
+  });
+}
+
 /** Phase 2 — upload a single registration file (each ≤ 2 MB, own request). */
 export async function uploadRegistrationFile(
   businessId: string,

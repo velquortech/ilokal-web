@@ -69,10 +69,11 @@ export function BusinessHeader({ branches = [] }: BusinessHeaderProps) {
       <div className="flex h-16 items-center gap-4 px-4">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <SidebarTrigger className="h-9 w-9" />
-          {/* The sidebar starts collapsed (`defaultOpen={false}`), so without
-              this the owner's own shop name appears nowhere on the screen they
-              use all day. It shows only while the sidebar is collapsed —
-              printing it twice would just be chrome. */}
+          {/* The sidebar now opens by default (seeded from the `sidebar_state`
+              cookie), but an owner who collapsed it would otherwise have their
+              own shop name nowhere on the screen they use all day. Shown only
+              while collapsed — the sidebar header prints it when open, and
+              twice is just chrome. */}
           {business?.shop_name && state === 'collapsed' && (
             <span className="font-display hidden truncate text-base leading-none font-bold tracking-tight sm:inline">
               {business.shop_name}

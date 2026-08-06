@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { GalleryUploader } from '../../../profile/components/GalleryUploader';
+import { GalleryUploader } from '@/components/custom/GalleryUploader';
 import { updateBusinessGalleryAction } from '../../../actions/galleryActions';
 import {
   MASONRY_MIN_IMAGES,
@@ -41,8 +41,21 @@ export function GalleryManager({
   const [saving, setSaving] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
 
-  // Guards a double-submit before React commits the `disabled` attribute.
   const inFlight = useRef(false);
+  /**
+   * The latest gallery that still needs saving, held while an earlier save is
+   * in flight.
+   *
+   * 🔴 This used to be `if (inFlight.current) return` — a silent DROP. A batch
+   * of uploads finishing while a confirmed removal was still saving discarded
+   * the newer state with no toast, no retry and no visible change, leaving the
+   * just-uploaded file orphaned in the bucket and the owner believing it saved.
+   * A queue of exactly one is enough: each entry is the whole desired array,
+   * not a delta, so a newer one wholly supersedes an older one.
+   */
+  const queued = useRef<string[] | null>(null);
+  /** The last state the SERVER is known to hold, for a rollback. */
+  const committed = useRef<string[]>(initialImages);
 
   /**
    * Saved on the spot rather than behind a "Save changes" button, because the
@@ -51,44 +64,72 @@ export function GalleryManager({
    * abandoned page both loses the owner's work and orphans the file it
    * uploaded. What is on screen is what is stored.
    */
-  const persist = async (next: string[], previous: string[]) => {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    setSaving(true);
-    setImages(next);
+  const persist = useCallback(
+    async (next: string[]) => {
+      setImages(next);
 
-    try {
-      const result = await updateBusinessGalleryAction(businessId, next);
-      if (!result.success) {
-        setImages(previous);
-        toast.error(result.error?.message ?? 'Could not save your gallery.', {
-          id: SAVE_TOAST_ID,
-        });
+      if (inFlight.current) {
+        queued.current = next;
         return;
       }
-      toast.success('Gallery updated.', { id: SAVE_TOAST_ID });
-    } catch {
-      // A rejected action would otherwise leave the page showing a change the
-      // database never took.
-      setImages(previous);
-      toast.error('Could not save your gallery. Please try again.', {
-        id: SAVE_TOAST_ID,
-      });
-    } finally {
-      inFlight.current = false;
-      setSaving(false);
-    }
-  };
 
-  const handleChange = (next: string[]) => {
-    void persist(next, images);
-  };
+      inFlight.current = true;
+      setSaving(true);
+
+      let target: string[] | null = next;
+      try {
+        while (target) {
+          const attempt = target;
+          queued.current = null;
+
+          let ok = false;
+          try {
+            const result = await updateBusinessGalleryAction(
+              businessId,
+              attempt,
+            );
+            ok = result.success;
+            if (!ok) {
+              toast.error(
+                result.error?.message ?? 'Could not save your gallery.',
+                { id: SAVE_TOAST_ID },
+              );
+            }
+          } catch {
+            // A rejected action would otherwise leave the page showing a change
+            // the database never took.
+            toast.error('Could not save your gallery. Please try again.', {
+              id: SAVE_TOAST_ID,
+            });
+          }
+
+          if (ok) {
+            committed.current = attempt;
+          } else {
+            // Roll back to what the server is known to hold, and drop anything
+            // queued behind the failure — it was built on top of a change that
+            // did not land.
+            queued.current = null;
+            setImages(committed.current);
+            break;
+          }
+
+          target = queued.current;
+          if (!target) toast.success('Gallery updated.', { id: SAVE_TOAST_ID });
+        }
+      } finally {
+        inFlight.current = false;
+        setSaving(false);
+      }
+    },
+    [businessId],
+  );
 
   const handleConfirmedRemove = () => {
     if (!confirmRemove) return;
     const next = images.filter((url) => url !== confirmRemove);
     setConfirmRemove(null);
-    void persist(next, images);
+    void persist(next);
   };
 
   if (loadFailed) {
@@ -116,7 +157,7 @@ export function GalleryManager({
           <GalleryUploader
             businessId={businessId}
             value={images}
-            onChange={handleChange}
+            onChange={persist}
             onRequestRemove={setConfirmRemove}
             showCounter={false}
           />

@@ -40,8 +40,8 @@ export interface TourStep {
   /** Preferred side for the step card; the popover still collision-flips. */
   side: 'top' | 'right' | 'bottom' | 'left';
   /**
-   * The anchor lives inside the sidebar, which is `defaultOpen={false}` — so a
-   * tour that does not open it points at an icon, or at nothing at all.
+   * The anchor lives inside the sidebar, which an owner may have collapsed —
+   * so a tour that does not open it points at an icon, or at nothing at all.
    */
   inSidebar?: boolean;
 }

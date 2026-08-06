@@ -28,9 +28,26 @@ export const MAX_GALLERY_IMAGES = 10;
  */
 export const MASONRY_MIN_IMAGES = 4;
 
-const galleryImagesSchema = z
-  .array(z.string().url('Each gallery image must be a valid URL'))
-  .max(MAX_GALLERY_IMAGES, `Maximum ${MAX_GALLERY_IMAGES} gallery images`);
+/**
+ * 🔴 NOT `z.string().url()`. Zod's `url()` is backed by `new URL()`, which
+ * **accepts `javascript:alert(1)`** — the exact trap `urlOrEmpty` had to be
+ * fixed for before these columns were rendered. `interior_images` is returned
+ * by `/api/mobile/businesses/[businessId]` and rendered on public surfaces, so
+ * an http(s) allowlist is the floor, not a nicety.
+ *
+ * A bucket-relative path is also accepted, because that is what registration
+ * writes and what these columns now store.
+ */
+const galleryImageSchema = z
+  .string()
+  .min(1, 'Each gallery image must be a URL or a storage path')
+  .refine(
+    (value) =>
+      /^https?:\/\//.test(value) || !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value),
+    'Gallery images must be http(s) URLs',
+  );
+
+const galleryImagesSchema = z.array(galleryImageSchema);
 
 /**
  * The gallery, and NOTHING else.
@@ -40,10 +57,43 @@ const galleryImagesSchema = z
  * `?? null` unconditionally, so a caller sending only the gallery erases four
  * columns. The narrow schema exists so the narrow action cannot grow the wide
  * one's payload by accident.
+ *
+ * 🔴 No `.max()` here, and that is deliberate. Nothing caps the gallery at
+ * upload time — `step3Schema` requires **at least** four interior photos and
+ * `/api/web/upload/business-interior` appends without a ceiling — so a shop
+ * that registered with eleven photos would have every write rejected by a flat
+ * cap, **including the removals that would bring it back under**. The action
+ * enforces the cap on GROWTH instead, against the row it just read.
  */
 export const businessGallerySchema = z.object({
   interior_images: galleryImagesSchema,
 });
+
+/**
+ * Is this gallery entry a file inside THIS shop's own folder?
+ *
+ * 🔴 The FK-shaped assumption that a client-supplied storage key is safe is
+ * what this closes. `extractStoragePath` returns any non-`http` string verbatim
+ * and blindly slices whatever follows the bucket marker, so
+ * `…/interior-images/<otherShopId>/x.webp` or `…/interior-images/../shop-logos/x.webp`
+ * would be stored as sent and then handed to `storage.remove()`. The bucket's
+ * DELETE policy is the only other backstop and it does **not** stop an owner who
+ * holds two shops from deleting shop B's file through shop A's gallery.
+ *
+ * Every upload path writes `<businessId>/<filename>` — registration
+ * (`business.ts`), the upload route, and nothing else — so exactly one segment
+ * of prefix and one of filename is the whole legitimate shape. A foreign host
+ * fails this too: it normalises to itself verbatim and does not start with the
+ * id.
+ */
+export function isOwnGalleryPath(path: string, businessId: string): boolean {
+  const segments = path.split('/');
+  if (segments.length !== 2) return false;
+  const [prefix, filename] = segments;
+  return (
+    prefix === businessId && !!filename && filename !== '.' && filename !== '..'
+  );
+}
 
 export type BusinessGalleryInput = z.infer<typeof businessGallerySchema>;
 
@@ -68,7 +118,13 @@ export const updateBusinessProfileSchema = z.object({
     .optional()
     .nullable(),
   category_id: z.guid('Invalid category ID').optional().nullable(),
-  interior_images: galleryImagesSchema.optional().nullable(),
+  // Keeps its flat cap: this form has always had one, and the growth rule that
+  // replaces it in the gallery action needs the current row to compare against,
+  // which this action reads for a different reason.
+  interior_images: galleryImagesSchema
+    .max(MAX_GALLERY_IMAGES, `Maximum ${MAX_GALLERY_IMAGES} gallery images`)
+    .optional()
+    .nullable(),
 });
 
 export type UpdateBusinessProfileInput = z.infer<

@@ -8,6 +8,7 @@ import {
   businessBranchPath,
   businessShopGalleryPath,
 } from '@/config/routeConfig';
+import { MASONRY_MIN_IMAGES } from '@/lib/validation/business';
 import type { Branch } from '@/lib/types';
 
 interface ShopGalleryProps {
@@ -28,8 +29,7 @@ export function ShopGallery({ business, branch }: ShopGalleryProps) {
     ? `${branch!.name} Gallery`
     : 'Explore Shop Gallery';
 
-  const MIN_FOR_MASONRY = 4;
-  const hasImages = rawImages.length >= MIN_FOR_MASONRY;
+  const hasImages = rawImages.length >= MASONRY_MIN_IMAGES;
   const images = hasImages
     ? rawImages.map((src, index) => ({
         src,
@@ -102,7 +102,7 @@ export function ShopGallery({ business, branch }: ShopGalleryProps) {
               {useBranchGallery
                 ? 'No gallery photos for this branch yet'
                 : rawImages.length > 0
-                  ? `Add ${MIN_FOR_MASONRY - rawImages.length} more image${MIN_FOR_MASONRY - rawImages.length === 1 ? '' : 's'} to display your gallery`
+                  ? `Add ${MASONRY_MIN_IMAGES - rawImages.length} more image${MASONRY_MIN_IMAGES - rawImages.length === 1 ? '' : 's'} to display your gallery`
                   : 'No gallery images available'}
             </span>
           </div>

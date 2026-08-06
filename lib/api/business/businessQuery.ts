@@ -6,6 +6,7 @@
  */
 
 import { createServerSupabaseClient } from '@/supabase/server';
+import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import {
   Business,
   AdminBusiness,
@@ -484,13 +485,11 @@ export async function getBusinessGallery(businessId: string): Promise<{
     }
     if (!data) return { images: [], failed: false, found: false };
 
-    const images = ((data.interior_images as string[] | null) ?? []).map(
-      (pathOrUrl) =>
-        pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')
-          ? pathOrUrl
-          : supabase.storage.from('interior-images').getPublicUrl(pathOrUrl)
-              .data.publicUrl,
-    );
+    const images = ((data.interior_images as string[] | null) ?? [])
+      .map((pathOrUrl) =>
+        resolveStorageUrl(supabase, 'interior-images', pathOrUrl),
+      )
+      .filter((url): url is string => url !== null);
 
     return { images, failed: false, found: true };
   } catch (err) {

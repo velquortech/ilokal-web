@@ -25,7 +25,7 @@ import {
 import { updateBusinessProfileAction } from '../../actions/profileActions';
 import type { BusinessProfileData } from '@/lib/types';
 import { LogoUploader } from './LogoUploader';
-import { GalleryUploader } from './GalleryUploader';
+import { GalleryUploader } from '@/components/custom/GalleryUploader';
 
 interface BusinessInfoFormProps {
   businessId: string;

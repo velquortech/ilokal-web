@@ -15,23 +15,16 @@ import { SidebarMenuButton } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useUser } from '@/providers/UserContext';
 import { ROUTES } from '@/config/routeConfig';
-
-function initialsFromName(name?: string | null): string {
-  if (!name) return 'AD';
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { initialsFromName } from '@/lib/utils/initials';
 
 export function AdminUserMenu() {
   const { logout, isLoggingOut } = useAuth();
   const user = useUser();
   const isMobile = useIsMobile();
 
-  const initials = initialsFromName(user?.full_name);
+  // 'AD' rather than blank here: the admin shell has no shop logo to fall back
+  // to, so an unnamed admin account would otherwise show an empty circle.
+  const initials = initialsFromName(user?.full_name, 'AD');
 
   return (
     <DropdownMenu>

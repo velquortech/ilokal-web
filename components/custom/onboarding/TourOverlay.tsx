@@ -246,10 +246,10 @@ export function TourOverlay({
   const [visible, setVisible] = useState<ResolvedTourStep[]>([]);
   const [ready, setReady] = useState(false);
 
-  // The sidebar is `defaultOpen={false}`, so three of the anchors are icons
-  // when the tour starts. Open it, and put it back exactly as it was on the way
-  // out — an owner who works with it collapsed should not find it expanded
-  // because they watched a tour.
+  // The sidebar defaults open now, but an owner who collapsed it leaves three
+  // of the anchors as bare icons. Open it, and put it back exactly as it was on
+  // the way out — an owner who works with it collapsed should not find it
+  // expanded because they watched a tour.
   const restoreSidebar = useRef(open);
   useEffect(() => {
     if (isMobile) return;

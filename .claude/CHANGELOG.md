@@ -1,5 +1,176 @@
 # Changelog
 
+## 2026-08-06 — The gallery's "See All" went nowhere, and saving it deleted photos (develop)
+
+> **No schema, API-contract or auth change.** One new route, one new Server
+> Action (narrow by design), one widened shared component. MED risk: it touches
+> the business shell's sidebar default and a live storage-delete path. Parity
+> table (SG1–SG13): [`.claude/SHOP_GALLERY.md`](.claude/SHOP_GALLERY.md) (local,
+> not committed).
+
+- **🔴 The whole gallery could be deleted out of the bucket by saving the
+  profile form.** `interior_images` holds **two representations of the same
+  file**: registration writes the raw path `storage.upload()` returns
+  (`business.ts:163`), while `POST /api/web/upload/business-interior` and every
+  save after it write the absolute public URL. The read layer hides the split —
+  `getBusinessById` / `getBusinessProfileData` resolve paths to URLs on the way
+  out — so the client always hands back URLs. `updateBusinessProfileAction` then
+  diffed those URLs against the raw paths in the row, matched **nothing**,
+  classified every registration-uploaded photo as removed, and called
+  `storage.remove()` on all of them. The row kept pointing at files that no
+  longer existed. Reachable by any owner who registered through the wizard and
+  then edited their profile once.
+- **Fixed with `storagePathsToDelete(current, next, bucket)`** — both sides
+  normalised to a path before comparing, so identity is decided by the file and
+  not by which code path last wrote the string. An entry that does not resolve
+  to the bucket is **dropped rather than deleted**: deleting on a guess is how a
+  value we failed to parse becomes a file we destroyed.
+- **New writes store bucket-relative paths.** An absolute URL bakes the Supabase
+  project host into the row — the exact portability bug the seeds were rewritten
+  to fix on 2026-06-16 — and it is what created the two representations in the
+  first place.
+- **🔴 "See All" was a `<Button>` with no `onClick` and no `href`.** The primary
+  control on the section, doing nothing, wearing a `ChevronDown` (which reads as
+  "expand in place") while promising navigation. It is a `<Link>` now, and it
+  **forks on the same condition that chose the images**: a branch gallery is a
+  different array on a different row (`branches.gallery_images`), edited in the
+  branch editor, so an owner looking at branch photos goes there — sending them
+  to the business gallery would have them edit a set they cannot see.
+- **It also renders when the gallery is EMPTY now** ("Add photos"). It was
+  gated on `hasAnyImages`, so the one state that needs the control most had no
+  way to reach it at all.
+- **New `/business/[businessId]/shop/gallery`** — a child of the section it
+  belongs to, so the way back is the URL. Reuses `GalleryUploader` rather than
+  growing a second uploader: `CLAUDE.md`'s contract sweep requires every image
+  surface to call `compressImage` and forbids hand-rolled
+  `createImageBitmap`/`toBlob`, so a fresh one would have failed the sweep and
+  re-opened the EXIF, animation and alpha traps.
+- **🔴 The obvious way to save it would have erased four columns.**
+  `updateBusinessProfileAction` writes `description`, `logo_url`, `banner_url`
+  and `category_id` as `?? null` **unconditionally** — only `interior_images` is
+  conditional — and requires `shop_name`. A gallery page sending
+  `{ shop_name, interior_images }` silently blanks the rest. Hence a narrow
+  `updateBusinessGalleryAction` that touches one column, with a test asserting
+  the update payload's key set is exactly `['interior_images']`.
+- **Saves on the spot, not behind a Save button** — the upload has ALREADY
+  happened by then; the file is in the bucket. Deferring the row write means
+  every abandoned page both loses the owner's work and orphans the file it just
+  uploaded.
+- **Which is why delete is confirmed here and staged in the profile form.**
+  Same `GalleryUploader`, one new optional `onRequestRemove`: omitted, the
+  removal is staged and a mis-click costs nothing; supplied, the click is
+  immediate **and** deletes the file, so it asks first. The profile form passes
+  nothing and is byte-identical.
+- **Both numbers are stated, because they are different numbers.** The cap is
+  10; the shop page needs **4** before `Masonry` renders the full layout and
+  falls back to a plain row below that. An owner with three photos could not
+  previously tell why their page looked different. `MAX_GALLERY_IMAGES` and
+  `MASONRY_MIN_IMAGES` are now single exported constants — the cap was
+  previously a literal in the schema and another in the uploader.
+- **New `getBusinessGallery` distinguishes an outage from an empty gallery.**
+  `getBusinessProfileData` collapses "no such shop" and "the read failed" into
+  one `null`, which is fine for a form that 404s either way and wrong here: the
+  empty state tells an owner to upload photos they may already have. A failed
+  read renders "we couldn't load your gallery"; only a genuinely missing shop
+  404s.
+- **The action is a publicly invocable endpoint and is guarded like one:** id
+  shape validated **before** `verifyBusinessOwner` (which reads a falsy id as
+  "no argument" and authorizes whichever shop `.limit(1)` returns — the
+  multi-shop bug the event actions shipped with), ownership proved with the
+  **route segment's** id, the **verified** id written, a per-user flood guard
+  (Server-Action POSTs never reach the proxy limiter, and this one amplifies
+  into a storage delete), and no driver text in any client message.
+- **Sidebar defaults open, and its persistence stopped being decorative.**
+  `SidebarProvider` has always **written** the `sidebar_state` cookie and
+  **nothing ever read it** (`grep` → one hit, the constant), so collapsing it
+  never survived a reload. Flipping the boolean alone would have left that
+  broken and merely inverted who is annoyed. The name moved to
+  `config/sidebarCookie.ts` (non-client, the same split as `supabase/cookies.ts`
+  and for the same reason), the **server** layout reads it, and absent reads as
+  open. Comments in `BusinessHeader` and `TourOverlay` that asserted the old
+  default were corrected; neither's behaviour depended on it, both read live
+  state.
+- **Testimonials & Reviews is hidden.** `hasContent` was hardcoded `false`, the
+  cards came from `data/shop` fixtures, and both "Add Testimonial" and "Check
+  Reviews" had no handler — a section advertising a feature that does not exist,
+  with two dead controls. Mount commented out with the reason; component and
+  fixtures kept, because this is a planned feature rather than a fake control.
+  `ratings` / `business_ratings` exist and SEC-4 gates who may write them — the
+  owner-side READ is the missing half.
+- **Tests (+33, 2238 → 2271):** the storage diff (a raw path and its own public
+  URL are the **same file**; a foreign host is dropped, not deleted; dedupe;
+  growth deletes nothing), the action (malformed id refused before
+  `verifyBusinessOwner` is called, verified id written, cap rejected before any
+  DB work, payload key set exactly `['interior_images']`, paths not URLs stored,
+  nothing deleted when the write failed, no driver text), and a contract sweep
+  (See All navigates and keeps no `ChevronDown`, forks on the branch condition,
+  path from `routeConfig`, the page mounts the shared uploader and hand-rolls
+  no upload, confirms before removing, never imports the whole-profile action,
+  and the masonry threshold matches what `Masonry` actually enforces). The
+  sweep strips comments first — these files quote the thing that was removed,
+  and a sweep that fails on its own explanation teaches people to delete the
+  explanation.
+- Verified: `yarn lint` + **2271** tests + a clean `yarn build` (`.next`
+  removed first) green.
+- **Not verified — needs a browser:** these surfaces are behind auth and this
+  environment has no login path, so the upload, the confirm dialog, the autosave
+  toast and the branch-vs-business fork have not been clicked through. **The
+  storage-delete fix especially** — the assertions pin the diff this code
+  computes, not what the bucket does.
+- **Not done:** reorder (array position is the render order, and `Masonry` makes
+  index 0 the large tile, so the owner still cannot choose the lead photo); the
+  same standalone page for branch galleries; `unoptimized` on the uploader's
+  tiles; the admin sidebar, still `defaultOpen={false}`.
+
+### Account menu: two links to a 404, and an avatar labelled "CN"
+
+- **🔴 Subscription and Help & Support both pointed at pages that do not
+  exist.** There is no `subscription/` or `help/` segment under
+  `app/business/[businessId]/`, so two of the six entries in the account menu
+  were links to a 404. Same class as the handler-less "See All" above and the
+  `ProCard` that advertised billing this app has no surface for. Commented out
+  with the reason, not deleted — restore each the day its page lands.
+- **The separator travels with the tour entry now.** With Help & Support gone
+  that group can be empty, and with the tour switched off the menu rendered two
+  separators in a row — which reads as an item that failed to render rather than
+  as a deliberate gap.
+- **The avatar's fallback was the literal string `"CN"`** — shadcn's
+  placeholder, two letters belonging to nobody, on the one control that says who
+  is signed in. It now shows the **shop's logo**, falling back to the owner's
+  personal avatar, falling back to the **shop's initials**.
+- **`alt` is derived from the same choice as `src`**, so the picture can never
+  be labelled as the other thing — a shop logo announced as the owner's name is
+  a worse label than none.
+- **Blank rather than guessed when there is no name at all.** An empty circle
+  reads as "no picture"; stray letters read as someone else's account, which is
+  exactly what `"CN"` was doing.
+- **`initialsFromName` is shared now** (`lib/utils/initials.ts`).
+  `AdminUserMenu` had its own copy — the second caller is the repo's own trigger
+  to widen rather than fork. The shared one fixes two things the copy had: it
+  split on a single space, so a leading space made the first "word" empty and
+  the initials came out short; and `name[0]` returns half a surrogate pair for a
+  name starting with an emoji. It also takes first + LAST word ("Seed Business
+  Owner" → SO, not SB), since a surname carries more identity than a middle
+  word. Admin keeps its `'AD'` default explicitly — that shell has no shop logo
+  to fall back to.
+- **The avatar block was rendered twice** (trigger and menu label), each with
+  its own copy of the placeholder. One `AccountAvatar`, one derivation.
+- **`resolveAccountAvatar` is exported and pure, and that is a testability
+  decision worth recording:** Radix mounts `<AvatarImage>` only once the image
+  has actually LOADED, and nothing loads under happy-dom — so the first version
+  of the logo test read `container.querySelector('img')` behind an `if (img)`
+  guard and passed whether the logic was right or not. Asserting the resolver
+  directly is the only honest option.
+- **Tests (+15, 2271 → 2286):** the shared helper (first+last, single word,
+  real-form whitespace, an astral first character, the fallback, and the blank
+  default), the menu (neither dead entry offered, Profile and Settings
+  untouched, no doubled separator, `"CN"` nowhere in the rendered output, the
+  shop's initials preferred over the owner's), and the resolver (logo over
+  avatar with the matching label, avatar with the owner's label, shop initials
+  when there is no picture, owner initials when there is no shop name, and never
+  the placeholder for any empty input).
+- Verified: `yarn lint` + **2286** tests + a clean `yarn build` green.
+
 ## 2026-08-05 — An auto supply shop fit nowhere in either taxonomy (feat/image-compression)
 
 > **ONE migration (`20260805130000_retail_trades.sql`) — data-only: 9 rows into

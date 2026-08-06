@@ -3,12 +3,15 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { businessShopGalleryPath } from '@/config/routeConfig';
 import {
-  MASONRY_MIN_IMAGES,
-  MAX_GALLERY_IMAGES,
   businessGallerySchema,
-  isOwnGalleryPath,
   updateBusinessProfileSchema,
 } from '@/lib/validation/business';
+import {
+  MASONRY_MIN_IMAGES,
+  MAX_GALLERY_IMAGES,
+  foreignGalleryPaths,
+  isOwnGalleryPath,
+} from '@/config/gallery';
 
 const ROOT = join(__dirname, '..', '..');
 const read = (rel: string) => readFileSync(join(ROOT, rel), 'utf8');
@@ -33,6 +36,7 @@ const MANAGER = read(
 // CLAUDE.md §DRY, the `LocationPicker` precedent.
 const UPLOADER = readRepo('components', 'custom', 'GalleryUploader.tsx');
 const GALLERY_ACTION = read(join('actions', 'galleryActions.ts'));
+const PROFILE_ACTION = read(join('actions', 'profileActions.ts'));
 
 describe('the See All control', () => {
   /**
@@ -102,13 +106,7 @@ describe('the gallery cap is one constant', () => {
     (_, i) => `https://example.com/${i}.webp`,
   );
 
-  it('is the number the profile form and the uploader both use', () => {
-    expect(
-      updateBusinessProfileSchema.safeParse({
-        shop_name: 'Cafe',
-        interior_images: overCap,
-      }).success,
-    ).toBe(false);
+  it('is the number the uploader uses', () => {
     // A second literal is how the form starts refusing a photo the server would
     // have accepted, or the reverse.
     expect(UPLOADER).toContain('MAX_GALLERY_IMAGES');
@@ -116,17 +114,39 @@ describe('the gallery cap is one constant', () => {
   });
 
   /**
-   * 🔴 Nothing caps the gallery at UPLOAD time, so a flat cap in the schema
-   * would reject every write from a shop that registered with eleven photos —
-   * including the removals that would bring it back under. The action enforces
-   * the cap on GROWTH instead, against the row it just read, and a `.max()`
-   * creeping back onto this schema would silently restore the dead end.
+   * 🔴 Nothing caps the gallery at UPLOAD time — registration requires AT LEAST
+   * four interior photos and the upload route appends without a ceiling — so a
+   * flat cap in either schema rejects every write from a shop that registered
+   * with eleven photos, including the removals that would bring it back under.
+   * The profile form is worse: it resubmits the whole array, so a flat cap
+   * there stops that owner editing their shop NAME. Both actions enforce the
+   * cap on GROWTH instead, against the row they just read.
    */
-  it('is NOT a flat ceiling on the narrow schema', () => {
+  it('is NOT a flat ceiling on either schema', () => {
     expect(
       businessGallerySchema.safeParse({ interior_images: overCap }).success,
     ).toBe(true);
-    expect(GALLERY_ACTION).toContain('nextPaths.length > currentPaths.length');
+    expect(
+      updateBusinessProfileSchema.safeParse({
+        shop_name: 'Cafe',
+        interior_images: overCap,
+      }).success,
+    ).toBe(true);
+    for (const source of [GALLERY_ACTION, PROFILE_ACTION]) {
+      expect(source).toMatch(/length > MAX_GALLERY_IMAGES/);
+      expect(source).toMatch(/length > current\w*\.length/);
+    }
+  });
+
+  /**
+   * 🔴 The gallery action is not the only writer of this column. The guard has
+   * to be on BOTH, or the storage-key injection closed on one is simply
+   * reachable through the other.
+   */
+  it('scopes new paths to the shop in every writer of the column', () => {
+    for (const source of [GALLERY_ACTION, PROFILE_ACTION]) {
+      expect(source).toContain('foreignGalleryPaths(');
+    }
   });
 
   /**
@@ -152,6 +172,10 @@ describe('the gallery cap is one constant', () => {
   it('scopes every stored path to the shop that owns it', () => {
     const OWN = '550e8400-e29b-41d4-a716-446655440000';
     expect(isOwnGalleryPath(`${OWN}/a.webp`, OWN)).toBe(true);
+    // `verifyBusinessOwner`'s UUID check is `/i` and Postgres compares `uuid`
+    // case-insensitively, so an owner who reaches an uppercase URL uploads to
+    // an uppercase folder and must still be able to save it.
+    expect(isOwnGalleryPath(`${OWN.toUpperCase()}/a.webp`, OWN)).toBe(true);
     for (const bad of [
       'other-shop/a.webp',
       '../shop-logos/a.webp',
@@ -162,6 +186,31 @@ describe('the gallery cap is one constant', () => {
     ]) {
       expect(isOwnGalleryPath(bad, OWN)).toBe(false);
     }
+  });
+
+  /**
+   * 🔴 Grandfathering is the whole design of `foreignGalleryPaths`. Requiring
+   * the shape of EVERY entry would lock the gallery page out of any row that
+   * does not already conform — the 40 shops in `bulk_seed.sql` reuse other
+   * shops' interior paths, and the sample data in `mobile-api.md` stores
+   * foreign picsum URLs. Those owners would have every save refused, including
+   * the removal that would fix it.
+   */
+  it('lets a legacy row stay editable while refusing an injected key', () => {
+    const OWN = '550e8400-e29b-41d4-a716-446655440000';
+    const legacy = 'some-other-shop/old.webp';
+
+    // Already in the row: kept, and still removable.
+    expect(foreignGalleryPaths([legacy], [legacy], OWN)).toEqual([]);
+    expect(foreignGalleryPaths([], [legacy], OWN)).toEqual([]);
+    expect(
+      foreignGalleryPaths([legacy, `${OWN}/new.webp`], [legacy], OWN),
+    ).toEqual([]);
+
+    // Newly introduced: refused, and named so the error can say which.
+    expect(foreignGalleryPaths(['attacker/x.webp'], [legacy], OWN)).toEqual([
+      'attacker/x.webp',
+    ]);
   });
 
   it('keeps the masonry threshold in step with what Masonry enforces', () => {

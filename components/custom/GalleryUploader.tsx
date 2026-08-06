@@ -1,12 +1,12 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { ImagePlus, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { compressImage, COMPRESSION_PRESETS } from '@/lib/utils/compressImage';
-import { MAX_GALLERY_IMAGES } from '@/lib/validation/business';
+import { MAX_GALLERY_IMAGES } from '@/config/gallery';
 
 const MAX_IMAGES = MAX_GALLERY_IMAGES;
 
@@ -50,7 +50,13 @@ export function GalleryUploader({
    * pointing at a file that no longer exists.
    */
   const valueRef = useRef(value);
-  valueRef.current = value;
+  // Assigned in an EFFECT, not during render. A ref write during render is not
+  // concurrent-safe — a render React discards would leave the ref holding state
+  // that never committed, and the post-upload merge would build on it. Same
+  // reason `useCravingRotation`'s render-phase ref write was removed.
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
   const uploadFile = async (file: File): Promise<string | null> => {
     const formData = new FormData();

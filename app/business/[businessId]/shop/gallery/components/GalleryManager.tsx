@@ -16,10 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { GalleryUploader } from '@/components/custom/GalleryUploader';
 import { updateBusinessGalleryAction } from '../../../actions/galleryActions';
-import {
-  MASONRY_MIN_IMAGES,
-  MAX_GALLERY_IMAGES,
-} from '@/lib/validation/business';
+import { MASONRY_MIN_IMAGES, MAX_GALLERY_IMAGES } from '@/config/gallery';
 
 const SAVE_TOAST_ID = 'shop-gallery-save';
 
@@ -106,11 +103,18 @@ export function GalleryManager({
           if (ok) {
             committed.current = attempt;
           } else {
-            // Roll back to what the server is known to hold, and drop anything
-            // queued behind the failure — it was built on top of a change that
-            // did not land.
+            // 🔴 Roll back to the last state the server confirmed, but KEEP any
+            // photo that was uploaded while this save was failing. Discarding
+            // the queue here would make a file that is already in the bucket
+            // vanish from the screen and be orphaned — the round-1 silent drop,
+            // made visible rather than removed. The failed change is undone;
+            // the unrelated additions survive.
+            const rescued = (queued.current ?? []).filter(
+              (url) =>
+                !committed.current.includes(url) && !attempt.includes(url),
+            );
             queued.current = null;
-            setImages(committed.current);
+            setImages([...committed.current, ...rescued]);
             break;
           }
 

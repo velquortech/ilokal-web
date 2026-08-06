@@ -10,6 +10,7 @@ import {
   adminUsersPath,
   adminBranchesPath,
   adminAccountStatusPath,
+  adminMenuFollowUpPath,
   landingSectionPath,
   loginPathForPathname,
   ROUTES,
@@ -69,6 +70,12 @@ describe('admin per-page helpers', () => {
   it('adminAccountStatusPath targets the account-status page', () => {
     expect(adminAccountStatusPath(ADMIN_ID)).toBe(
       `/admin/${ADMIN_ID}/account-status`,
+    );
+  });
+
+  it('adminMenuFollowUpPath targets the menu-follow-up page', () => {
+    expect(adminMenuFollowUpPath(ADMIN_ID)).toBe(
+      `/admin/${ADMIN_ID}/menu-follow-up`,
     );
   });
 });

@@ -1,5 +1,160 @@
 # Changelog
 
+## 2026-08-06 — Menu follow-up, phase 5: the admin page (feat/menu-followup-email)
+
+> **No schema, API-contract or auth change.** Presentational + one new admin
+> route wiring the phase-2 read and the phase-4 actions together. Completes the
+> feature (behind the still-unapplied migrations). Plan (MF9, MF12, MF13):
+> [`.claude/MENU_FOLLOWUP.md`](.claude/MENU_FOLLOWUP.md).
+
+- **New `/admin/[adminId]/menu-follow-up`** — the surface the whole feature was
+  for. Stat cards (shops with no menu / also no live deal / already reminded), a
+  table (shop, owner, missing noun, live-deal, registered, last reminded), a
+  per-row **Send reminder**, and a header **Send to all (N)** with a confirm
+  dialog. Sidebar entry + `loading.tsx` + a route helper
+  (`adminMenuFollowUpPath`, now the single source for the segment the actions
+  revalidate).
+- **The RPC returns the whole filtered set; pagination is sliced on the page**
+  (MF9-adjacent), because the list is admin-scale and **"send to all" must act
+  on the whole filter, not the visible page** — so the button is handed every
+  matching id, not the ten on screen. The 100-cap and its overflow reporting
+  live in the action.
+- **Outage ≠ empty (MF12).** A failed read renders "we couldn't load this
+  list"; a genuinely empty one renders "every verified shop has a menu". The
+  stat cards show an em dash on failure rather than three confident zeros.
+- **The row and batch buttons report what actually happened, not just
+  success.** A send-time re-check or a cooldown means "send" often means
+  "skipped" — the row button toasts the reason (added a menu / reminded recently
+  / no email), and the batch toasts `N sent · M skipped · K failed`, plus "run
+  again" when the cap truncated. Both refresh the page so "last reminded" and
+  the stats update.
+- **Both buttons latch against a double-click** (a `useRef` before React commits
+  `disabled`) and carry `aria-busy`; the confirm dialog can't be dismissed
+  mid-send.
+- **A "only shops with no live deal" toggle** drives the RPC's `p_only_no_promo`
+  through the URL, so the filter is shareable and survives a refresh.
+- **Tests (+6):** `adminMenuFollowUpPath` + the sidebar entry (its base href
+  matching what the actions revalidate — a rename there is how a nav link and a
+  revalidate path silently drift), and a render suite for the row button mapping
+  each outcome (sent / skipped-with-reason / failed / unauthorized) to the right
+  toast, since the skip-reason copy is real logic. Verified: `yarn lint` +
+  **2347** tests + a clean `yarn build`.
+- **Not verified — needs a browser:** the page is behind admin auth and this
+  environment has no login path, so the table, the confirm dialog and the toasts
+  have not been clicked through. And it is **still gated on the two unapplied
+  migrations** (phases 2 + 4) and on **MF11** — no `RESEND_API_KEY` means every
+  send is sandbox-logged, not delivered, which is the safe default until the
+  unsubscribe/CAN-SPAM decision is made.
+
+## 2026-08-06 — Menu follow-up, phase 4: the send actions (feat/menu-followup-email)
+
+> **ONE migration (`20260806093000_menu_followup_target.sql`) — HIGH risk: a
+> second SECURITY DEFINER function reading owner email.** Applied + red-teamed on
+> LOCAL ONLY. ⚠️ **Needs approval + `make migrate-cloud` + a ledger reconcile.**
+> No app-contract change. Plan (MF4, MF8–MF10, MF14):
+> [`.claude/MENU_FOLLOWUP.md`](.claude/MENU_FOLLOWUP.md).
+
+- **The send path — admin emails an owner to add their menu.**
+  `sendMenuFollowUpAction(id)` (one shop) and `sendMenuFollowUpBatchAction(ids)`
+  (a selection / "send to all"). Every export proves the caller is admin,
+  validates the id, and rate-limits — Server-Action POSTs never reach the proxy
+  limiter, and the batch fans out N emails.
+- **🔴 Re-checked at SEND time, not trusted from the list (MF4).** The table the
+  admin clicks is a hint; between seeing it and clicking, an owner may add a
+  menu. New `admin_business_followup_target(p_business_id)` re-reads ONE shop and
+  returns `is_sendable` (verified, non-archived, no live menu) — the same
+  "re-verify eligibility, don't trust the source" the coupon redeem route
+  applies. A shop that added a menu is skipped `ALREADY_HAS_MENU`, an
+  unverified/archived one `NOT_ELIGIBLE`.
+- **Idempotent within a cooldown (MF14).** A shop reminded inside the window
+  (env `MENU_REMINDER_COOLDOWN_HOURS`, default 14 days) is skipped
+  `RECENTLY_SENT`, so a double-click or an over-eager "send to all" can't email
+  the same owner twice. The alternative — one-shot, never re-nudge — is the open
+  decision; this ships the cooldown.
+- **Stamped only AFTER a real send.** `menu_reminder_sent_at` is written on a
+  confirmed dispatch; a send that never left (Resend down, sandbox) reports
+  `SEND_FAILED` and leaves the marker untouched, so the owner stays retryable
+  (MF10). A stamp-write failure after a successful send is logged but still
+  counts as sent — reporting it would invite a duplicate resend.
+- **Skips a blank owner email `NO_EMAIL` (MF8)** rather than sending to nothing.
+- **Batch never truncates silently (MF9).** Over the 100-cap, the first 100 go
+  and the overflow is REPORTED as `capped`, logged, not dropped. Deduped, and
+  each id re-checked independently; a single failure doesn't stop the loop.
+  Returns `{ sent, skipped, failed, capped, outcomes }`, never throws.
+- **CTA is fail-closed (MF5).** The link is `NEXT_PUBLIC_APP_URL` +
+  the owner's catalogue path — app-owned, never request-derived. No base in
+  production → no send (a relative CTA would be broken); dev falls back to
+  localhost, where the sandbox logs rather than sends.
+- **`sendMenuFollowUpEmail`** mirrors `sendResetEmail`'s contract — Resend over
+  axios, sandbox-logs without a real `re_` key, **never throws**. A parallel
+  sender rather than a refactor: the two share only the ~10-line POST but differ
+  in sandbox logging, and retrofitting the reset path risks its tests. The
+  duplication is noted in the file.
+- **Tests (+22):** the target RPC's grants + `is_sendable` across
+  eligible/has-menu/archived/unknown (added to `menu_followup.test.sql`, rolled
+  back); `sendMenuFollowUp.test.ts` (sandbox, placeholder key, real POST
+  payload, never-throws); `menuFollowUpActions.test.ts` (non-admin and malformed
+  id blocked before any send, the five skip reasons, no stamp on a failed send,
+  batch dedupe + counts + empty rejection). Verified: `yarn lint` + **2341**
+  tests + a clean `yarn build` + the SQL suite green + `make generate-types`.
+- **Not done:** the cloud apply (needs approval); phase 5 (the admin
+  page/table/button). **MF11 still gates a real at-scale send** — outbound
+  unsolicited mail needs an unsubscribe/CAN-SPAM decision before the batch
+  action is pointed at production.
+
+## 2026-08-06 — Menu follow-up, phase 2: the read side (feat/menu-followup-email)
+
+> **ONE migration (`20260806090000_menu_followup.sql`) — HIGH risk: a new
+> SECURITY DEFINER function that reads EVERY shop's owner email, plus a schema
+> column.** Applied + red-teamed on LOCAL ONLY. ⚠️ **Needs human approval before
+> merge, then `make migrate-cloud` + a ledger reconcile.** Additive: the column
+> is nullable, no backfill, no new policy. Plan (MF1–MF14):
+> [`.claude/MENU_FOLLOWUP.md`](.claude/MENU_FOLLOWUP.md) (local, not committed).
+
+- **The data source for the admin nudge feature.** `admin_businesses_missing_menu(p_search, p_only_no_promo)`
+  returns each **verified, non-archived** shop with **no live offering** — its
+  owner email, resolved offering noun, whether it has a live promo, and when it
+  was last reminded.
+- **Aggregated in SQL, not fetched-then-counted** — the standing analytics rule.
+  A `products` count per shop in Node would silently truncate at the PostgREST
+  1000-row cap and mislabel shops. "Live menu" = an `active`, non-archived
+  product (what a shopper sees — an `unlisted`/`disabled`/archived catalogue
+  renders empty, so it still counts as no menu); "live promo" = a `published`,
+  non-archived coupon inside its date window (the coupon-access invariant).
+- **SECURITY DEFINER, service_role only.** It reads owner emails across every
+  shop, which no RLS-scoped client can. EXECUTE is revoked from
+  public/anon/authenticated and granted to `service_role`; pinned
+  `search_path`. Red-teamed as `anon` and `authenticated` — both denied.
+- **The offering NOUN is resolved the dashboard's way** — the shop's
+  `offering_mode` picks the branch of its type's `offering_profile`, falling
+  back to "menu"/"listings" so the email never renders a blank noun. A salon
+  reads "Service Menu", not "Menu".
+- **`businesses.menu_reminder_sent_at`** (nullable, no default) ships in the
+  same migration because the RPC returns it — phase 4's send path writes it.
+  NULL = never reminded; a `DEFAULT now()` would have claimed every shop was
+  already nudged.
+- **`getBusinessesMissingMenu`** verifies admin BEFORE using the service-role
+  client (the ordering that keeps an unguarded owner-email read impossible), and
+  reports `{ rows, failed }` so the admin table can tell an outage from "no
+  shops need a nudge".
+- **Tests:** `supabase/tests/menu_followup.test.sql` (9 blocks — verified-only,
+  pending/archived/has-menu excluded, unlisted-only still listed, search, the
+  promo filter, every row carries an email + noun, and the grant matrix + the
+  SECURITY-DEFINER/search_path lint), run against the local stack and rolled
+  back; `menuFollowUpQuery.test.ts` (7 — the admin gate never reaching the RPC,
+  arg passthrough + trimming, the mapping, and outage-vs-empty). Verified:
+  `yarn lint` + **2326** tests + a clean `yarn build` + `make generate-types`
+  (the RPC is now typed in `database.ts`).
+- **Not done:** the cloud apply (needs approval); phase 4 (the send actions —
+  re-check "still no menu" at send time, per-admin rate limit, `{ sent, skipped,
+  failed }`) and phase 5 (the admin page/table/button). A full `make
+  migrate-reset` was **skipped** rather than run against the dev database
+  unasked — the migration is `ADD COLUMN IF NOT EXISTS` + `CREATE OR REPLACE`,
+  and no seed touches the column, so a reset would only re-prove ordering.
+- **Still open (product/legal):** MF11 — this is outbound unsolicited mail, so
+  the unsubscribe/CAN-SPAM stance is a real decision before phase 4 sends
+  anything at scale.
+
 ## 2026-08-06 — The gallery's "See All" went nowhere, and saving it deleted photos (develop)
 
 > **No schema, API-contract or auth change.** One new route, one new Server

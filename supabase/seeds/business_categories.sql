@@ -49,14 +49,19 @@ BEGIN
        -- 20260805130000
        'auto-motor-parts', 'hardware-construction', 'agri-pet-supplies',
        'medicine-pharmacy', 'sports-outdoor', 'bags-footwear', 'baby-kids',
-       'jewelry-accessories', 'plants-garden');
+       'jewelry-accessories', 'plants-garden',
+       -- 20260807000000 — a refilling station lists priced GOODS, so its
+       -- offering category belongs to Retail, not Services.
+       'drinking-water-refills');
 
     -- Services and Tourism had NO categories of their own until 20260805120000
     -- — their pickers offered the single global row and nothing else.
     UPDATE categories SET business_type_id = COALESCE(business_type_id, services_id)
      WHERE slug IN (
        'hair-grooming', 'spa-massage', 'nails-lashes', 'fitness-classes',
-       'repairs-maintenance', 'laundry-cleaning');
+       'repairs-maintenance', 'laundry-cleaning',
+       -- 20260807000000
+       'pest-control-sanitation');
     UPDATE categories SET business_type_id = COALESCE(business_type_id, tourism_id)
      WHERE slug IN (
        'rooms-stays', 'tours-day-trips', 'workshops-experiences',
@@ -205,5 +210,36 @@ BEGIN
     (tourism_id, 'Cultural Experience Provider', 'Workshops or classes showcasing local traditions and skills.', 'https://images.unsplash.com/photo-1560831340-b9679dc9e9f0?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
     (tourism_id, 'Entertainment Venue', 'Spaces for live music, karaoke, theater, and social events.', 'https://images.unsplash.com/photo-1766532721742-186e96e3db3a?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
     END IF;
+
+    -- 6. Service trades added by 20260807000000 (pest control, water refilling).
+    -- Deliberately OUTSIDE the guards in 4 and 5 — those skip entirely once ANY
+    -- category exists for the vertical, so appending to them is a no-op on every
+    -- database that has ever been seeded. Guarded per row instead:
+    -- `business_categories.name` has no UNIQUE, so ON CONFLICT is unavailable.
+    --
+    -- The verticals differ on purpose and it is the load-bearing decision:
+    -- `sync_business_type_id` seeds `businesses.offering_mode` from the vertical
+    -- name on INSERT, so Services gets a service menu + booking + per-hour
+    -- pricing while Retail gets a product catalogue. A refilling station sells
+    -- priced containers over a counter, so it is Retail.
+    --
+    -- ⚠️ image_url must be non-NULL: the registration step renders
+    -- <Image src={imageURL}> with no fallback. images.unsplash.com only — a host
+    -- must be on imageRemotePatterns AND must not redirect off it (CSP re-checks
+    -- every hop). `h=1200` forces a 4:3 crop because the card top-crops with no
+    -- object-cover. See 20260805130000.
+    INSERT INTO business_categories (business_type_id, name, description, image_url)
+    SELECT v.business_type_id, v.name, v.description, v.image_url
+    FROM (VALUES
+      (services_id, 'Pest Control Service',
+       'Pest control, termite treatment, fumigation, and disinfection for homes and businesses.',
+       'https://images.unsplash.com/photo-1742483359033-13315b247c74?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      (retail_id, 'Water Refilling Station',
+       'Purified and mineral drinking water by the container, with refills and delivery.',
+       'https://images.unsplash.com/photo-1752910210936-409d5f700b6f?q=80&w=1600&h=1200&fit=crop&auto=format')
+    ) AS v(business_type_id, name, description, image_url)
+    WHERE NOT EXISTS (
+      SELECT 1 FROM business_categories existing WHERE existing.name = v.name
+    );
 
 END $$;

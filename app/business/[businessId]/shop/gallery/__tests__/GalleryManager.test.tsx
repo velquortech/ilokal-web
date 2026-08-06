@@ -22,12 +22,17 @@ vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 // The uploader owns the network and the canvas; neither is under test here.
+const UPLOADED =
+  'https://proj.supabase.co/storage/v1/object/public/interior-images/biz/c.webp';
+
 vi.mock('@/components/custom/GalleryUploader', () => ({
   GalleryUploader: ({
     value,
+    onChange,
     onRequestRemove,
   }: {
     value: string[];
+    onChange: (next: string[]) => void;
     onRequestRemove?: (url: string) => void;
   }) => (
     <div>
@@ -40,6 +45,14 @@ vi.mock('@/components/custom/GalleryUploader', () => ({
           remove {url}
         </button>
       ))}
+      {/* Stands in for a finished upload: the real uploader calls `onChange`
+          with the whole desired array once every file has landed. */}
+      <button
+        data-testid="upload"
+        onClick={() => onChange([...value, UPLOADED])}
+      >
+        upload
+      </button>
     </div>
   ),
 }));
@@ -180,6 +193,49 @@ describe('GalleryManager — a failed save', () => {
     // worse than the failure itself.
     expect(
       container.querySelector(`[data-testid="remove-${A}"]`),
+    ).not.toBeNull();
+  });
+
+  /**
+   * 🔴 The rollback must not swallow an unrelated ADDITION. A photo uploaded
+   * while a removal was failing is already in the bucket; dropping it from the
+   * screen orphans the file and loses the owner's work — the silent drop this
+   * queue was built to remove, wearing a different hat.
+   */
+  it('keeps a photo uploaded while the failing save was in flight', async () => {
+    let release!: () => void;
+    save.mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = () =>
+          resolve({
+            success: false,
+            error: { code: 'DB_ERROR', message: 'x' },
+          });
+      }),
+    );
+
+    render();
+
+    // A removal starts and does not settle.
+    await click(container.querySelector(`[data-testid="remove-${A}"]`)!);
+    await click(findButton(/Remove photo/)!);
+
+    // An upload lands mid-flight and is queued behind the failing save.
+    await click(container.querySelector('[data-testid="upload"]')!);
+
+    await act(async () => {
+      release();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    // The removal is undone…
+    expect(
+      container.querySelector(`[data-testid="remove-${A}"]`),
+    ).not.toBeNull();
+    // …and the upload, whose file is already in the bucket, survives it.
+    expect(
+      container.querySelector(`[data-testid="remove-${UPLOADED}"]`),
     ).not.toBeNull();
   });
 });

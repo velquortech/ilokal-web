@@ -8,7 +8,7 @@ import {
   businessBranchPath,
   businessShopGalleryPath,
 } from '@/config/routeConfig';
-import { MASONRY_MIN_IMAGES } from '@/lib/validation/business';
+import { MASONRY_MIN_IMAGES } from '@/config/gallery';
 import type { Branch } from '@/lib/types';
 
 interface ShopGalleryProps {

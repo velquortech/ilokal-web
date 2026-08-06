@@ -24,11 +24,14 @@ import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { rateLimit } from '@/app/api/helpers/rateLimit';
 import {
-  MAX_GALLERY_IMAGES,
   businessGallerySchema,
   businessIdSchema,
-  isOwnGalleryPath,
 } from '@/lib/validation/business';
+import {
+  GALLERY_BUCKET,
+  MAX_GALLERY_IMAGES,
+  foreignGalleryPaths,
+} from '@/config/gallery';
 import {
   businessProfilePath,
   businessShopGalleryPath,
@@ -36,8 +39,6 @@ import {
 } from '@/config/routeConfig';
 import { storagePathsToDelete, toStoragePaths } from '@/lib/utils/storage';
 import type { ApiError, ApiResponse } from '@/lib/types';
-
-const BUCKET = 'interior-images';
 
 const RATE_LIMIT = Number(process.env.BUSINESS_ACTION_RATE_LIMIT ?? 30);
 const RATE_WINDOW_MS = Number(
@@ -115,20 +116,28 @@ export async function updateBusinessGalleryAction(
   // Stored as bucket-relative paths, matching what registration already writes.
   // An absolute URL bakes the Supabase project host into the row, which is the
   // portability bug the seeds were rewritten to fix.
-  const nextPaths = toStoragePaths(parsed.data.interior_images, BUCKET);
+  const nextPaths = toStoragePaths(parsed.data.interior_images, GALLERY_BUCKET);
   const currentPaths = toStoragePaths(
     (current?.interior_images as string[] | null) ?? [],
-    BUCKET,
+    GALLERY_BUCKET,
   );
 
-  // 🔴 Every path must live in THIS shop's own folder. Without this the client
-  // chooses the storage keys that reach `storage.remove()` below — the bucket's
-  // DELETE policy is the only other backstop, and it does not stop an owner who
-  // holds two shops from deleting shop B's file through shop A's gallery. It is
-  // also what makes a foreign host unrepresentable: it normalises to itself and
-  // does not start with the id.
-  if (nextPaths.some((path) => !isOwnGalleryPath(path, verifiedId))) {
-    return fail('VALIDATION_ERROR', 'That photo does not belong to this shop.');
+  // 🔴 A caller may not INTRODUCE a path outside this shop's own folder.
+  // Without this the client chooses the storage keys that reach
+  // `storage.remove()` below — the bucket's DELETE policy is the only other
+  // backstop, and it does not stop an owner who holds two shops from deleting
+  // shop B's file through shop A's gallery. What the row already holds is
+  // grandfathered, or a legacy row would be unsavable and therefore unfixable.
+  const foreign = foreignGalleryPaths(nextPaths, currentPaths, verifiedId);
+  if (foreign.length > 0) {
+    console.error('[updateBusinessGalleryAction:foreign]', {
+      verifiedId,
+      foreign,
+    });
+    return fail(
+      'VALIDATION_ERROR',
+      'One of those photos does not belong to this shop.',
+    );
   }
 
   // The cap is enforced on GROWTH, not as a flat ceiling: nothing limits the
@@ -160,13 +169,17 @@ export async function updateBusinessGalleryAction(
   // Storage cleanup, after the row is safely updated. An orphaned file is a
   // housekeeping problem; a failed save is the owner's, so a cleanup failure is
   // logged and never surfaced.
-  const toDelete = storagePathsToDelete(currentPaths, nextPaths, BUCKET);
+  const toDelete = storagePathsToDelete(
+    currentPaths,
+    nextPaths,
+    GALLERY_BUCKET,
+  );
   if (toDelete.length > 0) {
     // `storage.remove()` RESOLVES with `{ error }` rather than throwing, so a
     // `.catch()` here could never fire and a failed delete would be invisible
     // even server-side.
     const { error: removeError } = await supabase.storage
-      .from(BUCKET)
+      .from(GALLERY_BUCKET)
       .remove(toDelete);
     if (removeError) {
       console.error('[updateBusinessGalleryAction:cleanup]', removeError);

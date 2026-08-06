@@ -56,6 +56,15 @@ describe('SIDEBAR_SECTIONS', () => {
     expect(adminSection?.items).toBe(administrationNavigation);
   });
 
+  it('includes the menu follow-up entry with its base href', () => {
+    const item = mainNavigation.find((i) => i.title === 'Menu Follow-up');
+    expect(item?.href).toBe('/admin/menu-follow-up');
+    // Same base the route helper and the actions' revalidate use.
+    expect(injectAdminId(item!.href!, ADMIN_ID)).toBe(
+      `/admin/${ADMIN_ID}/menu-follow-up`,
+    );
+  });
+
   it('every nav item uses the canonical NavItem shape (title + base href)', () => {
     const allItems = SIDEBAR_SECTIONS.flatMap((s) => s.items);
     for (const item of allItems) {

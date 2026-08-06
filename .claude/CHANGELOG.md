@@ -1,5 +1,61 @@
 # Changelog
 
+## 2026-08-06 — Menu follow-up, phase 4: the send actions (feat/menu-followup-email)
+
+> **ONE migration (`20260806093000_menu_followup_target.sql`) — HIGH risk: a
+> second SECURITY DEFINER function reading owner email.** Applied + red-teamed on
+> LOCAL ONLY. ⚠️ **Needs approval + `make migrate-cloud` + a ledger reconcile.**
+> No app-contract change. Plan (MF4, MF8–MF10, MF14):
+> [`.claude/MENU_FOLLOWUP.md`](.claude/MENU_FOLLOWUP.md).
+
+- **The send path — admin emails an owner to add their menu.**
+  `sendMenuFollowUpAction(id)` (one shop) and `sendMenuFollowUpBatchAction(ids)`
+  (a selection / "send to all"). Every export proves the caller is admin,
+  validates the id, and rate-limits — Server-Action POSTs never reach the proxy
+  limiter, and the batch fans out N emails.
+- **🔴 Re-checked at SEND time, not trusted from the list (MF4).** The table the
+  admin clicks is a hint; between seeing it and clicking, an owner may add a
+  menu. New `admin_business_followup_target(p_business_id)` re-reads ONE shop and
+  returns `is_sendable` (verified, non-archived, no live menu) — the same
+  "re-verify eligibility, don't trust the source" the coupon redeem route
+  applies. A shop that added a menu is skipped `ALREADY_HAS_MENU`, an
+  unverified/archived one `NOT_ELIGIBLE`.
+- **Idempotent within a cooldown (MF14).** A shop reminded inside the window
+  (env `MENU_REMINDER_COOLDOWN_HOURS`, default 14 days) is skipped
+  `RECENTLY_SENT`, so a double-click or an over-eager "send to all" can't email
+  the same owner twice. The alternative — one-shot, never re-nudge — is the open
+  decision; this ships the cooldown.
+- **Stamped only AFTER a real send.** `menu_reminder_sent_at` is written on a
+  confirmed dispatch; a send that never left (Resend down, sandbox) reports
+  `SEND_FAILED` and leaves the marker untouched, so the owner stays retryable
+  (MF10). A stamp-write failure after a successful send is logged but still
+  counts as sent — reporting it would invite a duplicate resend.
+- **Skips a blank owner email `NO_EMAIL` (MF8)** rather than sending to nothing.
+- **Batch never truncates silently (MF9).** Over the 100-cap, the first 100 go
+  and the overflow is REPORTED as `capped`, logged, not dropped. Deduped, and
+  each id re-checked independently; a single failure doesn't stop the loop.
+  Returns `{ sent, skipped, failed, capped, outcomes }`, never throws.
+- **CTA is fail-closed (MF5).** The link is `NEXT_PUBLIC_APP_URL` +
+  the owner's catalogue path — app-owned, never request-derived. No base in
+  production → no send (a relative CTA would be broken); dev falls back to
+  localhost, where the sandbox logs rather than sends.
+- **`sendMenuFollowUpEmail`** mirrors `sendResetEmail`'s contract — Resend over
+  axios, sandbox-logs without a real `re_` key, **never throws**. A parallel
+  sender rather than a refactor: the two share only the ~10-line POST but differ
+  in sandbox logging, and retrofitting the reset path risks its tests. The
+  duplication is noted in the file.
+- **Tests (+22):** the target RPC's grants + `is_sendable` across
+  eligible/has-menu/archived/unknown (added to `menu_followup.test.sql`, rolled
+  back); `sendMenuFollowUp.test.ts` (sandbox, placeholder key, real POST
+  payload, never-throws); `menuFollowUpActions.test.ts` (non-admin and malformed
+  id blocked before any send, the five skip reasons, no stamp on a failed send,
+  batch dedupe + counts + empty rejection). Verified: `yarn lint` + **2341**
+  tests + a clean `yarn build` + the SQL suite green + `make generate-types`.
+- **Not done:** the cloud apply (needs approval); phase 5 (the admin
+  page/table/button). **MF11 still gates a real at-scale send** — outbound
+  unsolicited mail needs an unsubscribe/CAN-SPAM decision before the batch
+  action is pointed at production.
+
 ## 2026-08-06 — Menu follow-up, phase 2: the read side (feat/menu-followup-email)
 
 > **ONE migration (`20260806090000_menu_followup.sql`) — HIGH risk: a new

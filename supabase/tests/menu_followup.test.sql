@@ -142,6 +142,78 @@ BEGIN
   RAISE NOTICE 'grant assertions passed';
 END $$;
 
+-- ── 10. the single-shop send-time re-check (admin_business_followup_target) ──
+DO $$
+DECLARE
+  v_owner    UUID;
+  v_type     UUID;
+  v_menuless UUID;
+  v_withmenu UUID;
+  v_row      RECORD;
+BEGIN
+  SELECT owner_id INTO v_owner FROM businesses LIMIT 1;
+  SELECT id INTO v_type FROM business_types WHERE offering_profile IS NOT NULL LIMIT 1;
+
+  INSERT INTO businesses (owner_id, shop_name, status, business_type_id, offering_mode)
+  VALUES (v_owner, 'ZZ Target Menuless', 'verified', v_type, 'products')
+  RETURNING id INTO v_menuless;
+
+  INSERT INTO businesses (owner_id, shop_name, status, business_type_id, offering_mode)
+  VALUES (v_owner, 'ZZ Target HasMenu', 'verified', v_type, 'products')
+  RETURNING id INTO v_withmenu;
+  INSERT INTO products (business_id, name, price, status)
+  VALUES (v_withmenu, 'A product', 100, 'active');
+
+  -- Eligible shop: sendable, has an email and a noun.
+  SELECT * INTO v_row FROM admin_business_followup_target(v_menuless);
+  ASSERT v_row.is_sendable, 'menuless verified shop must be sendable';
+  ASSERT NOT v_row.has_live_menu, 'menuless shop must report no live menu';
+  ASSERT v_row.owner_email IS NOT NULL, 'target must carry owner email';
+  ASSERT v_row.offering_noun IS NOT NULL AND v_row.offering_noun <> '',
+    'target noun must never be blank';
+
+  -- Shop that added a menu: NOT sendable (the send-time refusal).
+  SELECT * INTO v_row FROM admin_business_followup_target(v_withmenu);
+  ASSERT NOT v_row.is_sendable, 'shop with a live menu must not be sendable';
+  ASSERT v_row.has_live_menu, 'shop with a menu must report has_live_menu';
+
+  -- Archiving flips sendable off even with no menu.
+  UPDATE businesses SET archived_at = now() WHERE id = v_menuless;
+  SELECT * INTO v_row FROM admin_business_followup_target(v_menuless);
+  ASSERT NOT v_row.is_sendable, 'archived shop must not be sendable';
+
+  -- Unknown id → no row.
+  ASSERT NOT EXISTS (
+    SELECT 1 FROM admin_business_followup_target(
+      '00000000-0000-0000-0000-000000000000')
+  ), 'unknown id must return no row';
+
+  RAISE NOTICE 'target assertions passed';
+END $$;
+
+-- ── 11. target RPC grants: service_role only ──
+DO $$
+BEGIN
+  ASSERT NOT has_function_privilege('anon',
+    'public.admin_business_followup_target(uuid)', 'execute'),
+    'anon must not execute the target RPC';
+  ASSERT NOT has_function_privilege('authenticated',
+    'public.admin_business_followup_target(uuid)', 'execute'),
+    'authenticated must not execute the target RPC';
+  ASSERT has_function_privilege('service_role',
+    'public.admin_business_followup_target(uuid)', 'execute'),
+    'service_role must execute the target RPC';
+  ASSERT (SELECT prosecdef FROM pg_proc
+          WHERE proname = 'admin_business_followup_target'),
+    'target function must be SECURITY DEFINER';
+  ASSERT EXISTS (
+    SELECT 1 FROM pg_proc
+    WHERE proname = 'admin_business_followup_target'
+      AND 'search_path=public, pg_temp' = ANY(proconfig)
+  ), 'target function must pin search_path';
+  RAISE NOTICE 'target grant assertions passed';
+END $$;
+
 ROLLBACK;
 
 \echo 'ALL MENU FOLLOWUP TESTS PASSED'

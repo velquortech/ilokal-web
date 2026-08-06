@@ -1846,6 +1846,19 @@ export type Database = {
             }
             Returns: string
           }
+      admin_business_followup_target: {
+        Args: { p_business_id: string }
+        Returns: {
+          has_live_menu: boolean
+          is_sendable: boolean
+          menu_reminder_sent_at: string
+          offering_noun: string
+          offering_plural: string
+          owner_email: string
+          owner_name: string
+          shop_name: string
+        }[]
+      }
       admin_businesses_missing_menu: {
         Args: { p_only_no_promo?: boolean; p_search?: string }
         Returns: {

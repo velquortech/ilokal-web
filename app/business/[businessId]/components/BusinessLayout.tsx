@@ -24,6 +24,7 @@ export default function BusinessLayout({
   branches = [],
   vocabulary,
   flags = {},
+  sidebarDefaultOpen = true,
   tourCompleted = false,
 }: {
   children: React.ReactNode;
@@ -31,6 +32,11 @@ export default function BusinessLayout({
   shop?: BusinessShop | null;
   branches?: Branch[];
   vocabulary?: OfferingVocabulary | null;
+  /**
+   * Seeded from the `sidebar_state` cookie by the server layout. Open unless
+   * the owner collapsed it — nav they can read beats nav they must decode.
+   */
+  sidebarDefaultOpen?: boolean;
   /** `app_settings` kill switches, keyed as the nav config names them. */
   flags?: Record<string, boolean>;
   /** Stored answer to the guided tour — per shop, not per device. */
@@ -44,7 +50,7 @@ export default function BusinessLayout({
             <div className="bg-background flex h-screen overflow-hidden">
               <AIChatProvider>
                 <SidebarProvider
-                  defaultOpen={false}
+                  defaultOpen={sidebarDefaultOpen}
                   style={
                     {
                       '--sidebar-width': '18rem',

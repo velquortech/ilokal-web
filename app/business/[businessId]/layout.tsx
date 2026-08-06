@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getBusinessUserOrRedirect } from '@/lib/api/getCurrentUser';
 import BusinessLayout from './components/BusinessLayout';
@@ -6,6 +7,10 @@ import verifyBusinessOwner from '@/lib/api/verifyBusinessOwner';
 import { getBranchesByBusinessId } from '@/lib/api/branches/branchQuery';
 import { getOfferingVocabulary } from '@/lib/api/offerings/offeringQuery';
 import { getOnboardingState } from '@/lib/api/business/onboardingQuery';
+import {
+  SIDEBAR_COOKIE_NAME,
+  sidebarDefaultOpen,
+} from '@/config/sidebarCookie';
 import {
   getBookingsEnabled,
   getEventsEnabled,
@@ -26,12 +31,20 @@ export default async function BusinessIdLayout({
 }) {
   const { businessId } = await params;
 
-  const [user, verify] = await Promise.all([
+  const [user, verify, cookieStore] = await Promise.all([
     getBusinessUserOrRedirect(),
     verifyBusinessOwner(businessId),
+    cookies(),
   ]);
 
   if (!verify.authorized) redirect('/business');
+
+  // Seeded on the SERVER so the first paint already matches the owner's own
+  // choice. `SidebarProvider` has always written this cookie and nothing ever
+  // read it, so collapsing the sidebar never survived a reload.
+  const defaultSidebarOpen = sidebarDefaultOpen(
+    cookieStore.get(SIDEBAR_COOKIE_NAME)?.value,
+  );
 
   const [
     business_shop,
@@ -63,6 +76,7 @@ export default async function BusinessIdLayout({
       shop={business_shop}
       branches={branches}
       vocabulary={vocabulary}
+      sidebarDefaultOpen={defaultSidebarOpen}
       tourCompleted={onboardingState.tourCompleted}
       flags={{
         enable_bookings: bookingsEnabled,

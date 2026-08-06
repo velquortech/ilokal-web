@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation';
 import { getBusinessById } from '@/lib/api/business/business';
 import { getProductsByBusinessId } from '@/lib/api/products/productQuery';
 import { getBranchById } from '@/lib/api/branches/branchQuery';
-import { CustomerLoveSection } from './components/customer-love';
 import { ShopBanner } from './components/shop-banner';
 import { ShopGallery } from './components/shop-gallery';
 import { ShopItems } from './components/shop-items';
@@ -51,7 +50,13 @@ export default async function ShopPage({
       <div className="mt-8 flex flex-1 flex-col space-y-20">
         <ShopGallery business={business} branch={branch} />
         <ShopItems business={business} products={products} />
-        <CustomerLoveSection business={business} />
+        {/* Testimonials & Reviews is hidden until it has a backend. The section
+            is entirely mock today: `hasContent` is hardcoded false, the cards
+            come from `data/shop` fixtures, and both "Add Testimonial" and
+            "Check Reviews" have no handler. `ratings` / `business_ratings`
+            exist and SEC-4 gates who may write them — the owner-side READ is
+            the missing half. See `.claude/SHOP_GALLERY.md` §SG9. */}
+        {/* <CustomerLoveSection business={business} /> */}
         <ShopLegitimacy business={business} />
       </div>
     </div>

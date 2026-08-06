@@ -7,9 +7,11 @@ import { BusinessProps } from '../validator/business-registration-form-schema';
 import { StepProgress } from './step-progress';
 import { RegistrationNav } from './register-nav';
 import {
+  createRegistrationOfferings,
   registerBusiness,
   uploadRegistrationFile,
 } from '../api/register-business';
+import { defaultKindForMode } from '@/lib/types/offering';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { AxiosError } from 'axios';
@@ -18,7 +20,7 @@ import { cn } from '@/lib/utils';
 const BUSINESS_ID_KEY = 'ilokal-registration-business-id';
 
 export function ShopRegistrationContent() {
-  const { step, steps, requireDocuments, form, clearFormCache } =
+  const { step, steps, requireDocuments, form, clearFormCache, offeringMode } =
     useMultiStepForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -129,6 +131,33 @@ export function ShopRegistrationContent() {
       await upload.run();
       uploadedRef.current.add(upload.key);
     }
+
+    // Phase 3 — the menu. AFTER the draft exists, because there is no
+    // business id to attach items to until `registerBusiness` returns one;
+    // this is why the step holds them in form state rather than writing as
+    // the owner types.
+    //
+    // Guarded by the same ref as the uploads, and so with the same lifecycle:
+    // a mid-flight failure retries without rewriting them, while a 404 replay
+    // clears the marker along with the stale business id, which is correct —
+    // the items belong to the NEW draft. The server is idempotent by name as
+    // well, so neither guard is load-bearing alone.
+    const offerings = data.offerings ?? [];
+    if (offerings.length > 0 && !uploadedRef.current.has('offerings')) {
+      await createRegistrationOfferings(
+        bid,
+        offerings.map((item) => ({
+          name: item.name,
+          price: item.on_request ? null : (item.price ?? null),
+          on_request: item.on_request,
+        })),
+        // From the vertical the owner picked, not the DB default — that
+        // default is 'product', so a services business would otherwise mint
+        // products for its own service menu.
+        defaultKindForMode(offeringMode),
+      );
+      uploadedRef.current.add('offerings');
+    }
   };
 
   const handleSubmitForm = async (data: BusinessProps) => {
@@ -145,6 +174,14 @@ export function ShopRegistrationContent() {
     if (requireDocuments) {
       if (!data.business_license) missing.push('business license');
       if (!data.tax_certificate) missing.push('tax certificate');
+    }
+    // The step schema already requires one, but the same reasoning as the
+    // files applies: step schemas are only ever triggered for the step being
+    // left, so a cached form restored at the review step could reach submit
+    // with an empty list and produce the empty shop this step exists to
+    // prevent.
+    if (!data.offerings || data.offerings.length === 0) {
+      missing.push('at least one item in your catalogue');
     }
     if (missing.length > 0) {
       setSubmitError(

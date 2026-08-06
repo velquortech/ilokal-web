@@ -2,6 +2,7 @@ import { ShopCategoryStep } from '../steps/ShopCategoryStep';
 import { ShopInformation } from '../steps/ShopInformation';
 import { ShopGallery } from '../steps/Gallery';
 import { ShopDocuments } from '../steps/Documents';
+import { ShopOfferings } from '../steps/Offerings';
 import { ShopReview } from '../steps/Review';
 import {
   REGISTRATION_STEP_META,
@@ -29,6 +30,7 @@ const STEP_COMPONENTS: Record<RegistrationStepId, React.ReactNode> = {
   information: <ShopInformation />,
   gallery: <ShopGallery />,
   documents: <ShopDocuments />,
+  offerings: <ShopOfferings />,
   review: <ShopReview />,
 };
 

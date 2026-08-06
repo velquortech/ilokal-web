@@ -223,3 +223,31 @@ export function modeAllowsProducts(mode: OfferingMode): boolean {
 export function defaultKindForMode(mode: OfferingMode): OfferingKind {
   return mode === 'services' ? 'service' : 'product';
 }
+
+/**
+ * The `offering_mode` a business of this VERTICAL will be created with.
+ *
+ * ⚠️ Mirrors `sync_business_type_id()` (migration `20260727000000`), which
+ * seeds the column from the vertical NAME on INSERT. The trigger is the
+ * authority — this exists only for the registration wizard, which has to
+ * resolve the shop's vocabulary BEFORE the row exists, so there is nothing to
+ * read the real value from. Every other surface reads
+ * `businesses.offering_mode` and must keep doing so.
+ *
+ * Keyed on the name because the trigger is keyed on the name; an admin
+ * renaming a vertical breaks both together rather than silently diverging.
+ * Anything unrecognised resolves to `'products'` — the column default, and
+ * what the trigger leaves in place when its CASE does not match.
+ */
+export function offeringModeForVerticalName(
+  name: string | null | undefined,
+): OfferingMode {
+  switch (name?.trim()) {
+    case 'Services':
+      return 'services';
+    case 'Tourism & Leisure':
+      return 'both';
+    default:
+      return 'products';
+  }
+}

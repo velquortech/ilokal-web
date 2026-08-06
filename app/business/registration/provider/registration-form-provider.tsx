@@ -17,10 +17,17 @@ import {
 import { useFormCache } from '../hooks/useFormCache';
 import { getSteps, type RegistrationStep } from '../data/steps';
 import {
+  findVerticalForCategoryId,
   type BusinessType,
   type RawBusinessType,
   transformBusinessTypes,
 } from '../api/fetchCategories';
+import { resolveOfferingVocabulary } from '@/lib/utils/offeringVocabulary';
+import {
+  offeringModeForVerticalName,
+  type OfferingMode,
+  type OfferingVocabulary,
+} from '@/lib/types/offering';
 
 type ContextType = {
   step: number; // 1-based index into `steps`
@@ -35,6 +42,23 @@ type ContextType = {
   cacheFiles: (fieldName: string, files: File[]) => Promise<void>;
   clearFileCache: (fieldName: string) => void;
   businessTypes: BusinessType[];
+  /**
+   * The shop's own words for what it lists, resolved from the category chosen
+   * in step 1.
+   *
+   * Every other surface reads this from a `businesses` row via
+   * `useOfferingVocabulary()`. The wizard cannot: the row does not exist until
+   * final submit. So the vertical is looked up from the picked shop type and
+   * its `offering_profile` is fed to the same pure resolver, which degrades
+   * per field to the retail default for a custom category, an unmapped
+   * vertical, or a malformed profile.
+   */
+  vocabulary: OfferingVocabulary;
+  /**
+   * The `offering_mode` the business WILL be created with, mirrored from the
+   * DB trigger. Drives `kind` on the offerings this wizard writes.
+   */
+  offeringMode: OfferingMode;
 };
 
 const multiStepFormContext = createContext<ContextType | null>(null);
@@ -67,6 +91,7 @@ const DOCUMENT_FIELDS: FieldPath<BusinessProps>[] = [
   'business_license',
   'tax_certificate',
 ];
+const OFFERING_FIELDS: FieldPath<BusinessProps>[] = ['offerings'];
 const REVIEW_FIELDS: FieldPath<BusinessProps>[] = ['accepted_terms'];
 
 // Mirrors getSteps(): one field group per step, Documents gated by the flag.
@@ -79,9 +104,16 @@ export function getStepFieldGroups(
         INFORMATION_FIELDS,
         GALLERY_FIELDS,
         DOCUMENT_FIELDS,
+        OFFERING_FIELDS,
         REVIEW_FIELDS,
       ]
-    : [CATEGORY_FIELDS, INFORMATION_FIELDS, GALLERY_FIELDS, REVIEW_FIELDS];
+    : [
+        CATEGORY_FIELDS,
+        INFORMATION_FIELDS,
+        GALLERY_FIELDS,
+        OFFERING_FIELDS,
+        REVIEW_FIELDS,
+      ];
 }
 
 export function MultiStepFormProvider({
@@ -132,6 +164,7 @@ export function MultiStepFormProvider({
       interior_images: [],
       business_license: undefined,
       tax_certificate: undefined,
+      offerings: [],
       accepted_terms: false,
     },
   });
@@ -180,6 +213,31 @@ export function MultiStepFormProvider({
     return () => subscription.unsubscribe();
   }, [form, step, stepFieldGroups, isHydrated]);
 
+  /**
+   * The chosen shop type's vertical drives both the wording and the mode.
+   *
+   * Watched rather than read once: an owner can go back to step 1 and change
+   * their category, and a menu step still saying "Menu" for a salon would be
+   * the exact defect `useOfferingVocabulary()` exists to prevent elsewhere.
+   */
+  const selectedCategoryId = form.watch('business_category.id');
+  const selectedVertical = useMemo(
+    () => findVerticalForCategoryId(businessTypes, selectedCategoryId),
+    [businessTypes, selectedCategoryId],
+  );
+  const offeringMode = useMemo(
+    () => offeringModeForVerticalName(selectedVertical?.name),
+    [selectedVertical],
+  );
+  const vocabulary = useMemo(
+    () =>
+      resolveOfferingVocabulary(
+        selectedVertical?.offeringProfile ?? null,
+        offeringMode,
+      ),
+    [selectedVertical, offeringMode],
+  );
+
   const validateStep = async () => {
     const fields = stepFieldGroups[step - 1] ?? [];
     const result = await form.trigger(fields);
@@ -215,6 +273,8 @@ export function MultiStepFormProvider({
         cacheFiles,
         clearFileCache,
         businessTypes,
+        vocabulary,
+        offeringMode,
       }}
     >
       {children}

@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { MAX_REGISTRATION_OFFERINGS } from '@/lib/validation/products';
+
+export { MAX_REGISTRATION_OFFERINGS };
 
 export const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
 
@@ -82,6 +85,59 @@ export const step4Schema = z.object({
     .optional(),
 });
 
+/**
+ * The menu step.
+ *
+ * ONE item is the bar. "Not empty" read literally: a shop that reaches the
+ * dashboard with a blank catalogue has a public page showing nothing, which
+ * is the state this whole step exists to prevent. Asking for three would
+ * triple the phone typing at the point where abandonment is highest, and
+ * would make a shop with two real offerings unable to finish registering —
+ * items two onward are the dashboard's job, where the setup checklist and the
+ * follow-up email already push.
+ *
+ * No image field: each would be a separate ≤2 MB upload and its own IndexedDB
+ * cache entry, and the image is already optional on the dashboard form.
+ */
+export const registrationOfferingSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Name is required').max(255),
+    /**
+     * Null is only legal for a quote-based offering — the same rule the DB
+     * CHECK enforces (`price_type = 'on_request' OR price IS NOT NULL`), so a
+     * form that satisfies this cannot produce a row the database rejects.
+     */
+    price: z
+      .number({ error: 'Price must be a number' })
+      .min(0, 'Price cannot be negative')
+      .nullable(),
+    // Plain boolean, deliberately NOT `.default(false)`: a default splits
+    // zod's input and output types, so `BusinessProps` (the OUTPUT) would say
+    // `boolean` while the resolver's input said `boolean | undefined`, and
+    // `useForm<BusinessProps>` refuses the mismatch. Nothing is lost — every
+    // item is built by the step, which always sets this.
+    on_request: z.boolean(),
+  })
+  .superRefine((val, ctx) => {
+    if (!val.on_request && (val.price === null || Number.isNaN(val.price))) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Enter a price, or mark it as priced on request',
+        path: ['price'],
+      });
+    }
+  });
+
+export const stepOfferingsSchema = z.object({
+  offerings: z
+    .array(registrationOfferingSchema)
+    .min(1, 'Add at least one item so your shop page is not empty')
+    .max(
+      MAX_REGISTRATION_OFFERINGS,
+      `You can add up to ${MAX_REGISTRATION_OFFERINGS} here — the rest go in your dashboard`,
+    ),
+});
+
 export const step5Schema = z.object({
   accepted_terms: z
     .boolean()
@@ -95,6 +151,7 @@ export const fullSchema = step1Schema
   .merge(step2Schema)
   .merge(step3Schema)
   .merge(step4Schema)
+  .merge(stepOfferingsSchema)
   .merge(step5Schema);
 
 export type BusinessProps = z.infer<typeof fullSchema>;

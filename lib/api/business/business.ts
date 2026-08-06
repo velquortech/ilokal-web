@@ -3,6 +3,7 @@
 import { BusinessShop } from '@/providers/BusinessProvider';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { uploadWebP, IMAGE_PRESETS } from '@/lib/api/helpers/image';
+import { MAX_REGISTRATION_OFFERINGS } from '@/lib/validation/products';
 
 // Registration is split into two phases so no single request exceeds Vercel's
 // 4.5 MB function body limit (a one-shot multipart POST with logo + banner +
@@ -365,4 +366,105 @@ export async function deleteBusiness(id: string) {
 
   if (error) throw error;
   return data;
+}
+
+/**
+ * Phase 3 — write the offerings entered in the registration wizard.
+ *
+ * Separate request from the draft and from the files, for the same reason
+ * those two are separate: one all-in-one POST is what 413'd in production.
+ *
+ * Idempotent by NAME within the business. The client replays its whole
+ * submission after a 404 (a stale draft id) and can be re-submitted after a
+ * network failure mid-flight, so "write these items" must be safe to call
+ * twice — otherwise one retry doubles the owner's menu. Name is the right key
+ * here: this runs once, against a brand-new shop, and two items with the same
+ * name at registration is a duplicate rather than a deliberate pair.
+ */
+export interface RegistrationOfferingInput {
+  name: string;
+  price: number | null;
+  on_request: boolean;
+}
+
+export async function createBusinessRegistrationOfferings(
+  businessId: string,
+  offerings: RegistrationOfferingInput[],
+  kind: 'product' | 'service',
+) {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Unauthorized');
+
+  // Ownership proved against the ROUTE's id before anything is written, and
+  // the verified row's id is what gets written — never the caller's string.
+  const { data: business, error: fetchError } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('id', businessId)
+    .eq('owner_id', user.id)
+    .is('archived_at', null)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!business) throw new Error('Business not found');
+
+  const { data: existing, error: existingError } = await supabase
+    .from('products')
+    .select('name')
+    .eq('business_id', business.id)
+    .is('archived_at', null);
+  if (existingError) throw existingError;
+
+  const taken = new Set(
+    (existing ?? []).map((row) => row.name.trim().toLowerCase()),
+  );
+
+  const rows: {
+    business_id: string;
+    name: string;
+    price: number | null;
+    price_type: 'fixed' | 'on_request';
+    status: 'active';
+    kind: 'product' | 'service';
+  }[] = [];
+
+  for (const offering of offerings.slice(0, MAX_REGISTRATION_OFFERINGS)) {
+    const name = offering.name.trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    // Skips both a replay of a previous run and a duplicate inside this batch.
+    if (taken.has(key)) continue;
+    taken.add(key);
+
+    rows.push({
+      business_id: business.id,
+      name,
+      // The DB CHECK allows NULL only for 'on_request'; a form that produced
+      // anything else here would be rejected by the database, not silently
+      // stored.
+      price: offering.on_request ? null : offering.price,
+      price_type: offering.on_request ? 'on_request' : 'fixed',
+      // ACTIVE, not the column default. Both the setup checklist and
+      // `admin_businesses_missing_menu` count only `status = 'active'`, so an
+      // 'unlisted' row would satisfy this step, leave the public page empty,
+      // and still earn the owner a "you have no menu" reminder.
+      status: 'active',
+      // Sent EXPLICITLY: the DB defaults `kind` to 'product' and cannot tell an
+      // omitted field from a deliberate one, so a services business would
+      // otherwise mint products at registration (the offerings phase-1 decay).
+      kind,
+    });
+  }
+
+  if (rows.length === 0) return { created: 0 };
+
+  const { error, count } = await supabase
+    .from('products')
+    .insert(rows, { count: 'exact' });
+  if (error) throw error;
+
+  return { created: count ?? rows.length };
 }

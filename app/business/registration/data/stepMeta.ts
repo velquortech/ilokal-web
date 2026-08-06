@@ -16,6 +16,7 @@ export type RegistrationStepId =
   | 'information'
   | 'gallery'
   | 'documents'
+  | 'offerings'
   | 'review';
 
 export interface RegistrationStepMeta {
@@ -48,6 +49,16 @@ export const REGISTRATION_STEP_META: Record<
     title: 'Documents',
     description: 'Upload the required business documents for verification.',
   },
+  offerings: {
+    id: 'offerings',
+    // Deliberately generic. This copy is also read by the PUBLIC
+    // /for-business page, where the reader has not picked a vertical yet, so
+    // it cannot say "menu" — a salon does not have one. Inside the wizard the
+    // step itself uses the shop's own noun, resolved from the chosen category.
+    title: 'What You Offer',
+    description:
+      'Add at least one item so your shop page is not empty on day one.',
+  },
   review: {
     id: 'review',
     title: 'Review & Submit',
@@ -69,8 +80,8 @@ export function getRegistrationStepIds(
   requireDocuments: boolean,
 ): RegistrationStepId[] {
   return requireDocuments
-    ? ['category', 'information', 'gallery', 'documents', 'review']
-    : ['category', 'information', 'gallery', 'review'];
+    ? ['category', 'information', 'gallery', 'documents', 'offerings', 'review']
+    : ['category', 'information', 'gallery', 'offerings', 'review'];
 }
 
 export function getRegistrationStepMeta(

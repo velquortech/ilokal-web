@@ -42,6 +42,13 @@ interface CachedData {
     shop_name?: BusinessProps['shop_name'];
     description?: BusinessProps['description'];
     location?: BusinessProps['location'];
+    /**
+     * The menu, cached whole. It is small JSON with no file bytes, which is
+     * exactly why it lives here and not in the IndexedDB store beside it —
+     * that store exists because file bytes base64'd into localStorage blew the
+     * quota.
+     */
+    offerings?: BusinessProps['offerings'];
     fileMetadata?: {
       [K in keyof Pick<
         BusinessProps,
@@ -77,12 +84,18 @@ export function useFormCache(form: UseFormReturn<BusinessProps>) {
         tax_certificate,
       } = values;
 
-      // Store non-file data
+      // Store non-file data.
+      //
+      // `offerings` belongs here, not in the IndexedDB store beside it: that
+      // store exists for FILE BYTES, which is what blew the localStorage quota
+      // when they were base64'd. A menu is small JSON, and the step
+      // deliberately carries no images.
       const dataToCache: Partial<BusinessProps> = {
         business_category: values.business_category,
         shop_name: values.shop_name,
         description: values.description,
         location: values.location,
+        offerings: values.offerings,
       };
 
       // Store file metadata (names, sizes) but not the actual file content
@@ -295,6 +308,9 @@ export function useFormCache(form: UseFormReturn<BusinessProps>) {
           }
           if (data.location) {
             form.setValue('location', data.location);
+          }
+          if (Array.isArray(data.offerings)) {
+            form.setValue('offerings', data.offerings);
           }
 
           // Restore files if metadata exists

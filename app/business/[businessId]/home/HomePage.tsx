@@ -8,7 +8,7 @@ import { TourDialog } from './components/TourDialog';
 import {
   ROUTES,
   businessShopPath,
-  businessProductCataloguesPath,
+  businessAddOfferingPath,
 } from '@/config/routeConfig';
 import { useBusinessShop } from '@/providers/BusinessProvider';
 import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
@@ -79,8 +79,10 @@ export default function BusinessHome({
           addLabel={vocabulary.addLabel}
           onAddProduct={() =>
             router.push(
+              // Straight to the open form — this button only renders for a
+              // shop with nothing in it, so "add one" is its whole purpose.
               business?.id
-                ? businessProductCataloguesPath(business.id)
+                ? businessAddOfferingPath(business.id)
                 : ROUTES.BUSINESS.home,
             )
           }

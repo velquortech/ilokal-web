@@ -6,7 +6,10 @@ import { BusinessShop } from '@/providers/BusinessProvider';
 import Link from 'next/link';
 import { ProductCard } from '@/components/custom/ProductCard';
 import type { ProductResponse } from '@/lib/types';
-import { businessProductCataloguesPath } from '@/config/routeConfig';
+import {
+  businessAddOfferingPath,
+  businessProductCataloguesPath,
+} from '@/config/routeConfig';
 import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
 
 interface ShopItemsProps {
@@ -72,10 +75,13 @@ export function ShopItems({ business, products }: ShopItemsProps) {
                   customers.
                 </p>
               </div>
+              {/* Straight to the open form: this renders only for an empty
+                  catalogue, so landing on the page to hunt for the button is
+                  a step with no purpose. */}
               <Link
                 href={
                   business?.id
-                    ? businessProductCataloguesPath(business.id)
+                    ? businessAddOfferingPath(business.id)
                     : '/business'
                 }
               >

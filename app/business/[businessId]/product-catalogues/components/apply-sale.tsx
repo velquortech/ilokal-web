@@ -275,7 +275,7 @@ export function ApplySale({ product, children }: ApplySaleProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 pt-2">
+          <div className="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="percentInput">Discount %</Label>
               <div className="relative">
@@ -335,7 +335,9 @@ export function ApplySale({ product, children }: ApplySaleProps) {
 
           <Separator />
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* datetime-local renders a wide native control; two of them side by
+              side overflow a phone. */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="sale_starts_at" className="text-muted-foreground">
                 Starts At

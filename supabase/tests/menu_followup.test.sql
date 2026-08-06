@@ -120,13 +120,13 @@ END $$;
 DO $$
 BEGIN
   ASSERT NOT has_function_privilege('anon',
-    'public.admin_businesses_missing_menu(text,boolean)', 'execute'),
+    'public.admin_businesses_missing_menu(text,boolean,integer,integer)', 'execute'),
     'anon must not execute the RPC';
   ASSERT NOT has_function_privilege('authenticated',
-    'public.admin_businesses_missing_menu(text,boolean)', 'execute'),
+    'public.admin_businesses_missing_menu(text,boolean,integer,integer)', 'execute'),
     'authenticated must not execute the RPC';
   ASSERT has_function_privilege('service_role',
-    'public.admin_businesses_missing_menu(text,boolean)', 'execute'),
+    'public.admin_businesses_missing_menu(text,boolean,integer,integer)', 'execute'),
     'service_role must execute the RPC';
 
   -- SECURITY DEFINER + pinned search_path (advisor lint).
@@ -139,7 +139,39 @@ BEGIN
       AND 'search_path=public, pg_temp' = ANY(proconfig)
   ), 'function must pin search_path';
 
+  -- The list RPC is paginated; stats + ids are uncapped and consistent with it.
+  ASSERT (SELECT total FROM admin_businesses_missing_menu_stats(NULL, false))
+    = (SELECT count(*) FROM admin_businesses_missing_menu(NULL, false, 100000, 0)),
+    'stats total must equal the full list count';
+  ASSERT (SELECT total FROM admin_businesses_missing_menu_stats(NULL, false))
+    = array_length(admin_businesses_missing_menu_ids(NULL, false), 1),
+    'ids array length must equal the stats total';
+  -- A page returns at most p_limit rows.
+  ASSERT (SELECT count(*) FROM admin_businesses_missing_menu(NULL, false, 2, 0)) <= 2,
+    'a page must not exceed its limit';
+
   RAISE NOTICE 'grant assertions passed';
+END $$;
+
+-- ── 9b. pagination / stats / ids grants: service_role only ──
+DO $$
+DECLARE
+  v_row text;
+BEGIN
+  FOREACH v_row IN ARRAY ARRAY[
+    'public.admin_businesses_missing_menu(text,boolean,integer,integer)',
+    'public.admin_businesses_missing_menu_stats(text,boolean)',
+    'public.admin_businesses_missing_menu_ids(text,boolean)'
+  ]::text[]
+  LOOP
+    ASSERT NOT has_function_privilege('anon', v_row, 'execute'),
+      'anon must not execute ' || v_row;
+    ASSERT NOT has_function_privilege('authenticated', v_row, 'execute'),
+      'authenticated must not execute ' || v_row;
+    ASSERT has_function_privilege('service_role', v_row, 'execute'),
+      'service_role must execute ' || v_row;
+  END LOOP;
+  RAISE NOTICE 'pagination grant assertions passed';
 END $$;
 
 -- ── 10. the single-shop send-time re-check (admin_business_followup_target) ──

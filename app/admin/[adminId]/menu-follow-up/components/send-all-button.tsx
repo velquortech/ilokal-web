@@ -15,28 +15,37 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { sendMenuFollowUpBatchAction } from '../../actions/menuFollowUpActions';
+import { sendMenuFollowUpAllAction } from '../../actions/menuFollowUpActions';
 
 /**
- * "Send to all" over the whole filtered set. Confirmed first — it emails real
- * owners — and the summary reports skipped/failed, not just sent, because the
- * cooldown and the send-time re-check mean "all" rarely means every id.
+ * "Send to all" over the current FILTER (not a client id list — the server
+ * derives the shops, so nothing is capped or tampered). Confirmed first — it
+ * emails real owners — and the summary reports skipped/failed, not just sent,
+ * because the cooldown and the send-time re-check mean "all" rarely means every
+ * shop. `count` is the true total for the label; the action sends up to 100 per
+ * run and reports the overflow.
  */
-export function SendAllButton({ ids }: { ids: string[] }) {
+export function SendAllButton({
+  count,
+  search,
+  onlyNoPromo,
+}: {
+  count: number;
+  search: string;
+  onlyNoPromo: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [pending, startTransition] = useTransition();
   const inFlight = useRef(false);
 
-  const count = ids.length;
-
   const sendAll = async () => {
     if (inFlight.current) return;
     inFlight.current = true;
     setSending(true);
     try {
-      const res = await sendMenuFollowUpBatchAction(ids);
+      const res = await sendMenuFollowUpAllAction({ search, onlyNoPromo });
       if (!res.ok) {
         toast.error(res.error ?? 'Could not send the reminders.');
         return;

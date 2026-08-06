@@ -17,12 +17,13 @@ import { SendAllButton } from './send-all-button';
 
 interface Props {
   rows: MissingMenuBusiness[];
-  /** Every id in the current filter, for "send to all". */
-  allIds: string[];
+  /** True total across the filter (uncapped), for the "send to all" label. */
+  total: number;
   failed: boolean;
   page: number;
   pageSize: number;
   totalPages: number;
+  search: string;
   onlyNoPromo: boolean;
 }
 
@@ -104,11 +105,12 @@ const columns: ColumnDef<MissingMenuBusiness>[] = [
 
 export function MenuFollowUpContent({
   rows,
-  allIds,
+  total,
   failed,
   page,
   pageSize,
   totalPages,
+  search,
   onlyNoPromo,
 }: Props) {
   const router = useRouter();
@@ -153,8 +155,12 @@ export function MenuFollowUpContent({
             placeholder="Search by shop name..."
             className="max-w-xs"
           />
-          {/* Acts on the whole filtered set, not just this page. */}
-          <SendAllButton ids={allIds} />
+          {/* Acts on the whole filter (server-derived), not just this page. */}
+          <SendAllButton
+            count={total}
+            search={search}
+            onlyNoPromo={onlyNoPromo}
+          />
         </div>
       </div>
 

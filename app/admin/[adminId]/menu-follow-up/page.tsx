@@ -35,18 +35,13 @@ export default async function MenuFollowUpPage({
   const search = params.search?.trim() || undefined;
   const onlyNoPromo = params.onlyNoPromo === '1';
 
-  const { rows, failed } = await getBusinessesMissingMenu({
-    search,
-    onlyNoPromo,
-  });
+  // The RPC returns ONE page; the totals are a separate uncapped COUNT. Nothing
+  // is counted or sliced in Node, so the stats and "send to all" don't truncate
+  // past PostgREST's 1000-row cap.
+  const { rows, total, noPromo, reminded, failed } =
+    await getBusinessesMissingMenu({ search, onlyNoPromo, page, pageSize });
 
-  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
-  const clampedPage = Math.min(page, totalPages);
-  const start = (clampedPage - 1) * pageSize;
-  const pageRows = rows.slice(start, start + pageSize);
-
-  // "Send to all" acts on the whole filtered set, not the current page.
-  const allIds = rows.map((r) => r.id);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
     <div className="flex flex-1 flex-col space-y-6">
@@ -58,15 +53,21 @@ export default async function MenuFollowUpPage({
         </p>
       </div>
 
-      <MenuFollowUpStats rows={rows} failed={failed} />
+      <MenuFollowUpStats
+        total={total}
+        noPromo={noPromo}
+        reminded={reminded}
+        failed={failed}
+      />
 
       <MenuFollowUpContent
-        rows={pageRows}
-        allIds={allIds}
+        rows={rows}
+        total={total}
         failed={failed}
-        page={clampedPage}
+        page={Math.min(page, totalPages)}
         pageSize={pageSize}
         totalPages={totalPages}
+        search={search ?? ''}
         onlyNoPromo={onlyNoPromo}
       />
     </div>

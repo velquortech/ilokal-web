@@ -55,9 +55,14 @@ export function EventTitleCell({ event }: { event: EventWithRefs }) {
   // `line-clamp-1` collapse the overflow into an ellipsis inside the cap.
   return (
     <div className="w-[14rem] max-w-[14rem] sm:w-[18rem] sm:max-w-[18rem]">
-      <div className="truncate font-medium">{event.name}</div>
+      <div className="truncate font-medium" title={event.name}>
+        {event.name}
+      </div>
       {event.description && (
-        <p className="text-muted-foreground line-clamp-1 text-xs">
+        // `whitespace-normal` so the clamp gets a wrapping line to place its
+        // ellipsis on — `TableCell` inherits `whitespace-nowrap`, which would
+        // hard-clip the text with no ellipsis.
+        <p className="text-muted-foreground line-clamp-1 text-xs whitespace-normal">
           {event.description}
         </p>
       )}

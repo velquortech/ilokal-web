@@ -234,6 +234,43 @@ export function businessProductCataloguesPath(businessId: string): string {
   return businessPath(businessId, 'product-catalogues');
 }
 
+/**
+ * Marker asking the catalogue page to open its add dialog on arrival.
+ *
+ * Same shape as ONBOARDING_WELCOME_PARAM: set by whoever links here, consumed
+ * once, then stripped from the URL so a refresh or a shared link cannot replay
+ * it.
+ */
+export const CATALOGUE_ADD_PARAM = 'add';
+
+/**
+ * The catalogue with its add dialog already open.
+ *
+ * For callers whose whole purpose is "add your first item" — the setup
+ * checklist row and the empty state. Landing on the page and making the owner
+ * find the button is a step between declaring intent and acting on it, and it
+ * is a step people do not take.
+ */
+export function businessAddOfferingPath(businessId: string): string {
+  return `${businessProductCataloguesPath(businessId)}?${CATALOGUE_ADD_PARAM}=1`;
+}
+
+/**
+ * The same catalogue URL with the add marker dropped and every other param
+ * kept — search, filters, page and branch must survive, or consuming the
+ * marker would silently reset the owner's view.
+ */
+export function cataloguePathWithoutAdd(
+  businessId: string,
+  searchParams: URLSearchParams,
+): string {
+  const params = new URLSearchParams(searchParams);
+  params.delete(CATALOGUE_ADD_PARAM);
+  const qs = params.toString();
+  const base = businessProductCataloguesPath(businessId);
+  return qs ? `${base}?${qs}` : base;
+}
+
 export function businessCouponsPath(businessId: string): string {
   return businessPath(businessId, 'coupons');
 }

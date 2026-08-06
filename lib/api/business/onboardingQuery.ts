@@ -5,7 +5,7 @@ import {
   businessProfilePath,
   businessBranchesPath,
   businessSettingsPath,
-  businessProductCataloguesPath,
+  businessAddOfferingPath,
   businessCouponsPath,
 } from '@/config/routeConfig';
 import type { OfferingVocabulary } from '@/lib/types/offering';
@@ -234,7 +234,10 @@ export async function getOnboardingProgress(
         label: vocabulary.addLabel,
         detail: `Your shop page is empty until it has at least one ${vocabulary.singular.toLowerCase()}.`,
         done: offerings > 0,
-        href: businessProductCataloguesPath(businessId),
+        // Straight to the open form, not to the page. This row's whole job is
+        // "add your first one"; landing on the catalogue and making the owner
+        // find the button puts a step between declaring intent and acting.
+        href: businessAddOfferingPath(businessId),
       },
       {
         id: 'promo',

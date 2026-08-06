@@ -14,6 +14,10 @@ import { ProductStats } from './product-stats';
 import { ManageSections } from './manage-sections';
 import { Card, CardContent } from '@/components/ui/card';
 import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
+import {
+  CATALOGUE_ADD_PARAM,
+  cataloguePathWithoutAdd,
+} from '@/config/routeConfig';
 import type {
   ProductResponse,
   Category,
@@ -62,6 +66,30 @@ export function ProductCataloguesContent({
   React.useEffect(() => {
     setSearchInput(searchParams.get('search') ?? '');
   }, [searchParams]);
+
+  /**
+   * `?add=1` — arrive with the add dialog already open.
+   *
+   * Seeded from the marker rather than opened by an effect, so the dialog is
+   * present on the first client render instead of appearing a frame later.
+   * The marker is then consumed exactly once and stripped, so a refresh or a
+   * shared link cannot replay it.
+   *
+   * Ref-guarded, not dep-guarded: `useRouter()`'s identity is not something to
+   * bet a repeated `replace` on — the same reason the welcome marker is.
+   */
+  const [addOpen, setAddOpen] = React.useState(
+    () => searchParams.get(CATALOGUE_ADD_PARAM) === '1',
+  );
+  const addMarkerConsumed = React.useRef(false);
+
+  React.useEffect(() => {
+    if (addMarkerConsumed.current) return;
+    if (searchParams.get(CATALOGUE_ADD_PARAM) !== '1') return;
+    addMarkerConsumed.current = true;
+    setAddOpen(true);
+    router.replace(cataloguePathWithoutAdd(businessId, searchParams));
+  }, [businessId, router, searchParams]);
 
   const updateParams = React.useCallback(
     (newParams: Record<string, string | null>) => {
@@ -127,6 +155,8 @@ export function ProductCataloguesContent({
               categories={categories}
               sections={sections}
               onSuccess={() => router.refresh()}
+              open={addOpen}
+              onOpenChange={setAddOpen}
             >
               <Button>
                 <Plus />

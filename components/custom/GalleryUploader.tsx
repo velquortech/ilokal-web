@@ -1,30 +1,62 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { ImagePlus, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { compressImage, COMPRESSION_PRESETS } from '@/lib/utils/compressImage';
+import { MAX_GALLERY_IMAGES } from '@/config/gallery';
 
-const MAX_IMAGES = 10;
+const MAX_IMAGES = MAX_GALLERY_IMAGES;
 
 interface GalleryUploaderProps {
   businessId: string;
   value: string[];
   onChange: (urls: string[]) => void;
+  /**
+   * Intercepts the ✕ instead of removing straight away.
+   *
+   * Omitted (the profile form) the removal is staged and only committed by that
+   * form's "Save changes", so a mis-click costs nothing. The gallery page saves
+   * on the spot AND deletes the file from storage, so there the same click is
+   * irreversible and has to be confirmed first.
+   */
+  onRequestRemove?: (url: string) => void;
+  /** Hidden by the gallery page, which prints its own richer counter. */
+  showCounter?: boolean;
 }
 
 export function GalleryUploader({
   businessId,
   value,
   onChange,
+  onRequestRemove,
+  showCounter = true,
 }: GalleryUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadCount, setUploadCount] = useState({ done: 0, total: 0 });
 
   const canAddMore = value.length < MAX_IMAGES;
+
+  /**
+   * 🔴 The list at the moment an upload FINISHES, not the one it started with.
+   *
+   * A batch of photos takes seconds to compress and upload one at a time, and
+   * the gallery page saves each change immediately — so a photo removed (and
+   * hard-deleted from storage) during that window would be resurrected by
+   * `[...value, ...newUrls]` closing over the pre-upload array, leaving the row
+   * pointing at a file that no longer exists.
+   */
+  const valueRef = useRef(value);
+  // Assigned in an EFFECT, not during render. A ref write during render is not
+  // concurrent-safe — a render React discards would leave the ref holding state
+  // that never committed, and the post-upload merge would build on it. Same
+  // reason `useCravingRotation`'s render-phase ref write was removed.
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
   const uploadFile = async (file: File): Promise<string | null> => {
     const formData = new FormData();
@@ -65,12 +97,24 @@ export function GalleryUploader({
       setUploadCount((c) => ({ ...c, done: c.done + 1 }));
     }
 
-    if (newUrls.length > 0) onChange([...value, ...newUrls]);
+    if (newUrls.length > 0) {
+      // Built from the CURRENT list, not the one captured before the upload.
+      const merged = [...valueRef.current, ...newUrls].filter(
+        // A removal that landed mid-upload deleted the file; re-adding its URL
+        // would point the row at nothing.
+        (url, index, all) => all.indexOf(url) === index,
+      );
+      onChange(merged);
+    }
     setUploading(false);
   };
 
   const removeImage = (url: string) => {
-    onChange(value.filter((u) => u !== url));
+    if (onRequestRemove) {
+      onRequestRemove(url);
+      return;
+    }
+    onChange(valueRef.current.filter((u) => u !== url));
   };
 
   return (
@@ -139,9 +183,12 @@ export function GalleryUploader({
         )}
       </div>
 
-      <p className="text-muted-foreground text-xs">
-        {value.length}/{MAX_IMAGES} photos · JPG, PNG or WebP · max 2 MB each
-      </p>
+      {showCounter && (
+        <p className="text-muted-foreground text-xs">
+          {value.length}/{MAX_IMAGES} photos · JPG, PNG or WebP · larger photos
+          are resized for you
+        </p>
+      )}
 
       <input
         ref={inputRef}

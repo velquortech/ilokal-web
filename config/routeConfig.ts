@@ -220,6 +220,16 @@ export function businessShopPath(businessId: string): string {
   return businessPath(businessId, 'shop');
 }
 
+/**
+ * Manage the shop's own photo gallery.
+ *
+ * A child of `shop` rather than a sibling, so the way back to the section it
+ * belongs to is the URL itself.
+ */
+export function businessShopGalleryPath(businessId: string): string {
+  return businessPath(businessId, 'shop', 'gallery');
+}
+
 export function businessProductCataloguesPath(businessId: string): string {
   return businessPath(businessId, 'product-catalogues');
 }

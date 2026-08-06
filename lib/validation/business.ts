@@ -11,6 +11,77 @@ import { z } from 'zod';
 // BUSINESS PROFILE UPDATE SCHEMA (business owner — profile page)
 // ============================================================================
 
+/**
+ * The gallery rules live in `config/gallery.ts` — a dependency-free module, so
+ * the three client components that need them do not pull Zod into their bundle
+ * for two integers. Re-exported here so call sites have one import to reach for.
+ */
+export {
+  MAX_GALLERY_IMAGES,
+  MASONRY_MIN_IMAGES,
+  GALLERY_BUCKET,
+  isOwnGalleryPath,
+  foreignGalleryPaths,
+} from '@/config/gallery';
+
+/**
+ * Tab, CR, LF and other control characters — the smuggling vector. Same set
+ * as `lib/utils/safeExternalUrl.ts`.
+ */
+// eslint-disable-next-line no-control-regex
+const FORBIDDEN_CHARS = /[\x00-\x1f\x7f]/;
+
+/**
+ * 🔴 NOT `z.string().url()`. Zod's `url()` is backed by `new URL()`, which
+ * **accepts `javascript:alert(1)`** — the exact trap `urlOrEmpty` had to be
+ * fixed for before these columns were rendered. `interior_images` is returned
+ * by `/api/mobile/businesses/[businessId]` and rendered on public surfaces, so
+ * an http(s) allowlist is the floor, not a nicety.
+ *
+ * A bucket-relative path is also accepted, because that is what registration
+ * writes and what this column now stores.
+ *
+ * Control characters are rejected outright rather than trimmed away, for the
+ * reason `safeExternalUrl` rejects them: `"\tjavascript:…"` does not START with
+ * a scheme, so a naive test reads it as a relative path and lets it through,
+ * while a browser strips the tab and honours the scheme.
+ */
+const galleryImageSchema = z
+  .string()
+  .min(1, 'Each gallery image must be a URL or a storage path')
+  .refine((value) => !FORBIDDEN_CHARS.test(value), 'Invalid gallery image')
+  .refine(
+    (value) =>
+      /^https?:\/\//.test(value) ||
+      // Protocol-relative inherits the page's scheme, so it resolves off-site.
+      (!value.startsWith('//') && !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value)),
+    'Gallery images must be http(s) URLs',
+  );
+
+const galleryImagesSchema = z.array(galleryImageSchema);
+
+/**
+ * The gallery, and NOTHING else.
+ *
+ * 🔴 Deliberately not `updateBusinessProfileSchema.pick(...)`: that action
+ * writes `description`, `logo_url`, `banner_url` and `category_id` as
+ * `?? null` unconditionally, so a caller sending only the gallery erases four
+ * columns. The narrow schema exists so the narrow action cannot grow the wide
+ * one's payload by accident.
+ *
+ * 🔴 No `.max()` here, and that is deliberate. Nothing caps the gallery at
+ * upload time — `step3Schema` requires **at least** four interior photos and
+ * `/api/web/upload/business-interior` appends without a ceiling — so a shop
+ * that registered with eleven photos would have every write rejected by a flat
+ * cap, **including the removals that would bring it back under**. The action
+ * enforces the cap on GROWTH instead, against the row it just read.
+ */
+export const businessGallerySchema = z.object({
+  interior_images: galleryImagesSchema,
+});
+
+export type BusinessGalleryInput = z.infer<typeof businessGallerySchema>;
+
 export const updateBusinessProfileSchema = z.object({
   shop_name: z
     .string()
@@ -32,11 +103,13 @@ export const updateBusinessProfileSchema = z.object({
     .optional()
     .nullable(),
   category_id: z.guid('Invalid category ID').optional().nullable(),
-  interior_images: z
-    .array(z.string().url('Each gallery image must be a valid URL'))
-    .max(10, 'Maximum 10 gallery images allowed')
-    .optional()
-    .nullable(),
+  // 🔴 No flat cap here either. This form resubmits the WHOLE array on every
+  // save, so a shop that registered with eleven photos could not change its
+  // name, description or category — the same dead end the gallery action's
+  // growth rule exists to avoid, on a form that has nothing to do with photos.
+  // `updateBusinessProfileAction` applies the growth rule instead; it already
+  // reads the current row.
+  interior_images: galleryImagesSchema.optional().nullable(),
 });
 
 export type UpdateBusinessProfileInput = z.infer<

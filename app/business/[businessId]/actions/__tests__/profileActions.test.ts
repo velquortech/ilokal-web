@@ -9,6 +9,8 @@ vi.mock('@/supabase/server', () => ({ createServerSupabaseClient: vi.fn() }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('@/config/routeConfig', () => ({
   businessProfilePath: (id: string) => `/business/${id}/profile`,
+  // The gallery page renders this column too, so the action revalidates both.
+  businessShopGalleryPath: (id: string) => `/business/${id}/shop/gallery`,
 }));
 
 import { updateBusinessProfileAction } from '../profileActions';

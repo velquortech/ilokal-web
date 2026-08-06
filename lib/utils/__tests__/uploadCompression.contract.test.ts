@@ -22,7 +22,8 @@ const IMAGE_SURFACES = [
   'components/custom/upload/image-upload.tsx',
   'app/business/registration/steps/Gallery.tsx',
   'app/business/[businessId]/profile/components/LogoUploader.tsx',
-  'app/business/[businessId]/profile/components/GalleryUploader.tsx',
+  // Shared once the shop gallery page became its second cross-feature importer.
+  'components/custom/GalleryUploader.tsx',
   'app/business/[businessId]/profile/components/PersonalInfoForm.tsx',
   'app/business/[businessId]/branches/create/steps/step-branch-images.tsx',
   'app/business/[businessId]/branches/components/edit-branch.tsx',

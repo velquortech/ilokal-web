@@ -24,8 +24,10 @@ import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { rateLimit } from '@/app/api/helpers/rateLimit';
 import {
+  MAX_GALLERY_IMAGES,
   businessGallerySchema,
   businessIdSchema,
+  isOwnGalleryPath,
 } from '@/lib/validation/business';
 import {
   businessProfilePath,
@@ -49,7 +51,7 @@ function fail(code: string, message: string): ApiResponse<never> {
 export async function updateBusinessGalleryAction(
   businessId: string,
   images: string[],
-): Promise<ApiResponse<{ interior_images: string[] }>> {
+): Promise<ApiResponse<{ saved: number }>> {
   // BEFORE `verifyBusinessOwner`: that helper reads a falsy id as "no argument"
   // and authorizes some other shop of the caller's.
   if (!businessIdSchema.safeParse(businessId).success) {
@@ -114,6 +116,34 @@ export async function updateBusinessGalleryAction(
   // An absolute URL bakes the Supabase project host into the row, which is the
   // portability bug the seeds were rewritten to fix.
   const nextPaths = toStoragePaths(parsed.data.interior_images, BUCKET);
+  const currentPaths = toStoragePaths(
+    (current?.interior_images as string[] | null) ?? [],
+    BUCKET,
+  );
+
+  // 🔴 Every path must live in THIS shop's own folder. Without this the client
+  // chooses the storage keys that reach `storage.remove()` below — the bucket's
+  // DELETE policy is the only other backstop, and it does not stop an owner who
+  // holds two shops from deleting shop B's file through shop A's gallery. It is
+  // also what makes a foreign host unrepresentable: it normalises to itself and
+  // does not start with the id.
+  if (nextPaths.some((path) => !isOwnGalleryPath(path, verifiedId))) {
+    return fail('VALIDATION_ERROR', 'That photo does not belong to this shop.');
+  }
+
+  // The cap is enforced on GROWTH, not as a flat ceiling: nothing limits the
+  // gallery at upload time, so a shop that registered with eleven photos would
+  // otherwise have every write rejected — including the removals that would
+  // bring it back under.
+  if (
+    nextPaths.length > MAX_GALLERY_IMAGES &&
+    nextPaths.length > currentPaths.length
+  ) {
+    return fail(
+      'VALIDATION_ERROR',
+      `You can have up to ${MAX_GALLERY_IMAGES} photos.`,
+    );
+  }
 
   const { data: updated, error } = await supabase
     .from('businesses')
@@ -127,20 +157,20 @@ export async function updateBusinessGalleryAction(
     return fail('DB_ERROR', 'Could not save your gallery. Please try again.');
   }
 
-  // Storage cleanup, after the row is safely updated. Fire-and-forget: an
-  // orphaned file is a housekeeping problem, a failed save is the owner's.
-  const toDelete = storagePathsToDelete(
-    (current?.interior_images as string[] | null) ?? [],
-    nextPaths,
-    BUCKET,
-  );
+  // Storage cleanup, after the row is safely updated. An orphaned file is a
+  // housekeeping problem; a failed save is the owner's, so a cleanup failure is
+  // logged and never surfaced.
+  const toDelete = storagePathsToDelete(currentPaths, nextPaths, BUCKET);
   if (toDelete.length > 0) {
-    await supabase.storage
+    // `storage.remove()` RESOLVES with `{ error }` rather than throwing, so a
+    // `.catch()` here could never fire and a failed delete would be invisible
+    // even server-side.
+    const { error: removeError } = await supabase.storage
       .from(BUCKET)
-      .remove(toDelete)
-      .catch(() => {
-        // Orphaned file — acceptable; cleaned up by periodic storage audit.
-      });
+      .remove(toDelete);
+    if (removeError) {
+      console.error('[updateBusinessGalleryAction:cleanup]', removeError);
+    }
   }
 
   // Both surfaces render this array, and the shop page is where the owner came
@@ -149,8 +179,13 @@ export async function updateBusinessGalleryAction(
   revalidatePath(businessShopPath(verifiedId));
   revalidatePath(businessProfilePath(verifiedId));
 
+  // Deliberately not the array: it is stored as bucket-relative paths while the
+  // caller sent public URLs, so returning it under the same key invites a
+  // future caller to seed its state from paths and render broken images.
   return {
     success: true,
-    data: { interior_images: (updated.interior_images as string[]) ?? [] },
+    data: {
+      saved: ((updated.interior_images as string[] | null) ?? []).length,
+    },
   };
 }

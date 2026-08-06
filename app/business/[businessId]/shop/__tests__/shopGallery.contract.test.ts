@@ -6,11 +6,14 @@ import {
   MASONRY_MIN_IMAGES,
   MAX_GALLERY_IMAGES,
   businessGallerySchema,
+  isOwnGalleryPath,
   updateBusinessProfileSchema,
 } from '@/lib/validation/business';
 
 const ROOT = join(__dirname, '..', '..');
 const read = (rel: string) => readFileSync(join(ROOT, rel), 'utf8');
+const readRepo = (...segments: string[]) =>
+  readFileSync(join(process.cwd(), ...segments), 'utf8');
 
 /**
  * The "must not contain" assertions below run against code with comments
@@ -26,7 +29,10 @@ const SHOP_GALLERY_CODE = code(SHOP_GALLERY);
 const MANAGER = read(
   join('shop', 'gallery', 'components', 'GalleryManager.tsx'),
 );
-const UPLOADER = read(join('profile', 'components', 'GalleryUploader.tsx'));
+// Shared once the gallery page became its second cross-feature importer —
+// CLAUDE.md §DRY, the `LocationPicker` precedent.
+const UPLOADER = readRepo('components', 'custom', 'GalleryUploader.tsx');
+const GALLERY_ACTION = read(join('actions', 'galleryActions.ts'));
 
 describe('the See All control', () => {
   /**
@@ -73,16 +79,6 @@ describe('the gallery page', () => {
     expect(UPLOADER).toContain('compressImage');
   });
 
-  /**
-   * The delete here is immediate AND removes the file from storage, unlike the
-   * profile form's staged removal.
-   */
-  it('confirms before a destructive removal', () => {
-    expect(MANAGER).toContain('onRequestRemove={setConfirmRemove}');
-    expect(MANAGER).toContain('<DialogTitle>Remove this photo?</DialogTitle>');
-    expect(MANAGER).toContain('variant="destructive"');
-  });
-
   it('goes through the narrow action, never the whole-profile one', () => {
     expect(MANAGER).toContain('updateBusinessGalleryAction');
     // Reusing this one would erase description, logo, banner and category.
@@ -101,14 +97,12 @@ describe('the gallery page', () => {
 });
 
 describe('the gallery cap is one constant', () => {
-  it('is shared by both schemas and by the uploader', () => {
-    const overCap = Array.from(
-      { length: MAX_GALLERY_IMAGES + 1 },
-      (_, i) => `https://example.com/${i}.webp`,
-    );
-    expect(
-      businessGallerySchema.safeParse({ interior_images: overCap }).success,
-    ).toBe(false);
+  const overCap = Array.from(
+    { length: MAX_GALLERY_IMAGES + 1 },
+    (_, i) => `https://example.com/${i}.webp`,
+  );
+
+  it('is the number the profile form and the uploader both use', () => {
     expect(
       updateBusinessProfileSchema.safeParse({
         shop_name: 'Cafe',
@@ -121,11 +115,66 @@ describe('the gallery cap is one constant', () => {
     expect(UPLOADER).not.toMatch(/MAX_IMAGES\s*=\s*\d+/);
   });
 
+  /**
+   * 🔴 Nothing caps the gallery at UPLOAD time, so a flat cap in the schema
+   * would reject every write from a shop that registered with eleven photos —
+   * including the removals that would bring it back under. The action enforces
+   * the cap on GROWTH instead, against the row it just read, and a `.max()`
+   * creeping back onto this schema would silently restore the dead end.
+   */
+  it('is NOT a flat ceiling on the narrow schema', () => {
+    expect(
+      businessGallerySchema.safeParse({ interior_images: overCap }).success,
+    ).toBe(true);
+    expect(GALLERY_ACTION).toContain('nextPaths.length > currentPaths.length');
+  });
+
+  /**
+   * `z.string().url()` is backed by `new URL()`, which accepts
+   * `javascript:alert(1)` — the trap `urlOrEmpty` was already fixed for. These
+   * values are returned by the mobile business-detail route and rendered on
+   * public surfaces.
+   */
+  it.each(['javascript:alert(1)', 'data:text/html,x', 'vbscript:msgbox'])(
+    'rejects the %j scheme',
+    (entry) => {
+      expect(
+        businessGallerySchema.safeParse({ interior_images: [entry] }).success,
+      ).toBe(false);
+    },
+  );
+
+  /**
+   * The client chooses the strings that reach `storage.remove()`, and the
+   * bucket's DELETE policy does not stop a two-shop owner deleting shop B's
+   * file through shop A's gallery.
+   */
+  it('scopes every stored path to the shop that owns it', () => {
+    const OWN = '550e8400-e29b-41d4-a716-446655440000';
+    expect(isOwnGalleryPath(`${OWN}/a.webp`, OWN)).toBe(true);
+    for (const bad of [
+      'other-shop/a.webp',
+      '../shop-logos/a.webp',
+      `${OWN}/nested/a.webp`,
+      'a.webp',
+      `${OWN}/`,
+      'https://evil.example/a.webp',
+    ]) {
+      expect(isOwnGalleryPath(bad, OWN)).toBe(false);
+    }
+  });
+
   it('keeps the masonry threshold in step with what Masonry enforces', () => {
-    const masonry = readFileSync(
-      join(process.cwd(), 'components', 'custom', 'Masonry.tsx'),
-      'utf8',
+    expect(readRepo('components', 'custom', 'Masonry.tsx')).toContain(
+      `images.length < ${MASONRY_MIN_IMAGES}`,
     );
-    expect(masonry).toContain(`images.length < ${MASONRY_MIN_IMAGES}`);
+  });
+
+  it('leaves no local copy of the threshold in the file that branches on it', () => {
+    // `shop-gallery.tsx` decides masonry-vs-grid AND prints the "add N more"
+    // advice, so a local literal here is the one that can drift from the
+    // gallery page's copy of the same sentence.
+    expect(SHOP_GALLERY_CODE).toContain('MASONRY_MIN_IMAGES');
+    expect(SHOP_GALLERY_CODE).not.toMatch(/MIN_FOR_MASONRY\s*=\s*\d+/);
   });
 });

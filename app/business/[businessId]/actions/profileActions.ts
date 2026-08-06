@@ -9,7 +9,11 @@ import {
   type UpdateBusinessProfileInput,
 } from '@/lib/validation/business';
 import { businessProfilePath } from '@/config/routeConfig';
-import { extractStoragePath, storagePathsToDelete } from '@/lib/utils/storage';
+import {
+  extractStoragePath,
+  storagePathsToDelete,
+  toStoragePaths,
+} from '@/lib/utils/storage';
 
 export async function updateBusinessProfileAction(
   businessId: string,
@@ -61,7 +65,15 @@ export async function updateBusinessProfileAction(
       updated_at: new Date().toISOString(),
     };
     if (interior_images !== undefined) {
-      updatePayload.interior_images = interior_images ?? [];
+      // Normalised to bucket-relative paths, matching what registration and the
+      // gallery action write. Leaving absolute URLs here would keep the column
+      // holding TWO representations of the same file — the split that made the
+      // delete diff below destroy galleries — and bakes the Supabase project
+      // host into the row.
+      updatePayload.interior_images = toStoragePaths(
+        interior_images ?? [],
+        'interior-images',
+      );
     }
 
     const { data: updated, error } = await supabase
@@ -74,11 +86,14 @@ export async function updateBusinessProfileAction(
       .single();
 
     if (error || !updated) {
+      // Never the driver's own message: it names tables, columns and
+      // constraints. Logged server-side, generic to the client.
+      console.error('[updateBusinessProfileAction:write]', error);
       return {
         success: false,
         error: {
           code: 'DB_ERROR',
-          message: error?.message ?? 'Failed to update business profile',
+          message: 'Failed to update business profile',
         },
       };
     }

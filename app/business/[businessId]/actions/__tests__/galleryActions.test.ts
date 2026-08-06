@@ -129,17 +129,88 @@ describe('updateBusinessGalleryAction — authorization', () => {
     expect(writeChain.eq).not.toHaveBeenCalledWith('id', OTHER_ID);
   });
 
-  it('rejects more than the shared cap without reaching the database', async () => {
-    const tooMany = Array.from(
-      { length: MAX_GALLERY_IMAGES + 1 },
-      (_, i) => `${HOST}/${BUSINESS_ID}/p${i}.webp`,
-    );
+  /**
+   * 🔴 The client chooses the strings that reach `storage.remove()`, and
+   * `extractStoragePath` returns any non-`http` value verbatim. The bucket's
+   * DELETE policy is the only other backstop, and it does NOT stop an owner who
+   * holds two shops from deleting shop B's file through shop A's gallery.
+   */
+  it.each([
+    ['another shop', `${HOST}/${OTHER_ID}/a.webp`],
+    ['a raw path in another shop', `${OTHER_ID}/a.webp`],
+    ['traversal out of the bucket', `${HOST}/../shop-logos/a.webp`],
+    ['a nested path', `${BUSINESS_ID}/nested/a.webp`],
+    ['a bare filename with no shop folder', 'a.webp'],
+    ['a foreign host', 'https://evil.example/a.webp'],
+  ])('refuses a path pointing at %s', async (_label, entry) => {
+    const { writeChain, remove } = mockSupabase({ current: [], next: [] });
 
-    const result = await updateBusinessGalleryAction(BUSINESS_ID, tooMany);
+    const result = await updateBusinessGalleryAction(BUSINESS_ID, [entry]);
 
     expect(result.success).toBe(false);
     expect(result.error?.code).toBe('VALIDATION_ERROR');
-    expect(createServerSupabaseClient).not.toHaveBeenCalled();
+    expect(writeChain.update).not.toHaveBeenCalled();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it.each(['javascript:alert(1)', 'data:text/html,<script>x</script>'])(
+    'refuses the %j scheme that Zod’s url() would accept',
+    async (entry) => {
+      const result = await updateBusinessGalleryAction(BUSINESS_ID, [entry]);
+
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe('VALIDATION_ERROR');
+      expect(createServerSupabaseClient).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe('updateBusinessGalleryAction — the cap', () => {
+  const gallery = (n: number, offset = 0) =>
+    Array.from(
+      { length: n },
+      (_, i) => `${HOST}/${BUSINESS_ID}/p${i + offset}.webp`,
+    );
+
+  it('rejects growing past the cap', async () => {
+    const { writeChain } = mockSupabase({
+      current: gallery(MAX_GALLERY_IMAGES).map((u) =>
+        u.replace(`${HOST}/`, ''),
+      ),
+      next: [],
+    });
+
+    const result = await updateBusinessGalleryAction(
+      BUSINESS_ID,
+      gallery(MAX_GALLERY_IMAGES + 1),
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error?.code).toBe('VALIDATION_ERROR');
+    expect(writeChain.update).not.toHaveBeenCalled();
+  });
+
+  /**
+   * 🔴 Nothing caps the gallery at UPLOAD time — `step3Schema` requires at
+   * least four interior photos and the upload route appends without a
+   * ceiling — so a flat cap here would reject every write from a shop that
+   * registered with eleven photos, INCLUDING the removals that would bring it
+   * back under. The gallery would be permanently unmanageable.
+   */
+  it('still lets an over-cap gallery shrink', async () => {
+    const over = gallery(MAX_GALLERY_IMAGES + 2);
+    const { writeChain } = mockSupabase({
+      current: over.map((u) => u.replace(`${HOST}/`, '')),
+      next: [],
+    });
+
+    const result = await updateBusinessGalleryAction(
+      BUSINESS_ID,
+      over.slice(0, MAX_GALLERY_IMAGES + 1),
+    );
+
+    expect(result.success).toBe(true);
+    expect(writeChain.update).toHaveBeenCalled();
   });
 });
 
@@ -240,6 +311,26 @@ describe('updateBusinessGalleryAction — storage cleanup', () => {
 
     expect(result.success).toBe(false);
     expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('logs a failed cleanup instead of letting it vanish', async () => {
+    // `storage.remove()` RESOLVES with `{ error }` rather than throwing, so a
+    // `.catch()` could never fire and the failure would be invisible even
+    // server-side.
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { remove } = mockSupabase({
+      current: [`${BUSINESS_ID}/a.webp`],
+      next: [],
+    });
+    remove.mockResolvedValue({ data: null, error: { message: 'nope' } });
+
+    const result = await updateBusinessGalleryAction(BUSINESS_ID, []);
+
+    // The save still succeeded — an orphaned file is housekeeping, not the
+    // owner's problem.
+    expect(result.success).toBe(true);
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
   });
 });
 

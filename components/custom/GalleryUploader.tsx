@@ -40,6 +40,18 @@ export function GalleryUploader({
 
   const canAddMore = value.length < MAX_IMAGES;
 
+  /**
+   * 🔴 The list at the moment an upload FINISHES, not the one it started with.
+   *
+   * A batch of photos takes seconds to compress and upload one at a time, and
+   * the gallery page saves each change immediately — so a photo removed (and
+   * hard-deleted from storage) during that window would be resurrected by
+   * `[...value, ...newUrls]` closing over the pre-upload array, leaving the row
+   * pointing at a file that no longer exists.
+   */
+  const valueRef = useRef(value);
+  valueRef.current = value;
+
   const uploadFile = async (file: File): Promise<string | null> => {
     const formData = new FormData();
     formData.append('file', file);
@@ -79,7 +91,15 @@ export function GalleryUploader({
       setUploadCount((c) => ({ ...c, done: c.done + 1 }));
     }
 
-    if (newUrls.length > 0) onChange([...value, ...newUrls]);
+    if (newUrls.length > 0) {
+      // Built from the CURRENT list, not the one captured before the upload.
+      const merged = [...valueRef.current, ...newUrls].filter(
+        // A removal that landed mid-upload deleted the file; re-adding its URL
+        // would point the row at nothing.
+        (url, index, all) => all.indexOf(url) === index,
+      );
+      onChange(merged);
+    }
     setUploading(false);
   };
 
@@ -88,7 +108,7 @@ export function GalleryUploader({
       onRequestRemove(url);
       return;
     }
-    onChange(value.filter((u) => u !== url));
+    onChange(valueRef.current.filter((u) => u !== url));
   };
 
   return (

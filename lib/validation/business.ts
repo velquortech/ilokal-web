@@ -11,6 +11,42 @@ import { z } from 'zod';
 // BUSINESS PROFILE UPDATE SCHEMA (business owner — profile page)
 // ============================================================================
 
+/**
+ * Gallery ceiling — the ONE place this number lives.
+ *
+ * Read by the Zod schemas below, by `GalleryUploader`'s add tile, and by the
+ * copy on the gallery page. A second literal is how the form starts refusing an
+ * eleventh photo the server would have accepted, or the reverse.
+ */
+export const MAX_GALLERY_IMAGES = 10;
+
+/**
+ * How many photos the shop page needs before it renders the full masonry
+ * layout — `Masonry` hard-returns below this and `ShopGallery` falls back to a
+ * plain 3-up grid. Stated on the gallery page because an owner with three
+ * photos otherwise cannot tell why their shop page looks different.
+ */
+export const MASONRY_MIN_IMAGES = 4;
+
+const galleryImagesSchema = z
+  .array(z.string().url('Each gallery image must be a valid URL'))
+  .max(MAX_GALLERY_IMAGES, `Maximum ${MAX_GALLERY_IMAGES} gallery images`);
+
+/**
+ * The gallery, and NOTHING else.
+ *
+ * 🔴 Deliberately not `updateBusinessProfileSchema.pick(...)`: that action
+ * writes `description`, `logo_url`, `banner_url` and `category_id` as
+ * `?? null` unconditionally, so a caller sending only the gallery erases four
+ * columns. The narrow schema exists so the narrow action cannot grow the wide
+ * one's payload by accident.
+ */
+export const businessGallerySchema = z.object({
+  interior_images: galleryImagesSchema,
+});
+
+export type BusinessGalleryInput = z.infer<typeof businessGallerySchema>;
+
 export const updateBusinessProfileSchema = z.object({
   shop_name: z
     .string()
@@ -32,11 +68,7 @@ export const updateBusinessProfileSchema = z.object({
     .optional()
     .nullable(),
   category_id: z.guid('Invalid category ID').optional().nullable(),
-  interior_images: z
-    .array(z.string().url('Each gallery image must be a valid URL'))
-    .max(10, 'Maximum 10 gallery images allowed')
-    .optional()
-    .nullable(),
+  interior_images: galleryImagesSchema.optional().nullable(),
 });
 
 export type UpdateBusinessProfileInput = z.infer<

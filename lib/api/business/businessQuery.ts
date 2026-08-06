@@ -450,3 +450,51 @@ export async function getBusinessCategoryOptions(): Promise<
     return [];
   }
 }
+
+/**
+ * One shop's gallery, with the three answers kept apart.
+ *
+ * `getBusinessProfileData` collapses "this shop does not exist" and "the read
+ * failed" into a single `null`, which is fine for a form that 404s either way
+ * and wrong for a gallery: six empty tiles and an outage look identical, and
+ * the empty state tells an owner to upload photos they may already have.
+ *
+ * Never throws. Paths are resolved to public URLs on the way out, the same as
+ * every other read of this column — the row may hold either representation
+ * (registration writes paths, the upload route writes URLs).
+ */
+export async function getBusinessGallery(businessId: string): Promise<{
+  images: string[];
+  /** The read itself failed — say so instead of rendering an empty gallery. */
+  failed: boolean;
+  found: boolean;
+}> {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('businesses')
+      .select('interior_images')
+      .eq('id', businessId)
+      .is('archived_at', null)
+      .maybeSingle();
+
+    if (error) {
+      console.error('[getBusinessGallery]', error);
+      return { images: [], failed: true, found: false };
+    }
+    if (!data) return { images: [], failed: false, found: false };
+
+    const images = ((data.interior_images as string[] | null) ?? []).map(
+      (pathOrUrl) =>
+        pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')
+          ? pathOrUrl
+          : supabase.storage.from('interior-images').getPublicUrl(pathOrUrl)
+              .data.publicUrl,
+    );
+
+    return { images, failed: false, found: true };
+  } catch (err) {
+    console.error('[getBusinessGallery]', err);
+    return { images: [], failed: true, found: false };
+  }
+}

@@ -1,0 +1,74 @@
+import { getBusinessesMissingMenu } from '@/lib/api/admin/menuFollowUpQuery';
+import { MenuFollowUpStats } from './components/menu-follow-up-stats';
+import { MenuFollowUpContent } from './components/menu-follow-up-content';
+
+export const dynamic = 'force-dynamic';
+
+type SearchParams = Promise<{
+  page?: string;
+  perPage?: string;
+  search?: string;
+  onlyNoPromo?: string;
+}>;
+
+/**
+ * Admin menu follow-up. Lists verified shops with no live offering (the ones a
+ * shopper opens to an empty page) and lets an admin email each owner a reminder,
+ * one at a time or all at once.
+ *
+ * The RPC returns the whole filtered set; pagination is sliced here rather than
+ * pushed into the query, because the list is admin-scale (dozens, not
+ * thousands) and "send to all" must act on the whole filtered set, not one page.
+ */
+export default async function MenuFollowUpPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const params = await searchParams;
+
+  const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1);
+  const pageSize = Math.min(
+    50,
+    Math.max(5, parseInt(params.perPage ?? '10', 10) || 10),
+  );
+  const search = params.search?.trim() || undefined;
+  const onlyNoPromo = params.onlyNoPromo === '1';
+
+  const { rows, failed } = await getBusinessesMissingMenu({
+    search,
+    onlyNoPromo,
+  });
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const clampedPage = Math.min(page, totalPages);
+  const start = (clampedPage - 1) * pageSize;
+  const pageRows = rows.slice(start, start + pageSize);
+
+  // "Send to all" acts on the whole filtered set, not the current page.
+  const allIds = rows.map((r) => r.id);
+
+  return (
+    <div className="flex flex-1 flex-col space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Menu Follow-up</h1>
+        <p className="text-muted-foreground mt-2">
+          Verified shops with no menu yet. Send the owner a reminder to add
+          their listings — shoppers open these to an empty page.
+        </p>
+      </div>
+
+      <MenuFollowUpStats rows={rows} failed={failed} />
+
+      <MenuFollowUpContent
+        rows={pageRows}
+        allIds={allIds}
+        failed={failed}
+        page={clampedPage}
+        pageSize={pageSize}
+        totalPages={totalPages}
+        onlyNoPromo={onlyNoPromo}
+      />
+    </div>
+  );
+}

@@ -5,6 +5,7 @@ import {
   MapPin,
   FileCheck,
   CalendarDays,
+  MailWarning,
   Settings,
 } from 'lucide-react';
 import { NavItem } from '@/components/custom/Nav';
@@ -41,6 +42,11 @@ export const mainNavigation: NavItem[] = [
     href: '/admin/events',
     icon: CalendarDays,
     flag: 'enable_events',
+  },
+  {
+    title: 'Menu Follow-up',
+    href: '/admin/menu-follow-up',
+    icon: MailWarning,
   },
 ];
 

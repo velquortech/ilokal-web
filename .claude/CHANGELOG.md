@@ -1,5 +1,51 @@
 # Changelog
 
+## 2026-08-06 — Menu follow-up, phase 5: the admin page (feat/menu-followup-email)
+
+> **No schema, API-contract or auth change.** Presentational + one new admin
+> route wiring the phase-2 read and the phase-4 actions together. Completes the
+> feature (behind the still-unapplied migrations). Plan (MF9, MF12, MF13):
+> [`.claude/MENU_FOLLOWUP.md`](.claude/MENU_FOLLOWUP.md).
+
+- **New `/admin/[adminId]/menu-follow-up`** — the surface the whole feature was
+  for. Stat cards (shops with no menu / also no live deal / already reminded), a
+  table (shop, owner, missing noun, live-deal, registered, last reminded), a
+  per-row **Send reminder**, and a header **Send to all (N)** with a confirm
+  dialog. Sidebar entry + `loading.tsx` + a route helper
+  (`adminMenuFollowUpPath`, now the single source for the segment the actions
+  revalidate).
+- **The RPC returns the whole filtered set; pagination is sliced on the page**
+  (MF9-adjacent), because the list is admin-scale and **"send to all" must act
+  on the whole filter, not the visible page** — so the button is handed every
+  matching id, not the ten on screen. The 100-cap and its overflow reporting
+  live in the action.
+- **Outage ≠ empty (MF12).** A failed read renders "we couldn't load this
+  list"; a genuinely empty one renders "every verified shop has a menu". The
+  stat cards show an em dash on failure rather than three confident zeros.
+- **The row and batch buttons report what actually happened, not just
+  success.** A send-time re-check or a cooldown means "send" often means
+  "skipped" — the row button toasts the reason (added a menu / reminded recently
+  / no email), and the batch toasts `N sent · M skipped · K failed`, plus "run
+  again" when the cap truncated. Both refresh the page so "last reminded" and
+  the stats update.
+- **Both buttons latch against a double-click** (a `useRef` before React commits
+  `disabled`) and carry `aria-busy`; the confirm dialog can't be dismissed
+  mid-send.
+- **A "only shops with no live deal" toggle** drives the RPC's `p_only_no_promo`
+  through the URL, so the filter is shareable and survives a refresh.
+- **Tests (+6):** `adminMenuFollowUpPath` + the sidebar entry (its base href
+  matching what the actions revalidate — a rename there is how a nav link and a
+  revalidate path silently drift), and a render suite for the row button mapping
+  each outcome (sent / skipped-with-reason / failed / unauthorized) to the right
+  toast, since the skip-reason copy is real logic. Verified: `yarn lint` +
+  **2347** tests + a clean `yarn build`.
+- **Not verified — needs a browser:** the page is behind admin auth and this
+  environment has no login path, so the table, the confirm dialog and the toasts
+  have not been clicked through. And it is **still gated on the two unapplied
+  migrations** (phases 2 + 4) and on **MF11** — no `RESEND_API_KEY` means every
+  send is sandbox-logged, not delivered, which is the safe default until the
+  unsubscribe/CAN-SPAM decision is made.
+
 ## 2026-08-06 — Menu follow-up, phase 4: the send actions (feat/menu-followup-email)
 
 > **ONE migration (`20260806093000_menu_followup_target.sql`) — HIGH risk: a

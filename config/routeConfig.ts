@@ -296,6 +296,11 @@ export function adminBranchesPath(adminId: string): string {
   return adminPath(adminId, 'branches');
 }
 
+/** Shops with no menu, and the follow-up email button. */
+export function adminMenuFollowUpPath(adminId: string): string {
+  return adminPath(adminId, 'menu-follow-up');
+}
+
 export function adminAccountStatusPath(adminId: string): string {
   return adminPath(adminId, 'account-status');
 }

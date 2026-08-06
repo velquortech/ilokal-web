@@ -25,7 +25,10 @@ import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import { createServerAdminClient } from '@/supabase/server';
 import { rateLimit } from '@/app/api/helpers/rateLimit';
-import { adminPath, businessProductCataloguesPath } from '@/config/routeConfig';
+import {
+  adminMenuFollowUpPath,
+  businessProductCataloguesPath,
+} from '@/config/routeConfig';
 import { sendMenuFollowUpEmail } from '@/app/api/emails/sendMenuFollowUp';
 import { z } from 'zod';
 
@@ -184,7 +187,7 @@ export async function sendMenuFollowUpAction(
   const admin = await createServerAdminClient();
   const outcome = await sendToBusiness(admin, id, base);
 
-  revalidatePath(adminPath(gate.adminId, 'menu-follow-up'));
+  revalidatePath(adminMenuFollowUpPath(gate.adminId));
   return { ok: true, outcome };
 }
 
@@ -234,7 +237,7 @@ export async function sendMenuFollowUpBatchAction(
   const count = (status: FollowUpOutcome['status']) =>
     outcomes.filter((o) => o.status === status).length;
 
-  revalidatePath(adminPath(gate.adminId, 'menu-follow-up'));
+  revalidatePath(adminMenuFollowUpPath(gate.adminId));
   return {
     ok: true,
     sent: count('sent'),

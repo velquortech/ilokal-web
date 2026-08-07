@@ -1929,6 +1929,14 @@ export type Database = {
           redemptions: number
         }[]
       }
+      analytics_platform_growth: {
+        Args: { p_months?: number }
+        Returns: {
+          businesses: number
+          month_start: string
+          users: number
+        }[]
+      }
       analytics_rating_summary: {
         Args: { p_business_id: string }
         Returns: {

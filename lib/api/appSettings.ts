@@ -11,11 +11,23 @@ import { isDynamicUsageError } from '@/lib/utils/dynamicUsage';
 export interface RegistrationSettings {
   requireBusinessDocuments: boolean;
   autoVerifyBusinesses: boolean;
+  /**
+   * The flags could not be read, so the values above are the strict fallbacks
+   * rather than what an admin configured.
+   *
+   * Additive and optional, so every existing caller is unaffected: for the
+   * registration flow the fallbacks ARE the right answer (they can only make
+   * the flow stricter). It matters for readers that use a flag to decide
+   * whether a surface is meaningful at all, where falling back silently means
+   * inventing a state — see the admin dashboard's review-queue card.
+   */
+  failed?: boolean;
 }
 
 const FALLBACKS: RegistrationSettings = {
   requireBusinessDocuments: true,
   autoVerifyBusinesses: false,
+  failed: true,
 };
 
 /**

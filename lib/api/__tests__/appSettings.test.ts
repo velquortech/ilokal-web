@@ -66,18 +66,26 @@ describe('getRegistrationSettings', () => {
   it('falls back to strict defaults when rows are missing', async () => {
     mockSettingsRows(null);
 
+    // `failed` rides along so a caller that uses a flag to decide whether a
+    // surface is meaningful can tell "an admin configured this" from "we
+    // could not read it". The two flag VALUES stay strict either way.
     await expect(getRegistrationSettings()).resolves.toEqual({
       requireBusinessDocuments: true,
       autoVerifyBusinesses: false,
+      failed: true,
     });
   });
 
   it('falls back to strict defaults on query error', async () => {
     mockSettingsRows(null, { message: 'boom' });
 
+    // `failed` rides along so a caller that uses a flag to decide whether a
+    // surface is meaningful can tell "an admin configured this" from "we
+    // could not read it". The two flag VALUES stay strict either way.
     await expect(getRegistrationSettings()).resolves.toEqual({
       requireBusinessDocuments: true,
       autoVerifyBusinesses: false,
+      failed: true,
     });
   });
 
@@ -108,6 +116,9 @@ describe('getRegistrationSettings', () => {
     // and the table is invisible to this caller.
     mockSettingsRows({ enable_events: true, enable_bookings: false }, null, []);
 
+    // No `failed` here: both reads SUCCEEDED, they just carried no rows. That
+    // is "not configured", which the strict defaults are the right answer to —
+    // distinct from "we could not read it", which is what `failed` marks.
     await expect(getRegistrationSettings()).resolves.toEqual({
       requireBusinessDocuments: true,
       autoVerifyBusinesses: false,

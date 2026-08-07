@@ -154,9 +154,30 @@ follow-up email already sends people to.
       satisfies the coupon-access invariant
 
 ### Phase 4 — measurement
-- [ ] **RM18** — per-step reach + add-form open/save counters
-- [ ] **RM19** — verify the checklist and the admin follow-up page behave for a
-      shop that arrives with a menu
+- [x] **RM19** — verified against the live database, and pinned as block 12 of
+      `supabase/tests/menu_followup.test.sql`: a shop that registers with a
+      menu is **not** listed by `admin_businesses_missing_menu` and is refused
+      by the send-time re-check, while a shop with no offerings still is — so
+      the backstop keeps covering everyone who registered before this shipped.
+      The assertion was proven to fail by writing the item `unlisted`, which is
+      exactly the RM4 hazard.
+- [ ] **RM18** — ⛔ **BLOCKED on a schema decision, not on effort.**
+      `view_events` cannot hold wizard funnel events, and this is now settled
+      rather than suspected: its CHECK is
+      `(business_id IS NULL) <> (product_id IS NULL)`, so every row must name a
+      business or a product — and a wizard step event has **neither**, because
+      the business does not exist until final submit. It also carries no
+      event-type column, and its two `uq_*_daily` unique indexes would collapse
+      repeated funnel events into one per day, which is the opposite of what a
+      funnel counts.
+      So RM18 needs a **new table**, i.e. a migration, i.e. human approval —
+      and a funnel table with the wrong grain is worse than none, because it is
+      approved once and then lived with. Decide before building:
+      1. Grain — one row per (step, session) or a counter per step?
+      2. Identity — the owner is authenticated at step 1, but the interesting
+         drop-offs may be people who never signed up at all.
+      3. Retention — funnel rows accumulate forever unless something prunes
+         them (`prune_notification_outbox` is the precedent).
 
 ---
 
@@ -169,8 +190,11 @@ follow-up email already sends people to.
    fixed menu")? Some verticals genuinely have none — a quote-only pest control
    operator. `on_request` covers the price, but not the "I sell one bespoke
    thing" case.
-3. **RM18** — is `view_events` the right home for wizard funnel counters, or
-   does that table mean something narrower?
+3. **RM18** — ~~is `view_events` the right home for wizard funnel counters?~~
+   **Answered: no.** Its CHECK requires a business or product id and a wizard
+   step has neither; its daily unique indexes would dedupe the very events a
+   funnel counts. A new table is needed, which makes this a migration — see
+   the three questions under phase 4 before writing one.
 4. **RM20** — MF11 (unsubscribe/CAN-SPAM) is still undecided and still gates the
    backstop for every shop that registered before this ships.
 

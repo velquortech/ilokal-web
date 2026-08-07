@@ -1,5 +1,13 @@
-import { createServerSupabaseClient } from '@/supabase/server';
-import type { PlatformAnalytics } from '@/lib/types';
+import {
+  createAnalyticsSupabaseClient,
+  createServerSupabaseClient,
+} from '@/supabase/server';
+import { assertAuthorized } from '@/lib/utils/auth';
+import type {
+  AdminDashboardSummary,
+  PlatformAnalytics,
+  PlatformGrowth,
+} from '@/lib/types';
 
 export async function getPlatformOverview(): Promise<PlatformAnalytics> {
   const supabase = await createServerSupabaseClient();
@@ -136,124 +144,144 @@ export async function getBusinessMetrics() {
 }
 
 /**
- * Manila's UTC offset, fixed.
+ * The filter methods these counts actually use.
  *
- * Duplicated from `lib/utils/eventSchedule.ts` rather than imported: that
- * module is about a `datetime-local` form value and pulling it in here would
- * drag the whole event-schedule surface into an admin query for one constant.
- * The Philippines has not observed daylight saving since 1978 and sits at
- * +08:00 year-round, so the literal is exact.
+ * A narrow local shape rather than PostgREST's own builder type: chaining that
+ * generic through a callback makes TypeScript give up with "type instantiation
+ * is excessively deep". Only the three methods used here are declared, so a
+ * call site cannot quietly reach for something unvalidated.
  */
-const MANILA_OFFSET = '+08:00';
-
-export interface GrowthBucket {
-  /** Short month label for the axis, e.g. "Jan". */
-  month: string;
-  users: number;
-  businesses: number;
+interface CountFilter {
+  eq: (column: string, value: string) => CountFilter;
+  is: (column: string, value: null) => CountFilter;
+  gte: (column: string, value: string) => CountFilter;
 }
 
-export interface PlatformGrowth {
-  buckets: GrowthBucket[];
-  /**
-   * True when any count failed.
-   *
-   * Reported separately so the chart can say "we couldn't load this" instead
-   * of drawing a flat line at zero — on an admin dashboard those look
-   * identical and one of them is a decision made on bad information.
-   */
-  failed: boolean;
+/**
+ * One head-only count, with its error kept rather than collapsed.
+ *
+ * Four readers in this file count the same two tables, and the scoping rules
+ * (`archived_at IS NULL`, a status filter) were spelled out separately in each
+ * — which is how two cards on one screen ended up disagreeing about what a
+ * "business" is. One helper, one shape.
+ *
+ * `head: true` throughout: `select(...)` then `.length` silently truncates at
+ * the PostgREST 1000-row cap.
+ */
+async function countRows(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  table: 'profiles' | 'businesses',
+  apply?: (query: CountFilter) => CountFilter,
+): Promise<{ count: number | null; failed: boolean }> {
+  try {
+    const base = supabase
+      .from(table)
+      .select('id', { count: 'exact', head: true }) as unknown as CountFilter;
+
+    const { count, error } = (await (apply
+      ? apply(base)
+      : base)) as unknown as { count: number | null; error: unknown };
+
+    if (error) {
+      console.error(`[countRows] ${table}`, error);
+      return { count: null, failed: true };
+    }
+    return { count: Number(count ?? 0) || 0, failed: false };
+  } catch (error: unknown) {
+    // `createServerSupabaseClient` throws on missing env, and a thrown read
+    // here would 500 a dashboard whose whole point is degrading to an em dash.
+    console.error(`[countRows] ${table} threw`, error);
+    return { count: null, failed: true };
+  }
 }
+
+export const MAX_GROWTH_MONTHS = 12;
 
 /**
  * New signups and new businesses per calendar month.
  *
- * Head-only COUNTS, one per bucket per entity — never `select('created_at')`
- * then group in Node. PostgREST caps returned rows at 1000, so a fetch-then-
- * group version starts silently under-reporting the moment the platform has
- * more than a thousand signups, which is exactly the failure the `analytics_*`
- * RPCs were written to remove. A count carries no rows, so it stays exact at
- * any size — which is also why this needs no migration.
+ * One `analytics_platform_growth` call — the aggregation is a grouped scan in
+ * SQL, not twelve head-only counts from Node. The counts version was correct
+ * (a count cannot truncate the way a fetch-then-group can) but it was twelve
+ * sequential scans per render, each re-evaluating `is_admin()` per row under
+ * RLS, and `profiles` carries two admin policies so that cost was paid twice.
  *
- * Month boundaries are pinned to Manila. The server runs in UTC, so an
- * unpinned boundary files eight hours of every month's signups into the
- * previous one.
+ * The RPC is SECURITY DEFINER and reads every profile and business on the
+ * platform, so it is service_role only and **the caller proves admin first** —
+ * the standing contract for every `analytics_*` function.
+ *
+ * No `now` parameter: month boundaries are Postgres's job now, computed in
+ * Asia/Manila inside the function. A clock passed from Node would only be able
+ * to disagree with it.
  */
-export async function getPlatformGrowth(
-  months = 6,
-  now: Date = new Date(),
-): Promise<PlatformGrowth> {
-  const supabase = await createServerSupabaseClient();
-
-  // Boundaries are built from Manila's calendar, not the server's. `now` is
-  // shifted into Manila first so that a request made at 23:00 UTC — already
-  // the next day in Manila — lands in the right month.
-  const manilaNow = new Date(now.getTime() + 8 * 60 * 60 * 1000);
-  const anchorYear = manilaNow.getUTCFullYear();
-  const anchorMonth = manilaNow.getUTCMonth();
-
-  const edges: { label: string; from: string; to: string }[] = [];
-  for (let offset = months - 1; offset >= 0; offset--) {
-    const start = new Date(Date.UTC(anchorYear, anchorMonth - offset, 1));
-    const end = new Date(Date.UTC(anchorYear, anchorMonth - offset + 1, 1));
-    const iso = (d: Date) =>
-      `${d.toISOString().slice(0, 10)}T00:00:00${MANILA_OFFSET}`;
-    edges.push({
-      label: start.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' }),
-      from: new Date(iso(start)).toISOString(),
-      to: new Date(iso(end)).toISOString(),
-    });
-  }
-
-  const results = await Promise.all(
-    edges.flatMap((edge) => [
-      supabase
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .gte('created_at', edge.from)
-        .lt('created_at', edge.to),
-      supabase
-        .from('businesses')
-        .select('id', { count: 'exact', head: true })
-        .gte('created_at', edge.from)
-        .lt('created_at', edge.to),
-    ]),
+export async function getPlatformGrowth(months = 6): Promise<PlatformGrowth> {
+  const requested = Math.min(
+    Math.max(Math.trunc(months) || 6, 1),
+    MAX_GROWTH_MONTHS,
   );
 
-  let failed = false;
-  const buckets = edges.map((edge, index) => {
-    const users = results[index * 2];
-    const businesses = results[index * 2 + 1];
-    if (users.error || businesses.error) {
-      failed = true;
-      if (users.error)
-        console.error('[getPlatformGrowth] users', edge.label, users.error);
-      if (businesses.error)
-        console.error(
-          '[getPlatformGrowth] businesses',
-          edge.label,
-          businesses.error,
-        );
-    }
-    return {
-      month: edge.label,
-      users: Number(users.count ?? 0) || 0,
-      businesses: Number(businesses.count ?? 0) || 0,
-    };
-  });
+  try {
+    // Admin proven BEFORE the RLS-bypassing client is built, never after.
+    const auth = await assertAuthorized(undefined, { roles: ['admin'] });
+    if (!auth.authorized) return { buckets: [], failed: true };
 
-  return { buckets, failed };
+    const supabase = await createAnalyticsSupabaseClient();
+    const { data, error } = await supabase.rpc('analytics_platform_growth', {
+      p_months: requested,
+    });
+
+    if (error) {
+      console.error('[getPlatformGrowth]', error);
+      return { buckets: [], failed: true };
+    }
+
+    const rows = (data ?? []) as {
+      month_start: string;
+      users: number;
+      businesses: number;
+    }[];
+
+    // The RPC already returns Manila-bucketed months oldest-first; the label is
+    // formatted from the date string directly rather than through `new Date()`,
+    // which would re-interpret a bare `YYYY-MM-DD` as UTC midnight and can slip
+    // a month backwards west of Greenwich.
+    const spansYears =
+      new Set(rows.map((row) => row.month_start.slice(0, 4))).size > 1;
+
+    return {
+      buckets: rows.map((row) => ({
+        month: formatMonthLabel(row.month_start, spansYears),
+        users: Number(row.users ?? 0) || 0,
+        businesses: Number(row.businesses ?? 0) || 0,
+      })),
+      failed: false,
+    };
+  } catch (error: unknown) {
+    console.error('[getPlatformGrowth] threw', error);
+    return { buckets: [], failed: true };
+  }
 }
 
-export interface AdminDashboardSummary {
-  total_users: number;
-  new_users_last_30_days: number;
-  total_businesses: number;
-  verified_businesses: number;
-  /** Shops still waiting on a human decision. */
-  pending_businesses: number;
-  /** Every count above failed to load — render nothing rather than zeros. */
-  failed: boolean;
+const MONTH_NAMES = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+/** `2026-08-01` → `Aug`, or `Aug 26` when the window crosses a year. */
+function formatMonthLabel(monthStart: string, spansYears: boolean): string {
+  const [year, month] = monthStart.split('-');
+  const name = MONTH_NAMES[Number(month) - 1] ?? month;
+  return spansYears ? `${name} ${year.slice(2)}` : name;
 }
 
 /**
@@ -263,6 +291,11 @@ export interface AdminDashboardSummary {
  * and this app has no billing surface — the billing routes were deleted as
  * dead in the 2026-07-17 audit, `payments` is empty, and a "₱0" card would
  * advertise a feature that does not exist.
+ *
+ * Every count excludes archived rows. A soft-deleted account (mobile
+ * `DELETE /me` sets `archived_at` and the web login gate 403s it) is not a
+ * user anyone should be counting, and leaving it out of the total while the
+ * verified count filters it is how two cards in one row disagree.
  */
 export async function getAdminDashboardSummary(
   now: Date = new Date(),
@@ -273,36 +306,27 @@ export async function getAdminDashboardSummary(
   ).toISOString();
 
   const [total, recent, businesses, verified, pending] = await Promise.all([
-    supabase.from('profiles').select('id', { count: 'exact', head: true }),
-    supabase
-      .from('profiles')
-      .select('id', { count: 'exact', head: true })
-      .gte('created_at', thirtyDaysAgo),
-    supabase.from('businesses').select('id', { count: 'exact', head: true }),
-    supabase
-      .from('businesses')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'verified')
-      .is('archived_at', null),
-    supabase
-      .from('businesses')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'pending')
-      .is('archived_at', null),
+    countRows(supabase, 'profiles', (q) => q.is('archived_at', null)),
+    countRows(supabase, 'profiles', (q) =>
+      q.is('archived_at', null).gte('created_at', thirtyDaysAgo),
+    ),
+    countRows(supabase, 'businesses', (q) => q.is('archived_at', null)),
+    countRows(supabase, 'businesses', (q) =>
+      q.eq('status', 'verified').is('archived_at', null),
+    ),
+    countRows(supabase, 'businesses', (q) =>
+      q.eq('status', 'pending').is('archived_at', null),
+    ),
   ]);
 
-  const reads = [total, recent, businesses, verified, pending];
-  const failed = reads.some((read) => read.error);
-  reads.forEach((read) => {
-    if (read.error) console.error('[getAdminDashboardSummary]', read.error);
-  });
-
   return {
-    total_users: Number(total.count ?? 0) || 0,
-    new_users_last_30_days: Number(recent.count ?? 0) || 0,
-    total_businesses: Number(businesses.count ?? 0) || 0,
-    verified_businesses: Number(verified.count ?? 0) || 0,
-    pending_businesses: Number(pending.count ?? 0) || 0,
-    failed,
+    total_users: total.count,
+    new_users_last_30_days: recent.count,
+    total_businesses: businesses.count,
+    verified_businesses: verified.count,
+    pending_businesses: pending.count,
+    failed: [total, recent, businesses, verified, pending].some(
+      (read) => read.failed,
+    ),
   };
 }

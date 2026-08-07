@@ -71,9 +71,14 @@ a plausible-looking substitute:
 **No revenue card** (AD8). There is no billing in this app. Adding "₱0" would
 advertise a feature that does not exist — the `ProCard` mistake.
 
-**No migration.** Head-only bucket counts make the growth chart exact without
-one (F7), and cloud is already 22 migrations behind. Adding a 23rd for a chart
-would be the wrong trade.
+**~~No migration.~~ Reversed in review.** Head-only counts are exact — a count
+cannot truncate the way a fetch-then-group can — so F7 was right that they need
+no migration. What it missed is that neither `profiles.created_at` nor
+`businesses.created_at` is indexed, so twelve counts is twelve **sequential
+scans**, each re-evaluating `is_admin()` per row under RLS, and `profiles`
+carries two admin policies so that cost is paid twice. `20260807140000` adds
+`analytics_platform_growth` (one grouped scan, Manila-bucketed, archived rows
+excluded) plus the two indexes. Applied on LOCAL only; needs approval.
 
 ---
 

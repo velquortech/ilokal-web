@@ -1,4 +1,6 @@
+import { Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Users, Building2, BadgeCheck, UserPlus, Clock } from 'lucide-react';
 import {
   getAdminDashboardSummary,
@@ -14,27 +16,62 @@ import { GrowthCharts } from './components/GrowthChart';
  * pending documents, +18% growth, and both charts from a six-row const. The
  * data layer to replace them already existed and nothing rendered it.
  *
- * A server component: the reads are admin-scoped and RLS already grants an
- * admin full access to `profiles` and `businesses`, so this needs neither the
- * service-role client nor a client-side fetch. It calls `lib/api` directly
- * rather than `/api/admin/analytics/*` — an RSC hitting our own HTTP route is
- * a network round trip to ourselves.
+ * A server component. The stat cards read through the RLS-scoped client — an
+ * admin already has full access to `profiles` and `businesses` — while the
+ * growth chart goes through a service_role RPC that proves the admin role
+ * first. Both call `lib/api` directly rather than `/api/admin/analytics/*`; an
+ * RSC hitting our own HTTP route is a round trip to ourselves.
+ *
+ * No `export const dynamic`: the layout already declares it, and every read
+ * awaits `cookies()`, which opts the route out of static rendering anyway.
  */
-export const dynamic = 'force-dynamic';
 
-/** An em dash, not a zero — see `failed` on the query. */
-function StatValue({ value, failed }: { value: number; failed: boolean }) {
+/**
+ * An em dash, never a zero.
+ *
+ * `null` means this figure failed to load, and on a dashboard people act on,
+ * "0" and "the query broke" must not look the same. The dash is `aria-hidden`
+ * with real text beside it — on its own a screen reader announces the card
+ * title and then silence.
+ */
+function StatValue({ value }: { value: number | null }) {
+  if (value === null) {
+    return (
+      <div className="text-2xl font-bold">
+        <span aria-hidden="true">—</span>
+        <span className="sr-only">Unavailable</span>
+      </div>
+    );
+  }
+  return <div className="text-2xl font-bold">{value.toLocaleString()}</div>;
+}
+
+/**
+ * The charts are awaited separately so the four cheap card counts are not held
+ * behind the platform-growth aggregate.
+ */
+async function GrowthSection() {
+  const growth = await getPlatformGrowth();
+  return <GrowthCharts buckets={growth.buckets} failed={growth.failed} />;
+}
+
+function GrowthSkeleton() {
   return (
-    <div className="text-2xl font-bold">
-      {failed ? '—' : value.toLocaleString()}
+    <div
+      className="grid grid-cols-1 gap-6 lg:grid-cols-2"
+      role="status"
+      aria-busy="true"
+    >
+      <span className="sr-only">Loading growth charts</span>
+      <Skeleton className="h-96 w-full rounded-xl" aria-hidden="true" />
+      <Skeleton className="h-96 w-full rounded-xl" aria-hidden="true" />
     </div>
   );
 }
 
 export default async function DashboardPage() {
-  const [summary, growth, settings] = await Promise.all([
+  const [summary, settings] = await Promise.all([
     getAdminDashboardSummary(),
-    getPlatformGrowth(),
     getRegistrationSettings(),
   ]);
 
@@ -48,7 +85,15 @@ export default async function DashboardPage() {
    * flag makes it meaningful, or when something is genuinely waiting.
    */
   const showReviewQueue =
-    !settings.autoVerifyBusinesses || summary.pending_businesses > 0;
+    // Unknown flags: do not invent a queue. The strict fallback is
+    // `autoVerifyBusinesses: false`, which is right for registration (it can
+    // only be stricter) and wrong here, where it would conjure the permanently
+    // zero card this fork exists to avoid.
+    (!settings.failed && !settings.autoVerifyBusinesses) ||
+    // Unknown count: show the card with an em dash rather than deciding, from
+    // a failed read, that nothing is pending.
+    summary.failed ||
+    (summary.pending_businesses ?? 0) > 0;
 
   return (
     <div className="flex flex-1 flex-col space-y-6">
@@ -75,7 +120,7 @@ export default async function DashboardPage() {
             <Users className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <StatValue value={summary.total_users} failed={summary.failed} />
+            <StatValue value={summary.total_users} />
             <p className="text-muted-foreground text-xs">
               Everyone with an account
             </p>
@@ -93,10 +138,7 @@ export default async function DashboardPage() {
             {/* Replaces "Growth Rate +18%", which had no definition anywhere —
                 no formula, no period, no source. A count over a stated window
                 is a number someone can check. */}
-            <StatValue
-              value={summary.new_users_last_30_days}
-              failed={summary.failed}
-            />
+            <StatValue value={summary.new_users_last_30_days} />
             <p className="text-muted-foreground text-xs">In the last 30 days</p>
           </CardContent>
         </Card>
@@ -107,10 +149,7 @@ export default async function DashboardPage() {
             <Building2 className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <StatValue
-              value={summary.total_businesses}
-              failed={summary.failed}
-            />
+            <StatValue value={summary.total_businesses} />
             <p className="text-muted-foreground text-xs">Registered shops</p>
           </CardContent>
         </Card>
@@ -124,10 +163,7 @@ export default async function DashboardPage() {
               <Clock className="text-muted-foreground h-4 w-4" />
             </CardHeader>
             <CardContent>
-              <StatValue
-                value={summary.pending_businesses}
-                failed={summary.failed}
-              />
+              <StatValue value={summary.pending_businesses} />
               <p className="text-muted-foreground text-xs">
                 Shops pending verification
               </p>
@@ -142,10 +178,7 @@ export default async function DashboardPage() {
               <BadgeCheck className="text-muted-foreground h-4 w-4" />
             </CardHeader>
             <CardContent>
-              <StatValue
-                value={summary.verified_businesses}
-                failed={summary.failed}
-              />
+              <StatValue value={summary.verified_businesses} />
               <p className="text-muted-foreground text-xs">
                 Live and visible to shoppers
               </p>
@@ -154,7 +187,9 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      <GrowthCharts buckets={growth.buckets} failed={growth.failed} />
+      <Suspense fallback={<GrowthSkeleton />}>
+        <GrowthSection />
+      </Suspense>
     </div>
   );
 }

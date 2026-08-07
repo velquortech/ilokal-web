@@ -268,7 +268,13 @@ export type {
 } from './rating';
 
 // Analytics Types
-export type { PlatformAnalytics, AdminAnalyticsResponse } from './analytics';
+export type {
+  PlatformAnalytics,
+  AdminAnalyticsResponse,
+  GrowthBucket,
+  PlatformGrowth,
+  AdminDashboardSummary,
+} from './analytics';
 export type {
   BusinessDashboard,
   ProductPerformance,

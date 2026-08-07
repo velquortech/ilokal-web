@@ -18,7 +18,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import type { GrowthBucket } from '@/lib/api/admin/analyticsQuery';
+import type { GrowthBucket } from '@/lib/types';
 
 /**
  * The two growth charts.
@@ -41,6 +41,43 @@ interface GrowthChartsProps {
    * them gets acted on.
    */
   failed?: boolean;
+}
+
+/**
+ * The same numbers as a table, for anyone not reading the SVG.
+ *
+ * recharts renders a chart as unlabelled paths, so `accessibilityLayer` alone
+ * gives keyboard traversal but still nothing to read. This is the actual text
+ * alternative; it is `sr-only` rather than hidden so it is reachable.
+ */
+function ChartDataTable({
+  caption,
+  buckets,
+}: {
+  caption: string;
+  buckets: GrowthBucket[];
+}) {
+  return (
+    <table className="sr-only">
+      <caption>{caption}</caption>
+      <thead>
+        <tr>
+          <th scope="col">Month</th>
+          <th scope="col">New users</th>
+          <th scope="col">New businesses</th>
+        </tr>
+      </thead>
+      <tbody>
+        {buckets.map((bucket) => (
+          <tr key={bucket.month}>
+            <th scope="row">{bucket.month}</th>
+            <td>{bucket.users}</td>
+            <td>{bucket.businesses}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 }
 
 function ChartUnavailable({ reason }: { reason: string }) {
@@ -76,7 +113,7 @@ export function GrowthCharts({ buckets, failed = false }: GrowthChartsProps) {
       >
         {body(
           <ChartContainer config={chartConfig} className="min-h-75 w-full">
-            <BarChart data={buckets}>
+            <BarChart data={buckets} accessibilityLayer>
               <CartesianGrid vertical={false} />
               <XAxis
                 dataKey="month"
@@ -107,6 +144,12 @@ export function GrowthCharts({ buckets, failed = false }: GrowthChartsProps) {
             </BarChart>
           </ChartContainer>,
         )}
+        {!failed && hasAnyActivity && (
+          <ChartDataTable
+            caption="New users and businesses per month"
+            buckets={buckets}
+          />
+        )}
       </ChartCard>
 
       <ChartCard
@@ -115,7 +158,7 @@ export function GrowthCharts({ buckets, failed = false }: GrowthChartsProps) {
       >
         {body(
           <ChartContainer config={chartConfig} className="min-h-75 w-full">
-            <AreaChart data={buckets}>
+            <AreaChart data={buckets} accessibilityLayer>
               <CartesianGrid vertical={false} />
               <XAxis
                 dataKey="month"
@@ -143,6 +186,12 @@ export function GrowthCharts({ buckets, failed = false }: GrowthChartsProps) {
               />
             </AreaChart>
           </ChartContainer>,
+        )}
+        {!failed && hasAnyActivity && (
+          <ChartDataTable
+            caption="Cumulative view of new users and businesses per month"
+            buckets={buckets}
+          />
         )}
       </ChartCard>
     </div>

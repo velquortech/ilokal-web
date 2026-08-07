@@ -338,6 +338,17 @@ export function adminMenuFollowUpPath(adminId: string): string {
   return adminPath(adminId, 'menu-follow-up');
 }
 
+/**
+ * The welcome-post composer.
+ *
+ * `ids` preselects shops so the dashboard prompt lands on real work rather
+ * than an empty picker the admin has to refill.
+ */
+export function adminWelcomePostsPath(adminId: string, ids?: string[]): string {
+  const base = adminPath(adminId, 'welcome-posts');
+  return ids?.length ? `${base}?ids=${ids.join(',')}` : base;
+}
+
 export function adminAccountStatusPath(adminId: string): string {
   return adminPath(adminId, 'account-status');
 }

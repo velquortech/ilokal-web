@@ -7,6 +7,7 @@ import {
   CalendarDays,
   MailWarning,
   Settings,
+  Sparkles,
 } from 'lucide-react';
 import { NavItem } from '@/components/custom/Nav';
 
@@ -47,6 +48,11 @@ export const mainNavigation: NavItem[] = [
     title: 'Menu Follow-up',
     href: '/admin/menu-follow-up',
     icon: MailWarning,
+  },
+  {
+    title: 'Welcome Posts',
+    href: '/admin/welcome-posts',
+    icon: Sparkles,
   },
 ];
 

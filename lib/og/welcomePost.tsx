@@ -35,7 +35,14 @@ export type PostRatio = keyof typeof POST_RATIOS;
 
 export interface PostCard {
   name: string;
-  /** Absolute URL. Satori fetches this; it cannot read a bucket path. */
+  /**
+   * A `data:image/png` URL, or null for the initials card.
+   *
+   * ⚠️ PNG specifically, and a data URL specifically. The renderer cannot parse
+   * WebP — which is every logo the app stores — and letting it fetch a remote
+   * URL itself means an un-timed-out request to a host an owner chose. Both are
+   * resolved in `lib/og/remoteImage.ts` before the render starts.
+   */
   logoUrl: string | null;
   /** Off when the logo is already a wordmark carrying the name. */
   showName: boolean;

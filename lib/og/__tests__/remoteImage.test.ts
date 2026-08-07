@@ -102,12 +102,22 @@ describe('fetchImageAsDataUrl', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('returns a data url for an allowed image', async () => {
+  it('returns a PNG data url for an allowed image', async () => {
+    // A real encoded image, not a byte stub: the bytes are decoded and
+    // re-encoded now, so a stub that no decoder can read is indistinguishable
+    // from a corrupt upload — and is correctly answered with null.
+    const sharp = (await import('sharp')).default;
+    const png = await sharp({
+      create: { width: 8, height: 8, channels: 3, background: '#fff' },
+    })
+      .png()
+      .toBuffer();
+
     const { fetchImageAsDataUrl } = await load();
-    fetchMock.mockResolvedValue(imageResponse());
+    fetchMock.mockResolvedValue(imageResponse(png, 'image/png'));
 
     const result = await fetchImageAsDataUrl(`${STORAGE}/logo.png`);
-    expect(result).toBe(`data:image/png;base64,${PNG.toString('base64')}`);
+    expect(result).toMatch(/^data:image\/png;base64,/);
   });
 
   it('carries a timeout and refuses to follow a redirect', async () => {
@@ -164,5 +174,57 @@ describe('fetchImageAsDataUrl', () => {
     expect(logged).toContain('https://evil.example');
     expect(logged).not.toContain('secret-path');
     expect(logged).not.toContain('token=abc');
+  });
+});
+
+describe('the renderer cannot read WebP, and every stored logo is WebP', () => {
+  /**
+   * This is what took the route down in production.
+   *
+   * `convertToWebP` re-encodes every upload, so `shop-logos` holds nothing but
+   * WebP — and Satori throws `TypeError: u2 is not iterable` on one, part-way
+   * through its image parser. The throw lands in the streaming render body, so
+   * it was not a 500 anyone could read: the function died and Vercel reported
+   * `FUNCTION_INVOCATION_FAILED` with no application log at all.
+   */
+  it('hands back a PNG when the source is a WebP', async () => {
+    const sharp = (await import('sharp')).default;
+    const webp = await sharp({
+      create: { width: 64, height: 64, channels: 3, background: '#fff' },
+    })
+      .webp()
+      .toBuffer();
+
+    const { fetchImageAsDataUrl } = await load();
+    fetchMock.mockResolvedValue(imageResponse(webp, 'image/webp'));
+
+    const result = await fetchImageAsDataUrl(`${STORAGE}/logo.webp`);
+    expect(result).toMatch(/^data:image\/png;base64,/);
+    expect(result).not.toContain('image/webp');
+  });
+
+  it('downscales an oversized logo rather than shipping every pixel', async () => {
+    const sharp = (await import('sharp')).default;
+    const big = await sharp({
+      create: { width: 4000, height: 4000, channels: 3, background: '#fff' },
+    })
+      .png()
+      .toBuffer();
+
+    const { fetchImageAsDataUrl } = await load();
+    fetchMock.mockResolvedValue(imageResponse(big, 'image/png'));
+
+    const result = await fetchImageAsDataUrl(`${STORAGE}/logo.png`);
+    const decoded = Buffer.from(result!.split(',')[1], 'base64');
+    const meta = await sharp(decoded).metadata();
+    expect(meta.width).toBeLessThanOrEqual(1024);
+  });
+
+  it('answers null for bytes no decoder can read', async () => {
+    const { fetchImageAsDataUrl } = await load();
+    fetchMock.mockResolvedValue(
+      imageResponse(Buffer.from('not an image at all'), 'image/png'),
+    );
+    expect(await fetchImageAsDataUrl(`${STORAGE}/logo.png`)).toBeNull();
   });
 });

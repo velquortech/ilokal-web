@@ -468,3 +468,80 @@ export async function createBusinessRegistrationOfferings(
 
   return { created: count ?? rows.length };
 }
+
+/**
+ * Phase 4 — the optional launch deal entered in the registration wizard.
+ *
+ * Idempotent by CODE within the business, for the same reason the offerings
+ * write is idempotent by name: the client replays its whole submission after a
+ * 404 and can be re-submitted after a mid-flight failure, so this must be safe
+ * to call twice.
+ */
+export interface RegistrationDealInput {
+  code: string;
+  description?: string;
+  discount_type: 'percentage' | 'fixed_amount';
+  discount_value: number;
+  duration_days: number;
+  publish: boolean;
+}
+
+export async function createBusinessRegistrationDeal(
+  businessId: string,
+  deal: RegistrationDealInput,
+) {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Unauthorized');
+
+  const { data: business, error: fetchError } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('id', businessId)
+    .eq('owner_id', user.id)
+    .is('archived_at', null)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!business) throw new Error('Business not found');
+
+  const code = deal.code.trim().toUpperCase();
+
+  const { data: existing, error: existingError } = await supabase
+    .from('coupons')
+    .select('id')
+    .eq('business_id', business.id)
+    .eq('code', code)
+    .is('archived_at', null)
+    .maybeSingle();
+  if (existingError) throw existingError;
+  if (existing) return { created: false };
+
+  const startDate = new Date();
+  const expiryDate = new Date(
+    startDate.getTime() + deal.duration_days * 24 * 60 * 60 * 1000,
+  );
+
+  const { error } = await supabase.from('coupons').insert({
+    business_id: business.id,
+    branch_id: null,
+    promotion_type: 'coupon',
+    // 🔴 The owner's explicit choice, defaulting to draft. A published coupon
+    // inside its window enters `mobile_deals` — the app's Deals front page —
+    // and is immediately redeemable: a real `user_redemptions` row, a real
+    // cashier code, a real owner notification. Never assume this.
+    status: deal.publish ? 'published' : 'draft',
+    code,
+    description: deal.description?.trim() || null,
+    discount: { type: deal.discount_type, value: deal.discount_value },
+    usage_scope: 'any',
+    scope_values: null,
+    start_date: startDate.toISOString(),
+    expiry_date: expiryDate.toISOString(),
+  });
+  if (error) throw error;
+
+  return { created: true };
+}

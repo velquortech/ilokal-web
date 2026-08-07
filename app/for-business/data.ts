@@ -25,6 +25,9 @@ export const STEP_FIELDS: Record<RegistrationStepId, string[]> = {
   // Named in the generic, because the reader has not picked a vertical yet —
   // a salon has no "menu". Inside the wizard the step uses the shop's own noun.
   offerings: ['One item to start (name and price)'],
+  // Optional, and the page says so — a reader counting what registering costs
+  // them should not add this to the total.
+  deal: ['Optional — a launch discount, or skip it'],
   review: ['Everything above, one last look'],
 };
 

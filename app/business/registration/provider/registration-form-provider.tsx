@@ -92,6 +92,7 @@ const DOCUMENT_FIELDS: FieldPath<BusinessProps>[] = [
   'tax_certificate',
 ];
 const OFFERING_FIELDS: FieldPath<BusinessProps>[] = ['offerings'];
+const DEAL_FIELDS: FieldPath<BusinessProps>[] = ['deal'];
 const REVIEW_FIELDS: FieldPath<BusinessProps>[] = ['accepted_terms'];
 
 // Mirrors getSteps(): one field group per step, Documents gated by the flag.
@@ -105,6 +106,7 @@ export function getStepFieldGroups(
         GALLERY_FIELDS,
         DOCUMENT_FIELDS,
         OFFERING_FIELDS,
+        DEAL_FIELDS,
         REVIEW_FIELDS,
       ]
     : [
@@ -112,6 +114,7 @@ export function getStepFieldGroups(
         INFORMATION_FIELDS,
         GALLERY_FIELDS,
         OFFERING_FIELDS,
+        DEAL_FIELDS,
         REVIEW_FIELDS,
       ];
 }
@@ -165,6 +168,8 @@ export function MultiStepFormProvider({
       business_license: undefined,
       tax_certificate: undefined,
       offerings: [],
+      // null = skipped. The step is optional and must never gate Submit.
+      deal: null,
       accepted_terms: false,
     },
   });

@@ -73,28 +73,28 @@ tokens and a token-refresh story. Not until the images are known to be good.
 
 ## 4. Action items
 
-### Phase 1 — render one card, correctly
-- [ ] **WP1/WP2** — add a TTF/OTF/WOFF Pally to `assets/fonts/`, commented as the
+### Phase 1 — render one card, correctly ✅
+- [x] **WP1/WP2** — add a TTF/OTF/WOFF Pally to `assets/fonts/`, commented as the
       server-render copy so it is not mistaken for the duplicate the brand notes forbid
-- [ ] **WP6** — font list with a fallback, so an accent can never render as tofu
-- [ ] **WP3** — logo fetch with a timeout and an initials fallback per card
-- [ ] **WP4/WP5** — `contain` + padding; trim, uppercase, length-keyed size ladder
-- [ ] **WP8** — `GET /api/admin/welcome-post`, admin-guarded, returning `ImageResponse`
-- [ ] Tests: the size ladder at 3 and 29 characters, trim, the initials fallback,
+- [x] **WP6** — font list with a fallback, so an accent can never render as tofu
+- [x] **WP3** — logo fetch with a timeout and an initials fallback per card
+- [x] **WP4/WP5** — `contain` + padding; trim, uppercase, length-keyed size ladder
+- [x] **WP8** — `GET /api/admin/welcome-post`, admin-guarded, returning `ImageResponse`
+- [x] Tests: the size ladder at 3 and 29 characters, trim, the initials fallback,
       and that the route refuses a non-admin
 
-### Phase 2 — the admin surface
-- [ ] Page at `/admin/[adminId]/welcome-posts` — list shops, select 1–2, live preview
-- [ ] **WP7** per-card name toggle · **WP13** 1-up and 2-up variants
-- [ ] **WP11/WP12** ratio switch, 1:1 first with 4:5 behind the same layout
-- [ ] **WP14** download one at a time
-- [ ] **WP16** no storage
+### Phase 2 — the admin surface ✅
+- [x] Page at `/admin/[adminId]/welcome-posts` — list shops, select 1–2, live preview
+- [x] **WP7** per-card name toggle · **WP13** 1-up and 2-up variants
+- [x] **WP11/WP12** ratio switch, 1:1 first with 4:5 behind the same layout
+- [x] **WP14** download one at a time
+- [x] **WP16** no storage
 
-### Phase 3 — the dashboard prompt
-- [ ] A card on the admin dashboard: *"N new businesses registered — create their welcome post"*, linking to the page with those shops preselected
-- [ ] **WP9** absent when the count is zero, and an em dash rather than a confident
+### Phase 3 — the dashboard prompt ✅
+- [x] A card on the admin dashboard: *"N new businesses registered — create their welcome post"*, linking to the page with those shops preselected
+- [x] **WP9** absent when the count is zero, and an em dash rather than a confident
       zero when the read fails — the same rule the stat cards now follow
-- [ ] **WP10** "new" = registered recently; revisit once a marker column exists
+- [x] **WP10** "new" = registered recently; revisit once a marker column exists
 
 ### Phase 4 — only if it earns it
 - [ ] `welcome_post_generated_at` marker (migration → approval)
@@ -103,9 +103,15 @@ tokens and a token-refresh story. Not until the images are known to be good.
 
 ## 5. Open questions
 
-1. **1:1 only for v1, or 1:1 + 4:5 together?** The second is roughly 30% more
-   work, not double.
-2. Where does the Pally TTF come from — the Fontshare download, or converting
-   the existing woff2? The licence covers both; the download is cleaner.
-3. How many days counts as "new" for the dashboard prompt — 7? 14? Until a
-   marker exists this is the only thing stopping a shop being posted twice.
+1. ~~1:1 only, or 1:1 + 4:5?~~ **Both**, behind one parameterised layout.
+2. **The Pally TTF is still missing, and this is the one thing left.** Fetching
+   from Fontshare was declined, and converting the existing `.woff2` locally is
+   not viable: Pally stores `glyf` and `loca` in woff2's *transformed* form, so
+   a converter has to rebuild glyph outlines rather than just decompress — ~300
+   lines of risky code for a brand asset, and no decoder is installed. Until a
+   `Pally-Bold.ttf` (or `.otf` / `.woff`) lands in `assets/fonts/`, the posts
+   render correctly but **off-brand**, and the admin page says so. Dropping the
+   file in is the entire fix; no code changes.
+3. ~~How many days counts as "new"?~~ **14**, in `WELCOME_POST_NEW_DAYS`.
+   Revisit when a `welcome_post_generated_at` marker exists — until then a shop
+   can be posted about twice if nobody is watching.

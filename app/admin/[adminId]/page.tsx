@@ -7,6 +7,14 @@ import {
   getPlatformGrowth,
 } from '@/lib/api/admin/analyticsQuery';
 import { getRegistrationSettings } from '@/lib/api/appSettings';
+import {
+  getWelcomePostCandidates,
+  WELCOME_POST_NEW_DAYS,
+} from '@/lib/api/admin/analyticsQuery';
+import { adminWelcomePostsPath } from '@/config/routeConfig';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { Sparkles } from 'lucide-react';
 import { GrowthCharts } from './components/GrowthChart';
 
 /**
@@ -69,11 +77,30 @@ function GrowthSkeleton() {
   );
 }
 
-export default async function DashboardPage() {
-  const [summary, settings] = await Promise.all([
+export default async function DashboardPage({
+  params,
+}: {
+  params: Promise<{ adminId: string }>;
+}) {
+  const [{ adminId }, summary, settings, welcome] = await Promise.all([
+    params,
     getAdminDashboardSummary(),
     getRegistrationSettings(),
+    getWelcomePostCandidates(),
   ]);
+
+  /**
+   * Only when there is genuinely something to post about.
+   *
+   * This is the "Pending Documents" rule, one PR old: a card that is always
+   * present and always zero trains an admin to stop reading that corner of the
+   * screen. A failed read shows nothing rather than a confident "0 new" — the
+   * prompt is an invitation, and inventing one is worse than missing one.
+   */
+  const newShops = welcome.failed
+    ? []
+    : welcome.rows.slice(0, welcome.newCount);
+  const showWelcomePrompt = newShops.length > 0;
 
   /**
    * The review queue is only a real queue when something can enter it.
@@ -103,6 +130,40 @@ export default async function DashboardPage() {
           Welcome back to iLokal Admin Panel
         </p>
       </div>
+
+      {showWelcomePrompt && (
+        <Card className="border-primary/40 bg-primary/5">
+          <CardContent className="flex flex-col items-start justify-between gap-4 py-5 sm:flex-row sm:items-center">
+            <div className="flex items-start gap-3">
+              <Sparkles className="text-primary mt-0.5 h-5 w-5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium">
+                  {newShops.length === 1
+                    ? '1 new business registered'
+                    : `${newShops.length} new businesses registered`}
+                </p>
+                <p className="text-muted-foreground text-sm">
+                  Create their welcome post for Facebook, Instagram, Threads or
+                  LinkedIn — registered in the last {WELCOME_POST_NEW_DAYS}{' '}
+                  days.
+                </p>
+              </div>
+            </div>
+            {/* The two most recent are preselected, so the click lands on real
+                work instead of an empty picker. */}
+            <Button asChild className="shrink-0">
+              <Link
+                href={adminWelcomePostsPath(
+                  adminId,
+                  newShops.slice(0, 2).map((shop) => shop.id),
+                )}
+              >
+                Create post
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {summary.failed && (
         <Card className="border-destructive/40">

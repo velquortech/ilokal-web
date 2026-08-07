@@ -330,3 +330,63 @@ export async function getAdminDashboardSummary(
     ),
   };
 }
+
+export interface WelcomePostCandidate {
+  id: string;
+  shop_name: string;
+  logo_url: string | null;
+  created_at: string;
+}
+
+/** How recent a registration has to be to count as "new" for the prompt. */
+export const WELCOME_POST_NEW_DAYS = 14;
+
+export interface WelcomePostCandidates {
+  rows: WelcomePostCandidate[];
+  /** Registered within the window — what the dashboard prompt counts. */
+  newCount: number;
+  failed: boolean;
+}
+
+/**
+ * Shops the admin might want to post a welcome card for.
+ *
+ * No marker column yet, so "new" is `created_at` within a window rather than
+ * "not yet posted about". That means a shop can be posted twice if an admin is
+ * not paying attention — the honest trade for shipping without touching a
+ * migration backlog that is already 23 deep. A `welcome_post_generated_at`
+ * column is the durable answer (see `.claude/WELCOME_POSTS.md`).
+ */
+export async function getWelcomePostCandidates(
+  limit = 60,
+  now: Date = new Date(),
+): Promise<WelcomePostCandidates> {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('businesses')
+      .select('id, shop_name, logo_url, created_at')
+      .is('archived_at', null)
+      .order('created_at', { ascending: false })
+      .range(0, Math.max(0, limit - 1));
+
+    if (error) {
+      console.error('[getWelcomePostCandidates]', error);
+      return { rows: [], newCount: 0, failed: true };
+    }
+
+    const rows = (data ?? []) as WelcomePostCandidate[];
+    const cutoff = now.getTime() - WELCOME_POST_NEW_DAYS * 24 * 60 * 60 * 1000;
+
+    return {
+      rows,
+      newCount: rows.filter(
+        (row) => new Date(row.created_at).getTime() >= cutoff,
+      ).length,
+      failed: false,
+    };
+  } catch (error: unknown) {
+    console.error('[getWelcomePostCandidates] threw', error);
+    return { rows: [], newCount: 0, failed: true };
+  }
+}

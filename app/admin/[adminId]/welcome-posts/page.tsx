@@ -13,7 +13,10 @@ import { PostComposer } from './components/post-composer';
 export default async function WelcomePostsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ids?: string }>;
+  // `string[]` for a repeated `?ids=a&ids=b`. Typing it `string` and calling
+  // `.split` on it threw straight into `error.tsx` — a crash reachable by
+  // editing the URL.
+  searchParams: Promise<{ ids?: string | string[] }>;
 }) {
   const [{ ids }, candidates, brandFontAvailable] = await Promise.all([
     searchParams,
@@ -39,7 +42,7 @@ export default async function WelcomePostsPage({
       ) : (
         <PostComposer
           candidates={candidates.rows}
-          initialIds={(ids ?? '').split(',').filter(Boolean)}
+          initialIds={[ids ?? ''].flat().join(',').split(',').filter(Boolean)}
           brandFontAvailable={brandFontAvailable}
         />
       )}

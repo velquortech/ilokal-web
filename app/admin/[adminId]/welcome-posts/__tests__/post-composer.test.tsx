@@ -14,7 +14,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PostComposer } from '../components/post-composer';
-import type { WelcomePostCandidate } from '@/lib/api/admin/analyticsQuery';
+import type { WelcomePostCandidate } from '@/lib/types';
 
 const SHOPS: WelcomePostCandidate[] = [
   {
@@ -257,17 +257,133 @@ describe('the download action is reachable without scrolling', () => {
     act(() => vi.advanceTimersByTime(400));
 
     const column = container.querySelector('.xl\\:sticky')!;
-    const link = column.querySelector('a[href*="download=1"]')!;
+    const button = Array.from(column.querySelectorAll('button')).find((b) =>
+      /Download/.test(b.textContent ?? ''),
+    )!;
     const mount = column.querySelector('.w-fit')!;
 
+    expect(button).toBeTruthy();
     expect(
-      link.compareDocumentPosition(mount) & Node.DOCUMENT_POSITION_FOLLOWING,
+      button.compareDocumentPosition(mount) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 
   it('rides the pinned column, so it cannot scroll out of view', () => {
     render([SHOPS[0].id]);
     const column = container.querySelector('.xl\\:sticky')!;
-    expect(column.querySelector('a[href*="download=1"]')).toBeTruthy();
+    expect(
+      Array.from(column.querySelectorAll('button')).some((b) =>
+        /Download/.test(b.textContent ?? ''),
+      ),
+    ).toBe(true);
+  });
+
+  it('fetches the blob instead of re-rendering behind an anchor', async () => {
+    // `<a download>` asked the server to render the whole post a SECOND time,
+    // and if that render 500d it cheerfully saved the JSON error body to disk
+    // as a .png. One render, a real pending state, a reportable failure.
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers({
+        'content-disposition': 'attachment; filename="post.png"',
+      }),
+      blob: async () => new Blob([new Uint8Array([1])]),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: () => 'blob:x',
+      revokeObjectURL: () => {},
+    });
+
+    render([SHOPS[0].id]);
+    act(() => vi.advanceTimersByTime(400));
+    expect(container.querySelector('a[download]')).toBeNull();
+
+    click(buttonWith(/Download/)!);
+    await act(async () => {});
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toContain('download=1');
+    vi.unstubAllGlobals();
+  });
+
+  it('says so when the download fails, and keeps the preview', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: false, status: 500 }),
+    );
+
+    render([SHOPS[0].id]);
+    act(() => vi.advanceTimersByTime(400));
+    click(buttonWith(/Download/)!);
+    await act(async () => {});
+
+    expect(container.textContent).toContain('didn’t complete');
+    expect(preview()).toBeTruthy();
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('a cached image cannot strand the spinner', () => {
+  it('clears on commit when the image is already complete', () => {
+    // The old effect set `loading` AFTER the <img> committed, so a cached
+    // response — and the route used to advertise itself immutable for a year —
+    // could fire `load` before anything was listening, leaving a spinner over
+    // a fully rendered post with nothing to clear it.
+    Object.defineProperty(window.HTMLImageElement.prototype, 'complete', {
+      configurable: true,
+      get() {
+        return true;
+      },
+    });
+    Object.defineProperty(window.HTMLImageElement.prototype, 'naturalWidth', {
+      configurable: true,
+      get() {
+        return 1080;
+      },
+    });
+
+    render([SHOPS[0].id]);
+    act(() => vi.advanceTimersByTime(400));
+
+    expect(container.querySelector('[role="status"]')).toBeNull();
+
+    // @ts-expect-error — restoring the prototype the test overrode.
+    delete window.HTMLImageElement.prototype.complete;
+    // @ts-expect-error — same.
+    delete window.HTMLImageElement.prototype.naturalWidth;
+  });
+
+  it('reserves the post’s box so the spinner has something to fill', () => {
+    // The overlay is `absolute inset-0`; with no intrinsic size on the image
+    // the wrapper is ~0x0 during the multi-second first render and the spinner
+    // is invisible exactly when it is needed.
+    render([SHOPS[0].id]);
+    act(() => vi.advanceTimersByTime(400));
+
+    const img = preview()!;
+    expect(img.getAttribute('width')).toBe('1080');
+    expect(img.getAttribute('height')).toBe('1080');
+  });
+});
+
+describe('a failed render announces itself', () => {
+  it('puts the error panel in a live region', () => {
+    render([SHOPS[0].id]);
+    act(() => vi.advanceTimersByTime(400));
+    act(() => {
+      preview()!.dispatchEvent(new Event('error'));
+    });
+
+    expect(container.querySelector('[role="alert"]')).toBeTruthy();
+  });
+});
+
+describe('the sliders announce what the readout shows', () => {
+  it('carries a percentage aria-valuetext, not the raw multiplier', () => {
+    render([SHOPS[0].id]);
+    const slider = container.querySelector('#scale-name')!;
+    expect(slider.getAttribute('aria-valuetext')).toBe('100%');
   });
 });

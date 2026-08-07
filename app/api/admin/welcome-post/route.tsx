@@ -2,9 +2,11 @@ import { ImageResponse } from 'next/og';
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { assertAuthorized } from '@/lib/utils/auth';
+import { rateLimit } from '@/app/api/helpers/rateLimit';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { loadPostFonts } from '@/lib/og/fonts';
+import { fetchImageAsDataUrl, loadWordmarkDataUrl } from '@/lib/og/remoteImage';
 import {
   clampScale,
   TEXT_SCALES,
@@ -20,19 +22,43 @@ import {
  * GET /api/admin/welcome-post — renders the welcome square as a PNG.
  *
  * Admin-guarded. The businesses it draws are public, but an open endpoint that
- * renders an image per request is a free render farm, and this one fetches
- * remote logos on every call.
+ * renders an image per request is a free render farm, and this one decodes and
+ * composites at 1080px per call.
  *
  * A GET returning an image so the admin page can preview it with a plain
- * `<img src>` and the browser handles caching and re-fetching on a parameter
- * change — a POST returning a blob would need all of that by hand.
+ * `<img src>` and the browser handles re-fetching on a parameter change — a
+ * POST returning a blob would need all of that by hand.
  */
 export const runtime = 'nodejs';
+
+/** A render is CPU-bound and fetches logos; a drag already debounces to ~3/s. */
+const RATE_LIMIT = Number(process.env.WELCOME_POST_RATE_LIMIT ?? 60);
+const RATE_WINDOW_MS = Number(
+  process.env.WELCOME_POST_RATE_WINDOW_MS ?? 60_000,
+);
+
+/**
+ * The response is derived from an admin's cookie session and must never sit in
+ * a shared cache.
+ *
+ * ⚠️ `ImageResponse` defaults to `public, immutable, no-transform,
+ * max-age=31536000` in production — verified in the bundled `@vercel/og`, not
+ * assumed. That default is right for a public OG card and exactly wrong here:
+ * it invites a CDN to serve one admin's render to anyone who asks, and it
+ * freezes a preview for a year, so a re-uploaded logo would never show up.
+ */
+const NO_STORE = {
+  'cache-control': 'private, no-store, max-age=0, must-revalidate',
+} as const;
 
 const querySchema = z.object({
   ids: z
     .string()
-    .transform((value) => value.split(',').filter(Boolean))
+    .transform((value) =>
+      // Deduped: `?ids=x,x` would otherwise pass `.max(2)` and render one shop
+      // as both cards.
+      Array.from(new Set(value.split(',').filter(Boolean))),
+    )
     .pipe(z.array(z.guid()).min(1).max(2)),
   ratio: z.enum(['1x1', '4x5']).default('1x1'),
   /** Comma-separated ids whose name is suppressed (logo already says it). */
@@ -46,8 +72,20 @@ const querySchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const auth = await assertAuthorized(request, { roles: ['admin'] });
-    if (!auth.authorized) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    // The helper's own response carries the `ApiResponse` envelope and the
+    // right status for each of unauthenticated / non-admin / inactive.
+    if (!auth.authorized) return auth.error;
+
+    const { allowed, retryAfterSec } = rateLimit(
+      `welcome-post:${auth.user.id}`,
+      RATE_LIMIT,
+      RATE_WINDOW_MS,
+    );
+    if (!allowed) {
+      return NextResponse.json(
+        { message: 'Too many renders — try again in a moment.' },
+        { status: 429, headers: { 'Retry-After': String(retryAfterSec) } },
+      );
     }
 
     const { searchParams } = request.nextUrl;
@@ -95,39 +133,53 @@ export async function GET(request: NextRequest) {
     // Ordered by the caller's `ids`, not by whatever PostgREST returned, so the
     // left/right cards match what the admin picked and previewed.
     const byId = new Map(rows.map((row) => [row.id, row]));
-    const cards: PostCard[] = ids
+    const ordered = ids
       .map((id) => byId.get(id))
-      .filter((row): row is NonNullable<typeof row> => Boolean(row))
-      .map((row) => ({
-        name: row.shop_name,
-        // Satori fetches this; a bucket-relative path would 404 mid-render.
-        logoUrl: resolveStorageUrl(supabase, 'shop-logos', row.logo_url),
-        showName: !hidden.has(row.id),
-      }));
+      .filter((row): row is NonNullable<typeof row> => Boolean(row));
 
-    // Built from the zone record, so adding a zone does not mean remembering
-    // to read another parameter here.
+    // 🔴 Logos are fetched HERE, not by the renderer.
+    //
+    // `logo_url` is owner-writable free text and `resolveStorageUrl` passes an
+    // absolute URL through untouched, so an unguarded fetch inside the render
+    // is a request an attacker chooses. `fetchImageAsDataUrl` allowlists the
+    // storage origin, bounds the time and the bytes, and answers `null` on any
+    // failure — which the card layer already draws as initials.
+    //
+    // Doing it up front is also what makes a failure survivable at all:
+    // `ImageResponse` renders lazily while streaming, so a throw inside it
+    // escapes the `try/catch` below, after the headers have gone out.
+    const [logos, wordmarkUrl] = await Promise.all([
+      Promise.all(
+        ordered.map((row) =>
+          fetchImageAsDataUrl(
+            resolveStorageUrl(supabase, 'shop-logos', row.logo_url),
+          ),
+        ),
+      ),
+      loadWordmarkDataUrl(),
+    ]);
+
+    const cards: PostCard[] = ordered.map((row, index) => ({
+      name: row.shop_name,
+      logoUrl: logos[index],
+      showName: !hidden.has(row.id),
+    }));
+
+    // Read per zone rather than by string key, so renaming a `param` is a
+    // compile error instead of a silently-ignored slider.
+    const raw: Record<TextScaleKey, number | undefined> = {
+      name: parsed.data.nameScale,
+      footer: parsed.data.footerScale,
+    };
     const scales = Object.fromEntries(
       (Object.keys(TEXT_SCALES) as TextScaleKey[]).map((key) => [
         key,
-        clampScale(
-          (parsed.data as unknown as Record<string, unknown>)[
-            TEXT_SCALES[key].param
-          ] as number,
-        ),
+        clampScale(raw[key]),
       ]),
     ) as TextScales;
 
     const { width, height } = POST_RATIOS[ratio as PostRatio];
     const fonts = await loadPostFonts();
-
-    // The wordmark is a drawn asset and must never be typeset as text. Its URL
-    // is app-owned rather than request-derived — the reset-link lesson: a
-    // Host header is attacker-controlled.
-    const origin =
-      process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ??
-      request.nextUrl.origin;
-    const wordmarkUrl = `${origin}/brand/wordmark/ilokal-wordmark-jasmine.png`;
 
     const image = new ImageResponse(
       <WelcomePost
@@ -136,7 +188,7 @@ export async function GET(request: NextRequest) {
         wordmarkUrl={wordmarkUrl}
         scales={scales}
       />,
-      { width, height, fonts },
+      { width, height, fonts, headers: NO_STORE },
     );
 
     if (!download) return image;
@@ -150,6 +202,7 @@ export async function GET(request: NextRequest) {
 
     return new NextResponse(await image.arrayBuffer(), {
       headers: {
+        ...NO_STORE,
         'Content-Type': 'image/png',
         'Content-Disposition': `attachment; filename="ilokal-welcome-${slug || 'post'}-${ratio}.png"`,
       },

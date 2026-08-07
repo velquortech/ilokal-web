@@ -46,15 +46,21 @@ const ASSETS = path.join(process.cwd(), 'assets', 'fonts');
  * Vercel ships a `.ttf` inside `@vercel/og` precisely because that is what the
  * renderer can read. Using it means the generator works with nothing fetched
  * and nothing installed.
+ *
+ * ⚠️ Read as a FILE at runtime, never imported.
+ *
+ * `require.resolve('next/dist/compiled/@vercel/og/Geist-Regular.ttf')` looks
+ * tidier and fails the build: Turbopack reads a static specifier as an import
+ * and tries to bundle the font, which has no module type
+ * ("Unknown module type"). So the path is assembled, which in turn makes it
+ * invisible to output file tracing — hence the explicit
+ * `outputFileTracingIncludes` entry in `next.config.ts` covering this file and
+ * `assets/fonts/**`. Without it the first render 500s in a standalone build
+ * while working perfectly in dev.
  */
 const FALLBACK_TTF = path.join(
   process.cwd(),
-  'node_modules',
-  'next',
-  'dist',
-  'compiled',
-  '@vercel',
-  'og',
+  'node_modules/next/dist/compiled/@vercel/og',
   'Geist-Regular.ttf',
 );
 
@@ -114,6 +120,21 @@ async function firstReadable(basenames: string[]): Promise<Buffer | null> {
 let warned = false;
 
 /**
+ * Memoised, because none of these files can change between requests within a
+ * deployment — and without it every render re-read the fallback TTF plus up to
+ * six candidate paths off disk, with another read per page load for
+ * `hasBrandFont`.
+ *
+ * The PROMISE is cached rather than the result, so two renders arriving
+ * together share one read instead of racing to do the same work twice. A
+ * failure is not cached: `loadPostFonts` cannot succeed without the fallback,
+ * so a transient read error should be retryable rather than poisoning the
+ * process.
+ */
+let fontCache: Promise<PostFont[]> | null = null;
+let brandFontCache: Promise<boolean> | null = null;
+
+/**
  * Every face the post layout may reference, in fallback order.
  *
  * The list matters beyond the missing-Pally case: Satori falls back **per
@@ -121,7 +142,15 @@ let warned = false;
  * "Suds & Sips Carwash and Café" — renders from the next font in the list
  * rather than as tofu. That is why the accent needed no glyph audit.
  */
-export async function loadPostFonts(): Promise<PostFont[]> {
+export function loadPostFonts(): Promise<PostFont[]> {
+  fontCache ??= readPostFonts().catch((error: unknown) => {
+    fontCache = null;
+    throw error;
+  });
+  return fontCache;
+}
+
+async function readPostFonts(): Promise<PostFont[]> {
   const fallback = await readFile(FALLBACK_TTF);
 
   const bold = await firstReadable(['Pally-Bold']);
@@ -167,6 +196,16 @@ export async function loadPostFonts(): Promise<PostFont[]> {
 }
 
 /** True when the brand face is actually in use — surfaced in the admin UI. */
-export async function hasBrandFont(): Promise<boolean> {
-  return (await firstReadable(['Pally-Bold'])) !== null;
+export function hasBrandFont(): Promise<boolean> {
+  brandFontCache ??= firstReadable(['Pally-Bold']).then(
+    (data) => data !== null,
+  );
+  return brandFontCache;
+}
+
+/** Test seam: the caches above would otherwise outlive a single case. */
+export function __resetFontCacheForTests(): void {
+  fontCache = null;
+  brandFontCache = null;
+  warned = false;
 }

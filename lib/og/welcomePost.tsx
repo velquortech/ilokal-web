@@ -94,10 +94,12 @@ export const DEFAULT_TEXT_SCALES: TextScales = {
  * Bring a scale into range.
  *
  * Applied server-side as well as bounded in the UI: the slider cannot go out
- * of range, but this is also a query parameter and a caller can send anything.
+ * of range, but this is also a query parameter and a caller can send anything —
+ * including nothing, which is why `undefined` is in the signature rather than
+ * being defaulted at each call site.
  */
-export function clampScale(value: number): number {
-  if (!Number.isFinite(value)) return SCALE_DEFAULT;
+export function clampScale(value: number | undefined): number {
+  if (value === undefined || !Number.isFinite(value)) return SCALE_DEFAULT;
   return Math.min(Math.max(value, SCALE_MIN), SCALE_MAX);
 }
 
@@ -241,7 +243,7 @@ function Card({
         )}
       </div>
 
-      {card.showName && (
+      {card.showName ? (
         <div
           style={{
             display: 'flex',
@@ -262,6 +264,18 @@ function Card({
         >
           {displayName(card.name)}
         </div>
+      ) : (
+        // An EMPTY box of the same height, not nothing.
+        //
+        // `nameBoxHeight` is the pair's shared value and is already in this
+        // card's fixed height, so omitting the element entirely leaves
+        // `space-between` with one child — which pins the logo to the top and
+        // opens a band of dead space where the sibling's name sits. With the
+        // spacer present the logo stays centred and the two cards still end
+        // level, which is what the shared height is for.
+        <div
+          style={{ display: 'flex', width: logoBox, height: nameBoxHeight }}
+        />
       )}
     </div>
   );
@@ -270,23 +284,19 @@ function Card({
 export interface WelcomePostProps {
   cards: PostCard[];
   ratio: PostRatio;
-  /** Absolute URL of the jasmine wordmark cut. */
-  wordmarkUrl: string;
+  /**
+   * The jasmine wordmark as a `data:` URL.
+   *
+   * Nullable because it is read off disk and a decorative lockup is not worth
+   * failing an image over. Inlined rather than fetched: any URL would have to
+   * come from an env var that is genuinely unset in some deploys, or from
+   * `request.nextUrl.origin`, which is `Host`-derived and attacker-controlled.
+   */
+  wordmarkUrl: string | null;
   /** Manual multipliers per text zone. */
   scales?: Partial<TextScales>;
 }
 
-/**
- * The two tonal circles behind the content.
- *
- * Sized and placed relative to the canvas rather than in fixed pixels, so the
- * 4:5 crop keeps the same composition instead of pinning them to a 1080 square.
- * Both bleed off an edge — a circle fully inside the frame reads as a shape,
- * one that runs off reads as depth.
- *
- * Rendered before the content and never given a z-index: Satori paints in
- * document order, so being first IS being behind.
- */
 /**
  * Circles behind the content.
  *
@@ -385,8 +395,13 @@ export function WelcomePost({
         {/* The wordmark is drawn lettering — never the literal text "iLokal".
             Raw <img> for the same reason as the logo above: Satori renders
             this, not the browser. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={wordmarkUrl} width={Math.round(width * 0.3)} alt="iLokal" />
+        {/* Absent rather than broken when the asset could not be read: the
+            wordmark must never be typeset as text, so there is no fallback to
+            substitute — the lockup simply does not appear. */}
+        {wordmarkUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={wordmarkUrl} width={Math.round(width * 0.3)} alt="iLokal" />
+        )}
         <div
           style={{
             display: 'flex',

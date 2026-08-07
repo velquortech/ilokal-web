@@ -537,6 +537,8 @@ export interface RegistrationDealInput {
   discount_value: number;
   duration_days: number;
   publish: boolean;
+  /** Bucket-relative path, proved against the verified business id below. */
+  image_url?: string | null;
 }
 
 export async function createBusinessRegistrationDeal(
@@ -572,6 +574,16 @@ export async function createBusinessRegistrationDeal(
   if (existingError) throw existingError;
   if (existing) return { created: false };
 
+  // Same rule as the offerings write: the client sends this back, so only a
+  // path under the VERIFIED business id is stored. The bucket is public-read,
+  // so a foreign path would be a real cross-shop read.
+  const ownedImagePath = (value: string | null | undefined): string | null => {
+    if (typeof value !== 'string' || value.length === 0) return null;
+    if (value.includes('://') || value.startsWith('//')) return null;
+    if (value.includes('..')) return null;
+    return value.startsWith(`${business.id}/`) ? value : null;
+  };
+
   const startDate = new Date();
   const expiryDate = new Date(
     startDate.getTime() + deal.duration_days * 24 * 60 * 60 * 1000,
@@ -593,6 +605,7 @@ export async function createBusinessRegistrationDeal(
     scope_values: null,
     start_date: startDate.toISOString(),
     expiry_date: expiryDate.toISOString(),
+    image_url: ownedImagePath(deal.image_url),
   });
   if (error) throw error;
 

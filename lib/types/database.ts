@@ -778,6 +778,7 @@ export type Database = {
           discount: Json
           expiry_date: string
           id: string
+          image_url: string | null
           max_redemptions_global: number | null
           max_redemptions_per_user: number | null
           promotion_type: string
@@ -799,6 +800,7 @@ export type Database = {
           discount: Json
           expiry_date: string
           id?: string
+          image_url?: string | null
           max_redemptions_global?: number | null
           max_redemptions_per_user?: number | null
           promotion_type?: string
@@ -820,6 +822,7 @@ export type Database = {
           discount?: Json
           expiry_date?: string
           id?: string
+          image_url?: string | null
           max_redemptions_global?: number | null
           max_redemptions_per_user?: number | null
           promotion_type?: string

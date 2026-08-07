@@ -162,6 +162,13 @@ export const MAX_DEAL_DURATION_DAYS = 365;
 
 export const registrationDealSchema = z
   .object({
+    /**
+     * Client-side identity for the deal's photo cache key. There is only ever
+     * one deal, but keying it the same way as the offerings means one cache
+     * module, one restore path and one cleanup rule rather than a special
+     * case that drifts.
+     */
+    uid: z.string().min(1),
     code: z
       .string()
       .trim()

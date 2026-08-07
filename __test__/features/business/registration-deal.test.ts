@@ -20,6 +20,7 @@ import { getStepFieldGroups } from '@/app/business/registration/provider/registr
 type CouponRow = {
   business_id: string;
   status: string;
+  image_url: string | null;
   code: string;
   discount: { type: string; value: number };
   usage_scope: string;
@@ -86,6 +87,9 @@ vi.mock('@/supabase/server', () => ({
 }));
 
 const BASE_DEAL = {
+  // Required by the schema so the negative cases below fail for the reason
+  // they name, rather than for a missing uid.
+  uid: 'deal-uid-1',
   code: 'OPENING20',
   description: 'Opening week',
   discount_type: 'percentage' as const,
@@ -95,7 +99,7 @@ const BASE_DEAL = {
 };
 
 async function write(
-  deal: Partial<typeof BASE_DEAL> = {},
+  deal: Partial<typeof BASE_DEAL> & { image_url?: string | null } = {},
   options?: Parameters<typeof makeSupabase>[0],
 ) {
   const { supabase, inserted } = makeSupabase(options);
@@ -292,5 +296,35 @@ describe('discount bounds', () => {
         }).success,
       ).toBe(false);
     }
+  });
+});
+
+describe('the deal photo path is proved, not trusted', () => {
+  const OTHER_BUSINESS = '22222222-2222-2222-2222-222222222222';
+
+  it('stores a path under the verified business id', async () => {
+    const { inserted } = await write({
+      image_url: `${BUSINESS_ID}/offering-1-0.webp`,
+    });
+    expect(inserted[0].image_url).toBe(`${BUSINESS_ID}/offering-1-0.webp`);
+  });
+
+  it('refuses another shop’s path, an absolute URL and traversal', async () => {
+    for (const value of [
+      `${OTHER_BUSINESS}/x.webp`,
+      'https://evil.example/x.webp',
+      '//evil.example/x.webp',
+      `${BUSINESS_ID}/../${OTHER_BUSINESS}/x.webp`,
+      `${BUSINESS_ID}-evil/x.webp`,
+    ]) {
+      const { inserted } = await write({ image_url: value });
+      expect(inserted[0].image_url).toBeNull();
+    }
+  });
+
+  it('writes null when the owner attached no photo', async () => {
+    // The card then falls back to the shop's logo and interior photo, which is
+    // what every deal showed before the column existed.
+    expect((await write()).inserted[0].image_url).toBeNull();
   });
 });

@@ -200,6 +200,23 @@ export function ShopRegistrationContent() {
     // written and the submission is unaffected. Same replay guard as above.
     const deal = data.deal;
     if (deal && !uploadedRef.current.has('deal')) {
+      // Same rules as the offering photos: uploaded before the row is written
+      // so it can carry the path, keyed so a retry does not orphan a copy, and
+      // never fatal — a deal without its picture still falls back to the
+      // shop's logo and interior photo, which is what every deal card showed
+      // before the column existed.
+      let dealImagePath: string | null = null;
+      const dealImage = deal.uid ? offeringImages.get(deal.uid) : undefined;
+      const dealImageKey = `deal_image_${deal.uid}`;
+      if (dealImage && !uploadedRef.current.has(dealImageKey)) {
+        try {
+          dealImagePath = await uploadOfferingImage(bid, dealImage, 0);
+          uploadedRef.current.add(dealImageKey);
+        } catch (error: unknown) {
+          console.error('[registration] deal photo upload failed', error);
+        }
+      }
+
       await createRegistrationDeal(bid, {
         code: deal.code,
         description: deal.description,
@@ -209,6 +226,7 @@ export function ShopRegistrationContent() {
         // The owner's explicit choice, passed through untouched — defaulting
         // it anywhere in this chain is how a draft becomes a live discount.
         publish: deal.publish,
+        image_url: dealImagePath,
       });
       uploadedRef.current.add('deal');
     }

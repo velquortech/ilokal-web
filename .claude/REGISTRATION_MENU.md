@@ -290,29 +290,32 @@ shop's own logo and interior photo (F3), which is not nothing.
 
 ### 7.4 Action items
 
-#### Phase 5 — photos on offerings (no schema change)
-- [ ] **IMG2** — add a client-side `uid` per offering row; strip before the API call
-- [ ] **IMG5** — mount `ImageUploadField` in the draft row; no bespoke picker
-- [ ] **IMG1/IMG3** — cache each photo under `offering_image:<uid>`; delete on remove
-- [ ] **IMG4** — budget check across offering keys; degrade to uncached with a message, never block
-- [ ] **IMG6/IMG7** — upload after `registerBusiness()`, one request per file, keyed in `uploadedRef`
-- [ ] **IMG8** — a failed upload writes the offering without a photo and reports it
-- [ ] **IMG9/IMG10** — offerings route accepts `image_url`, validated as a bucket-relative path under the verified business id
-- [ ] **IMG11/IMG12** — re-measure at 320/768/1440 and re-check the dead band
-- [ ] **IMG13** — leave the public step copy alone
-- [ ] Tests: uid keying survives a removal, remove deletes the blob, replay uploads once, a failed upload still writes the item, a foreign/absolute `image_url` is rejected
+#### Phase 5 — photos on offerings (no schema change) ✅ SHIPPED
+- [x] **IMG2** — add a client-side `uid` per offering row; strip before the API call
+- [x] **IMG5** — mount `ImageUploadField` in the draft row; no bespoke picker
+- [x] **IMG1/IMG3** — cache each photo under `offering_image:<uid>`; delete on remove
+- [x] **IMG4** — budget check across offering keys; degrade to uncached with a message, never block
+- [x] **IMG6/IMG7** — upload after `registerBusiness()`, one request per file, keyed in `uploadedRef`
+- [x] **IMG8** — a failed upload writes the offering without a photo and reports it
+- [x] **IMG9/IMG10** — offerings route accepts `image_url`, validated as a bucket-relative path under the verified business id
+- [x] **IMG11/IMG12** — re-measure at 320/768/1440 and re-check the dead band
+- [x] **IMG13** — leave the public step copy alone
+- [x] Tests: uid keying survives a removal, remove deletes the blob, replay uploads once, a failed upload still writes the item, a foreign/absolute `image_url` is rejected
 
-#### Phase 6 — photos on the deal (needs approval)
-- [ ] **IMG14** — migration: `coupons.image_url text` nullable, no backfill
-- [ ] **IMG15/IMG16** — project it through `mobile_deals`, resolve it in the mobile route, prefer it in the deal cards; re-run the deals SQL suite
-- [ ] **IMG17** — add the field to the coupon dialogs so it is editable after registration
-- [ ] Same upload/cache/replay rules as phase 5
+#### Phase 6 — photos on the deal ✅ BUILT, ⚠️ migration LOCAL ONLY
+- [x] **IMG14** — migration: `coupons.image_url text` nullable, no backfill
+- [x] **IMG15/IMG16** — project it through `mobile_deals`, resolve it in the mobile route, prefer it in the deal cards; re-run the deals SQL suite
+- [x] **IMG17** — add the field to the coupon dialogs so it is editable after registration
+- [x] Same upload/cache/replay rules as phase 5
 
 ### 7.5 Open questions
 
-1. **Is the deal photo worth phase 6 at all?** A deal already shows the shop's
-   logo and interior photo. The honest alternative is to skip IMG14–IMG16 and
-   spend the same effort on IMG17 for products.
+1. ~~**Is the deal photo worth phase 6 at all?**~~ **Built** — the migration is
+   applied on LOCAL ONLY (`20260807120000_coupon_image.sql`) and needs approval
+   before `make migrate-cloud`. If the answer turns out to be "no", the rollback
+   is in the migration header and the app degrades cleanly: `deal_image_url`
+   reads NULL and every card falls back to the shop's logo and interior photo,
+   exactly as before.
 2. **Required or optional on offerings?** Optional is assumed. Requiring a photo
    would undo the RM5 abandonment trade-off the one-item minimum was chosen for.
 3. **IMG18** — do we want a cleanup path for orphaned uploads, or is the leak

@@ -56,15 +56,56 @@ export function displayName(raw: string): string {
 export const NAME_MAX_LINES = 2;
 export const NAME_LINE_HEIGHT = 1.08;
 
-/** Bounds on the manual size adjuster, so a slider cannot break the layout. */
-export const NAME_SCALE_MIN = 0.6;
-export const NAME_SCALE_MAX = 1.5;
-export const NAME_SCALE_DEFAULT = 1;
+/**
+ * The text zones an admin can resize.
+ *
+ * A record rather than a pair of hand-rolled constants: name and footer today,
+ * and the headline and eyebrow are the obvious next asks. One entry adds a
+ * zone; the route, the query schema and the UI all iterate this, so a third
+ * scale is a line rather than a third copy of the same plumbing.
+ */
+export const TEXT_SCALES = {
+  name: {
+    label: 'Shop name',
+    hint: 'Long names wrap to two lines',
+    param: 'nameScale',
+  },
+  footer: {
+    label: 'Footer lines',
+    hint: '“Thank you…” and “Find them on ilokal.shop”',
+    param: 'footerScale',
+  },
+} as const;
 
-export function clampNameScale(value: number): number {
-  if (!Number.isFinite(value)) return NAME_SCALE_DEFAULT;
-  return Math.min(Math.max(value, NAME_SCALE_MIN), NAME_SCALE_MAX);
+export type TextScaleKey = keyof typeof TEXT_SCALES;
+
+export const SCALE_MIN = 0.6;
+export const SCALE_MAX = 1.5;
+export const SCALE_DEFAULT = 1;
+
+export type TextScales = Record<TextScaleKey, number>;
+
+export const DEFAULT_TEXT_SCALES: TextScales = {
+  name: SCALE_DEFAULT,
+  footer: SCALE_DEFAULT,
+};
+
+/**
+ * Bring a scale into range.
+ *
+ * Applied server-side as well as bounded in the UI: the slider cannot go out
+ * of range, but this is also a query parameter and a caller can send anything.
+ */
+export function clampScale(value: number): number {
+  if (!Number.isFinite(value)) return SCALE_DEFAULT;
+  return Math.min(Math.max(value, SCALE_MIN), SCALE_MAX);
 }
+
+/** Kept for the existing call sites and tests; the name zone's clamp. */
+export const clampNameScale = clampScale;
+export const NAME_SCALE_MIN = SCALE_MIN;
+export const NAME_SCALE_MAX = SCALE_MAX;
+export const NAME_SCALE_DEFAULT = SCALE_DEFAULT;
 
 /**
  * Font size for a name, keyed on its length.
@@ -231,8 +272,8 @@ export interface WelcomePostProps {
   ratio: PostRatio;
   /** Absolute URL of the jasmine wordmark cut. */
   wordmarkUrl: string;
-  /** Manual multiplier on the name size ladder. */
-  nameScale?: number;
+  /** Manual multipliers per text zone. */
+  scales?: Partial<TextScales>;
 }
 
 /**
@@ -287,8 +328,10 @@ export function WelcomePost({
   cards,
   ratio,
   wordmarkUrl,
-  nameScale = NAME_SCALE_DEFAULT,
+  scales,
 }: WelcomePostProps) {
+  const nameScale = clampScale(scales?.name ?? SCALE_DEFAULT);
+  const footerScale = clampScale(scales?.footer ?? SCALE_DEFAULT);
   const { width, height } = POST_RATIOS[ratio];
   const shown = cards.slice(0, 2);
 
@@ -400,7 +443,7 @@ export function WelcomePost({
             display: 'flex',
             color: JASMINE,
             fontWeight: 700,
-            fontSize: Math.round(width * 0.024),
+            fontSize: Math.round(width * 0.024 * footerScale),
             marginTop: Math.round(height * 0.008),
           }}
         >

@@ -168,17 +168,17 @@ to predict the render, not decoration.
 
 ### 6.3 Action items
 
-#### Phase 5 — footer scale ✅ when done
-- [ ] **WP17** — `footerScale` through the layout, the route and the UI, bounded and clamped exactly like `nameScale`
-- [ ] **WP23** — one `TEXT_SCALES` record driving both, so a third is an entry rather than another copy
-- [ ] Tests: the scale reaches the footer, clamps junk, and leaves the name size alone
+#### Phase 5 — footer scale ✅
+- [x] **WP17** — `footerScale` through the layout, the route and the UI, bounded and clamped exactly like `nameScale`
+- [x] **WP23** — one `TEXT_SCALES` record driving both, so a third is an entry rather than another copy
+- [x] Tests: the scale reaches the footer, clamps junk, and leaves the name size alone
 
-#### Phase 6 — the composer UI
-- [ ] **WP18** — invert the layout: post as hero on a mounted field, controls as a rail
-- [ ] **WP19** — label the selected shops **Left** / **Right**, and let them be swapped
-- [ ] **WP20** — real labels, reset affordance, keyboard-reachable
-- [ ] **WP21** — debounce the preview so a slider drag is one render, not thirty
-- [ ] **WP22** — a real error state on the preview, distinct from loading
-- [ ] **WP24** — no anchor when there is nothing to download
-- [ ] **WP25** — collapses at narrow widths
-- [ ] Tests: the debounce, the error state, the swap, and no link without a selection
+#### Phase 6 — the composer UI ✅
+- [x] **WP18** — invert the layout: post as hero on a mounted field, controls as a rail
+- [x] **WP19** — label the selected shops **Left** / **Right**, and let them be swapped
+- [x] **WP20** — real labels, reset affordance, keyboard-reachable
+- [x] **WP21** — debounce the preview so a slider drag is one render, not thirty
+- [x] **WP22** — a real error state on the preview, distinct from loading
+- [x] **WP24** — no anchor when there is nothing to download
+- [x] **WP25** — collapses at narrow widths
+- [x] Tests: the debounce, the error state, the swap, and no link without a selection

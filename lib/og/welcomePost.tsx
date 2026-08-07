@@ -287,39 +287,53 @@ export interface WelcomePostProps {
  * Rendered before the content and never given a z-index: Satori paints in
  * document order, so being first IS being behind.
  */
-function Backdrop({ width, height }: { width: number; height: number }) {
-  const topSize = Math.round(width * 0.36);
-  const bottomSize = Math.round(width * 0.41);
+/**
+ * Circles behind the content.
+ *
+ * Positioned as fractions of the canvas rather than in pixels, so the 4:5 crop
+ * keeps the composition instead of pinning them to a 1080 square.
+ *
+ * Two rules hold the set together. Every circle bleeds off an edge or sits
+ * behind a card — one floating loose in open space reads as a stray shape
+ * rather than as depth. And nothing sits under the headline: the copy is white
+ * on Brick Ember and a tint beneath it costs contrast on the one thing that
+ * must stay legible.
+ *
+ * Rendered before the content and given no z-index, since Satori paints in
+ * document order.
+ */
+export const BACKDROP_CIRCLES = [
+  // The template's two, kept as the anchors of the composition.
+  { x: 0.64, y: 0.01, size: 0.36, tint: 'rgba(255, 255, 255, 0.05)' },
+  { x: -0.07, y: 0.6, size: 0.41, tint: 'rgba(0, 0, 0, 0.05)' },
+  // Smaller companions, all cropped by an edge.
+  { x: -0.12, y: 0.02, size: 0.2, tint: 'rgba(255, 255, 255, 0.035)' },
+  { x: 0.86, y: 0.42, size: 0.26, tint: 'rgba(0, 0, 0, 0.04)' },
+  { x: 0.72, y: 0.82, size: 0.22, tint: 'rgba(255, 255, 255, 0.04)' },
+  { x: -0.04, y: 0.32, size: 0.14, tint: 'rgba(255, 255, 255, 0.03)' },
+] as const;
 
+function Backdrop({ width, height }: { width: number; height: number }) {
   return (
     <>
-      <div
-        style={{
-          position: 'absolute',
-          display: 'flex',
-          top: Math.round(height * 0.01),
-          left: Math.round(width * 0.64),
-          width: topSize,
-          height: topSize,
-          borderRadius: topSize,
-          // Tone on tone. A stronger tint competes with the wordmark sitting
-          // over it; the mock's circles are only just visible and that is the
-          // point.
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          display: 'flex',
-          top: Math.round(height * 0.6),
-          left: Math.round(width * -0.07),
-          width: bottomSize,
-          height: bottomSize,
-          borderRadius: bottomSize,
-          backgroundColor: 'rgba(0, 0, 0, 0.05)',
-        }}
-      />
+      {BACKDROP_CIRCLES.map((circle, index) => {
+        const size = Math.round(width * circle.size);
+        return (
+          <div
+            key={index}
+            style={{
+              position: 'absolute',
+              display: 'flex',
+              top: Math.round(height * circle.y),
+              left: Math.round(width * circle.x),
+              width: size,
+              height: size,
+              borderRadius: size,
+              backgroundColor: circle.tint,
+            }}
+          />
+        );
+      })}
     </>
   );
 }

@@ -42,7 +42,12 @@ export async function registerBusiness(
  */
 export async function createRegistrationOfferings(
   businessId: string,
-  offerings: { name: string; price: number | null; on_request: boolean }[],
+  offerings: {
+    name: string;
+    price: number | null;
+    on_request: boolean;
+    image_url?: string | null;
+  }[],
   kind: 'product' | 'service',
 ) {
   return await apiClient.post(`/api/web/businesses/${businessId}/offerings`, {
@@ -91,4 +96,25 @@ export async function uploadRegistrationFile(
       },
     },
   );
+}
+
+/**
+ * Upload one offering photo and get back its bucket-relative path.
+ *
+ * Same route and same ownership check as the registration files; the only
+ * difference is that this kind touches no column on `businesses`, so the
+ * caller has to carry the path into the offerings write.
+ */
+export async function uploadOfferingImage(
+  businessId: string,
+  file: File,
+  index: number,
+): Promise<string | null> {
+  const result = (await uploadRegistrationFile(
+    businessId,
+    'offering_image',
+    file,
+    index,
+  )) as { path?: string } | null;
+  return result?.path ?? null;
 }

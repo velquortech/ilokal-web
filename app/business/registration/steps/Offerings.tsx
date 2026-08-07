@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useFieldArray } from 'react-hook-form';
 import { useMultiStepForm } from '../provider/registration-form-provider';
 import { Button } from '@/components/ui/button';
@@ -9,9 +9,56 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FieldError } from '@/components/ui/field';
-import { Plus, Trash2, ListPlus } from 'lucide-react';
-import { MAX_REGISTRATION_OFFERINGS } from '../validator/business-registration-form-schema';
+import { Plus, Trash2, ListPlus, ImageIcon } from 'lucide-react';
+import {
+  MAX_FILE_SIZE,
+  MAX_REGISTRATION_OFFERINGS,
+} from '../validator/business-registration-form-schema';
 import { formatOfferingPrice } from '@/lib/utils/formatOfferingPrice';
+import { ImageUploadField } from '@/components/custom/upload/image-upload';
+
+/**
+ * A row's picked photo, previewed from the File itself.
+ *
+ * `URL.createObjectURL` rather than a data URL: the blob stays where it is and
+ * nothing base64-inflates it into memory, which is what blew the localStorage
+ * quota when registration cached files as strings. The URL is revoked when the
+ * row unmounts, or the object leaks for the life of the document.
+ *
+ * A plain <img>, not next/image: the source is a blob: URL with no known
+ * dimensions and nothing to optimise — the optimiser would only be asked to
+ * fetch a URL it cannot see.
+ */
+function OfferingThumbnail({ file, alt }: { file?: File; alt: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) {
+      setUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  if (!url) {
+    return (
+      <div className="bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded">
+        <ImageIcon className="size-4" aria-hidden />
+      </div>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={url}
+      alt={alt}
+      className="size-10 shrink-0 rounded object-cover"
+    />
+  );
+}
 
 /**
  * The menu step — the one thing registration never asked for.
@@ -26,16 +73,16 @@ import { formatOfferingPrice } from '@/lib/utils/formatOfferingPrice';
  *
  *  - No category select. It is optional there now, and here there is no reason
  *    to show a 9-to-20 option taxonomy before the shop exists.
- *  - No image. Each would be its own ≤2 MB upload and its own IndexedDB entry,
- *    and images are optional on the dashboard too.
  *  - No section, no service attributes, no booking mode. Those are refinements
  *    of a catalogue that exists; this step's whole job is that it exists.
  *
- * What is left is a name and a price, entered inline, which is the least a
- * "menu" can honestly mean.
+ * What is left is a name, a price and an optional photo, entered inline. The
+ * photo cannot be uploaded here — the `product-images` bucket keys its INSERT
+ * policy on the business id, and that row does not exist until final submit —
+ * so it is held by `useOfferingImages` and uploaded afterwards.
  */
 export function ShopOfferings() {
-  const { form, vocabulary } = useMultiStepForm();
+  const { form, vocabulary, offeringImages } = useMultiStepForm();
   const {
     control,
     formState: { errors },
@@ -49,10 +96,30 @@ export function ShopOfferings() {
   const [draftName, setDraftName] = useState('');
   const [draftPrice, setDraftPrice] = useState('');
   const [draftOnRequest, setDraftOnRequest] = useState(false);
+  const [draftImage, setDraftImage] = useState<File | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
+  // `ImageUploadField` keeps its own preview state, so clearing the draft
+  // after an add means remounting it rather than nulling a value it does not
+  // read back.
+  const [imageFieldKey, setImageFieldKey] = useState(0);
 
   const atCap = fields.length >= MAX_REGISTRATION_OFFERINGS;
   const singular = vocabulary.singular.toLowerCase();
+
+  // A reload restores the rows from localStorage but not the photo blobs —
+  // those live in IndexedDB, keyed per row. Pull them back for the rows that
+  // still exist.
+  useEffect(() => {
+    const uids = form
+      .getValues('offerings')
+      ?.map((item) => item?.uid)
+      .filter((uid): uid is string => Boolean(uid));
+    if (uids?.length) void offeringImages.hydrate(uids);
+    // Deliberately mount-only: this restores what the cache already holds for
+    // the rows the form was rehydrated with. Re-running it on every change
+    // would re-read IndexedDB on every keystroke and could resurrect a photo
+    // the owner just removed.
+  }, [form, offeringImages]);
 
   const addDraft = () => {
     const name = draftName.trim();
@@ -81,13 +148,31 @@ export function ShopOfferings() {
       price = parsed;
     }
 
-    append({ name, price, on_request: draftOnRequest });
+    // Minted here so the photo can be keyed to this row for the rest of the
+    // wizard — see useOfferingImages for why an array index will not do.
+    const uid =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    if (draftImage) offeringImages.set(uid, draftImage);
+
+    append({ uid, name, price, on_request: draftOnRequest });
     setDraftName('');
     setDraftPrice('');
+    setDraftImage(null);
+    setImageFieldKey((key) => key + 1);
     // `on_request` is deliberately NOT reset: a shop that quotes one service
     // usually quotes the next one too, and re-ticking it per item is the tax
     // this whole step is trying not to charge.
     setDraftError(null);
+  };
+
+  /** Drops the row and the photo together, so no orphan blob is left behind. */
+  const removeItem = (index: number) => {
+    const uid = form.getValues(`offerings.${index}.uid`);
+    if (uid) offeringImages.remove(uid);
+    remove(index);
   };
 
   /**
@@ -118,8 +203,8 @@ export function ShopOfferings() {
         <AlertTitle>Your {vocabulary.catalogue.toLowerCase()}</AlertTitle>
         <AlertDescription>
           Add at least one {singular}. Your shop page shows nothing until it has
-          one, and this is the fastest place to do it — you can add photos,
-          categories and the rest from your dashboard later.
+          one, and this is the fastest place to do it — you can add more, and
+          change anything, from your dashboard later.
         </AlertDescription>
       </Alert>
 
@@ -182,6 +267,34 @@ export function ShopOfferings() {
           </Label>
         </div>
 
+        {/* Optional, and last, so it never stands between the owner and the
+            two fields that actually matter. The shared field is mandatory
+            here: it is what runs `compressImage`, and a phone photo is 3–6 MB
+            against a 2 MB cap, so a bespoke picker would reject exactly the
+            pictures this step wants. It also owns the EXIF-rotation, animated
+            and alpha handling that the contract sweep exists to keep in one
+            place. */}
+        <div className="space-y-2">
+          <Label>Photo (optional)</Label>
+          <div className="relative min-h-32">
+            <ImageUploadField
+              key={imageFieldKey}
+              onChange={(image) =>
+                setDraftImage(image instanceof File ? image : null)
+              }
+              onError={setDraftError}
+              maxSizeBytes={MAX_FILE_SIZE}
+              maxSizeLabel="2 MB"
+            />
+          </div>
+          {!offeringImages.cached && (
+            <p className="text-muted-foreground text-xs">
+              These photos are too large to hold in browser storage — they are
+              still attached, but reloading this page would lose them.
+            </p>
+          )}
+        </div>
+
         {draftError && <FieldError>{draftError}</FieldError>}
 
         <Button
@@ -233,9 +346,17 @@ export function ShopOfferings() {
               return (
                 <li
                   key={field.id}
-                  className="flex items-center justify-between gap-4 p-3"
+                  className="flex items-center justify-between gap-3 p-3"
                 >
-                  <div className="min-w-0">
+                  {/* Fixed 40px, so a row with a photo is the same height as
+                      one without and the list does not go ragged. Sized in the
+                      markup rather than by the image, because these are
+                      object-URL previews with no known dimensions. */}
+                  <OfferingThumbnail
+                    file={item?.uid ? offeringImages.get(item.uid) : undefined}
+                    alt={item?.name ?? ''}
+                  />
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{item?.name}</p>
                     <p className="text-muted-foreground text-sm">
                       {/* The same formatter the storefront uses, so what the
@@ -250,7 +371,7 @@ export function ShopOfferings() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    onClick={() => remove(index)}
+                    onClick={() => removeItem(index)}
                     aria-label={`Remove ${item?.name ?? singular}`}
                   >
                     <Trash2 className="h-4 w-4" />

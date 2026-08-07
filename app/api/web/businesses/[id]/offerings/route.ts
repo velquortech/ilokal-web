@@ -25,6 +25,12 @@ const offeringSchema = z.object({
   name: z.string().trim().min(1).max(255),
   price: z.number().min(0).nullable(),
   on_request: z.boolean(),
+  /**
+   * A bucket-relative path from the `offering_image` upload. Shape-checked
+   * here and OWNERSHIP-checked in the query layer, which is the only place
+   * that knows the verified business id.
+   */
+  image_url: z.string().max(512).nullable().optional(),
 });
 
 const bodySchema = z.object({

@@ -26,10 +26,27 @@ const formRef: { current: UseFormReturn<BusinessProps> | null } = {
   current: null,
 };
 
+/** Records what the step attaches, so the uid keying can be asserted. */
+const imageStore = new Map<string, File>();
+const removedUids: string[] = [];
+
 vi.mock('../provider/registration-form-provider', () => ({
   useMultiStepForm: () => ({
     form: formRef.current,
     vocabulary: DEFAULT_OFFERING_VOCABULARY,
+    offeringImages: {
+      set: (uid: string, file: File | null) => {
+        if (file) imageStore.set(uid, file);
+        else imageStore.delete(uid);
+      },
+      get: (uid: string) => imageStore.get(uid),
+      remove: (uid: string) => {
+        imageStore.delete(uid);
+        removedUids.push(uid);
+      },
+      hydrate: async () => {},
+      cached: true,
+    },
   }),
 }));
 
@@ -88,6 +105,8 @@ afterEach(() => {
   act(() => root.unmount());
   container.remove();
   formRef.current = null;
+  imageStore.clear();
+  removedUids.length = 0;
 });
 
 function type(selector: string, value: string) {
@@ -119,9 +138,12 @@ describe('adding an item', () => {
     type('#offering-price', '120');
     clickAdd();
 
-    expect(formRef.current!.getValues('offerings')).toEqual([
+    expect(formRef.current!.getValues('offerings')).toMatchObject([
       { name: 'Adobo', price: 120, on_request: false },
     ]);
+    // Every row carries a stable client id — the photo cache is keyed on it,
+    // and an array index would re-map the moment an item is removed.
+    expect(formRef.current!.getValues('offerings')[0].uid).toBeTruthy();
     expect(container.querySelectorAll('li')).toHaveLength(1);
     expect(container.textContent).toContain('Adobo');
   });
@@ -184,7 +206,7 @@ describe('under the wizard\u2019s real form config', () => {
     type('#offering-price', '120');
     clickAdd();
 
-    expect(formRef.current!.getValues('offerings')).toEqual([
+    expect(formRef.current!.getValues('offerings')).toMatchObject([
       { name: 'Adobo', price: 120, on_request: false },
     ]);
     expect(container.querySelectorAll('li')).toHaveLength(1);
@@ -203,7 +225,7 @@ describe('the provider\u2019s watch-then-trigger loop', () => {
     type('#offering-price', '120');
     clickAdd();
 
-    expect(formRef.current!.getValues('offerings')).toEqual([
+    expect(formRef.current!.getValues('offerings')).toMatchObject([
       { name: 'Adobo', price: 120, on_request: false },
     ]);
     expect(container.querySelectorAll('li')).toHaveLength(1);
@@ -218,7 +240,7 @@ describe('with the wizard\u2019s form cache mounted', () => {
     type('#offering-price', '120');
     clickAdd();
 
-    expect(formRef.current!.getValues('offerings')).toEqual([
+    expect(formRef.current!.getValues('offerings')).toMatchObject([
       { name: 'Adobo', price: 120, on_request: false },
     ]);
     expect(container.querySelectorAll('li')).toHaveLength(1);
@@ -243,9 +265,87 @@ describe('under React StrictMode', () => {
     type('#offering-price', '120');
     clickAdd();
 
-    expect(formRef.current!.getValues('offerings')).toEqual([
+    expect(formRef.current!.getValues('offerings')).toMatchObject([
       { name: 'Adobo', price: 120, on_request: false },
     ]);
     expect(container.querySelectorAll('li')).toHaveLength(1);
+  });
+});
+
+describe('photos (IMG2/IMG3)', () => {
+  it('keys the photo to the row, not to its position', () => {
+    // The whole reason rows carry a uid. Index keys re-map on every removal,
+    // so deleting the first item would silently move the second item's photo
+    // onto it.
+    act(() => root.render(<Harness />));
+
+    type('#offering-name', 'Adobo');
+    type('#offering-price', '120');
+    clickAdd();
+    type('#offering-name', 'Sinigang');
+    type('#offering-price', '150');
+    clickAdd();
+
+    const [first, second] = formRef.current!.getValues('offerings');
+    expect(first.uid).not.toBe(second.uid);
+  });
+
+  it('drops the photo when its row is removed', () => {
+    // IMG3 — otherwise every discarded photo stays in IndexedDB for the life
+    // of the origin.
+    act(() => root.render(<Harness />));
+
+    type('#offering-name', 'Adobo');
+    type('#offering-price', '120');
+    clickAdd();
+
+    const uid = formRef.current!.getValues('offerings')[0].uid;
+    const removeButton = Array.from(container.querySelectorAll('button')).find(
+      (b) => /^Remove /i.test(b.getAttribute('aria-label') ?? ''),
+    )!;
+    act(() => {
+      removeButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(removedUids).toContain(uid);
+    expect(formRef.current!.getValues('offerings')).toHaveLength(0);
+  });
+
+  it('removes the row the owner clicked, not the one at that index later', () => {
+    act(() => root.render(<Harness />));
+
+    for (const [name, price] of [
+      ['Adobo', '120'],
+      ['Sinigang', '150'],
+      ['Lechon', '400'],
+    ]) {
+      type('#offering-name', name);
+      type('#offering-price', price);
+      clickAdd();
+    }
+    const uids = formRef
+      .current!.getValues('offerings')
+      .map((o: { uid: string }) => o.uid);
+
+    // Remove the middle one.
+    const buttons = Array.from(container.querySelectorAll('button')).filter(
+      (b) => /^Remove /i.test(b.getAttribute('aria-label') ?? ''),
+    );
+    act(() => {
+      buttons[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(removedUids).toEqual([uids[1]]);
+    expect(
+      formRef
+        .current!.getValues('offerings')
+        .map((o: { uid: string }) => o.uid),
+    ).toEqual([uids[0], uids[2]]);
+  });
+
+  it('offers the photo picker as optional', () => {
+    // Optional is the RM5 trade-off: the item is required, the picture is not.
+    act(() => root.render(<Harness />));
+    expect(container.textContent).toContain('Photo (optional)');
   });
 });

@@ -15,6 +15,10 @@ import {
   fullSchema,
 } from '../validator/business-registration-form-schema';
 import { useFormCache } from '../hooks/useFormCache';
+import {
+  useOfferingImages,
+  type OfferingImages,
+} from '../hooks/useOfferingImages';
 import { getSteps, type RegistrationStep } from '../data/steps';
 import {
   findVerticalForCategoryId,
@@ -59,6 +63,13 @@ type ContextType = {
    * DB trigger. Drives `kind` on the offerings this wizard writes.
    */
   offeringMode: OfferingMode;
+  /**
+   * Photos for the wizard's offerings, keyed by each row's `uid`.
+   *
+   * Shared here because the menu step collects them and `performSubmission`
+   * uploads them, and neither can reach the other.
+   */
+  offeringImages: OfferingImages;
 };
 
 const multiStepFormContext = createContext<ContextType | null>(null);
@@ -174,6 +185,8 @@ export function MultiStepFormProvider({
     },
   });
 
+  const offeringImages = useOfferingImages();
+
   const {
     clearCache: clearFormCache,
     cacheFile,
@@ -280,6 +293,7 @@ export function MultiStepFormProvider({
         businessTypes,
         vocabulary,
         offeringMode,
+        offeringImages,
       }}
     >
       {children}

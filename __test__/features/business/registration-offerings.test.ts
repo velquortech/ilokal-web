@@ -26,6 +26,7 @@ type ProductRow = {
   price_type: string;
   status: string;
   kind: string;
+  image_url: string | null;
 };
 
 const USER = { id: 'user-1' };
@@ -304,7 +305,9 @@ describe('the step schema', () => {
   it('accepts exactly one', () => {
     expect(
       stepOfferingsSchema.safeParse({
-        offerings: [{ name: 'Adobo', price: 120, on_request: false }],
+        offerings: [
+          { uid: 'u1', name: 'Adobo', price: 120, on_request: false },
+        ],
       }).success,
     ).toBe(true);
   });
@@ -312,7 +315,12 @@ describe('the step schema', () => {
   it('rejects more than the shared cap', () => {
     const tooMany = Array.from(
       { length: MAX_REGISTRATION_OFFERINGS + 1 },
-      (_, i) => ({ name: `Item ${i}`, price: 1, on_request: false }),
+      (_, i) => ({
+        uid: `u${i}`,
+        name: `Item ${i}`,
+        price: 1,
+        on_request: false,
+      }),
     );
     expect(stepOfferingsSchema.safeParse({ offerings: tooMany }).success).toBe(
       false,
@@ -322,6 +330,7 @@ describe('the step schema', () => {
   it('rejects a priced item with no price', () => {
     expect(
       registrationOfferingSchema.safeParse({
+        uid: 'u1',
         name: 'Adobo',
         price: null,
         on_request: false,
@@ -332,6 +341,7 @@ describe('the step schema', () => {
   it('allows a null price only when quoted', () => {
     expect(
       registrationOfferingSchema.safeParse({
+        uid: 'u1',
         name: 'Site visit',
         price: null,
         on_request: true,
@@ -342,6 +352,7 @@ describe('the step schema', () => {
   it('rejects a blank name', () => {
     expect(
       registrationOfferingSchema.safeParse({
+        uid: 'u1',
         name: '   ',
         price: 10,
         on_request: false,
@@ -352,10 +363,90 @@ describe('the step schema', () => {
   it('rejects a negative price', () => {
     expect(
       registrationOfferingSchema.safeParse({
+        uid: 'u1',
         name: 'Adobo',
         price: -1,
         on_request: false,
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('IMG9/IMG10 — the image path is proved, not trusted', () => {
+  const OTHER_BUSINESS = '22222222-2222-2222-2222-222222222222';
+
+  it('stores a path under the verified business id', async () => {
+    const { inserted } = await write([
+      {
+        name: 'Adobo',
+        price: 120,
+        on_request: false,
+        image_url: `${BUSINESS_ID}/offering-1-0.webp`,
+      },
+    ]);
+    expect(inserted[0][0].image_url).toBe(`${BUSINESS_ID}/offering-1-0.webp`);
+  });
+
+  it('refuses a path belonging to another shop', async () => {
+    // The bucket is PUBLIC-READ, so accepting this would let any caller point
+    // their own row at another shop's photo — a real cross-shop read, not a
+    // theoretical one. The client sends this value back, so it cannot be
+    // trusted just because this app produced the original.
+    const { inserted } = await write([
+      {
+        name: 'Adobo',
+        price: 120,
+        on_request: false,
+        image_url: `${OTHER_BUSINESS}/offering-1-0.webp`,
+      },
+    ]);
+    expect(inserted[0][0].image_url).toBeNull();
+  });
+
+  it('refuses an absolute URL', async () => {
+    // IMG10 — a column holding both raw paths and absolute URLs is what made
+    // the gallery diff match nothing and delete live files.
+    for (const value of [
+      'https://evil.example/x.webp',
+      '//evil.example/x.webp',
+      `http://localhost:54321/storage/v1/object/public/product-images/${BUSINESS_ID}/x.webp`,
+    ]) {
+      const { inserted } = await write([
+        { name: 'Adobo', price: 120, on_request: false, image_url: value },
+      ]);
+      expect(inserted[0][0].image_url).toBeNull();
+    }
+  });
+
+  it('refuses a traversal-shaped path', async () => {
+    const { inserted } = await write([
+      {
+        name: 'Adobo',
+        price: 120,
+        on_request: false,
+        image_url: `${BUSINESS_ID}/../${OTHER_BUSINESS}/x.webp`,
+      },
+    ]);
+    expect(inserted[0][0].image_url).toBeNull();
+  });
+
+  it('refuses a business id that merely starts the same', async () => {
+    // Prefix matching without the slash would accept `<id>-evil/...`.
+    const { inserted } = await write([
+      {
+        name: 'Adobo',
+        price: 120,
+        on_request: false,
+        image_url: `${BUSINESS_ID}-evil/x.webp`,
+      },
+    ]);
+    expect(inserted[0][0].image_url).toBeNull();
+  });
+
+  it('writes null when no photo was attached', async () => {
+    const { inserted } = await write([
+      { name: 'Adobo', price: 120, on_request: false },
+    ]);
+    expect(inserted[0][0].image_url).toBeNull();
   });
 });

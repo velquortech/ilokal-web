@@ -101,6 +101,15 @@ export const step4Schema = z.object({
  */
 export const registrationOfferingSchema = z
   .object({
+    /**
+     * Client-side identity, stripped before the API call.
+     *
+     * The photo for this row is cached in IndexedDB under a key derived from
+     * this id. Keying on the ARRAY INDEX instead would re-map every time an
+     * item is removed — deleting item 1 would silently move item 2's photo
+     * onto item 1 — so the key has to be stable for the life of the row.
+     */
+    uid: z.string().min(1),
     name: z.string().trim().min(1, 'Name is required').max(255),
     /**
      * Null is only legal for a quote-based offering — the same rule the DB

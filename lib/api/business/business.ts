@@ -16,7 +16,14 @@ export type RegistrationFileKind =
   | 'shop_banner'
   | 'interior_image'
   | 'business_license'
-  | 'tax_certificate';
+  | 'tax_certificate'
+  // A photo for one of the offerings entered in the wizard. Unlike every kind
+  // above it updates NO column on `businesses` — the row it belongs to does
+  // not exist yet — so it returns the stored path for the offerings write to
+  // carry. It rides this route rather than `uploadProductImageAction` because
+  // that action calls `verifyBusinessOwner()` with no argument, which falls
+  // back to whichever shop `.limit(1)` returns.
+  | 'offering_image';
 
 export interface BusinessDraftMeta {
   shop_name: string;
@@ -132,6 +139,26 @@ export async function uploadBusinessRegistrationFile(
     uploadWebP(supabase, bucket, path, file, { maxDimension, upsert: true });
 
   const ts = Date.now();
+
+  // Offering photos return early: there is no column on `businesses` to put
+  // them in, and the `products` row they belong to is written afterwards by
+  // `createBusinessRegistrationOfferings`. The bucket's own INSERT policy
+  // (`foldername[1] = businesses.id AND owner AND not archived`) is what makes
+  // this path safe — and is also why nothing can be uploaded before the draft
+  // exists.
+  //
+  // The bucket-relative PATH is returned, never an absolute URL: mixing the
+  // two in one column is what made the gallery diff match nothing and delete
+  // live files (2026-08-06).
+  if (kind === 'offering_image') {
+    const path = await uploadImage(
+      'product-images',
+      `${businessId}/offering-${ts}-${index}.webp`,
+      IMAGE_PRESETS.product,
+    );
+    return { path };
+  }
+
   let update: Record<string, unknown>;
 
   switch (kind) {
@@ -385,6 +412,12 @@ export interface RegistrationOfferingInput {
   name: string;
   price: number | null;
   on_request: boolean;
+  /**
+   * Bucket-relative path returned by the `offering_image` upload, or null.
+   * Re-checked against the VERIFIED business id below — a caller could
+   * otherwise point a row at any object in the bucket.
+   */
+  image_url?: string | null;
 }
 
 export async function createBusinessRegistrationOfferings(
@@ -429,7 +462,26 @@ export async function createBusinessRegistrationOfferings(
     price_type: 'fixed' | 'on_request';
     status: 'active';
     kind: 'product' | 'service';
+    image_url: string | null;
   }[] = [];
+
+  /**
+   * Only a path this upload route just produced for THIS business.
+   *
+   * The client sends the path back, so without this an attacker could set any
+   * row's image to any object in the bucket — including another shop's. The
+   * bucket is public-read, so that is a real cross-shop read, not a
+   * theoretical one.
+   *
+   * A stored PATH, never an absolute URL: mixing the two in one column is what
+   * made the gallery diff match nothing and delete live files (2026-08-06).
+   */
+  const ownedImagePath = (value: string | null | undefined): string | null => {
+    if (typeof value !== 'string' || value.length === 0) return null;
+    if (value.includes('://') || value.startsWith('//')) return null;
+    if (value.includes('..')) return null;
+    return value.startsWith(`${business.id}/`) ? value : null;
+  };
 
   for (const offering of offerings.slice(0, MAX_REGISTRATION_OFFERINGS)) {
     const name = offering.name.trim();
@@ -456,6 +508,7 @@ export async function createBusinessRegistrationOfferings(
       // omitted field from a deliberate one, so a services business would
       // otherwise mint products at registration (the offerings phase-1 decay).
       kind,
+      image_url: ownedImagePath(offering.image_url),
     });
   }
 

@@ -10,6 +10,7 @@ import {
   createRegistrationDeal,
   createRegistrationOfferings,
   registerBusiness,
+  uploadOfferingImage,
   uploadRegistrationFile,
 } from '../api/register-business';
 import { defaultKindForMode } from '@/lib/types/offering';
@@ -21,8 +22,15 @@ import { cn } from '@/lib/utils';
 const BUSINESS_ID_KEY = 'ilokal-registration-business-id';
 
 export function ShopRegistrationContent() {
-  const { step, steps, requireDocuments, form, clearFormCache, offeringMode } =
-    useMultiStepForm();
+  const {
+    step,
+    steps,
+    requireDocuments,
+    form,
+    clearFormCache,
+    offeringMode,
+    offeringImages,
+  } = useMultiStepForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
@@ -144,6 +152,32 @@ export function ShopRegistrationContent() {
     // the items belong to the NEW draft. The server is idempotent by name as
     // well, so neither guard is load-bearing alone.
     const offerings = data.offerings ?? [];
+
+    // Photos first, one request each — the offerings write carries the paths,
+    // and a single multipart POST with everything is what 413'd in production.
+    //
+    // Keyed per photo in the same ref as the files, so a retry after a
+    // mid-flight failure re-uploads none of them; without that, every retry
+    // would orphan another copy in the bucket.
+    //
+    // A photo that fails does NOT fail the registration: the item is the
+    // required thing and the picture is decoration, so the offering is written
+    // without it and the owner can add it from the dashboard.
+    const imagePaths = new Map<string, string>();
+    for (const [index, item] of offerings.entries()) {
+      const file = item.uid ? offeringImages.get(item.uid) : undefined;
+      if (!file) continue;
+      const key = `offering_image_${item.uid}`;
+      if (uploadedRef.current.has(key)) continue;
+      try {
+        const path = await uploadOfferingImage(bid, file, index);
+        if (path) imagePaths.set(item.uid, path);
+        uploadedRef.current.add(key);
+      } catch (error: unknown) {
+        console.error('[registration] offering photo upload failed', error);
+      }
+    }
+
     if (offerings.length > 0 && !uploadedRef.current.has('offerings')) {
       await createRegistrationOfferings(
         bid,
@@ -151,6 +185,7 @@ export function ShopRegistrationContent() {
           name: item.name,
           price: item.on_request ? null : (item.price ?? null),
           on_request: item.on_request,
+          image_url: imagePaths.get(item.uid) ?? null,
         })),
         // From the vertical the owner picked, not the DB default — that
         // default is 'product', so a services business would otherwise mint

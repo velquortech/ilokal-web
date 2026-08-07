@@ -220,21 +220,30 @@ describe('the preview stays put while the rail scrolls', () => {
     expect(column?.className).toContain('xl:top-0');
   });
 
-  it('bounds the mount by viewport height, not only by width', () => {
-    // A 4:5 post at full width pushes the download button below the fold of a
-    // pinned column, where it can never be scrolled to.
-    render([SHOPS[0].id]);
-
-    const mount = container.querySelector('[class*="max-h-[calc(100dvh"]');
-    expect(mount).toBeTruthy();
-  });
-
-  it('lets the image shrink to fit that bound instead of overflowing', () => {
+  it('bounds the IMAGE by viewport height, not the frame around it', () => {
+    // The frame used to be fixed and the image told to fit inside it with
+    // `max-h-full` — which silently did nothing, because the wrapper between
+    // them had auto height and there was no definite height for the percentage
+    // to resolve against. The 4:5 post spilled straight out of the border.
     render([SHOPS[0].id]);
     act(() => vi.advanceTimersByTime(400));
 
     const img = preview();
-    expect(img?.className).toContain('max-h-full');
-    expect(img?.className).toContain('object-contain');
+    expect(img?.className).toContain('max-h-[calc(100dvh-16rem)]');
+    expect(img?.className).toContain('w-auto');
+    // Nothing may reintroduce a percentage height with no parent to measure.
+    expect(img?.className).not.toContain('max-h-full');
+  });
+
+  it('lets the frame hug the post rather than boxing it', () => {
+    // `w-fit` is what makes the border follow the post's real dimensions at
+    // either ratio: no letterboxing at 1:1, no overflow at 4:5.
+    render([SHOPS[0].id]);
+
+    const mount = container.querySelector('.w-fit');
+    expect(mount).toBeTruthy();
+    // A min-height fighting a max-height on the same box is what broke this
+    // on short viewports.
+    expect(mount?.className).not.toContain('min-h-');
   });
 });

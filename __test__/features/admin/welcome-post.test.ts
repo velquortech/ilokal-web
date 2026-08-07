@@ -29,6 +29,7 @@ import {
 } from '@/lib/og/welcomePost';
 import { adminWelcomePostsPath } from '@/config/routeConfig';
 import { isVariableFont } from '@/lib/og/fonts';
+import { BACKDROP_CIRCLES } from '@/lib/og/welcomePost';
 import { readFileSync } from 'node:fs';
 
 /**
@@ -312,5 +313,45 @@ describe('the text-scale zones', () => {
 
   it('keeps the name clamp as an alias, so existing callers are unaffected', () => {
     expect(clampNameScale).toBe(clampScale);
+  });
+});
+
+describe('the backdrop circles', () => {
+  it('keeps every circle off the headline band', () => {
+    // The copy is white on Brick Ember. A tint under it costs contrast on the
+    // one thing that must stay legible.
+    const HEADLINE_TOP = 0.06;
+    const HEADLINE_BOTTOM = 0.3;
+    for (const circle of BACKDROP_CIRCLES) {
+      const centreX = circle.x + circle.size / 2;
+      const overlapsBand =
+        circle.y < HEADLINE_BOTTOM && circle.y + circle.size > HEADLINE_TOP;
+      // The copy is centred, so the zone that actually costs contrast is the
+      // middle — not the full width of its max-width box. The template's own
+      // top-right circle sits behind the line's right END and reads fine.
+      const underCopy = centreX > 0.25 && centreX < 0.75;
+      expect(overlapsBand && underCopy).toBe(false);
+    }
+  });
+
+  it('crops every circle against an edge', () => {
+    // One floating loose in open space reads as a stray shape rather than as
+    // depth — the rule that holds the set together.
+    for (const circle of BACKDROP_CIRCLES) {
+      const bleeds =
+        circle.x < 0 ||
+        circle.y < 0.05 ||
+        circle.x + circle.size > 1 ||
+        circle.y + circle.size > 0.95;
+      expect(bleeds).toBe(true);
+    }
+  });
+
+  it('keeps every tint faint enough to sit behind content', () => {
+    for (const circle of BACKDROP_CIRCLES) {
+      const alpha = Number(/([\d.]+)\)$/.exec(circle.tint)?.[1]);
+      expect(alpha).toBeGreaterThan(0);
+      expect(alpha).toBeLessThanOrEqual(0.05);
+    }
   });
 });

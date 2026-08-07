@@ -350,14 +350,22 @@ export function PostComposer({
           </p>
         )}
 
-        {/* Bounded by the viewport, not just by width: a 4:5 post at full
-            width would push the download button below the fold of a pinned
-            column, where it could never be scrolled to. */}
-        <div className="bg-muted/40 flex min-h-125 items-center justify-center rounded-xl border p-6 sm:p-10 xl:max-h-[calc(100dvh-14rem)]">
+        {/* The mount HUGS the post rather than boxing it.
+            `w-fit` on a flex container plus an image bounded by viewport
+            height means the frame is exactly the post's size at either ratio —
+            no letterboxing at 1:1, no overflow at 4:5.
+
+            The previous version fixed the frame and tried to fit the image
+            inside it with `max-h-full`, which silently did nothing: the
+            wrapper between them was `w-full` with AUTO height, so there was no
+            definite height for the percentage to resolve against, and the 4:5
+            post spilled straight out of the border. A `min-h` fighting a
+            `max-h` on the same element made it worse on short viewports. */}
+        <div className="bg-muted/40 mx-auto flex w-fit items-center justify-center rounded-xl border p-4 sm:p-6">
           {previewSrc ? (
-            <div className="relative w-full max-w-125">
+            <div className="relative">
               {status === 'error' ? (
-                <div className="text-muted-foreground bg-background flex aspect-square flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-6 text-center text-sm">
+                <div className="text-muted-foreground bg-background flex aspect-square w-100 max-w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-6 text-center text-sm">
                   <TriangleAlert className="h-5 w-5" aria-hidden />
                   <p className="font-medium">We couldn’t render this post.</p>
                   <p className="text-xs">
@@ -384,7 +392,10 @@ export function PostComposer({
                     key={previewSrc}
                     src={previewSrc}
                     alt="Welcome post preview"
-                    className="max-h-full w-auto max-w-full rounded-lg object-contain shadow-xl"
+                    // Height is the binding constraint in a pinned column:
+                    // the post must leave room for the download button below
+                    // it, which cannot be scrolled to once the column sticks.
+                    className="block h-auto max-h-[calc(100dvh-16rem)] w-auto max-w-full rounded-lg shadow-xl"
                     onLoad={() => setStatus('idle')}
                     onError={() => setStatus('error')}
                   />
@@ -392,7 +403,7 @@ export function PostComposer({
               )}
             </div>
           ) : (
-            <div className="text-muted-foreground flex flex-col items-center gap-3 text-center">
+            <div className="text-muted-foreground flex size-100 max-w-full flex-col items-center justify-center gap-3 text-center">
               <ImageIcon className="h-6 w-6" aria-hidden />
               <div>
                 <p className="text-sm font-medium">Nothing selected yet</p>

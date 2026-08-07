@@ -188,25 +188,42 @@ export async function GET(request: NextRequest) {
         wordmarkUrl={wordmarkUrl}
         scales={scales}
       />,
-      { width, height, fonts, headers: NO_STORE },
+      { width, height, fonts },
     );
 
-    if (!download) return image;
+    // 🔴 The render is FORCED here, inside the try, and the buffer is served.
+    //
+    // Returning the `ImageResponse` directly streams it, and Satori renders
+    // lazily as that stream is consumed — after the handler has returned and
+    // the headers have gone out. So a render failure was not a 500 we could
+    // log; it killed the function, and Vercel reported
+    // `FUNCTION_INVOCATION_FAILED` with no application output whatsoever. That
+    // is precisely how a WebP logo took this route down and left nothing to
+    // debug from.
+    //
+    // Buffering costs one 1080px PNG in memory — one or two megabytes — and
+    // gives up streaming, which is worth nothing for a single image the client
+    // cannot use until it is complete. In exchange every failure from here on
+    // is catchable, loggable and answerable.
+    const png = await image.arrayBuffer();
 
-    // Same render, offered as a file. `slug` keeps a folder of these readable.
-    const slug = cards
-      .map((card) => card.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
-      .join('_')
-      .replace(/^-|-$/g, '')
-      .slice(0, 80);
+    const headers: Record<string, string> = {
+      ...NO_STORE,
+      'Content-Type': 'image/png',
+    };
 
-    return new NextResponse(await image.arrayBuffer(), {
-      headers: {
-        ...NO_STORE,
-        'Content-Type': 'image/png',
-        'Content-Disposition': `attachment; filename="ilokal-welcome-${slug || 'post'}-${ratio}.png"`,
-      },
-    });
+    if (download) {
+      // `slug` keeps a folder of these readable.
+      const slug = cards
+        .map((card) => card.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
+        .join('_')
+        .replace(/^-|-$/g, '')
+        .slice(0, 80);
+      headers['Content-Disposition'] =
+        `attachment; filename="ilokal-welcome-${slug || 'post'}-${ratio}.png"`;
+    }
+
+    return new NextResponse(png, { headers });
   } catch (error: unknown) {
     // Never the driver's or the renderer's text — a font or fetch failure
     // names paths.

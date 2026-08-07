@@ -156,14 +156,17 @@ describe('rate limiting', () => {
 
 describe('the response must not sit in a shared cache', () => {
   it('overrides ImageResponse’s public, immutable default', async () => {
-    // The default is `public, immutable, no-transform, max-age=31536000` —
-    // right for a public OG card, and exactly wrong for a response derived
-    // from an admin's cookie session.
-    await GET(`ids=${ID}`);
-    const headers = NEXT_OG_HEADERS.get('last') as Record<string, string>;
-    expect(headers['cache-control']).toContain('private');
-    expect(headers['cache-control']).toContain('no-store');
-    expect(headers['cache-control']).not.toContain('public');
+    // `ImageResponse` defaults to `public, immutable, no-transform,
+    // max-age=31536000` — right for a public OG card, and exactly wrong for a
+    // response derived from an admin's cookie session. Asserted on the
+    // response actually returned rather than on the options handed to the
+    // renderer, since the route now buffers the render and serves its own.
+    const response = await GET(`ids=${ID}`);
+    const cache = response.headers.get('cache-control') ?? '';
+    expect(cache).toContain('private');
+    expect(cache).toContain('no-store');
+    expect(cache).not.toContain('public');
+    expect(response.headers.get('content-type')).toBe('image/png');
   });
 
   it('carries the same header on the download', async () => {
@@ -199,6 +202,25 @@ describe('logos are fetched through the guard, never by the renderer', () => {
     fetchImageAsDataUrl.mockResolvedValue(null);
     await GET(`ids=${ID}`);
     expect(RENDERED.get('last')!.cards[0].logoUrl).toBeNull();
+  });
+
+  it('forces the render inside the handler, so a failure is a real 500', async () => {
+    // Returning the ImageResponse directly streams it, and Satori renders
+    // lazily as that stream is consumed — after the handler returned. A throw
+    // there killed the function: FUNCTION_INVOCATION_FAILED, no log, nothing
+    // to debug. Buffering is what makes a render failure catchable.
+    const { ImageResponse } = await import('next/og');
+    const spy = vi
+      .spyOn(
+        ImageResponse.prototype as unknown as { arrayBuffer: () => unknown },
+        'arrayBuffer',
+      )
+      .mockRejectedValue(new Error('u2 is not iterable'));
+
+    const response = await GET(`ids=${ID}`);
+    expect(response.status).toBe(500);
+    expect(JSON.stringify(await response.json())).not.toContain('u2');
+    spy.mockRestore();
   });
 
   it('renders anyway when the guard refuses the logo', async () => {

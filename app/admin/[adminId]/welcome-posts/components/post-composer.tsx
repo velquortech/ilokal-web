@@ -9,6 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { Download, ImageIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { WelcomePostCandidate } from '@/lib/api/admin/analyticsQuery';
+import {
+  NAME_SCALE_DEFAULT,
+  NAME_SCALE_MAX,
+  NAME_SCALE_MIN,
+} from '@/lib/og/welcomePost';
 
 const RATIOS = [
   {
@@ -48,6 +53,7 @@ export function PostComposer({
   );
   const [hidden, setHidden] = React.useState<string[]>([]);
   const [ratio, setRatio] = React.useState<Ratio>('1x1');
+  const [nameScale, setNameScale] = React.useState(NAME_SCALE_DEFAULT);
   const [loading, setLoading] = React.useState(false);
 
   const toggle = (id: string) => {
@@ -69,8 +75,11 @@ export function PostComposer({
     const params = new URLSearchParams({ ids: selected.join(','), ratio });
     const hide = hidden.filter((id) => selected.includes(id));
     if (hide.length) params.set('hideName', hide.join(','));
+    if (nameScale !== NAME_SCALE_DEFAULT) {
+      params.set('nameScale', nameScale.toFixed(2));
+    }
     return params.toString();
-  }, [selected, ratio, hidden]);
+  }, [selected, ratio, hidden, nameScale]);
 
   const previewSrc = selected.length
     ? `/api/admin/welcome-post?${query}`
@@ -176,6 +185,34 @@ export function PostComposer({
             </div>
             <p className="text-muted-foreground text-xs">
               {RATIOS.find((option) => option.value === ratio)?.hint}
+            </p>
+          </div>
+
+          {/* The ladder picks a size from the name's length, but how big a name
+              should look depends on the logo above it — which no rule knows.
+              This is the override. */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="name-scale" className="text-sm font-medium">
+                Name size
+              </Label>
+              <span className="text-muted-foreground text-xs tabular-nums">
+                {Math.round(nameScale * 100)}%
+              </span>
+            </div>
+            <input
+              id="name-scale"
+              type="range"
+              min={NAME_SCALE_MIN}
+              max={NAME_SCALE_MAX}
+              step={0.05}
+              value={nameScale}
+              onChange={(event) => setNameScale(Number(event.target.value))}
+              className="accent-primary w-full"
+            />
+            <p className="text-muted-foreground text-xs">
+              Long names wrap to two lines. Reset to 100% for the automatic
+              size.
             </p>
           </div>
         </CardContent>

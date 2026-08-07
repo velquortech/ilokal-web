@@ -196,7 +196,16 @@ export function ShopOfferings() {
         </Button>
       </div>
 
-      <div className="space-y-3">
+      {/* The list absorbs the leftover height.
+
+          The wizard stretches each step to fill the column above the Back/Next
+          bar (`<div className="flex flex-1">{stepComponent}</div>`), so a short
+          step has slack to put somewhere. Left unclaimed it pools at the bottom
+          as a dead band — ~285px of blank page between the last thing you can
+          read and the buttons. Giving it to the list turns that space into the
+          box the items will land in, which is the one region on this step that
+          is *supposed* to grow. */}
+      <div className="flex min-h-0 flex-1 flex-col space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium">
             {vocabulary.catalogue} ({fields.length})
@@ -209,11 +218,16 @@ export function ShopOfferings() {
         </div>
 
         {fields.length === 0 ? (
-          <div className="border-border text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm">
+          <div className="border-border text-muted-foreground flex flex-1 items-center justify-center rounded-lg border border-dashed p-6 text-center text-sm">
             Nothing added yet. One is enough to continue.
           </div>
         ) : (
-          <ul className="divide-border divide-y rounded-lg border">
+          // Same `flex-1` as the empty state, so the list box occupies the
+          // same region whether or not it has anything in it — the layout
+          // does not jump the moment the first item lands. Past a screenful
+          // it simply grows and the page scrolls, which is what the shell's
+          // single scroll container is for.
+          <ul className="divide-border flex-1 divide-y rounded-lg border">
             {fields.map((field, index) => {
               const item = form.getValues(`offerings.${index}`);
               return (

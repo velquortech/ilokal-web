@@ -73,7 +73,12 @@ export function ShopDeal() {
           </AlertDescription>
         </Alert>
 
-        <div className="border-border flex flex-col items-center gap-4 rounded-lg border border-dashed p-8 text-center">
+        {/* Absorbs the leftover height, for the same reason the menu step's
+            list does: the wizard stretches each step to fill the column above
+            Back/Next, and slack nobody claims pools at the bottom as a dead
+            band. Here it makes the one thing on the step — the offer to add a
+            deal — the thing that fills the space. */}
+        <div className="border-border flex flex-1 flex-col items-center justify-center gap-4 rounded-lg border border-dashed p-8 text-center">
           <p className="text-muted-foreground text-sm">
             No deal yet. Continue to finish registering, or add one now.
           </p>

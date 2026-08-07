@@ -1,47 +1,55 @@
-'use client';
-
-import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChartCard } from '@/components/custom/ChartCard';
+import { Users, Building2, BadgeCheck, UserPlus, Clock } from 'lucide-react';
 import {
-  ChartConfig,
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
-} from '@/components/ui/chart';
-import { Users, Building2, FileText, TrendingUp } from 'lucide-react';
+  getAdminDashboardSummary,
+  getPlatformGrowth,
+} from '@/lib/api/admin/analyticsQuery';
+import { getRegistrationSettings } from '@/lib/api/appSettings';
+import { GrowthCharts } from './components/GrowthChart';
 
-const dashboardData = [
-  { month: 'Jan', users: 400, businesses: 240 },
-  { month: 'Feb', users: 520, businesses: 290 },
-  { month: 'Mar', users: 680, businesses: 350 },
-  { month: 'Apr', users: 750, businesses: 420 },
-  { month: 'May', users: 890, businesses: 510 },
-  { month: 'Jun', users: 1050, businesses: 620 },
-];
+/**
+ * The admin dashboard.
+ *
+ * Every number here used to be a literal — 1,050 users, 620 businesses, 24
+ * pending documents, +18% growth, and both charts from a six-row const. The
+ * data layer to replace them already existed and nothing rendered it.
+ *
+ * A server component: the reads are admin-scoped and RLS already grants an
+ * admin full access to `profiles` and `businesses`, so this needs neither the
+ * service-role client nor a client-side fetch. It calls `lib/api` directly
+ * rather than `/api/admin/analytics/*` — an RSC hitting our own HTTP route is
+ * a network round trip to ourselves.
+ */
+export const dynamic = 'force-dynamic';
 
-const chartConfig = {
-  users: {
-    label: 'Users',
-    color: 'var(--chart-1)',
-  },
-  businesses: {
-    label: 'Businesses',
-    color: 'var(--chart-2)',
-  },
-} satisfies ChartConfig;
+/** An em dash, not a zero — see `failed` on the query. */
+function StatValue({ value, failed }: { value: number; failed: boolean }) {
+  return (
+    <div className="text-2xl font-bold">
+      {failed ? '—' : value.toLocaleString()}
+    </div>
+  );
+}
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const [summary, growth, settings] = await Promise.all([
+    getAdminDashboardSummary(),
+    getPlatformGrowth(),
+    getRegistrationSettings(),
+  ]);
+
+  /**
+   * The review queue is only a real queue when something can enter it.
+   *
+   * With `auto_verify_businesses` on, `set_business_initial_status` publishes
+   * every new shop immediately, so `pending` is structurally zero. A card that
+   * is permanently 0 trains an admin to stop reading that corner of the
+   * screen, which is worse than not showing it — so it appears only when the
+   * flag makes it meaningful, or when something is genuinely waiting.
+   */
+  const showReviewQueue =
+    !settings.autoVerifyBusinesses || summary.pending_businesses > 0;
+
   return (
     <div className="flex flex-1 flex-col space-y-6">
       <div>
@@ -51,18 +59,45 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      {summary.failed && (
+        <Card className="border-destructive/40">
+          <CardContent className="text-muted-foreground py-4 text-sm">
+            We couldn’t load some of these figures. The numbers below may be
+            incomplete — refresh in a moment rather than acting on them.
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
             <Users className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,050</div>
+            <StatValue value={summary.total_users} failed={summary.failed} />
             <p className="text-muted-foreground text-xs">
-              +12% from last month
+              Everyone with an account
             </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              New Sign-ups (30d)
+            </CardTitle>
+            <UserPlus className="text-muted-foreground h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            {/* Replaces "Growth Rate +18%", which had no definition anywhere —
+                no formula, no period, no source. A count over a stated window
+                is a number someone can check. */}
+            <StatValue
+              value={summary.new_users_last_30_days}
+              failed={summary.failed}
+            />
+            <p className="text-muted-foreground text-xs">In the last 30 days</p>
           </CardContent>
         </Card>
 
@@ -72,95 +107,54 @@ export default function DashboardPage() {
             <Building2 className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">620</div>
-            <p className="text-muted-foreground text-xs">+8% from last month</p>
+            <StatValue
+              value={summary.total_businesses}
+              failed={summary.failed}
+            />
+            <p className="text-muted-foreground text-xs">Registered shops</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Pending Documents
-            </CardTitle>
-            <FileText className="text-muted-foreground h-4 w-4" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">24</div>
-            <p className="text-muted-foreground text-xs">Awaiting review</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Growth Rate</CardTitle>
-            <TrendingUp className="text-muted-foreground h-4 w-4" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">+18%</div>
-            <p className="text-muted-foreground text-xs">Year over year</p>
-          </CardContent>
-        </Card>
+        {showReviewQueue ? (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Awaiting Review
+              </CardTitle>
+              <Clock className="text-muted-foreground h-4 w-4" />
+            </CardHeader>
+            <CardContent>
+              <StatValue
+                value={summary.pending_businesses}
+                failed={summary.failed}
+              />
+              <p className="text-muted-foreground text-xs">
+                Shops pending verification
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Verified Shops
+              </CardTitle>
+              <BadgeCheck className="text-muted-foreground h-4 w-4" />
+            </CardHeader>
+            <CardContent>
+              <StatValue
+                value={summary.verified_businesses}
+                failed={summary.failed}
+              />
+              <p className="text-muted-foreground text-xs">
+                Live and visible to shoppers
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <ChartCard
-          title="User & Business Growth"
-          description="New users vs businesses per month"
-        >
-          <ChartContainer config={chartConfig} className="min-h-75 w-full">
-            <BarChart data={dashboardData}>
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="month"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis fontSize={12} tickLine={false} axisLine={false} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <ChartLegend content={<ChartLegendContent />} />
-              <Bar
-                dataKey="users"
-                radius={[4, 4, 0, 0]}
-                fill="var(--color-users)"
-              />
-              <Bar
-                dataKey="businesses"
-                radius={[4, 4, 0, 0]}
-                fill="var(--color-businesses)"
-              />
-            </BarChart>
-          </ChartContainer>
-        </ChartCard>
-
-        <ChartCard title="Trend Analysis" description="Cumulative growth trend">
-          <ChartContainer config={chartConfig} className="min-h-75 w-full">
-            <AreaChart data={dashboardData}>
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="month"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis fontSize={12} tickLine={false} axisLine={false} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <ChartLegend content={<ChartLegendContent />} />
-              <Area
-                dataKey="users"
-                fill="var(--color-users)"
-                stroke="var(--color-users)"
-              />
-              <Area
-                dataKey="businesses"
-                fill="var(--color-businesses)"
-                stroke="var(--color-businesses)"
-              />
-            </AreaChart>
-          </ChartContainer>
-        </ChartCard>
-      </div>
+      <GrowthCharts buckets={growth.buckets} failed={growth.failed} />
     </div>
   );
 }

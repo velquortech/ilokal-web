@@ -77,16 +77,16 @@ would be the wrong trade.
 
 ---
 
-## 4. Action items
+## 4. Action items ✅ done
 
-- [ ] **AD9/AD10** — new `getPlatformGrowth(months)` in `lib/api/admin/analyticsQuery.ts`: one head-only `count` per month per entity, `Asia/Manila` boundaries (**AD6/AD7**)
-- [ ] **AD4** — every reader reports `failed` separately from `0`; the cards render an em dash on failure, never a zero
-- [ ] **AD5** — `page.tsx` becomes a server component; the recharts pieces move to a `'use client'` child that takes data as props
-- [ ] **AD1** — the four stat cards read real values: total users, total businesses, verified businesses, new signups (30d)
-- [ ] **AD2/AD3** — drop *Growth Rate* and *Pending Documents* as written; the review-queue card is conditional on `auto_verify_businesses`
-- [ ] **AD8** — no revenue card
-- [ ] **AD13** — check the admin `loading.tsx` matches the new shape
-- [ ] Tests: bucket boundaries at a Manila month edge, outage renders no zeros, counts are head-only, the review card hides on the flag
+- [x] **AD9/AD10** — new `getPlatformGrowth(months)` in `lib/api/admin/analyticsQuery.ts`: one head-only `count` per month per entity, `Asia/Manila` boundaries (**AD6/AD7**)
+- [x] **AD4** — every reader reports `failed` separately from `0`; the cards render an em dash on failure, never a zero
+- [x] **AD5** — `page.tsx` becomes a server component; the recharts pieces move to a `'use client'` child that takes data as props
+- [x] **AD1** — the four stat cards read real values: total users, total businesses, verified businesses, new signups (30d)
+- [x] **AD2/AD3** — drop *Growth Rate* and *Pending Documents* as written; the review-queue card is conditional on `auto_verify_businesses`
+- [x] **AD8** — no revenue card
+- [x] **AD13** — check the admin `loading.tsx` matches the new shape
+- [x] Tests: bucket boundaries at a Manila month edge, outage renders no zeros, counts are head-only, the review card hides on the flag
 
 ## 5. Explicitly not doing
 
@@ -96,3 +96,30 @@ would be the wrong trade.
 - Traffic or redemption panels — `view_events` and `user_redemptions` are
   empty, so they would be honest but blank. Worth revisiting once the mobile
   app is producing events.
+
+---
+
+## 6. What the dashboard actually shows now
+
+Verified against the live cloud project while implementing (read-only):
+
+| Card | Was | Now |
+| --- | --- | --- |
+| Total Users | `1,050` | **42** |
+| New Sign-ups (30d) | *"Growth Rate +18%"* | **42** |
+| Businesses | `620` | **13** |
+| Awaiting Review / Verified Shops | *"Pending Documents 24"* | **13 verified** (review card hidden — `auto_verify_businesses` is on) |
+
+Growth chart, from the same query the page uses, cross-checked against SQL:
+Mar–May 0, **Jun 1 business**, Jul 0, **Aug 42 users / 12 businesses**. The
+business buckets sum to 13, which is the table total — the bucket maths agrees
+with a `date_trunc` grouping done in Postgres.
+
+Two things worth knowing:
+
+- **The platform is nine days old.** The first profile is `2026-08-01`, so five
+  of the six months are legitimately empty and the chart is one tall August
+  bar. That is the truth, not a bug — but it is why the chart looks sparse.
+- **A signup landed mid-review** (41 → 42 between two queries). Production is
+  live and taking real traffic, which is the strongest argument for the numbers
+  being real rather than seeded.

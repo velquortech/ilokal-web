@@ -84,6 +84,26 @@ const buildCSPImageSources = (): string => {
 };
 
 const nextConfig: NextConfig = {
+  // The welcome-post renderer reads brand fonts off disk at request time, and
+  // builds the path dynamically (`assets/fonts/${base}.${ext}` across a list of
+  // candidate cuts). Output file tracing works by static analysis, so it cannot
+  // see those reads — without this the files are absent from a standalone
+  // build and every render falls back to the bundled Geist, i.e. silently
+  // off-brand in production while correct in dev.
+  //
+  // `public/brand/wordmark` is here for the same reason: the lockup is inlined
+  // from disk rather than fetched over HTTP, so it is a server-side read now,
+  // not just a static asset.
+  outputFileTracingIncludes: {
+    '/api/admin/welcome-post': [
+      './assets/fonts/**',
+      './public/brand/wordmark/**',
+      // The bundled fallback face. Read as a file (Turbopack refuses to
+      // BUNDLE a .ttf — "Unknown module type"), so the path is assembled and
+      // the tracer cannot see it either.
+      './node_modules/next/dist/compiled/@vercel/og/Geist-Regular.ttf',
+    ],
+  },
   experimental: {
     serverActions: {
       // Server Actions default to a 1 MB request body, but the product-image

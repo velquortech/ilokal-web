@@ -55,3 +55,7 @@ claude.md
 .claude/EVENTS_TABLE.md
 .claude/ERROR_HANDLING.md
 .claude/SHOP_GALLERY.md
+
+# Variable font cuts: the image renderer (Satori) cannot parse them, so they
+# are never the file to commit. Static cuts only.
+assets/fonts/*-Variable.ttf

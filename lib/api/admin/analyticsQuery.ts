@@ -7,7 +7,10 @@ import type {
   AdminDashboardSummary,
   PlatformAnalytics,
   PlatformGrowth,
+  WelcomePostCandidate,
+  WelcomePostCandidates,
 } from '@/lib/types';
+import { WELCOME_POST_NEW_DAYS } from '@/lib/types';
 
 export async function getPlatformOverview(): Promise<PlatformAnalytics> {
   const supabase = await createServerSupabaseClient();
@@ -329,4 +332,78 @@ export async function getAdminDashboardSummary(
       (read) => read.failed,
     ),
   };
+}
+
+/**
+ * Shops the admin might want to post a welcome card for.
+ *
+ * No marker column yet, so "new" is `created_at` within a window rather than
+ * "not yet posted about". That means a shop can be posted twice if an admin is
+ * not paying attention — the honest trade for shipping without touching a
+ * migration backlog that is already 23 deep. A `welcome_post_generated_at`
+ * column is the durable answer (see `.claude/WELCOME_POSTS.md`).
+ *
+ * **Verified shops only.** A `pending` or `rejected` registration is not
+ * something to announce on iLokal's own accounts, and `suspended` is the
+ * opposite of something to announce. The picker offering them was one careless
+ * click away from a post that has to be deleted publicly.
+ *
+ * The window is counted in SQL and the ids for it come from the same filter,
+ * so neither depends on where the fetched page happens to end.
+ */
+export async function getWelcomePostCandidates(
+  limit = 60,
+  now: Date = new Date(),
+): Promise<WelcomePostCandidates> {
+  const cutoff = new Date(
+    now.getTime() - WELCOME_POST_NEW_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+
+  try {
+    const supabase = await createServerSupabaseClient();
+
+    const [listed, windowed] = await Promise.all([
+      supabase
+        .from('businesses')
+        .select('id, shop_name, logo_url, created_at')
+        .eq('status', 'verified')
+        .is('archived_at', null)
+        // NULLS LAST explicitly: Postgres puts them FIRST on a DESC order, so
+        // the default would float a shop with no timestamp above every real
+        // registration and the prompt would pick it as the newest.
+        .order('created_at', { ascending: false, nullsFirst: false })
+        .range(0, Math.max(0, limit - 1)),
+      // Head-only: the number, without a second copy of the rows.
+      supabase
+        .from('businesses')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'verified')
+        .is('archived_at', null)
+        .gte('created_at', cutoff),
+    ]);
+
+    if (listed.error || windowed.error) {
+      console.error(
+        '[getWelcomePostCandidates]',
+        listed.error ?? windowed.error,
+      );
+      return { rows: [], newIds: [], newCount: 0, failed: true };
+    }
+
+    const rows = (listed.data ?? []) as WelcomePostCandidate[];
+
+    return {
+      rows,
+      // Filtered on the cutoff, not sliced by a count — the two agree only
+      // while the order holds, and a null timestamp breaks the order.
+      newIds: rows
+        .filter((row) => row.created_at !== null && row.created_at >= cutoff)
+        .map((row) => row.id),
+      newCount: windowed.count ?? 0,
+      failed: false,
+    };
+  } catch (error: unknown) {
+    console.error('[getWelcomePostCandidates] threw', error);
+    return { rows: [], newIds: [], newCount: 0, failed: true };
+  }
 }

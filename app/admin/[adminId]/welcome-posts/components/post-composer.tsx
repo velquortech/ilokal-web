@@ -341,6 +341,29 @@ export function PostComposer({
              Only from `xl`: below it the layout is one column and the preview
              sits under the controls, where pinning it would cover them. ── */}
       <div className="space-y-4 xl:sticky xl:top-0 xl:self-start">
+        {/* The action sits ABOVE the post, not below it.
+            A 4:5 preview is taller than the fold, so a button underneath had
+            to be scrolled to — and the column is pinned, so scrolling the rail
+            never brings it back. Up here it rides the sticky column and is
+            always reachable, while staying adjacent to the thing it acts on
+            rather than being hoisted into the page header. */}
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-sm font-semibold">Preview</h2>
+          {previewSrc ? (
+            <Button asChild>
+              <a href={`${previewSrc}&download=1`} download>
+                <Download className="mr-2 h-4 w-4" />
+                Download {POST_RATIOS[ratio].label}
+              </a>
+            </Button>
+          ) : (
+            <Button disabled>
+              <Download className="mr-2 h-4 w-4" />
+              Download
+            </Button>
+          )}
+        </div>
+
         {!brandFontAvailable && (
           <p className="text-muted-foreground rounded-lg border border-dashed p-3 text-xs">
             Rendering with a fallback typeface — the brand font is only
@@ -414,22 +437,6 @@ export function PostComposer({
             </div>
           )}
         </div>
-
-        {/* An anchor with `aria-disabled` still navigates, so with nothing to
-            download there is no anchor at all. */}
-        {previewSrc ? (
-          <Button asChild size="lg" className="w-full sm:w-auto">
-            <a href={`${previewSrc}&download=1`} download>
-              <Download className="mr-2 h-4 w-4" />
-              Download {POST_RATIOS[ratio].label}
-            </a>
-          </Button>
-        ) : (
-          <Button size="lg" className="w-full sm:w-auto" disabled>
-            <Download className="mr-2 h-4 w-4" />
-            Download
-          </Button>
-        )}
       </div>
     </div>
   );

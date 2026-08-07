@@ -1,20 +1,24 @@
 import { Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, Building2, BadgeCheck, UserPlus, Clock } from 'lucide-react';
+import Link from 'next/link';
+import {
+  Users,
+  Building2,
+  BadgeCheck,
+  UserPlus,
+  Clock,
+  Sparkles,
+} from 'lucide-react';
 import {
   getAdminDashboardSummary,
   getPlatformGrowth,
+  getWelcomePostCandidates,
 } from '@/lib/api/admin/analyticsQuery';
 import { getRegistrationSettings } from '@/lib/api/appSettings';
-import {
-  getWelcomePostCandidates,
-  WELCOME_POST_NEW_DAYS,
-} from '@/lib/api/admin/analyticsQuery';
+import { WELCOME_POST_NEW_DAYS } from '@/lib/types';
 import { adminWelcomePostsPath } from '@/config/routeConfig';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-import { Sparkles } from 'lucide-react';
 import { GrowthCharts } from './components/GrowthChart';
 
 /**
@@ -97,10 +101,11 @@ export default async function DashboardPage({
    * screen. A failed read shows nothing rather than a confident "0 new" — the
    * prompt is an invitation, and inventing one is worse than missing one.
    */
-  const newShops = welcome.failed
-    ? []
-    : welcome.rows.slice(0, welcome.newCount);
-  const showWelcomePrompt = newShops.length > 0;
+  // `newIds` is filtered on the cutoff in the query. Slicing `rows` by a count
+  // only worked while the order held, and a null `created_at` sorts FIRST on a
+  // DESC order — so a shop with no timestamp was read as the newest one.
+  const newIds = welcome.failed ? [] : welcome.newIds;
+  const showWelcomePrompt = newIds.length > 0;
 
   /**
    * The review queue is only a real queue when something can enter it.
@@ -138,9 +143,9 @@ export default async function DashboardPage({
               <Sparkles className="text-primary mt-0.5 h-5 w-5 shrink-0" />
               <div>
                 <p className="text-sm font-medium">
-                  {newShops.length === 1
+                  {welcome.newCount === 1
                     ? '1 new business registered'
-                    : `${newShops.length} new businesses registered`}
+                    : `${welcome.newCount} new businesses registered`}
                 </p>
                 <p className="text-muted-foreground text-sm">
                   Create their welcome post for Facebook, Instagram, Threads or
@@ -152,12 +157,7 @@ export default async function DashboardPage({
             {/* The two most recent are preselected, so the click lands on real
                 work instead of an empty picker. */}
             <Button asChild className="shrink-0">
-              <Link
-                href={adminWelcomePostsPath(
-                  adminId,
-                  newShops.slice(0, 2).map((shop) => shop.id),
-                )}
-              >
+              <Link href={adminWelcomePostsPath(adminId, newIds.slice(0, 2))}>
                 Create post
               </Link>
             </Button>

@@ -78,10 +78,15 @@ tokens and a token-refresh story. Not until the images are known to be good.
       server-render copy so it is not mistaken for the duplicate the brand notes forbid
 - [x] **WP6** — font list with a fallback, so an accent can never render as tofu
 - [x] **WP3** — logo fetch with a timeout and an initials fallback per card
+      *(landed properly in phase 7 — the first cut only fell back when
+      `logo_url` was NULL in the database, which is not the failure this item
+      describes)*
 - [x] **WP4/WP5** — `contain` + padding; trim, uppercase, length-keyed size ladder
 - [x] **WP8** — `GET /api/admin/welcome-post`, admin-guarded, returning `ImageResponse`
-- [x] Tests: the size ladder at 3 and 29 characters, trim, the initials fallback,
-      and that the route refuses a non-admin
+- [x] Tests: the size ladder at 3 and 29 characters, trim, the initials fallback
+- [x] ~~and that the route refuses a non-admin~~ — **this was claimed and not
+      written**; the only suites here covered pure helpers and the composer.
+      Landed in phase 7 (`__test__/features/admin/welcome-post-route.test.ts`)
 
 ### Phase 2 — the admin surface ✅
 - [x] Page at `/admin/[adminId]/welcome-posts` — list shops, select 1–2, live preview
@@ -182,3 +187,37 @@ to predict the render, not decoration.
 - [x] **WP24** — no anchor when there is nothing to download
 - [x] **WP25** — collapses at narrow widths
 - [x] Tests: the debounce, the error state, the swap, and no link without a selection
+
+### 6.4 Phase 7 — PR #39 review fixes ✅
+
+The review (react-doctor + api-doctor) found one blocking issue and three high
+ones. All are fixed on this branch.
+
+| # | What | Why it mattered |
+| --- | --- | --- |
+| **WP26** | 🔴 **SSRF** — `logo_url` reached a server-side fetch | The `businesses` owner policy is `FOR ALL` with **no column guard** (verified: the only BEFORE UPDATE trigger on the table is `handle_updated_at`), so a registrant can `PATCH` `logo_url` to any string; `resolveStorageUrl` passes an absolute URL through untouched. The dashboard prompt preselects the two newest registrations, so no admin has to click a hostile row. New `lib/og/remoteImage.ts`: origin allowlist (`URL.origin` equality), 4s timeout, 5 MB cap, `image/*` only, `redirect: 'error'`, and a `data:` URL out so the renderer makes no request at all |
+| **WP27** | 🔴 One unreachable logo failed the whole post | Satori's fetch has no timeout and no per-card recovery — and `ImageResponse` renders lazily *while streaming*, so a throw inside it escapes the handler's `try/catch` after the headers have gone out. Everything is fetched before the render now, and every failure is a `null` the card draws as initials |
+| **WP28** | 🔴 `Cache-Control: public, immutable, max-age=31536000` | `ImageResponse`'s production default, on a response derived from an admin's cookie session. A shared cache could serve it to anyone, and a preview was frozen for a year. Now `private, no-store` on both the preview and the download |
+| **WP29** | 🔴 The spinner could never clear | `useEffect(() => setStatus('loading'), [previewSrc])` runs *after* the `<img>` commits, so a cached response could fire `load` before anything was listening. Derived during render from `loadedSrc` instead, with a ref callback for `img.complete`. **The test caught a second defect in the fix**: `img.src` is absolute and `previewSrc` relative, so comparing them would never have matched in a browser either |
+| **WP30** | Download re-rendered the whole post | And on a 500, `<a download>` saved the JSON error body to disk as a `.png`. Fetches the blob now, with a pending state and a reportable failure |
+| **WP31** | Non-verified shops in the picker | `pending` / `rejected` / `suspended` were one careless click from a post that has to be deleted publicly. `.eq('status', 'verified')` |
+| **WP32** | `created_at` asserted non-null | It is nullable, and Postgres orders NULLS **first** on `DESC` — so a shop with no timestamp sorted above every real registration and was read as the newest. `nullsFirst: false`, nullable in the type, and the prompt's ids now come from the cutoff rather than a slice |
+| **WP33** | `newCount` capped at the fetched page | Counted head-only in SQL now, so it keeps rising past 60 |
+| **WP34** | No rate limit | A CPU-bound render that also issues N fetches, and Server-Action/`/api/admin` traffic never enters the proxy limiter. 60/min per admin |
+| **WP35** | Fonts re-read per render | Memoised (the promise, so concurrent renders share one read; failures are not cached) |
+| **WP36** | Font paths invisible to output file tracing | A dynamic `assets/fonts/${base}.${ext}` and an assembled `node_modules` path are both unanalysable, so a standalone build would silently render off-brand — or 500. `outputFileTracingIncludes` covers all three. ⚠️ `require.resolve` on the TTF is **not** the fix: Turbopack reads it as an import and fails the build with "Unknown module type" |
+| **WP37** | `?ids=a&ids=b` crashed the page | Next hands back `string[]`; `.split` threw into `error.tsx` |
+| **WP38** | Dead space on a name-hidden card | The shared `nameBoxHeight` is in the card's fixed height, so omitting the element left `space-between` with one child. An empty spacer keeps the logo centred and the pair level |
+| **WP39** | a11y | `aria-valuetext` (sliders announced `1.15` while the readout said 115%), `role="alert"` on the error panel, and intrinsic `width`/`height` so the spinner has a box to fill |
+| **WP40** | The wordmark was fetched over HTTP | From `NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin` — a `Host`-derived server-side fetch, which is the opposite of what the comment above it claimed. Read off disk and inlined; absent rather than broken if unreadable |
+| **WP41** | Misc | `auth.error` returned instead of a flat 401, `ids` deduped, typed scale lookup, deduplicated imports, a real two-column `loading.tsx`, `WelcomePostCandidate` moved to `lib/types/` |
+
+**Tests +46 (2524 → 2570):** `lib/og/__tests__/remoteImage.test.ts` (23 — the
+allowlist against credential prefixes, look-alike hosts, scheme downgrades, the
+metadata service and `file:`; the cap on both the header and the body; never
+throwing; and a log line that carries an origin rather than an attacker's full
+URL) and `__test__/features/admin/welcome-post-route.test.ts` (17 — the
+non-admin refusal the doc used to claim, the rate limit, the cache header, and
+that the **guard's answer** is what reaches the template rather than merely
+that the guard was called). Both new suites were verified to fail when the fix
+they cover is removed.

@@ -15,7 +15,7 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { WelcomePostCandidate } from '@/lib/api/admin/analyticsQuery';
+import type { WelcomePostCandidate } from '@/lib/types';
 import {
   DEFAULT_TEXT_SCALES,
   POST_RATIOS,
@@ -82,9 +82,24 @@ export function PostComposer({
   const [hidden, setHidden] = React.useState<string[]>([]);
   const [ratio, setRatio] = React.useState<PostRatio>('1x1');
   const [scales, setScales] = React.useState<TextScales>(DEFAULT_TEXT_SCALES);
-  const [status, setStatus] = React.useState<'idle' | 'loading' | 'error'>(
-    'idle',
-  );
+
+  /**
+   * Which URL has finished, rather than a status flag set by an effect.
+   *
+   * The effect version (`useEffect(() => setStatus('loading'), [previewSrc])`)
+   * ran AFTER the `<img>` had committed, so a cached response — and the
+   * previous version of the route advertised itself as immutable for a year —
+   * could fire `load` before the flag was set, leaving a spinner over a fully
+   * rendered post with nothing to clear it. Most likely on exactly the `?ids=`
+   * entry the dashboard prompt creates.
+   *
+   * Deriving it during render makes that unrepresentable: a `src` is loading
+   * until it is the one that loaded.
+   */
+  const [loadedSrc, setLoadedSrc] = React.useState<string | null>(null);
+  const [failedSrc, setFailedSrc] = React.useState<string | null>(null);
+  const [downloading, setDownloading] = React.useState(false);
+  const [downloadError, setDownloadError] = React.useState(false);
 
   // The sliders stay live while the request behind them does not.
   const appliedScales = useDebounced(scales, PREVIEW_DEBOUNCE_MS);
@@ -125,9 +140,66 @@ export function PostComposer({
     ? `/api/admin/welcome-post?${query}`
     : null;
 
-  React.useEffect(() => {
-    if (previewSrc) setStatus('loading');
-  }, [previewSrc]);
+  const status: 'idle' | 'loading' | 'error' = !previewSrc
+    ? 'idle'
+    : failedSrc === previewSrc
+      ? 'error'
+      : loadedSrc === previewSrc
+        ? 'idle'
+        : 'loading';
+
+  /**
+   * A cached image can be `complete` before React attaches `onLoad`.
+   *
+   * The ref callback runs on commit, which is early enough to catch it — and
+   * it is the same code path as the event, so there is no second way for the
+   * state to be set.
+   */
+  const captureIfAlreadyLoaded = React.useCallback(
+    (img: HTMLImageElement | null) => {
+      // `previewSrc`, NOT `img.src`: the DOM resolves the latter to an
+      // absolute URL, which never equals the relative string the status
+      // compares against — so recording it would leave the spinner up
+      // permanently, which is the bug this whole mechanism replaced. The
+      // `<img>` is keyed on `previewSrc`, so the element and this closure
+      // always describe the same request.
+      if (img?.complete && img.naturalWidth > 0) setLoadedSrc(previewSrc);
+    },
+    [previewSrc],
+  );
+
+  /**
+   * Downloads the image already in the browser cache rather than asking the
+   * server to render it a second time.
+   *
+   * The plain `<a download>` re-rendered the whole post — and if that second
+   * render failed, `download` cheerfully saved the JSON error body to disk as
+   * a `.png`. Fetching the blob means one render, a real pending state, and a
+   * failure that can be reported.
+   */
+  const download = React.useCallback(async () => {
+    if (!previewSrc || downloading) return;
+    setDownloading(true);
+    setDownloadError(false);
+    try {
+      const response = await fetch(`${previewSrc}&download=1`);
+      if (!response.ok) throw new Error(String(response.status));
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download =
+        response.headers
+          .get('content-disposition')
+          ?.match(/filename="([^"]+)"/)?.[1] ?? 'ilokal-welcome-post.png';
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setDownloadError(true);
+    } finally {
+      setDownloading(false);
+    }
+  }, [previewSrc, downloading]);
 
   const scalesAreDefault = (Object.keys(TEXT_SCALES) as TextScaleKey[]).every(
     (key) => scales[key] === SCALE_DEFAULT,
@@ -176,11 +248,19 @@ export function PostComposer({
                         {shop.shop_name.trim()}
                       </span>
                       <span className="text-muted-foreground text-xs">
-                        {new Date(shop.created_at).toLocaleDateString('en-PH', {
-                          timeZone: 'Asia/Manila',
-                          day: 'numeric',
-                          month: 'short',
-                        })}
+                        {/* Nullable in the schema. "Date unknown" beats
+                            "Invalid Date", which is what `new Date(null)`
+                            renders. */}
+                        {shop.created_at
+                          ? new Date(shop.created_at).toLocaleDateString(
+                              'en-PH',
+                              {
+                                timeZone: 'Asia/Manila',
+                                day: 'numeric',
+                                month: 'short',
+                              },
+                            )
+                          : 'Date unknown'}
                       </span>
                     </Label>
                     {!shop.logo_url && (
@@ -304,6 +384,10 @@ export function PostComposer({
                 max={SCALE_MAX}
                 step={0.05}
                 value={scales[key]}
+                // The readout beside it is a percentage; without this the
+                // slider announces `1.15`, a number that appears nowhere on
+                // screen.
+                aria-valuetext={`${Math.round(scales[key] * 100)}%`}
                 aria-describedby={`scale-${key}-hint`}
                 onChange={(event) =>
                   setScales((current) => ({
@@ -349,20 +433,34 @@ export function PostComposer({
             rather than being hoisted into the page header. */}
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-sm font-semibold">Preview</h2>
-          {previewSrc ? (
-            <Button asChild>
-              <a href={`${previewSrc}&download=1`} download>
-                <Download className="mr-2 h-4 w-4" />
-                Download {POST_RATIOS[ratio].label}
-              </a>
-            </Button>
-          ) : (
-            <Button disabled>
-              <Download className="mr-2 h-4 w-4" />
-              Download
-            </Button>
-          )}
+          <Button
+            type="button"
+            onClick={download}
+            disabled={!previewSrc || downloading}
+            aria-busy={downloading}
+          >
+            {downloading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <Download className="mr-2 h-4 w-4" aria-hidden />
+            )}
+            {downloading
+              ? 'Preparing…'
+              : previewSrc
+                ? `Download ${POST_RATIOS[ratio].label}`
+                : 'Download'}
+          </Button>
         </div>
+
+        {downloadError && (
+          <p
+            role="alert"
+            className="text-destructive rounded-lg border border-dashed p-3 text-xs"
+          >
+            The download didn’t complete. Try again — the preview above is
+            unaffected.
+          </p>
+        )}
 
         {!brandFontAvailable && (
           <p className="text-muted-foreground rounded-lg border border-dashed p-3 text-xs">
@@ -388,7 +486,13 @@ export function PostComposer({
           {previewSrc ? (
             <div className="relative">
               {status === 'error' ? (
-                <div className="text-muted-foreground bg-background flex aspect-square w-100 max-w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-6 text-center text-sm">
+                <div
+                  // The loading state announces through `role="status"`; the
+                  // panel that REPLACES it needs its own live region or a
+                  // failed render is silent for assistive tech.
+                  role="alert"
+                  className="text-muted-foreground bg-background flex aspect-square w-100 max-w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-6 text-center text-sm"
+                >
                   <TriangleAlert className="h-5 w-5" aria-hidden />
                   <p className="font-medium">We couldn’t render this post.</p>
                   <p className="text-xs">
@@ -413,14 +517,22 @@ export function PostComposer({
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     key={previewSrc}
+                    ref={captureIfAlreadyLoaded}
                     src={previewSrc}
                     alt="Welcome post preview"
+                    // The INTRINSIC size, so the browser reserves the right
+                    // box before the PNG arrives. Without it the wrapper is
+                    // ~0x0 during the multi-second first render and the
+                    // `absolute inset-0` spinner has nothing to fill.
+                    width={POST_RATIOS[ratio].width}
+                    height={POST_RATIOS[ratio].height}
                     // Height is the binding constraint in a pinned column:
-                    // the post must leave room for the download button below
-                    // it, which cannot be scrolled to once the column sticks.
+                    // the post must fit beneath the toolbar without pushing
+                    // itself off a screen that cannot be scrolled once the
+                    // column sticks.
                     className="block h-auto max-h-[calc(100dvh-16rem)] w-auto max-w-full rounded-lg shadow-xl"
-                    onLoad={() => setStatus('idle')}
-                    onError={() => setStatus('error')}
+                    onLoad={() => setLoadedSrc(previewSrc)}
+                    onError={() => setFailedSrc(previewSrc)}
                   />
                 </>
               )}

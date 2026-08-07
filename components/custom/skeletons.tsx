@@ -47,9 +47,20 @@ export function PageHeaderSkeleton({ action = true }: { action?: boolean }) {
   );
 }
 
-export function StatCardsSkeleton({ count = 4 }: { count?: number }) {
+export function StatCardsSkeleton({
+  count = 4,
+  /**
+   * Grid classes, so a route whose cards break at different widths does not
+   * reflow the moment the real content swaps in. Defaults to what every
+   * existing caller already renders.
+   */
+  className = 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4',
+}: {
+  count?: number;
+  className?: string;
+}) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className={className}>
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="space-y-3 rounded-xl border p-5">
           <div className="flex items-center justify-between">
@@ -124,6 +135,27 @@ export function DashboardSkeleton() {
         <Skeleton className="h-64 w-full rounded-xl" />
       </div>
       <Skeleton className="h-48 w-full rounded-xl" />
+    </StatusRegion>
+  );
+}
+
+/**
+ * The admin dashboard: four stat cards and two charts, no trailing block.
+ *
+ * Its own export rather than `DashboardSkeleton` because the breakpoints
+ * differ (`md:`/`xl:` there, `sm:`/`lg:` here) and that page has no third row —
+ * a fallback that does not match the page it covers reflows on the swap, which
+ * is the one thing a skeleton exists to prevent.
+ */
+export function AdminDashboardSkeleton() {
+  return (
+    <StatusRegion>
+      <PageHeaderSkeleton action={false} />
+      <StatCardsSkeleton className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4" />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Skeleton className="h-96 w-full rounded-xl" />
+        <Skeleton className="h-96 w-full rounded-xl" />
+      </div>
     </StatusRegion>
   );
 }

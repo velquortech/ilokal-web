@@ -38,6 +38,12 @@ export type Coupon = {
   max_redemptions_per_user: number | null; // null = unlimited
   current_redemptions: number;
   requires_follow: boolean;
+  /**
+   * Bucket-relative path in `product-images` for this deal's own photo.
+   * NULL means the card falls back to the shop's logo / first interior image,
+   * which is what every deal showed before the column existed.
+   */
+  image_url: string | null;
   created_at: string;
   updated_at: string;
   archived_at: string | null;
@@ -56,6 +62,7 @@ export type CreateCouponRequest = {
   max_redemptions_global?: number;
   max_redemptions_per_user?: number;
   requires_follow?: boolean;
+  image_url?: string | null;
   branch_id?: string | null; // null = applies to all branches
 };
 

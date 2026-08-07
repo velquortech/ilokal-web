@@ -20,6 +20,10 @@ import {
   eventPath,
   businessWelcomePath,
   businessPathWithoutWelcome,
+  businessAddOfferingPath,
+  businessProductCataloguesPath,
+  cataloguePathWithoutAdd,
+  CATALOGUE_ADD_PARAM,
   ONBOARDING_WELCOME_PARAM,
 } from '../routeConfig';
 
@@ -191,5 +195,62 @@ describe('onboarding welcome marker', () => {
         empty: undefined,
       }),
     ).toBe('/business/biz-1?tag=a&tag=b');
+  });
+});
+
+describe('catalogue add marker', () => {
+  it('lands on the catalogue with the add dialog flagged open', () => {
+    expect(businessAddOfferingPath('biz-1')).toBe(
+      `/business/biz-1/product-catalogues?${CATALOGUE_ADD_PARAM}=1`,
+    );
+  });
+
+  it('builds on the catalogue path rather than restating the segment', () => {
+    // A second literal `product-catalogues` here is how a rename turns one of
+    // these two into a 404 while the other keeps working.
+    expect(businessAddOfferingPath('biz-1')).toContain(
+      businessProductCataloguesPath('biz-1'),
+    );
+  });
+
+  it('strips only the marker, keeping search, filters and page', () => {
+    // Consuming the marker must not reset the owner's view — the same rule
+    // the welcome marker follows for `?branch=`.
+    expect(
+      cataloguePathWithoutAdd(
+        'biz-1',
+        new URLSearchParams({
+          [CATALOGUE_ADD_PARAM]: '1',
+          search: 'adobo',
+          page: '3',
+          section: 'sec-9',
+        }),
+      ),
+    ).toBe(
+      '/business/biz-1/product-catalogues?search=adobo&page=3&section=sec-9',
+    );
+  });
+
+  it('leaves a bare path when the marker was the only param', () => {
+    expect(
+      cataloguePathWithoutAdd(
+        'biz-1',
+        new URLSearchParams({ [CATALOGUE_ADD_PARAM]: '1' }),
+      ),
+    ).toBe('/business/biz-1/product-catalogues');
+  });
+
+  it('does not mutate the caller’s params', () => {
+    // `useSearchParams()` returns a live object the router also reads; deleting
+    // from it in place would edit state this function does not own.
+    const params = new URLSearchParams({ [CATALOGUE_ADD_PARAM]: '1' });
+    cataloguePathWithoutAdd('biz-1', params);
+    expect(params.get(CATALOGUE_ADD_PARAM)).toBe('1');
+  });
+
+  it('is a no-op for a URL that never carried the marker', () => {
+    expect(
+      cataloguePathWithoutAdd('biz-1', new URLSearchParams({ page: '2' })),
+    ).toBe('/business/biz-1/product-catalogues?page=2');
   });
 });

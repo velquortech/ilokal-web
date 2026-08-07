@@ -22,6 +22,12 @@ export const STEP_FIELDS: Record<RegistrationStepId, string[]> = {
   ],
   gallery: ['Logo', 'Banner', 'Photos of the shop (4 or more)'],
   documents: ['Business permit', 'Tax certificate'],
+  // Named in the generic, because the reader has not picked a vertical yet —
+  // a salon has no "menu". Inside the wizard the step uses the shop's own noun.
+  offerings: ['One item to start (name and price)'],
+  // Optional, and the page says so — a reader counting what registering costs
+  // them should not add this to the total.
+  deal: ['Optional — a launch discount, or skip it'],
   review: ['Everything above, one last look'],
 };
 
@@ -55,6 +61,11 @@ export const PREREQUISITES: { label: string; detail: string }[] = [
   {
     label: 'A contact number',
     detail: 'Shown on your shop page so customers can reach you.',
+  },
+  {
+    label: 'One thing you sell, with its price',
+    detail:
+      'Just a name and a price is enough to finish — the rest of your list can wait until you are in your dashboard.',
   },
 ];
 

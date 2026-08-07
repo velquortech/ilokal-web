@@ -1,5 +1,182 @@
 # Changelog
 
+## 2026-08-07 — A shop can no longer register with an empty menu (feat/registration-menu-required)
+
+> **No schema migration.** Two new wizard steps, two new API routes, and the
+> friction removals that make the required one cheap to finish on a phone.
+> MED risk: it touches the registration submit path, which is the one flow
+> where a failure loses an owner. Plan (RM1–RM20):
+> [`.claude/REGISTRATION_MENU.md`](.claude/REGISTRATION_MENU.md).
+
+- **🔴 Registration's definition of "done" excluded the menu.** The wizard was
+  category → information → gallery → (documents) → review. A shop submitted,
+  was auto-verified (`auto_verify_businesses` is seeded true), and went public
+  with **zero offerings** — a shop page showing nothing. An owner who never
+  added a menu was following the product exactly as designed, which means the
+  setup checklist and the whole menu-follow-up feature were both chasing
+  someone who had already left.
+- **Now: a required "What You Offer" step, one item minimum, name and price.**
+  Three was considered — it matches the "3 samples" idea this started from —
+  and rejected: it triples the phone typing at the point where abandonment is
+  highest, and a shop with two real offerings could not finish registering.
+  Items two onward are the dashboard's job.
+- **🔴 The step cannot write as the owner types, and that shapes everything.**
+  The `businesses` row is created inside `performSubmission` at FINAL submit,
+  so there is no `business_id` to attach items to while the step is on screen.
+  Items are form state, POSTed after `registerBusiness` returns an id, in the
+  same phased flow as the files. Any design that assumes "create the shop,
+  then add items" is describing a different wizard.
+- **Written `status='active'`, with `kind` sent explicitly.** Both halves are
+  load-bearing. The setup checklist and `admin_businesses_missing_menu` count
+  only `active`, so an `unlisted` item would satisfy the step, leave the public
+  page empty, **and still earn the owner a "you have no menu" email**. And the
+  DB defaults `kind` to `'product'` and cannot tell an omitted field from a
+  deliberate one, so a services business would otherwise type its own service
+  menu as products — the offerings phase-1 decay, one surface earlier.
+- **`offeringModeForVerticalName` mirrors `sync_business_type_id`** and says so
+  in its docstring. It exists only because the wizard must resolve the shop's
+  mode and vocabulary before the row exists; every other surface still reads
+  `businesses.offering_mode`. Keyed on the vertical NAME because the trigger
+  is, so a rename breaks both together rather than silently diverging.
+- **A retry cannot double the menu.** `performSubmission` replays wholesale on
+  a 404 and can be re-submitted after a mid-flight failure. Guarded twice: the
+  client's `uploadedRef` (same lifecycle as the file uploads, so a 404 replay
+  correctly rewrites against the NEW draft) and the server, which skips any
+  name the business already has. Neither is load-bearing alone.
+- **The step uses the shop's own noun**, resolved from the step-1 category
+  through the same pure resolver every other surface uses, degrading per field
+  for a custom category or a malformed profile. Watched, not read once — going
+  back and changing category updates the wording.
+- **An optional launch deal follows it, saved as a DRAFT.** 🔴 This is the one
+  step that can cost real money: a `published` coupon inside its window enters
+  `mobile_deals` — the app's Deals front page — and is immediately
+  **redeemable**, meaning a real `user_redemptions` row, a real six-character
+  cashier code and a real owner notification, for a discount a first-time owner
+  may have clicked past. Publishing is one unticked checkbox, phrased as what
+  it does rather than as a status name, and `publish` is **required** in the
+  schema, the route body and the write path — an absent flag is rejected, never
+  defaulted, because the direction a default fails in is a live discount nobody
+  chose.
+- **Optional means optional.** `deal: null` is a complete, valid answer and
+  never gates Submit. A half-filled deal is rejected rather than written — a
+  code with no discount is an abandoned step, not a skipped one. It sits AFTER
+  the menu because a shop with nothing to sell has nothing to discount, and
+  that ordering is asserted rather than left to the file.
+- **The friction removals shipped first, and stand alone.** The add-product
+  form required **three** fields where the schema requires one: category was
+  mandatory in the form only — a 9-to-20 option select, twenty of them for the
+  water refilling station added the same day. Now optional, because an owner
+  forced to pick one picks whatever clears the form, and a WRONG category
+  misleads the explore filter in a way NULL does not. Four `grid-cols-2` had no
+  breakpoint prefix, so Price sat beside Price Type at 320px. **"Save and add
+  another"** keeps the dialog open for the 20-dish carinderia case — bound into
+  the submit handler rather than a ref flag, because a rejected submit leaves a
+  flag set and the next press of the real Save button then silently behaves as
+  "add another".
+- **The three "add your first one" surfaces open the form directly** (`?add=1`
+  — the checklist row, the dashboard empty state, the empty catalogue). Hunting
+  for the button is a step between declaring intent and acting. Marker seeded
+  into state so the dialog is there on the first client render, consumed once,
+  ref-guarded, and stripped keeping search/filters/page/branch.
+- **Verified that the new step and the follow-up feature agree.** Against the
+  live database, and pinned as block 12 of `menu_followup.test.sql`: a shop
+  registering with a menu is **not** listed by
+  `admin_businesses_missing_menu` and is refused by the send-time re-check,
+  while a shop with no offerings still is — so the backstop keeps covering
+  everyone who registered before this shipped. Proven to fail by writing the
+  item `unlisted`, which is exactly the RM4 hazard.
+- **Tests (+73, 2350 → 2423)** plus the SQL block. The step-count assertions
+  moved twice, as designed — `getStepFieldGroups` parity is what stops a step
+  existing that `nextStep()` never validates. Every risky guard was verified by
+  breaking it: the bare grid, the `active` status, the name dedupe, and the
+  draft default.
+- Verified: `yarn lint` + **2423** tests + a clean `yarn build` + the menu
+  follow-up SQL suite green.
+- **Not verified — needs a browser:** registration is behind auth and this
+  environment has no login path, so neither new step has been clicked through.
+- **Not done:** templates (RM9) — the plan claimed they needed no migration,
+  which was wrong: they would be a new key on every seeded `offering_profile`
+  row, so they are a seed change and are deferred rather than half-built. And
+  **RM18 (funnel measurement) is blocked on a schema decision** —
+  `view_events` provably cannot hold it (its CHECK demands a business or
+  product id, and a wizard step has neither), so it needs a new table, i.e.
+  approval. Without it, "some owners don't add a menu" still cannot distinguish
+  *quit at Gallery* from *quit at the menu step*.
+- **Still open (plan §5):** whether `draft` is the right default for the deal
+  step, and whether the required menu should have an escape hatch for a shop
+  with genuinely no fixed list.
+
+## 2026-08-07 — Pest control and water refilling get their own shop type (feat/registration-menu-required)
+
+> **ONE migration (`20260807000000_service_trades.sql`) — data-only: 2 rows into
+> `categories`, 2 into `business_categories`, 2 pin `UPDATE`s. No table, column,
+> policy or index change.** Applied on LOCAL only. ⚠️ **Needs human approval
+> before merge, then `make migrate-cloud` + a ledger reconcile.** It queues
+> behind the existing 20 unapplied migrations.
+
+- **Same gap as `20260805130000`, two more trades.** Neither a pest control
+  operator nor a water refilling station existed in either taxonomy: Services
+  had 4 shop types (Salon, Spa, Fitness, **Repair Services** — which is what a
+  pest control operator had to register as, and how the explore filter grouped
+  it), and nothing in Retail's 16 offering categories covered drinking water.
+- **2 shop types** — `Pest Control Service` (Services 4 → 5),
+  `Water Refilling Station` (Retail 10 → 11). **2 offering categories** —
+  `Pest Control & Sanitation` pinned to Services (picker 9 → 10),
+  `Drinking Water & Refills` pinned to Retail (20).
+- **The verticals differ, and that is the load-bearing decision — not a filing
+  preference.** `sync_business_type_id` seeds `businesses.offering_mode` from the
+  vertical NAME on INSERT, and **there is no owner-facing control to change it
+  afterwards**. So the vertical picks the whole shape of the dashboard:
+  - Pest control → **Services** → mode `services`, catalogue reads "Service
+    Menu", the offering form renders duration / lead time / service location, and
+    `default_booking_mode` is `request` — which is what a quoted site visit is.
+  - Water refilling → **Retail** → mode `products`, "Product Catalogue". It is a
+    "station" performing a refill, but what the owner actually lists is priced
+    **goods** ("5-Gallon Round — ₱30", "Slim — ₱35"). Filing it under Services
+    would hand a counter-sale business a service menu, a booking flow and
+    per-hour pricing. Delivery, where they offer it, is one more priced line; it
+    does not make the shop a service business.
+  - **Proven, not assumed:** two rolled-back inserts through the real trigger
+    return `services`/"Service Menu" and `products`/"Product Catalogue".
+- **Rows are inserted global then pinned**, so a vertical that fails to resolve
+  leaves the category visible everywhere rather than nowhere — the fail-open
+  shape `20260801064656` established.
+- **The seed mirror is a THIRD block, not an append.** `business_types` are
+  created by the seed (which runs *after* migrations), so the migration's
+  `WHERE bt.name = …` matches zero rows on a fresh database. And the seed's
+  per-vertical shop-type blocks are wrapped in
+  `IF NOT EXISTS (… WHERE business_type_id = <vertical>)`, so appending to the
+  Services or Retail block is a **no-op on every database that has ever been
+  seeded** — the trap `20260805130000` documented. Own unguarded per-row
+  `WHERE NOT EXISTS` block instead (`business_categories.name` has no UNIQUE, so
+  `ON CONFLICT` is unavailable).
+- **Both images carry the four constraints the retail tiles paid for.** Non-NULL
+  (`ShopCategoryStep.tsx` renders `<Image src={item.imageURL} />` with no
+  fallback and types it `string` — a NULL crashes the step), on
+  `images.unsplash.com` (allowlisted *and* serving 200 with no redirect hop for
+  CSP to re-check), and `h=1200` to force a 4:3 crop, because the card
+  top-crops with no `object-cover`.
+- **Chosen by eye at card size, and the obvious search results were rejected for
+  a specific reason.** The best-composed row of blue 5-gallon jugs has a legible
+  **"OASIS"** carton in frame and the next has **"co-op"** across the label — a
+  named business on a category tile implies an affiliation that does not exist.
+  Final: a technician fogging a living room (reads as fumigation in a home, not
+  the janitorial mopping the other candidates showed), and a frame of bulk water
+  containers with no brand legible.
+- **Verified:** migration applied; re-running it inside a rolled-back
+  transaction reports `INSERT 0 0` / `UPDATE 0` twice (idempotent); deleting both
+  shop types and nulling both pins, then running the seed, restores all four rows
+  with **0** duplicate names — inside a rolled-back transaction, so the dev
+  database was never touched; `category_scoping.test.sql` green ("ALL CATEGORY
+  SCOPING TESTS PASSED"), which is what covers the new rows' NULL-image,
+  duplicate-name and CSP-host assertions without needing a new test; and both
+  image URLs fetched **as stored in the row** — 200, `redirects=0`,
+  `image/jpeg`.
+- No TypeScript or schema changed, so `make generate-types` produces no diff and
+  there is nothing new to lint or build.
+- **Not done:** cloud apply (needs approval); a browser pass on the registration
+  category step (behind auth, no login path in this environment).
+
 ## 2026-08-06 — Menu follow-up, phase 5: the admin page (feat/menu-followup-email)
 
 > **No schema, API-contract or auth change.** Presentational + one new admin

@@ -3,6 +3,7 @@
 import { BusinessShop } from '@/providers/BusinessProvider';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { uploadWebP, IMAGE_PRESETS } from '@/lib/api/helpers/image';
+import { MAX_REGISTRATION_OFFERINGS } from '@/lib/validation/products';
 
 // Registration is split into two phases so no single request exceeds Vercel's
 // 4.5 MB function body limit (a one-shot multipart POST with logo + banner +
@@ -15,7 +16,14 @@ export type RegistrationFileKind =
   | 'shop_banner'
   | 'interior_image'
   | 'business_license'
-  | 'tax_certificate';
+  | 'tax_certificate'
+  // A photo for one of the offerings entered in the wizard. Unlike every kind
+  // above it updates NO column on `businesses` — the row it belongs to does
+  // not exist yet — so it returns the stored path for the offerings write to
+  // carry. It rides this route rather than `uploadProductImageAction` because
+  // that action calls `verifyBusinessOwner()` with no argument, which falls
+  // back to whichever shop `.limit(1)` returns.
+  | 'offering_image';
 
 export interface BusinessDraftMeta {
   shop_name: string;
@@ -131,6 +139,26 @@ export async function uploadBusinessRegistrationFile(
     uploadWebP(supabase, bucket, path, file, { maxDimension, upsert: true });
 
   const ts = Date.now();
+
+  // Offering photos return early: there is no column on `businesses` to put
+  // them in, and the `products` row they belong to is written afterwards by
+  // `createBusinessRegistrationOfferings`. The bucket's own INSERT policy
+  // (`foldername[1] = businesses.id AND owner AND not archived`) is what makes
+  // this path safe — and is also why nothing can be uploaded before the draft
+  // exists.
+  //
+  // The bucket-relative PATH is returned, never an absolute URL: mixing the
+  // two in one column is what made the gallery diff match nothing and delete
+  // live files (2026-08-06).
+  if (kind === 'offering_image') {
+    const path = await uploadImage(
+      'product-images',
+      `${businessId}/offering-${ts}-${index}.webp`,
+      IMAGE_PRESETS.product,
+    );
+    return { path };
+  }
+
   let update: Record<string, unknown>;
 
   switch (kind) {
@@ -365,4 +393,221 @@ export async function deleteBusiness(id: string) {
 
   if (error) throw error;
   return data;
+}
+
+/**
+ * Phase 3 — write the offerings entered in the registration wizard.
+ *
+ * Separate request from the draft and from the files, for the same reason
+ * those two are separate: one all-in-one POST is what 413'd in production.
+ *
+ * Idempotent by NAME within the business. The client replays its whole
+ * submission after a 404 (a stale draft id) and can be re-submitted after a
+ * network failure mid-flight, so "write these items" must be safe to call
+ * twice — otherwise one retry doubles the owner's menu. Name is the right key
+ * here: this runs once, against a brand-new shop, and two items with the same
+ * name at registration is a duplicate rather than a deliberate pair.
+ */
+export interface RegistrationOfferingInput {
+  name: string;
+  price: number | null;
+  on_request: boolean;
+  /**
+   * Bucket-relative path returned by the `offering_image` upload, or null.
+   * Re-checked against the VERIFIED business id below — a caller could
+   * otherwise point a row at any object in the bucket.
+   */
+  image_url?: string | null;
+}
+
+export async function createBusinessRegistrationOfferings(
+  businessId: string,
+  offerings: RegistrationOfferingInput[],
+  kind: 'product' | 'service',
+) {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Unauthorized');
+
+  // Ownership proved against the ROUTE's id before anything is written, and
+  // the verified row's id is what gets written — never the caller's string.
+  const { data: business, error: fetchError } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('id', businessId)
+    .eq('owner_id', user.id)
+    .is('archived_at', null)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!business) throw new Error('Business not found');
+
+  const { data: existing, error: existingError } = await supabase
+    .from('products')
+    .select('name')
+    .eq('business_id', business.id)
+    .is('archived_at', null);
+  if (existingError) throw existingError;
+
+  const taken = new Set(
+    (existing ?? []).map((row) => row.name.trim().toLowerCase()),
+  );
+
+  const rows: {
+    business_id: string;
+    name: string;
+    price: number | null;
+    price_type: 'fixed' | 'on_request';
+    status: 'active';
+    kind: 'product' | 'service';
+    image_url: string | null;
+  }[] = [];
+
+  /**
+   * Only a path this upload route just produced for THIS business.
+   *
+   * The client sends the path back, so without this an attacker could set any
+   * row's image to any object in the bucket — including another shop's. The
+   * bucket is public-read, so that is a real cross-shop read, not a
+   * theoretical one.
+   *
+   * A stored PATH, never an absolute URL: mixing the two in one column is what
+   * made the gallery diff match nothing and delete live files (2026-08-06).
+   */
+  const ownedImagePath = (value: string | null | undefined): string | null => {
+    if (typeof value !== 'string' || value.length === 0) return null;
+    if (value.includes('://') || value.startsWith('//')) return null;
+    if (value.includes('..')) return null;
+    return value.startsWith(`${business.id}/`) ? value : null;
+  };
+
+  for (const offering of offerings.slice(0, MAX_REGISTRATION_OFFERINGS)) {
+    const name = offering.name.trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    // Skips both a replay of a previous run and a duplicate inside this batch.
+    if (taken.has(key)) continue;
+    taken.add(key);
+
+    rows.push({
+      business_id: business.id,
+      name,
+      // The DB CHECK allows NULL only for 'on_request'; a form that produced
+      // anything else here would be rejected by the database, not silently
+      // stored.
+      price: offering.on_request ? null : offering.price,
+      price_type: offering.on_request ? 'on_request' : 'fixed',
+      // ACTIVE, not the column default. Both the setup checklist and
+      // `admin_businesses_missing_menu` count only `status = 'active'`, so an
+      // 'unlisted' row would satisfy this step, leave the public page empty,
+      // and still earn the owner a "you have no menu" reminder.
+      status: 'active',
+      // Sent EXPLICITLY: the DB defaults `kind` to 'product' and cannot tell an
+      // omitted field from a deliberate one, so a services business would
+      // otherwise mint products at registration (the offerings phase-1 decay).
+      kind,
+      image_url: ownedImagePath(offering.image_url),
+    });
+  }
+
+  if (rows.length === 0) return { created: 0 };
+
+  const { error, count } = await supabase
+    .from('products')
+    .insert(rows, { count: 'exact' });
+  if (error) throw error;
+
+  return { created: count ?? rows.length };
+}
+
+/**
+ * Phase 4 — the optional launch deal entered in the registration wizard.
+ *
+ * Idempotent by CODE within the business, for the same reason the offerings
+ * write is idempotent by name: the client replays its whole submission after a
+ * 404 and can be re-submitted after a mid-flight failure, so this must be safe
+ * to call twice.
+ */
+export interface RegistrationDealInput {
+  code: string;
+  description?: string;
+  discount_type: 'percentage' | 'fixed_amount';
+  discount_value: number;
+  duration_days: number;
+  publish: boolean;
+  /** Bucket-relative path, proved against the verified business id below. */
+  image_url?: string | null;
+}
+
+export async function createBusinessRegistrationDeal(
+  businessId: string,
+  deal: RegistrationDealInput,
+) {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Unauthorized');
+
+  const { data: business, error: fetchError } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('id', businessId)
+    .eq('owner_id', user.id)
+    .is('archived_at', null)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!business) throw new Error('Business not found');
+
+  const code = deal.code.trim().toUpperCase();
+
+  const { data: existing, error: existingError } = await supabase
+    .from('coupons')
+    .select('id')
+    .eq('business_id', business.id)
+    .eq('code', code)
+    .is('archived_at', null)
+    .maybeSingle();
+  if (existingError) throw existingError;
+  if (existing) return { created: false };
+
+  // Same rule as the offerings write: the client sends this back, so only a
+  // path under the VERIFIED business id is stored. The bucket is public-read,
+  // so a foreign path would be a real cross-shop read.
+  const ownedImagePath = (value: string | null | undefined): string | null => {
+    if (typeof value !== 'string' || value.length === 0) return null;
+    if (value.includes('://') || value.startsWith('//')) return null;
+    if (value.includes('..')) return null;
+    return value.startsWith(`${business.id}/`) ? value : null;
+  };
+
+  const startDate = new Date();
+  const expiryDate = new Date(
+    startDate.getTime() + deal.duration_days * 24 * 60 * 60 * 1000,
+  );
+
+  const { error } = await supabase.from('coupons').insert({
+    business_id: business.id,
+    branch_id: null,
+    promotion_type: 'coupon',
+    // 🔴 The owner's explicit choice, defaulting to draft. A published coupon
+    // inside its window enters `mobile_deals` — the app's Deals front page —
+    // and is immediately redeemable: a real `user_redemptions` row, a real
+    // cashier code, a real owner notification. Never assume this.
+    status: deal.publish ? 'published' : 'draft',
+    code,
+    description: deal.description?.trim() || null,
+    discount: { type: deal.discount_type, value: deal.discount_value },
+    usage_scope: 'any',
+    scope_values: null,
+    start_date: startDate.toISOString(),
+    expiry_date: expiryDate.toISOString(),
+    image_url: ownedImagePath(deal.image_url),
+  });
+  if (error) throw error;
+
+  return { created: true };
 }

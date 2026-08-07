@@ -157,6 +157,21 @@ export const bulkProductStatusSchema = z.object({
 /** A single product id — the row-level actions parse it before any DB call. */
 export const productIdSchema = z.guid();
 
+/**
+ * Cap on the menu entered in the registration wizard.
+ *
+ * Lives here rather than beside the wizard's own schema because
+ * `lib/api/business/business.ts` is a `'use server'` module, where only async
+ * functions may be exported — so the write path cannot own it, and two copies
+ * of the number is how a client that allows 20 meets a server that allows 10.
+ * The wizard schema, the route body schema and the write path all read this
+ * one.
+ *
+ * Twenty, not fifty: this is a phone keyboard at the point of highest
+ * abandonment, and the dashboard is the right place for a long catalogue.
+ */
+export const MAX_REGISTRATION_OFFERINGS = 20;
+
 export const productFiltersSchema = z.object({
   page: z.number().min(1).default(1),
   per_page: z.number().min(1).max(100).default(10),

@@ -17,6 +17,9 @@ const kindSchema = z.enum([
   'interior_image',
   'business_license',
   'tax_certificate',
+  // Returns { path } instead of the updated business — the offering it belongs
+  // to is written afterwards and carries the path.
+  'offering_image',
 ]);
 
 // POST: /api/web/businesses/[id]/files — multipart with `kind`, `file`, and

@@ -60,6 +60,13 @@ interface AddProductDialogProps {
   /** The shop's own groupings. Optional — a shop may have none yet. */
   sections?: ProductSectionWithCount[];
   onSuccess?: () => void;
+  /**
+   * Controlled open state. Omit for the ordinary trigger-driven dialog; supply
+   * both to drive it from outside (the `?add=1` deep link). Radix's own
+   * convention, so the two modes cannot be half-adopted.
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 type ProductFormValues = {
@@ -111,10 +118,21 @@ export function AddProductDialog({
   categories,
   sections,
   onSuccess,
+  open: controlledOpen,
+  onOpenChange: onControlledOpenChange,
 }: AddProductDialogProps) {
   const { selectedBranchId } = useBusinessShop();
   const vocabulary = useOfferingVocabulary();
-  const [open, setOpen] = React.useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = React.useCallback(
+    (next: boolean) => {
+      if (!isControlled) setUncontrolledOpen(next);
+      onControlledOpenChange?.(next);
+    },
+    [isControlled, onControlledOpenChange],
+  );
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
   const celebrate = useCelebrate();
@@ -166,6 +184,7 @@ export function AddProductDialog({
     control,
     reset,
     watch,
+    setFocus,
     formState: { errors },
   } = useForm<ProductFormValues>({
     defaultValues: emptyForm,
@@ -174,7 +193,7 @@ export function AddProductDialog({
   const watchedPriceType = watch('price_type');
   const isQuoteBased = watchedPriceType === 'on_request';
 
-  const onSubmit = async (data: ProductFormValues) => {
+  const onSubmit = async (data: ProductFormValues, addAnother: boolean) => {
     setIsSubmitting(true);
     setServerError(null);
 
@@ -204,7 +223,9 @@ export function AddProductDialog({
         price: quoteBased ? null : data.price,
         price_type: data.price_type,
         price_unit: data.price_unit || undefined,
-        category_id: data.category_id!,
+        // Optional: null is "uncategorised", a real state. The `!` this
+        // replaced was asserting a value the form no longer requires.
+        category_id: data.category_id ?? null,
         // '' is the "no section" choice — Uncategorised, which is a real
         // state, not a missing value.
         section_id:
@@ -241,10 +262,35 @@ export function AddProductDialog({
       }
 
       toast.success(`"${data.name}" added to your catalogue`);
+      onSuccess?.();
+
+      if (addAnother) {
+        // Keep the choices that repeat across a run of items — a menu is
+        // typically many items in one category and section, and re-picking
+        // them per item is the tax this button exists to remove.
+        //
+        // Spread `emptyForm` first: reset(values) REPLACES the whole value
+        // set, so a partial literal silently drops the service attributes and
+        // flips their Selects controlled → uncontrolled (see
+        // handleOpenChange).
+        reset({
+          ...emptyForm,
+          category_id: data.category_id,
+          section_id: data.section_id,
+          price_type: data.price_type,
+          booking_mode: data.booking_mode,
+        });
+        setServerError(null);
+        setFocus('name');
+        return;
+      }
+
+      // Deliberately only on the closing save. Celebrating each item would
+      // fire ten times while someone types a menu, which reads as noise
+      // rather than as a moment.
       celebrate();
       setOpen(false);
       reset();
-      onSuccess?.();
     } catch {
       const msg =
         'Something went wrong, or check image size the limit is 2MB per image only';
@@ -254,6 +300,18 @@ export function AddProductDialog({
       setIsSubmitting(false);
     }
   };
+
+  /**
+   * Two submit paths over one core.
+   *
+   * Deliberately NOT a ref flag set by the button's onClick: validation can
+   * reject the submit, in which case `onSubmit` never runs and a ref would
+   * stay set — so the NEXT click on the real Save button would silently
+   * behave as "add another". Binding the intent into the handler makes that
+   * state unrepresentable.
+   */
+  const submitWith = (addAnother: boolean) =>
+    handleSubmit((data) => onSubmit(data, addAnother));
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
@@ -272,7 +330,7 @@ export function AddProductDialog({
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="overflow-hidden sm:max-w-lg">
         <form
-          onSubmit={handleSubmit(onSubmit)}
+          onSubmit={submitWith(false)}
           className="flex min-h-0 flex-1 flex-col gap-4"
         >
           <DialogHeader>
@@ -310,22 +368,24 @@ export function AddProductDialog({
               />
             </Field>
 
-            {/* Category */}
+            {/* Category — the PLATFORM taxonomy customers filter by, not the
+                shop's own grouping (that is Section, below).
+
+                Optional on purpose. `products.category_id` is nullable and
+                `createProductShape` never required it — only this form did,
+                which made a 9-to-20 option select the price of adding one
+                item. A shop that sells one thing (a water refilling station
+                sees all 20 Retail options) then picks whatever clears the
+                form, and a WRONG category actively misleads the explore
+                filter, while NULL is honestly queryable as uncategorised. */}
             <Field>
-              <FieldLabel
-                className={errors.category_id ? 'text-destructive' : ''}
-              >
-                Category
-              </FieldLabel>
+              <FieldLabel>Category (Optional)</FieldLabel>
               <Controller
                 control={control}
                 name="category_id"
-                rules={{ required: 'Category is required' }}
                 render={({ field }) => (
                   <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger
-                      className={`w-full ${errors.category_id ? 'border-destructive' : ''}`}
-                    >
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -338,9 +398,6 @@ export function AddProductDialog({
                   </Select>
                 )}
               />
-              {errors.category_id && (
-                <FieldError>{errors.category_id.message}</FieldError>
-              )}
             </Field>
 
             {/* Section — the shop's own grouping, optional by design. It
@@ -380,8 +437,15 @@ export function AddProductDialog({
 
             {/* Price — hidden entirely for quote-based offerings, which have
                 no figure to enter (the DB CHECK requires NULL there). */}
+            {/* One column until `sm`. An unprefixed `grid-cols-2` puts Price
+                beside Price Type at 320px, which is the width most owners
+                register at. */}
             <div
-              className={isQuoteBased ? 'space-y-4' : 'grid grid-cols-2 gap-4'}
+              className={
+                isQuoteBased
+                  ? 'space-y-4'
+                  : 'grid grid-cols-1 gap-4 sm:grid-cols-2'
+              }
             >
               {!isQuoteBased && (
                 <Field>
@@ -490,7 +554,7 @@ export function AddProductDialog({
                   />
                 </Field>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {numericAttributes.map((field) => (
                     <Field key={field}>
                       <FieldLabel>{ATTRIBUTE_LABELS[field].label}</FieldLabel>
@@ -596,6 +660,17 @@ export function AddProductDialog({
               onClick={() => handleOpenChange(false)}
             >
               Cancel
+            </Button>
+            {/* A menu is entered in a run. Closing and reopening the dialog
+                per item is the single biggest cost of typing one on a phone,
+                and it is the reason a catalogue stops at one item. */}
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isSubmitting}
+              onClick={submitWith(true)}
+            >
+              Save and add another
             </Button>
             <Button type="submit" disabled={isSubmitting} className="min-w-28">
               {isSubmitting ? (

@@ -115,3 +115,70 @@ tokens and a token-refresh story. Not until the images are known to be good.
 3. ~~How many days counts as "new"?~~ **14**, in `WELCOME_POST_NEW_DAYS`.
    Revisit when a `welcome_post_generated_at` marker exists — until then a shop
    can be posted about twice if nobody is watching.
+
+---
+
+## 6. Part 2 — footer scale and a composer worth looking at
+
+> Two asks: a size control for the footer lines, and a UI that reads as a tool
+> rather than a stack of default cards.
+
+### 6.1 The design position
+
+**The palette and type are not open.** iLokal has brand v1.0 — Brick Ember,
+Jasmine, Cornsilk, Charcoal, Pally + Inter — and an admin shell every other
+page already sits inside. Inventing a look for one tool would be the wrong kind
+of distinctive. The freedom here is **layout and hierarchy**, and that is where
+the actual problem is.
+
+**The problem: the composer buries its own subject.** Two equal-weight cards
+side by side, and the *smaller* one holds the rendered post. The post is the
+entire point of the page — the thing being made, judged and downloaded — and it
+currently gets a 420px column while the checkbox list gets the larger one. The
+hierarchy is inverted.
+
+**The thesis: the post is the hero, the controls are a rail.** The artefact
+gets the space and the light; the controls go quiet beside it. That is the one
+opinionated move, and everything else stays disciplined.
+
+**Signature: the post is mounted, not embedded.** It sits centred on a neutral
+field with a real shadow, the way artwork sits on a mount — so it reads as the
+thing you are making rather than an `<img>` inside a panel. One idea, executed
+precisely; no second flourish.
+
+**Structure that encodes something true.** The shop list is not a sequence, so
+it gets no numbering. But the two selected shops *do* have positions — the
+first id is the left card, the second the right, and the route already honours
+that order. Marking them **Left** and **Right** is information the admin needs
+to predict the render, not decoration.
+
+### 6.2 Parity table
+
+| ID | Item | Why it matters | Risk |
+| --- | --- | --- | --- |
+| **WP17** | Footer lines have no size control | "Thank you for trusting iLokal." and "Find them on ilokal.shop" are fixed ratios of the canvas. At 4:5 they sit in more space and read small, and there is no way to correct it | 🟠 |
+| **WP18** | **The preview is not the hero** | The rendered post is what the page is for, and it currently occupies the smaller of two equal cards. Invert it: the post takes the space, the controls become a rail | 🟠 |
+| **WP19** | **Selection order decides which card is which, and nothing says so** | The route renders `ids` in order — first is the left card. An admin picking two shops cannot tell which lands where until the image returns, and cannot swap them without deselecting both | 🟠 |
+| **WP20** | The size sliders are bare `<input type="range">` | No shadcn Slider is in use, the value is only shown as a percentage, and a keyboard user gets no labelled context. Needs a proper label, `aria-describedby`, and a visible reset | 🟠 |
+| **WP21** | Every parameter change refetches the whole PNG | Each keystroke on a slider is a full server render. Needs debouncing, or dragging a slider fires a request per pixel | 🔴 |
+| **WP22** | No way to tell a slow render from a broken one | The preview shows a spinner that clears on `load` **or** `error`, so a failed render leaves an empty frame with no explanation | 🟠 |
+| **WP23** | Two scales will not be the last | Name and footer today; headline and eyebrow are the obvious next asks. A third hand-rolled slider is the point to generalise rather than the point to copy | 🟡 |
+| **WP24** | The download is an `<a href>` with `aria-disabled` | `aria-disabled` on an anchor stops nothing — it still navigates. With no selection it should not be a link at all | 🟠 |
+| **WP25** | The page must survive a phone | It is an admin tool and will mostly be used on a laptop, but the rail/hero split must collapse rather than overflow. Same `grid-cols-1 sm:` discipline as the rest of the repo | 🟡 |
+
+### 6.3 Action items
+
+#### Phase 5 — footer scale ✅ when done
+- [ ] **WP17** — `footerScale` through the layout, the route and the UI, bounded and clamped exactly like `nameScale`
+- [ ] **WP23** — one `TEXT_SCALES` record driving both, so a third is an entry rather than another copy
+- [ ] Tests: the scale reaches the footer, clamps junk, and leaves the name size alone
+
+#### Phase 6 — the composer UI
+- [ ] **WP18** — invert the layout: post as hero on a mounted field, controls as a rail
+- [ ] **WP19** — label the selected shops **Left** / **Right**, and let them be swapped
+- [ ] **WP20** — real labels, reset affordance, keyboard-reachable
+- [ ] **WP21** — debounce the preview so a slider drag is one render, not thirty
+- [ ] **WP22** — a real error state on the preview, distinct from loading
+- [ ] **WP24** — no anchor when there is nothing to download
+- [ ] **WP25** — collapses at narrow widths
+- [ ] Tests: the debounce, the error state, the swap, and no link without a selection

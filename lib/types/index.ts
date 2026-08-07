@@ -355,5 +355,12 @@ export {
   EMPTY_ONBOARDING_STATE,
 } from './onboarding';
 
+// Welcome-post generator (admin social cards)
+export type {
+  WelcomePostCandidate,
+  WelcomePostCandidates,
+} from './welcomePost';
+export { WELCOME_POST_NEW_DAYS } from './welcomePost';
+
 // Test helpers (used by unit/integration tests)
 export type { TestNextRequest } from './test';

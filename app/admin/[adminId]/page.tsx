@@ -1,12 +1,24 @@
 import { Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, Building2, BadgeCheck, UserPlus, Clock } from 'lucide-react';
+import Link from 'next/link';
+import {
+  Users,
+  Building2,
+  BadgeCheck,
+  UserPlus,
+  Clock,
+  Sparkles,
+} from 'lucide-react';
 import {
   getAdminDashboardSummary,
   getPlatformGrowth,
+  getWelcomePostCandidates,
 } from '@/lib/api/admin/analyticsQuery';
 import { getRegistrationSettings } from '@/lib/api/appSettings';
+import { WELCOME_POST_NEW_DAYS } from '@/lib/types';
+import { adminWelcomePostsPath } from '@/config/routeConfig';
+import { Button } from '@/components/ui/button';
 import { GrowthCharts } from './components/GrowthChart';
 
 /**
@@ -69,11 +81,31 @@ function GrowthSkeleton() {
   );
 }
 
-export default async function DashboardPage() {
-  const [summary, settings] = await Promise.all([
+export default async function DashboardPage({
+  params,
+}: {
+  params: Promise<{ adminId: string }>;
+}) {
+  const [{ adminId }, summary, settings, welcome] = await Promise.all([
+    params,
     getAdminDashboardSummary(),
     getRegistrationSettings(),
+    getWelcomePostCandidates(),
   ]);
+
+  /**
+   * Only when there is genuinely something to post about.
+   *
+   * This is the "Pending Documents" rule, one PR old: a card that is always
+   * present and always zero trains an admin to stop reading that corner of the
+   * screen. A failed read shows nothing rather than a confident "0 new" — the
+   * prompt is an invitation, and inventing one is worse than missing one.
+   */
+  // `newIds` is filtered on the cutoff in the query. Slicing `rows` by a count
+  // only worked while the order held, and a null `created_at` sorts FIRST on a
+  // DESC order — so a shop with no timestamp was read as the newest one.
+  const newIds = welcome.failed ? [] : welcome.newIds;
+  const showWelcomePrompt = newIds.length > 0;
 
   /**
    * The review queue is only a real queue when something can enter it.
@@ -103,6 +135,35 @@ export default async function DashboardPage() {
           Welcome back to iLokal Admin Panel
         </p>
       </div>
+
+      {showWelcomePrompt && (
+        <Card className="border-primary/40 bg-primary/5">
+          <CardContent className="flex flex-col items-start justify-between gap-4 py-5 sm:flex-row sm:items-center">
+            <div className="flex items-start gap-3">
+              <Sparkles className="text-primary mt-0.5 h-5 w-5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium">
+                  {welcome.newCount === 1
+                    ? '1 new business registered'
+                    : `${welcome.newCount} new businesses registered`}
+                </p>
+                <p className="text-muted-foreground text-sm">
+                  Create their welcome post for Facebook, Instagram, Threads or
+                  LinkedIn — registered in the last {WELCOME_POST_NEW_DAYS}{' '}
+                  days.
+                </p>
+              </div>
+            </div>
+            {/* The two most recent are preselected, so the click lands on real
+                work instead of an empty picker. */}
+            <Button asChild className="shrink-0">
+              <Link href={adminWelcomePostsPath(adminId, newIds.slice(0, 2))}>
+                Create post
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {summary.failed && (
         <Card className="border-destructive/40">

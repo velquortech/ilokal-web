@@ -1,0 +1,211 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { POST_FONT_FAMILY } from './welcomePost';
+
+/**
+ * Fonts for the server-rendered social posts.
+ *
+ * ⚠️ **Satori cannot read `.woff2`.** Probed rather than assumed: handing it
+ * `assets/fonts/Pally-Bold.woff2` fails with `Unsupported OpenType signature
+ * wOF2`, while a `.ttf` renders. It accepts TTF, OTF and WOFF only.
+ *
+ * `assets/fonts/` currently holds Pally as `.woff2` **only**, because that is
+ * what `next/font/local` wants — it reads those at build time and re-emits
+ * them hashed. Converting one locally is not a small job either: Pally's woff2
+ * stores `glyf` and `loca` in woff2's *transformed* form, so a converter has
+ * to rebuild glyph outlines, not just decompress. That is not something to
+ * hand-roll for a brand asset.
+ *
+ * So this module looks for a renderer-readable Pally and falls back to the TTF
+ * that ships inside the OG package when it cannot find one.
+ *
+ * In this repo that search succeeds: `assets/fonts/` carries the static Pally
+ * cuts as **`.otf`** (CFF outlines) alongside the `.woff2` that `next/font`
+ * reads. Two formats of one family is deliberate and not the duplication the
+ * brand notes warn about — that rule is about `public/`, where a browser would
+ * download every face twice. These live in `assets/`, are read by the server,
+ * and are never served.
+ *
+ * ⚠️ **Static cuts only.** A variable font (`fvar`) is rejected below: Satori
+ * throws part-way through parsing one, which would fail the whole image rather
+ * than degrade.
+ */
+
+export interface PostFont {
+  name: string;
+  data: Buffer;
+  weight: 400 | 500 | 700;
+  style: 'normal';
+}
+
+const ASSETS = path.join(process.cwd(), 'assets', 'fonts');
+
+/**
+ * The bundled fallback.
+ *
+ * Vercel ships a `.ttf` inside `@vercel/og` precisely because that is what the
+ * renderer can read. Using it means the generator works with nothing fetched
+ * and nothing installed.
+ *
+ * ⚠️ Read as a FILE at runtime, never imported.
+ *
+ * `require.resolve('next/dist/compiled/@vercel/og/Geist-Regular.ttf')` looks
+ * tidier and fails the build: Turbopack reads a static specifier as an import
+ * and tries to bundle the font, which has no module type
+ * ("Unknown module type"). So the path is assembled, which in turn makes it
+ * invisible to output file tracing — hence the explicit
+ * `outputFileTracingIncludes` entry in `next.config.ts` covering this file and
+ * `assets/fonts/**`. Without it the first render 500s in a standalone build
+ * while working perfectly in dev.
+ */
+const FALLBACK_TTF = path.join(
+  process.cwd(),
+  'node_modules/next/dist/compiled/@vercel/og',
+  'Geist-Regular.ttf',
+);
+
+/** Formats the renderer will actually parse, best first. */
+const READABLE = ['ttf', 'otf', 'woff'] as const;
+
+/**
+ * True when an sfnt carries an `fvar` table, i.e. it is a VARIABLE font.
+ *
+ * Satori cannot render one — it throws `Cannot read properties of undefined`
+ * part-way through parsing, which would take out the whole image rather than
+ * degrade. Fontshare's Pally zip ships `Pally-Variable.ttf` alongside the
+ * static cuts, and the variable file is the easier one to grab by mistake, so
+ * this is checked rather than hoped for.
+ *
+ * Reads the table directory directly: 12-byte header, then 16 bytes per table
+ * with the 4-byte tag first. No parsing library needed for a tag scan.
+ */
+export function isVariableFont(data: Buffer): boolean {
+  if (data.length < 12) return false;
+  const numTables = data.readUInt16BE(4);
+  // A malformed directory would make this loop read past the buffer.
+  if (numTables === 0 || 12 + numTables * 16 > data.length) return false;
+  for (let i = 0; i < numTables; i++) {
+    if (data.subarray(12 + i * 16, 16 + i * 16).toString('latin1') === 'fvar') {
+      return true;
+    }
+  }
+  return false;
+}
+
+async function firstReadable(basenames: string[]): Promise<Buffer | null> {
+  for (const base of basenames) {
+    for (const ext of READABLE) {
+      const file = path.join(ASSETS, `${base}.${ext}`);
+      let data: Buffer;
+      try {
+        data = await readFile(file);
+      } catch {
+        continue; // A missing optional font is not an error.
+      }
+      if (isVariableFont(data)) {
+        console.warn(
+          `[og/fonts] Ignoring ${base}.${ext}: it is a VARIABLE font, which ` +
+            'the image renderer cannot parse — it would fail the render rather ' +
+            'than degrade. Use the static cut instead (Fontshare ships both: ' +
+            'take Fonts/TTF/Pally-Bold.ttf, not Pally-Variable.ttf).',
+        );
+        continue;
+      }
+      return data;
+    }
+  }
+  return null;
+}
+
+let warned = false;
+
+/**
+ * Memoised, because none of these files can change between requests within a
+ * deployment — and without it every render re-read the fallback TTF plus up to
+ * six candidate paths off disk, with another read per page load for
+ * `hasBrandFont`.
+ *
+ * The PROMISE is cached rather than the result, so two renders arriving
+ * together share one read instead of racing to do the same work twice. A
+ * failure is not cached: `loadPostFonts` cannot succeed without the fallback,
+ * so a transient read error should be retryable rather than poisoning the
+ * process.
+ */
+let fontCache: Promise<PostFont[]> | null = null;
+let brandFontCache: Promise<boolean> | null = null;
+
+/**
+ * Every face the post layout may reference, in fallback order.
+ *
+ * The list matters beyond the missing-Pally case: Satori falls back **per
+ * glyph**, so a name containing `é` — one of the live shops is
+ * "Suds & Sips Carwash and Café" — renders from the next font in the list
+ * rather than as tofu. That is why the accent needed no glyph audit.
+ */
+export function loadPostFonts(): Promise<PostFont[]> {
+  fontCache ??= readPostFonts().catch((error: unknown) => {
+    fontCache = null;
+    throw error;
+  });
+  return fontCache;
+}
+
+async function readPostFonts(): Promise<PostFont[]> {
+  const fallback = await readFile(FALLBACK_TTF);
+
+  const bold = await firstReadable(['Pally-Bold']);
+  const regular = await firstReadable(['Pally-Regular', 'Pally-Medium']);
+
+  if (!bold && !warned) {
+    warned = true;
+    console.warn(
+      '[og/fonts] No renderer-readable Pally in assets/fonts (only .woff2, ' +
+        'which Satori cannot parse). Falling back to the bundled Geist TTF — ' +
+        'the posts will render correctly but OFF-BRAND. Drop a Pally-Bold.ttf ' +
+        'into assets/fonts/ to fix, no code change required.',
+    );
+  }
+
+  const fonts: PostFont[] = [
+    {
+      name: POST_FONT_FAMILY,
+      data: bold ?? fallback,
+      weight: 700,
+      style: 'normal',
+    },
+    {
+      name: POST_FONT_FAMILY,
+      data: regular ?? bold ?? fallback,
+      weight: 400,
+      style: 'normal',
+    },
+  ];
+
+  // Last resort for glyphs the brand face lacks. Declared under the same
+  // family so Satori reaches for it only when the preferred face has no glyph.
+  if (bold) {
+    fonts.push({
+      name: POST_FONT_FAMILY,
+      data: fallback,
+      weight: 500,
+      style: 'normal',
+    });
+  }
+
+  return fonts;
+}
+
+/** True when the brand face is actually in use — surfaced in the admin UI. */
+export function hasBrandFont(): Promise<boolean> {
+  brandFontCache ??= firstReadable(['Pally-Bold']).then(
+    (data) => data !== null,
+  );
+  return brandFontCache;
+}
+
+/** Test seam: the caches above would otherwise outlive a single case. */
+export function __resetFontCacheForTests(): void {
+  fontCache = null;
+  brandFontCache = null;
+  warned = false;
+}

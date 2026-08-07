@@ -11,6 +11,12 @@
 import { describe, it, expect } from 'vitest';
 import {
   clampNameScale,
+  clampScale,
+  DEFAULT_TEXT_SCALES,
+  SCALE_DEFAULT,
+  SCALE_MAX,
+  SCALE_MIN,
+  TEXT_SCALES,
   displayName,
   initials,
   nameFontSize,
@@ -266,5 +272,45 @@ describe('the manual size adjuster', () => {
     // At 1.5x the longest live name must still fit two lines in the card.
     const size = nameFontSize('Suds & Sips Carwash and Café', 432, 1.5);
     expect(size).toBeLessThan(432 * 0.13);
+  });
+});
+
+describe('the text-scale zones', () => {
+  it('drives both zones from one record', () => {
+    // Name and footer today; headline and eyebrow are the obvious next asks.
+    // A third should be an entry here, not a third copy of the plumbing — the
+    // route and the composer both iterate this.
+    expect(Object.keys(TEXT_SCALES)).toEqual(['name', 'footer']);
+  });
+
+  it('gives every zone a query parameter and a label', () => {
+    for (const zone of Object.values(TEXT_SCALES)) {
+      expect(zone.param).toMatch(/Scale$/);
+      expect(zone.label.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('has a parameter name per zone, with no collisions', () => {
+    const params = Object.values(TEXT_SCALES).map((z) => z.param);
+    expect(new Set(params).size).toBe(params.length);
+  });
+
+  it('defaults every zone to unscaled', () => {
+    for (const key of Object.keys(
+      TEXT_SCALES,
+    ) as (keyof typeof TEXT_SCALES)[]) {
+      expect(DEFAULT_TEXT_SCALES[key]).toBe(SCALE_DEFAULT);
+    }
+  });
+
+  it('clamps a value the UI could never produce but a URL can', () => {
+    expect(clampScale(12)).toBe(SCALE_MAX);
+    expect(clampScale(0)).toBe(SCALE_MIN);
+    expect(clampScale(Number.NaN)).toBe(SCALE_DEFAULT);
+    expect(clampScale(Number.POSITIVE_INFINITY)).toBe(SCALE_DEFAULT);
+  });
+
+  it('keeps the name clamp as an alias, so existing callers are unaffected', () => {
+    expect(clampNameScale).toBe(clampScale);
   });
 });

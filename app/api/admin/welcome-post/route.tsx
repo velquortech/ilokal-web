@@ -6,12 +6,14 @@ import { createServerSupabaseClient } from '@/supabase/server';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { loadPostFonts } from '@/lib/og/fonts';
 import {
-  clampNameScale,
-  NAME_SCALE_DEFAULT,
+  clampScale,
+  TEXT_SCALES,
   POST_RATIOS,
   WelcomePost,
   type PostCard,
   type PostRatio,
+  type TextScaleKey,
+  type TextScales,
 } from '@/lib/og/welcomePost';
 
 /**
@@ -35,8 +37,9 @@ const querySchema = z.object({
   ratio: z.enum(['1x1', '4x5']).default('1x1'),
   /** Comma-separated ids whose name is suppressed (logo already says it). */
   hideName: z.string().optional(),
-  /** Manual multiplier on the name size ladder; clamped before use. */
+  /** One optional multiplier per text zone; each clamped before use. */
   nameScale: z.coerce.number().optional(),
+  footerScale: z.coerce.number().optional(),
   download: z.string().optional(),
 });
 
@@ -53,6 +56,7 @@ export async function GET(request: NextRequest) {
       ratio: searchParams.get('ratio') ?? '1x1',
       hideName: searchParams.get('hideName') ?? undefined,
       nameScale: searchParams.get('nameScale') ?? undefined,
+      footerScale: searchParams.get('footerScale') ?? undefined,
       download: searchParams.get('download') ?? undefined,
     });
 
@@ -101,6 +105,19 @@ export async function GET(request: NextRequest) {
         showName: !hidden.has(row.id),
       }));
 
+    // Built from the zone record, so adding a zone does not mean remembering
+    // to read another parameter here.
+    const scales = Object.fromEntries(
+      (Object.keys(TEXT_SCALES) as TextScaleKey[]).map((key) => [
+        key,
+        clampScale(
+          (parsed.data as unknown as Record<string, unknown>)[
+            TEXT_SCALES[key].param
+          ] as number,
+        ),
+      ]),
+    ) as TextScales;
+
     const { width, height } = POST_RATIOS[ratio as PostRatio];
     const fonts = await loadPostFonts();
 
@@ -117,7 +134,7 @@ export async function GET(request: NextRequest) {
         cards={cards}
         ratio={ratio as PostRatio}
         wordmarkUrl={wordmarkUrl}
-        nameScale={clampNameScale(parsed.data.nameScale ?? NAME_SCALE_DEFAULT)}
+        scales={scales}
       />,
       { width, height, fonts },
     );

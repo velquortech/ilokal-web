@@ -7,9 +7,13 @@ import { BusinessProps } from '../validator/business-registration-form-schema';
 import { StepProgress } from './step-progress';
 import { RegistrationNav } from './register-nav';
 import {
+  createRegistrationDeal,
+  createRegistrationOfferings,
   registerBusiness,
+  uploadOfferingImage,
   uploadRegistrationFile,
 } from '../api/register-business';
+import { defaultKindForMode } from '@/lib/types/offering';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { AxiosError } from 'axios';
@@ -18,8 +22,15 @@ import { cn } from '@/lib/utils';
 const BUSINESS_ID_KEY = 'ilokal-registration-business-id';
 
 export function ShopRegistrationContent() {
-  const { step, steps, requireDocuments, form, clearFormCache } =
-    useMultiStepForm();
+  const {
+    step,
+    steps,
+    requireDocuments,
+    form,
+    clearFormCache,
+    offeringMode,
+    offeringImages,
+  } = useMultiStepForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
@@ -129,6 +140,96 @@ export function ShopRegistrationContent() {
       await upload.run();
       uploadedRef.current.add(upload.key);
     }
+
+    // Phase 3 — the menu. AFTER the draft exists, because there is no
+    // business id to attach items to until `registerBusiness` returns one;
+    // this is why the step holds them in form state rather than writing as
+    // the owner types.
+    //
+    // Guarded by the same ref as the uploads, and so with the same lifecycle:
+    // a mid-flight failure retries without rewriting them, while a 404 replay
+    // clears the marker along with the stale business id, which is correct —
+    // the items belong to the NEW draft. The server is idempotent by name as
+    // well, so neither guard is load-bearing alone.
+    const offerings = data.offerings ?? [];
+
+    // Photos first, one request each — the offerings write carries the paths,
+    // and a single multipart POST with everything is what 413'd in production.
+    //
+    // Keyed per photo in the same ref as the files, so a retry after a
+    // mid-flight failure re-uploads none of them; without that, every retry
+    // would orphan another copy in the bucket.
+    //
+    // A photo that fails does NOT fail the registration: the item is the
+    // required thing and the picture is decoration, so the offering is written
+    // without it and the owner can add it from the dashboard.
+    const imagePaths = new Map<string, string>();
+    for (const [index, item] of offerings.entries()) {
+      const file = item.uid ? offeringImages.get(item.uid) : undefined;
+      if (!file) continue;
+      const key = `offering_image_${item.uid}`;
+      if (uploadedRef.current.has(key)) continue;
+      try {
+        const path = await uploadOfferingImage(bid, file, index);
+        if (path) imagePaths.set(item.uid, path);
+        uploadedRef.current.add(key);
+      } catch (error: unknown) {
+        console.error('[registration] offering photo upload failed', error);
+      }
+    }
+
+    if (offerings.length > 0 && !uploadedRef.current.has('offerings')) {
+      await createRegistrationOfferings(
+        bid,
+        offerings.map((item) => ({
+          name: item.name,
+          price: item.on_request ? null : (item.price ?? null),
+          on_request: item.on_request,
+          image_url: imagePaths.get(item.uid) ?? null,
+        })),
+        // From the vertical the owner picked, not the DB default — that
+        // default is 'product', so a services business would otherwise mint
+        // products for its own service menu.
+        defaultKindForMode(offeringMode),
+      );
+      uploadedRef.current.add('offerings');
+    }
+
+    // Phase 4 — the optional deal. `null` means the owner skipped the step,
+    // which is a deliberate choice and not a half-filled form, so nothing is
+    // written and the submission is unaffected. Same replay guard as above.
+    const deal = data.deal;
+    if (deal && !uploadedRef.current.has('deal')) {
+      // Same rules as the offering photos: uploaded before the row is written
+      // so it can carry the path, keyed so a retry does not orphan a copy, and
+      // never fatal — a deal without its picture still falls back to the
+      // shop's logo and interior photo, which is what every deal card showed
+      // before the column existed.
+      let dealImagePath: string | null = null;
+      const dealImage = deal.uid ? offeringImages.get(deal.uid) : undefined;
+      const dealImageKey = `deal_image_${deal.uid}`;
+      if (dealImage && !uploadedRef.current.has(dealImageKey)) {
+        try {
+          dealImagePath = await uploadOfferingImage(bid, dealImage, 0);
+          uploadedRef.current.add(dealImageKey);
+        } catch (error: unknown) {
+          console.error('[registration] deal photo upload failed', error);
+        }
+      }
+
+      await createRegistrationDeal(bid, {
+        code: deal.code,
+        description: deal.description,
+        discount_type: deal.discount_type,
+        discount_value: deal.discount_value,
+        duration_days: deal.duration_days,
+        // The owner's explicit choice, passed through untouched — defaulting
+        // it anywhere in this chain is how a draft becomes a live discount.
+        publish: deal.publish,
+        image_url: dealImagePath,
+      });
+      uploadedRef.current.add('deal');
+    }
   };
 
   const handleSubmitForm = async (data: BusinessProps) => {
@@ -145,6 +246,14 @@ export function ShopRegistrationContent() {
     if (requireDocuments) {
       if (!data.business_license) missing.push('business license');
       if (!data.tax_certificate) missing.push('tax certificate');
+    }
+    // The step schema already requires one, but the same reasoning as the
+    // files applies: step schemas are only ever triggered for the step being
+    // left, so a cached form restored at the review step could reach submit
+    // with an empty list and produce the empty shop this step exists to
+    // prevent.
+    if (!data.offerings || data.offerings.length === 0) {
+      missing.push('at least one item in your catalogue');
     }
     if (missing.length > 0) {
       setSubmitError(

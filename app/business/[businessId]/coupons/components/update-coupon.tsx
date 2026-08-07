@@ -37,6 +37,8 @@ import type {
   UsageScope,
 } from '@/lib/types';
 import { updateCouponAction } from '../../actions/couponActions';
+import { uploadProductImageAction } from '../../actions/productActions';
+import { ImageUploadField } from '@/components/custom/upload/image-upload';
 
 interface UpdateCouponDialogProps {
   coupon: Coupon;
@@ -57,6 +59,7 @@ type CouponFormValues = {
   expiry_date: string;
   max_redemptions_global: string;
   max_redemptions_per_user: string;
+  image: File | null;
 };
 
 function toLocalDatetime(iso: string): string {
@@ -97,6 +100,9 @@ export function UpdateCouponDialog({
     expiry_date: toLocalDatetime(coupon.expiry_date),
     max_redemptions_global: coupon.max_redemptions_global?.toString() ?? '',
     max_redemptions_per_user: coupon.max_redemptions_per_user?.toString() ?? '',
+    // null = "not re-picked". The existing photo is shown by the field's
+    // defaultValue and left alone unless the owner chooses a new one.
+    image: null,
   };
 
   const {
@@ -118,6 +124,20 @@ export function UpdateCouponDialog({
     setServerError(null);
 
     try {
+      let image_url: string | undefined;
+      if (data.image instanceof File) {
+        const fd = new FormData();
+        fd.append('file', data.image);
+        const uploadResult = await uploadProductImageAction(fd);
+        if (!uploadResult.success) {
+          const msg = uploadResult.error?.message ?? 'Image upload failed';
+          setServerError(msg);
+          toast.error(msg);
+          return;
+        }
+        image_url = uploadResult.data?.url;
+      }
+
       const result = await updateCouponAction(coupon.id, {
         promotion_type: data.promotion_type,
         status: data.status,
@@ -134,6 +154,7 @@ export function UpdateCouponDialog({
         max_redemptions_per_user: data.max_redemptions_per_user
           ? parseInt(data.max_redemptions_per_user, 10)
           : undefined,
+        image_url: image_url ?? null,
       });
 
       if (!result.success) {
@@ -469,6 +490,32 @@ export function UpdateCouponDialog({
             {serverError && (
               <p className="text-destructive text-sm">{serverError}</p>
             )}
+
+            {/* The deal's own photo. Optional — a card without one falls back
+                to the shop's logo and first interior image, which is what
+                every deal showed before `coupons.image_url` existed. Goes
+                through the shared field so it runs `compressImage`; a phone
+                photo is 3-6 MB against a 2 MB cap. */}
+            <Field className="flex flex-col">
+              <FieldLabel>Photo (Optional)</FieldLabel>
+              <div className="relative min-h-32 flex-1">
+                <Controller
+                  control={control}
+                  name="image"
+                  render={({ field }) => (
+                    <ImageUploadField
+                      defaultValue={coupon.image_url ?? null}
+                      onChange={(file) =>
+                        field.onChange(file instanceof File ? file : null)
+                      }
+                      onError={(msg) => setServerError(msg)}
+                      maxSizeBytes={2 * 1024 * 1024}
+                      maxSizeLabel="2 MB"
+                    />
+                  )}
+                />
+              </div>
+            </Field>
           </DialogBody>
 
           <DialogFooter>

@@ -35,25 +35,39 @@ vi.mock('next/link', () => ({
 const html = (node: React.ReactElement) => renderToStaticMarkup(node);
 
 describe('the step spine follows the wizard', () => {
-  it('lists four steps while documents are switched off', () => {
+  it('lists six steps while documents are switched off', () => {
     // The MVP shape: no permits, so no Documents step.
     const steps = getRegistrationStepMeta(false);
     const markup = html(<StepSpine steps={steps} />);
 
-    expect(steps).toHaveLength(4);
-    expect(markup).toContain('4 steps, start to finish');
+    expect(steps).toHaveLength(6);
+    expect(markup).toContain('6 steps, start to finish');
     expect(markup).toContain('Business Category');
     expect(markup).toContain('Review &amp; Submit');
     expect(markup).not.toContain('Documents');
   });
 
-  it('grows to five the moment the flag is on', () => {
+  it('grows to seven the moment the flag is on', () => {
     const steps = getRegistrationStepMeta(true);
     const markup = html(<StepSpine steps={steps} />);
 
-    expect(steps).toHaveLength(5);
-    expect(markup).toContain('5 steps, start to finish');
+    expect(steps).toHaveLength(7);
+    expect(markup).toContain('7 steps, start to finish');
     expect(markup).toContain('Documents');
+  });
+
+  it('warns a stranger that registering means listing something', () => {
+    // The page exists so nobody discovers a requirement at step three. The
+    // menu step is now the second-hardest thing it asks for, after the four
+    // photos — and unlike those, it has no equivalent anywhere else on the
+    // page, so omitting it here would recreate exactly the surprise this page
+    // was built to remove.
+    const markup = html(<StepSpine steps={getRegistrationStepMeta(false)} />);
+
+    expect(markup).toContain('What You Offer');
+    for (const field of STEP_FIELDS.offerings) {
+      expect(markup).toContain(field);
+    }
   });
 
   it('names the real fields for every step it renders', () => {

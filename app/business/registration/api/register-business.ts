@@ -33,6 +33,49 @@ export async function registerBusiness(
   return await apiClient.post('/api/web/businesses', meta);
 }
 
+/**
+ * Phase 3 — the menu entered in the wizard.
+ *
+ * Its own request, like the files, because one all-in-one POST is what 413'd
+ * in production. Safe to call twice: the server skips any name the business
+ * already has, so a retried submission cannot double the owner's menu.
+ */
+export async function createRegistrationOfferings(
+  businessId: string,
+  offerings: {
+    name: string;
+    price: number | null;
+    on_request: boolean;
+    image_url?: string | null;
+  }[],
+  kind: 'product' | 'service',
+) {
+  return await apiClient.post(`/api/web/businesses/${businessId}/offerings`, {
+    offerings,
+    kind,
+  });
+}
+
+/**
+ * Phase 4 — the optional launch deal.
+ *
+ * Safe to call twice: the server skips a code the business already has.
+ */
+export async function createRegistrationDeal(
+  businessId: string,
+  deal: {
+    code: string;
+    description?: string;
+    discount_type: 'percentage' | 'fixed_amount';
+    discount_value: number;
+    duration_days: number;
+    publish: boolean;
+    image_url?: string | null;
+  },
+) {
+  return await apiClient.post(`/api/web/businesses/${businessId}/deal`, deal);
+}
+
 /** Phase 2 — upload a single registration file (each ≤ 2 MB, own request). */
 export async function uploadRegistrationFile(
   businessId: string,
@@ -54,4 +97,25 @@ export async function uploadRegistrationFile(
       },
     },
   );
+}
+
+/**
+ * Upload one offering photo and get back its bucket-relative path.
+ *
+ * Same route and same ownership check as the registration files; the only
+ * difference is that this kind touches no column on `businesses`, so the
+ * caller has to carry the path into the offerings write.
+ */
+export async function uploadOfferingImage(
+  businessId: string,
+  file: File,
+  index: number,
+): Promise<string | null> {
+  const result = (await uploadRegistrationFile(
+    businessId,
+    'offering_image',
+    file,
+    index,
+  )) as { path?: string } | null;
+  return result?.path ?? null;
 }

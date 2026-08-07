@@ -40,6 +40,7 @@ export const createCouponSchema = z
     max_redemptions_global: z.number().min(1).optional(),
     max_redemptions_per_user: z.number().min(1).optional(),
     requires_follow: z.boolean().optional(),
+    image_url: z.string().max(512).nullable().optional(),
     branch_id: z.guid().nullable().optional(), // null = all branches
   })
   .refine(
@@ -63,6 +64,7 @@ export const updateCouponSchema = z
     max_redemptions_global: z.number().min(1).optional(),
     max_redemptions_per_user: z.number().min(1).optional(),
     requires_follow: z.boolean().optional(),
+    image_url: z.string().max(512).nullable().optional(),
     branch_id: z.guid().nullable().optional(), // null = all branches
   })
   .refine((data) => {

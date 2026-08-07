@@ -246,6 +246,49 @@ BEGIN
   RAISE NOTICE 'target grant assertions passed';
 END $$;
 
+-- ── 12. a shop registered through the wizard is not nagged ──
+--
+-- RM19 (.claude/REGISTRATION_MENU.md). The registration menu step and this
+-- RPC have to agree on what "has a menu" means, or the feature it was built to
+-- make unnecessary keeps emailing the people it fixed. The step writes
+-- `status = 'active'` for exactly this reason — an 'unlisted' row would
+-- satisfy the wizard, leave the public page empty, and still land the owner
+-- on this list.
+DO $$
+DECLARE
+  v_owner   UUID;
+  v_cat     UUID;
+  v_with    UUID := '99999999-0000-0000-0000-00000000ab01';
+  v_without UUID := '99999999-0000-0000-0000-00000000ab02';
+BEGIN
+  SELECT id INTO v_owner FROM auth.users LIMIT 1;
+  SELECT id INTO v_cat FROM business_categories WHERE deleted_at IS NULL LIMIT 1;
+
+  -- As the wizard now creates one: verified, with one live offering.
+  INSERT INTO businesses (id, owner_id, shop_name, description, status, category_id)
+  VALUES (v_with, v_owner, 'RM19 With Menu', 'test', 'verified', v_cat);
+  INSERT INTO products (business_id, name, price, price_type, status, kind)
+  VALUES (v_with, 'RM19 Item', 30, 'fixed', 'active', 'product');
+
+  -- As the old flow left them: verified, nothing listed.
+  INSERT INTO businesses (id, owner_id, shop_name, description, status, category_id)
+  VALUES (v_without, v_owner, 'RM19 Without Menu', 'test', 'verified', v_cat);
+
+  ASSERT NOT EXISTS (
+    SELECT 1 FROM admin_businesses_missing_menu(NULL, false) WHERE id = v_with
+  ), 'a shop that registered WITH a menu must not be listed for a nudge';
+
+  ASSERT EXISTS (
+    SELECT 1 FROM admin_businesses_missing_menu(NULL, false) WHERE id = v_without
+  ), 'a shop with no offerings must still be listed — the backstop covers everyone who registered before the menu step';
+
+  -- And the send-time re-check must agree with the list.
+  ASSERT NOT (SELECT is_sendable FROM admin_business_followup_target(v_with)),
+    'the send-time re-check must also refuse a shop that has a menu';
+
+  RAISE NOTICE 'registration-menu interaction assertions passed';
+END $$;
+
 ROLLBACK;
 
 \echo 'ALL MENU FOLLOWUP TESTS PASSED'

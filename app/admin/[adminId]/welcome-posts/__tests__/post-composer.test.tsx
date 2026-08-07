@@ -206,3 +206,35 @@ describe('a failed render is not an empty frame', () => {
     expect(container.querySelector('[role="status"]')).toBeNull();
   });
 });
+
+describe('the preview stays put while the rail scrolls', () => {
+  it('is sticky and does not stretch to the row height', () => {
+    // A grid item stretches by default, which leaves it nowhere to stick to —
+    // it is already as tall as the thing it would stick within. `self-start`
+    // is what makes `sticky` mean anything here.
+    render([SHOPS[0].id]);
+
+    const column = container.querySelector('.xl\\:sticky');
+    expect(column).toBeTruthy();
+    expect(column?.className).toContain('xl:self-start');
+    expect(column?.className).toContain('xl:top-0');
+  });
+
+  it('bounds the mount by viewport height, not only by width', () => {
+    // A 4:5 post at full width pushes the download button below the fold of a
+    // pinned column, where it can never be scrolled to.
+    render([SHOPS[0].id]);
+
+    const mount = container.querySelector('[class*="max-h-[calc(100dvh"]');
+    expect(mount).toBeTruthy();
+  });
+
+  it('lets the image shrink to fit that bound instead of overflowing', () => {
+    render([SHOPS[0].id]);
+    act(() => vi.advanceTimersByTime(400));
+
+    const img = preview();
+    expect(img?.className).toContain('max-h-full');
+    expect(img?.className).toContain('object-contain');
+  });
+});

@@ -324,8 +324,23 @@ export function PostComposer({
         </section>
       </div>
 
-      {/* ── The post: mounted, not embedded. ── */}
-      <div className="space-y-4">
+      {/* ── The post: mounted, not embedded — and pinned.
+             Sticky so the preview stays put while the rail scrolls: the text
+             sliders sit below the shop list, and adjusting a size you cannot
+             see the effect of is the one thing this page must not do.
+
+             `self-start` is load-bearing. A grid item stretches to the row
+             height by default, which leaves it nowhere to stick to — it is
+             already as tall as the thing it would stick within.
+
+             Sticky resolves against the nearest SCROLLING ancestor, which here
+             is the admin shell's `overflow-auto` content div rather than the
+             page (the shell is `h-screen overflow-hidden`). `top-0` is
+             therefore the top of that pane.
+
+             Only from `xl`: below it the layout is one column and the preview
+             sits under the controls, where pinning it would cover them. ── */}
+      <div className="space-y-4 xl:sticky xl:top-0 xl:self-start">
         {!brandFontAvailable && (
           <p className="text-muted-foreground rounded-lg border border-dashed p-3 text-xs">
             Rendering with a fallback typeface — the brand font is only
@@ -335,7 +350,10 @@ export function PostComposer({
           </p>
         )}
 
-        <div className="bg-muted/40 flex min-h-125 items-center justify-center rounded-xl border p-6 sm:p-10">
+        {/* Bounded by the viewport, not just by width: a 4:5 post at full
+            width would push the download button below the fold of a pinned
+            column, where it could never be scrolled to. */}
+        <div className="bg-muted/40 flex min-h-125 items-center justify-center rounded-xl border p-6 sm:p-10 xl:max-h-[calc(100dvh-14rem)]">
           {previewSrc ? (
             <div className="relative w-full max-w-125">
               {status === 'error' ? (
@@ -366,7 +384,7 @@ export function PostComposer({
                     key={previewSrc}
                     src={previewSrc}
                     alt="Welcome post preview"
-                    className="w-full rounded-lg shadow-xl"
+                    className="max-h-full w-auto max-w-full rounded-lg object-contain shadow-xl"
                     onLoad={() => setStatus('idle')}
                     onError={() => setStatus('error')}
                   />

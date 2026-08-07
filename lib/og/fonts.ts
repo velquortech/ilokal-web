@@ -55,14 +55,51 @@ const FALLBACK_TTF = path.join(
 /** Formats the renderer will actually parse, best first. */
 const READABLE = ['ttf', 'otf', 'woff'] as const;
 
+/**
+ * True when an sfnt carries an `fvar` table, i.e. it is a VARIABLE font.
+ *
+ * Satori cannot render one — it throws `Cannot read properties of undefined`
+ * part-way through parsing, which would take out the whole image rather than
+ * degrade. Fontshare's Pally zip ships `Pally-Variable.ttf` alongside the
+ * static cuts, and the variable file is the easier one to grab by mistake, so
+ * this is checked rather than hoped for.
+ *
+ * Reads the table directory directly: 12-byte header, then 16 bytes per table
+ * with the 4-byte tag first. No parsing library needed for a tag scan.
+ */
+export function isVariableFont(data: Buffer): boolean {
+  if (data.length < 12) return false;
+  const numTables = data.readUInt16BE(4);
+  // A malformed directory would make this loop read past the buffer.
+  if (numTables === 0 || 12 + numTables * 16 > data.length) return false;
+  for (let i = 0; i < numTables; i++) {
+    if (data.subarray(12 + i * 16, 16 + i * 16).toString('latin1') === 'fvar') {
+      return true;
+    }
+  }
+  return false;
+}
+
 async function firstReadable(basenames: string[]): Promise<Buffer | null> {
   for (const base of basenames) {
     for (const ext of READABLE) {
+      const file = path.join(ASSETS, `${base}.${ext}`);
+      let data: Buffer;
       try {
-        return await readFile(path.join(ASSETS, `${base}.${ext}`));
+        data = await readFile(file);
       } catch {
-        // Next candidate. A missing optional font is not an error.
+        continue; // A missing optional font is not an error.
       }
+      if (isVariableFont(data)) {
+        console.warn(
+          `[og/fonts] Ignoring ${base}.${ext}: it is a VARIABLE font, which ` +
+            'the image renderer cannot parse — it would fail the render rather ' +
+            'than degrade. Use the static cut instead (Fontshare ships both: ' +
+            'take Fonts/TTF/Pally-Bold.ttf, not Pally-Variable.ttf).',
+        );
+        continue;
+      }
+      return data;
     }
   }
   return null;

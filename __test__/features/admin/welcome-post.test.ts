@@ -16,6 +16,24 @@ import {
   POST_RATIOS,
 } from '@/lib/og/welcomePost';
 import { adminWelcomePostsPath } from '@/config/routeConfig';
+import { isVariableFont } from '@/lib/og/fonts';
+import { readFileSync } from 'node:fs';
+
+/**
+ * A minimal sfnt with the given table tags.
+ *
+ * Synthesised rather than read from a real variable font: `Pally-Variable.ttf`
+ * is not committed (it does not work, so committing it would only invite
+ * someone to wire it up), and a test that depends on an untracked file passes
+ * locally and fails in CI.
+ */
+function sfnt(tags: string[]): Buffer {
+  const buf = Buffer.alloc(12 + tags.length * 16);
+  buf.writeUInt32BE(0x00010000, 0);
+  buf.writeUInt16BE(tags.length, 4);
+  tags.forEach((tag, i) => buf.write(tag.padEnd(4), 12 + i * 16, 4, 'latin1'));
+  return buf;
+}
 
 /** Verbatim from the live cloud rows, trailing spaces and all. */
 const LIVE_NAMES = [
@@ -147,5 +165,32 @@ describe('the dashboard prompt links somewhere useful', () => {
     expect(adminWelcomePostsPath('admin-1', [])).toBe(
       '/admin/admin-1/welcome-posts',
     );
+  });
+});
+
+describe('the font guard', () => {
+  it('rejects a variable font, which would fail the render rather than degrade', () => {
+    // Satori throws part-way through parsing one. Fontshare's Pally zip ships
+    // `Pally-Variable.ttf` beside the static cuts and it is the easier file to
+    // grab by mistake — this was hit for real.
+    expect(isVariableFont(sfnt(['glyf', 'fvar', 'gvar']))).toBe(true);
+  });
+
+  it('passes a static font through', () => {
+    expect(isVariableFont(sfnt(['cmap', 'glyf', 'head', 'loca']))).toBe(false);
+  });
+
+  it('does not mistake a woff2 for a variable font', () => {
+    // woff2 is not a bare sfnt, so the table scan reads nonsense from it. It
+    // has to fail safe rather than throw or report a false positive.
+    const woff2 = readFileSync('assets/fonts/Pally-Bold.woff2');
+    expect(isVariableFont(woff2)).toBe(false);
+  });
+
+  it('fails safe on junk rather than throwing', () => {
+    // A truncated or corrupt file must not take out the whole route.
+    expect(isVariableFont(Buffer.alloc(0))).toBe(false);
+    expect(isVariableFont(Buffer.from('not a font'))).toBe(false);
+    expect(isVariableFont(Buffer.alloc(4000))).toBe(false);
   });
 });

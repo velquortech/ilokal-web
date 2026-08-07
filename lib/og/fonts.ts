@@ -16,10 +16,18 @@ import path from 'node:path';
  * hand-roll for a brand asset.
  *
  * So this module looks for a renderer-readable Pally and falls back to the TTF
- * that ships inside the OG package when it cannot find one. The layout, the
- * logos and the copy are all correct either way — only the typeface is
- * interim, and it becomes correct the moment a `Pally-Bold.ttf` (or `.otf` /
- * `.woff`) is dropped into `assets/fonts/`. No code change needed.
+ * that ships inside the OG package when it cannot find one.
+ *
+ * In this repo that search succeeds: `assets/fonts/` carries the static Pally
+ * cuts as **`.otf`** (CFF outlines) alongside the `.woff2` that `next/font`
+ * reads. Two formats of one family is deliberate and not the duplication the
+ * brand notes warn about — that rule is about `public/`, where a browser would
+ * download every face twice. These live in `assets/`, are read by the server,
+ * and are never served.
+ *
+ * ⚠️ **Static cuts only.** A variable font (`fvar`) is rejected below: Satori
+ * throws part-way through parsing one, which would fail the whole image rather
+ * than degrade.
  */
 
 export interface PostFont {

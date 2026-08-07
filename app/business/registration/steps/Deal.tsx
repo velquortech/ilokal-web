@@ -17,6 +17,8 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FieldError } from '@/components/ui/field';
 import { BadgePercent, X } from 'lucide-react';
+import { ImageUploadField } from '@/components/custom/upload/image-upload';
+import { MAX_FILE_SIZE } from '../validator/business-registration-form-schema';
 
 /** Windows an owner actually thinks in. Days, because the DB stores a date. */
 const DURATION_OPTIONS = [
@@ -26,7 +28,14 @@ const DURATION_OPTIONS = [
   { value: 90, label: '3 months' },
 ];
 
-const EMPTY_DEAL = {
+/** Minted per deal so its photo can be cached like an offering's. */
+const newUid = () =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+const emptyDeal = () => ({
+  uid: newUid(),
   code: '',
   description: '',
   discount_type: 'percentage' as const,
@@ -35,7 +44,7 @@ const EMPTY_DEAL = {
   // 🔴 Draft. See registrationDealSchema — publishing makes the coupon
   // immediately redeemable by a stranger.
   publish: false,
-};
+});
 
 /**
  * The optional launch deal.
@@ -46,7 +55,7 @@ const EMPTY_DEAL = {
  * money, so nothing here is filled in on their behalf.
  */
 export function ShopDeal() {
-  const { form, vocabulary } = useMultiStepForm();
+  const { form, vocabulary, offeringImages } = useMultiStepForm();
   const {
     control,
     register,
@@ -57,7 +66,7 @@ export function ShopDeal() {
   const deal = useWatch({ control, name: 'deal' });
   const isAdding = deal !== null && deal !== undefined;
   const dealErrors = errors.deal as
-    | Partial<Record<keyof typeof EMPTY_DEAL, { message?: string }>>
+    | Partial<Record<string, { message?: string }>>
     | undefined;
 
   if (!isAdding) {
@@ -86,7 +95,7 @@ export function ShopDeal() {
             type="button"
             variant="secondary"
             onClick={() =>
-              setValue('deal', EMPTY_DEAL, { shouldValidate: true })
+              setValue('deal', emptyDeal(), { shouldValidate: true })
             }
           >
             <BadgePercent className="mr-1 h-4 w-4" />
@@ -235,10 +244,36 @@ export function ShopDeal() {
           </div>
         </div>
 
+        {/* Optional, and last, for the same reason as the offering photo: it
+            must never stand between the owner and the fields that decide what
+            the deal actually is. Falls back to the shop's own logo and
+            interior photo when absent, which is what every deal card showed
+            before `coupons.image_url` existed. */}
+        <div className="space-y-2">
+          <Label>Photo (optional)</Label>
+          <div className="relative min-h-32">
+            <ImageUploadField
+              onChange={(image) =>
+                offeringImages.set(
+                  deal.uid,
+                  image instanceof File ? image : null,
+                )
+              }
+              maxSizeBytes={MAX_FILE_SIZE}
+              maxSizeLabel="2 MB"
+            />
+          </div>
+        </div>
+
         <Button
           type="button"
           variant="ghost"
-          onClick={() => setValue('deal', null, { shouldValidate: true })}
+          onClick={() => {
+            // Drop the photo with the deal, or its blob outlives the thing it
+            // belonged to.
+            if (deal.uid) offeringImages.remove(deal.uid);
+            setValue('deal', null, { shouldValidate: true });
+          }}
           className="text-muted-foreground"
         >
           <X className="mr-1 h-4 w-4" />

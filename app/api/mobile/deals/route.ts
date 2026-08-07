@@ -19,6 +19,8 @@ import { NextRequest } from 'next/server';
 type RawDeal = {
   business_logo_url: string | null;
   business_image_url: string | null;
+  /** The deal's own photo, if the owner gave it one. */
+  deal_image_url: string | null;
   [key: string]: unknown;
 };
 
@@ -45,6 +47,15 @@ function resolveDealUrls(supabase: SupabaseClient, deal: RawDeal | null) {
       supabase,
       'interior-images',
       deal.business_image_url,
+    ),
+    // Additive: `deal_image_url` sits BESIDE the two business fallbacks rather
+    // than replacing either. Old clients ignore the new key and keep drawing
+    // the card exactly as before; new ones prefer it when it is non-null.
+    // Renaming or repurposing a field here would be a breaking mobile change.
+    deal_image_url: resolveStorageUrl(
+      supabase,
+      'product-images',
+      deal.deal_image_url,
     ),
   };
 }

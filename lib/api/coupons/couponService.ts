@@ -58,6 +58,7 @@ export async function createCoupon(
         max_redemptions_global: input.max_redemptions_global || null,
         max_redemptions_per_user: input.max_redemptions_per_user || null,
         requires_follow: input.requires_follow ?? false,
+        image_url: input.image_url ?? null,
         current_redemptions: 0,
       })
       .select()
@@ -145,6 +146,9 @@ export async function updateCoupon(
       updateData.max_redemptions_per_user = input.max_redemptions_per_user;
     if (input.requires_follow !== undefined)
       updateData.requires_follow = input.requires_follow;
+    // `undefined` means "not sent", null means "remove the photo" — collapsing
+    // the two would make clearing an image impossible.
+    if (input.image_url !== undefined) updateData.image_url = input.image_url;
 
     const { data, error } = await supabase
       .from('coupons')

@@ -206,7 +206,7 @@ Key facts about the current normalized schema (as of 2026-06-08):
 - **Deals promotion** — the explore feed (`/api/mobile/deals`) sizes bento cards by `subscription_plans.features_promo_boost` (boolean, `20260530000002`), NOT by `price`. The anon feed reads promoted subs via the public SELECT policy in `20260530000003` (active subs on promo-boost plans only). Set the flag on new promoted plans, or they silently won't get boosted.
 - **Coupon access invariant** — every route that fetches a coupon for display or redemption must filter `.eq('status', 'published').is('archived_at', null).lte('start_date', now)`. Omitting any of the three allows draft, archived, or not-yet-active coupons to be acted on.
 - **`increment_coupon_redemptions(p_coupon_id uuid)`** — SECURITY DEFINER RPC (`20260527000001`). Call via `supabase.rpc('increment_coupon_redemptions', { p_coupon_id })` after inserting into `user_redemptions`. Returns `true` if incremented, `false` if global cap already hit. Must be SECURITY DEFINER — authenticated users have no UPDATE policy on `coupons`. Only the **global** cap is race-safe via this RPC; the per-user cap in the redeem route is a non-atomic count-then-insert (TOCTOU) — concurrent redeems by one user can slip past it.
-- **⚠️ Migration state (2026-08-07): local is 21 migrations AHEAD of cloud.**
+- **⚠️ Migration state (2026-08-07): local is 22 migrations AHEAD of cloud.**
   Cloud (`ilokal-database`) was last confirmed in sync at `20260717082537`.
   Everything after that is applied **locally only** and needs human approval →
   `make migrate-cloud` → a `supabase_migrations.schema_migrations` ledger
@@ -226,7 +226,8 @@ Key facts about the current normalized schema (as of 2026-06-08):
   `admin_businesses_missing_menu` RPC + `businesses.menu_reminder_sent_at`) ·
   `20260806093000` (menu follow-up send target:
   `admin_business_followup_target`) · `20260807000000` (service trades: pest
-  control, water refilling station).
+  control, water refilling station) · `20260807120000` (`coupons.image_url` +
+  `mobile_deals` projecting it as `deal_image_url`).
   **Until they land, cloud has no events tables, no `product_sections`, no
   `booking_requests`, no offering columns, neither menu-follow-up RPC nor its
   `menu_reminder_sent_at` column, and a 2-column `public_feature_flags()`** — so

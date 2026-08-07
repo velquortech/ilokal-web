@@ -70,6 +70,7 @@ export async function createRegistrationDeal(
     discount_value: number;
     duration_days: number;
     publish: boolean;
+    image_url?: string | null;
   },
 ) {
   return await apiClient.post(`/api/web/businesses/${businessId}/deal`, deal);

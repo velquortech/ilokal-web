@@ -29,6 +29,8 @@ const bodySchema = z
      * validates, never a default either side can drift on.
      */
     publish: z.boolean(),
+    /** Shape-checked here; ownership is proved in the query layer. */
+    image_url: z.string().max(512).nullable().optional(),
   })
   .refine(
     (data) => data.discount_type !== 'percentage' || data.discount_value <= 100,

@@ -1,4 +1,12 @@
-import { POST_FONT_FAMILY } from './fonts';
+/**
+ * The display family the layout asks for.
+ *
+ * Declared HERE rather than in `fonts.ts` so this module stays importable from
+ * a client component: `fonts.ts` reads the font files and therefore pulls in
+ * `node:fs`, which Turbopack refuses to bundle for the browser. The admin
+ * composer imports the scale bounds below, so that mattered.
+ */
+export const POST_FONT_FAMILY = 'PostDisplay';
 
 /**
  * The "Welcome to the iLokal family!" post.
@@ -44,19 +52,44 @@ export function displayName(raw: string): string {
   return raw.replace(/\s+/g, ' ').trim().toUpperCase();
 }
 
+/** The name may wrap to this many lines before the box clips it. */
+export const NAME_MAX_LINES = 2;
+export const NAME_LINE_HEIGHT = 1.08;
+
+/** Bounds on the manual size adjuster, so a slider cannot break the layout. */
+export const NAME_SCALE_MIN = 0.6;
+export const NAME_SCALE_MAX = 1.5;
+export const NAME_SCALE_DEFAULT = 1;
+
+export function clampNameScale(value: number): number {
+  if (!Number.isFinite(value)) return NAME_SCALE_DEFAULT;
+  return Math.min(Math.max(value, NAME_SCALE_MIN), NAME_SCALE_MAX);
+}
+
 /**
  * Font size for a name, keyed on its length.
  *
  * The live names run 3 to 29 characters — `LU2` against
- * `Suds & Sips Carwash and Café`. One size cannot serve a ten-times spread:
- * the long one overflows its card and the short one looks lost. The floor
- * stops a two-character name rendering comically large.
+ * `Suds & Sips Carwash and Café`. One size cannot serve a ten-times spread.
+ *
+ * The long buckets are deliberately generous now that the name may take TWO
+ * lines: squeezing a 29-character name onto one line set it at roughly half
+ * the size of its neighbour, which read as a mistake rather than as a long
+ * name. Wrapping costs a line and buys back the weight.
+ *
+ * `scale` is the manual adjuster — the ladder picks a sane default and an
+ * admin overrides it per post, because how big a name should be depends on
+ * the logo sitting above it, which no rule can know.
  */
-export function nameFontSize(name: string, cardWidth: number): number {
+export function nameFontSize(
+  name: string,
+  cardWidth: number,
+  scale: number = NAME_SCALE_DEFAULT,
+): number {
   const length = displayName(name).length;
-  const scale =
-    length <= 8 ? 0.105 : length <= 14 ? 0.088 : length <= 20 ? 0.07 : 0.055;
-  return Math.round(cardWidth * scale);
+  const ratio =
+    length <= 8 ? 0.105 : length <= 14 ? 0.09 : length <= 20 ? 0.08 : 0.072;
+  return Math.round(cardWidth * ratio * clampNameScale(scale));
 }
 
 /** Up to two letters, for a card whose logo could not be fetched. */
@@ -69,17 +102,44 @@ export function initials(name: string): string {
   return first + last || '?';
 }
 
+/**
+ * The name box height a PAIR of cards should share.
+ *
+ * Sized from the largest name in the pair, not per card. Each card sizing its
+ * own box makes a short name (bigger font, taller box) produce a taller card
+ * than a long one beside it — the cards sit at different heights and the pair
+ * reads as broken. Computed once at the parent and handed down.
+ */
+export function sharedNameBoxHeight(
+  cards: PostCard[],
+  cardSize: number,
+  nameScale: number,
+): number {
+  const sizes = cards
+    .filter((card) => card.showName)
+    .map((card) => nameFontSize(card.name, cardSize, nameScale));
+  if (sizes.length === 0) return 0;
+  return Math.round(Math.max(...sizes) * NAME_LINE_HEIGHT * NAME_MAX_LINES);
+}
+
 function Card({
   card,
   fill,
   size,
+  nameScale,
+  nameBoxHeight,
 }: {
   card: PostCard;
   fill: string;
   size: number;
+  nameScale: number;
+  /** Shared across the pair — see `sharedNameBoxHeight`. */
+  nameBoxHeight: number;
 }) {
   const pad = Math.round(size * 0.08);
   const logoBox = size - pad * 2;
+  const fontSize = nameFontSize(card.name, size, nameScale);
+  const gap = card.showName ? Math.round(size * 0.04) : 0;
 
   return (
     <div
@@ -89,7 +149,7 @@ function Card({
         alignItems: 'center',
         justifyContent: 'space-between',
         width: size,
-        height: card.showName ? size * 1.16 : size,
+        height: pad * 2 + logoBox + gap + nameBoxHeight,
         backgroundColor: fill,
         borderRadius: Math.round(size * 0.09),
         padding: pad,
@@ -147,11 +207,15 @@ function Card({
             alignItems: 'center',
             justifyContent: 'center',
             width: logoBox,
+            // Fixed to exactly two lines: a third would push past the card,
+            // and Satori has no reliable line-clamp to fall back on.
+            height: nameBoxHeight,
+            overflow: 'hidden',
             color: CHARCOAL,
             fontFamily: POST_FONT_FAMILY,
             fontWeight: 700,
-            fontSize: nameFontSize(card.name, size),
-            lineHeight: 1.05,
+            fontSize,
+            lineHeight: NAME_LINE_HEIGHT,
             textAlign: 'center',
           }}
         >
@@ -167,9 +231,64 @@ export interface WelcomePostProps {
   ratio: PostRatio;
   /** Absolute URL of the jasmine wordmark cut. */
   wordmarkUrl: string;
+  /** Manual multiplier on the name size ladder. */
+  nameScale?: number;
 }
 
-export function WelcomePost({ cards, ratio, wordmarkUrl }: WelcomePostProps) {
+/**
+ * The two tonal circles behind the content.
+ *
+ * Sized and placed relative to the canvas rather than in fixed pixels, so the
+ * 4:5 crop keeps the same composition instead of pinning them to a 1080 square.
+ * Both bleed off an edge — a circle fully inside the frame reads as a shape,
+ * one that runs off reads as depth.
+ *
+ * Rendered before the content and never given a z-index: Satori paints in
+ * document order, so being first IS being behind.
+ */
+function Backdrop({ width, height }: { width: number; height: number }) {
+  const topSize = Math.round(width * 0.36);
+  const bottomSize = Math.round(width * 0.41);
+
+  return (
+    <>
+      <div
+        style={{
+          position: 'absolute',
+          display: 'flex',
+          top: Math.round(height * 0.01),
+          left: Math.round(width * 0.64),
+          width: topSize,
+          height: topSize,
+          borderRadius: topSize,
+          // Tone on tone. A stronger tint competes with the wordmark sitting
+          // over it; the mock's circles are only just visible and that is the
+          // point.
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          display: 'flex',
+          top: Math.round(height * 0.6),
+          left: Math.round(width * -0.07),
+          width: bottomSize,
+          height: bottomSize,
+          borderRadius: bottomSize,
+          backgroundColor: 'rgba(0, 0, 0, 0.05)',
+        }}
+      />
+    </>
+  );
+}
+
+export function WelcomePost({
+  cards,
+  ratio,
+  wordmarkUrl,
+  nameScale = NAME_SCALE_DEFAULT,
+}: WelcomePostProps) {
   const { width, height } = POST_RATIOS[ratio];
   const shown = cards.slice(0, 2);
 
@@ -178,6 +297,9 @@ export function WelcomePost({ cards, ratio, wordmarkUrl }: WelcomePostProps) {
   const cardSize =
     shown.length === 1 ? Math.round(width * 0.52) : Math.round(width * 0.4);
 
+  // One measurement for the pair, so both cards end at the same height.
+  const nameBox = sharedNameBoxHeight(shown, cardSize, nameScale);
+
   return (
     <div
       style={{
@@ -185,6 +307,7 @@ export function WelcomePost({ cards, ratio, wordmarkUrl }: WelcomePostProps) {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'space-between',
+        position: 'relative',
         width,
         height,
         backgroundColor: BRICK,
@@ -193,6 +316,8 @@ export function WelcomePost({ cards, ratio, wordmarkUrl }: WelcomePostProps) {
         fontFamily: POST_FONT_FAMILY,
       }}
     >
+      <Backdrop width={width} height={height} />
+
       <div
         style={{
           display: 'flex',
@@ -247,6 +372,8 @@ export function WelcomePost({ cards, ratio, wordmarkUrl }: WelcomePostProps) {
             card={card}
             fill={CARD_FILLS[index % CARD_FILLS.length]}
             size={cardSize}
+            nameScale={nameScale}
+            nameBoxHeight={nameBox}
           />
         ))}
       </div>

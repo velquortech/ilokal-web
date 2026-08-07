@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { POST_FONT_FAMILY } from './welcomePost';
 
 /**
  * Fonts for the server-rendered social posts.
@@ -36,9 +37,6 @@ export interface PostFont {
   weight: 400 | 500 | 700;
   style: 'normal';
 }
-
-/** The display family the layout asks for. */
-export const POST_FONT_FAMILY = 'PostDisplay';
 
 const ASSETS = path.join(process.cwd(), 'assets', 'fonts');
 

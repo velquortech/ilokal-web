@@ -10,10 +10,16 @@
 
 import { describe, it, expect } from 'vitest';
 import {
+  clampNameScale,
   displayName,
   initials,
   nameFontSize,
+  NAME_LINE_HEIGHT,
+  NAME_SCALE_DEFAULT,
+  NAME_SCALE_MAX,
+  NAME_SCALE_MIN,
   POST_RATIOS,
+  sharedNameBoxHeight,
 } from '@/lib/og/welcomePost';
 import { adminWelcomePostsPath } from '@/config/routeConfig';
 import { isVariableFont } from '@/lib/og/fonts';
@@ -192,5 +198,73 @@ describe('the font guard', () => {
     expect(isVariableFont(Buffer.alloc(0))).toBe(false);
     expect(isVariableFont(Buffer.from('not a font'))).toBe(false);
     expect(isVariableFont(Buffer.alloc(4000))).toBe(false);
+  });
+});
+
+describe('a pair of cards ends at the same height', () => {
+  it('sizes the name box from the LARGEST name in the pair', () => {
+    // Each card sizing its own box makes a short name — bigger font, taller
+    // box — produce a taller card than the long name beside it, and the pair
+    // reads as broken. Caught in a real render.
+    const pair = [
+      { name: 'Suds & Sips Carwash and Café', logoUrl: null, showName: true },
+      { name: 'LU2', logoUrl: null, showName: true },
+    ];
+    const shared = sharedNameBoxHeight(pair, 432, 1);
+
+    // LU2 takes the larger font, so it sets the shared height.
+    expect(shared).toBe(
+      Math.round(nameFontSize('LU2', 432, 1) * NAME_LINE_HEIGHT * 2),
+    );
+    // And it is at least what the long name needs.
+    expect(shared).toBeGreaterThanOrEqual(
+      Math.round(
+        nameFontSize('Suds & Sips Carwash and Café', 432, 1) *
+          NAME_LINE_HEIGHT *
+          2,
+      ),
+    );
+  });
+
+  it('ignores cards whose name is switched off', () => {
+    const pair = [
+      { name: 'LU2', logoUrl: null, showName: false },
+      { name: 'Gugma Salon & Spa', logoUrl: null, showName: true },
+    ];
+    expect(sharedNameBoxHeight(pair, 432, 1)).toBe(
+      Math.round(
+        nameFontSize('Gugma Salon & Spa', 432, 1) * NAME_LINE_HEIGHT * 2,
+      ),
+    );
+  });
+
+  it('collapses to nothing when no card shows a name', () => {
+    const pair = [
+      { name: 'LU2', logoUrl: null, showName: false },
+      { name: 'EM Finds', logoUrl: null, showName: false },
+    ];
+    expect(sharedNameBoxHeight(pair, 432, 1)).toBe(0);
+  });
+});
+
+describe('the manual size adjuster', () => {
+  it('scales the ladder', () => {
+    const base = nameFontSize('Gugma Salon & Spa', 432);
+    expect(nameFontSize('Gugma Salon & Spa', 432, 1.4)).toBeGreaterThan(base);
+    expect(nameFontSize('Gugma Salon & Spa', 432, 0.7)).toBeLessThan(base);
+  });
+
+  it('clamps a value that would break the layout', () => {
+    // The slider is bounded, but this is also a query parameter — a caller can
+    // send anything.
+    expect(clampNameScale(99)).toBe(NAME_SCALE_MAX);
+    expect(clampNameScale(-4)).toBe(NAME_SCALE_MIN);
+    expect(clampNameScale(Number.NaN)).toBe(NAME_SCALE_DEFAULT);
+  });
+
+  it('long names still wrap rather than overflow at full scale', () => {
+    // At 1.5x the longest live name must still fit two lines in the card.
+    const size = nameFontSize('Suds & Sips Carwash and Café', 432, 1.5);
+    expect(size).toBeLessThan(432 * 0.13);
   });
 });

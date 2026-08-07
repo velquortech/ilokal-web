@@ -6,6 +6,8 @@ import { createServerSupabaseClient } from '@/supabase/server';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { loadPostFonts } from '@/lib/og/fonts';
 import {
+  clampNameScale,
+  NAME_SCALE_DEFAULT,
   POST_RATIOS,
   WelcomePost,
   type PostCard,
@@ -33,6 +35,8 @@ const querySchema = z.object({
   ratio: z.enum(['1x1', '4x5']).default('1x1'),
   /** Comma-separated ids whose name is suppressed (logo already says it). */
   hideName: z.string().optional(),
+  /** Manual multiplier on the name size ladder; clamped before use. */
+  nameScale: z.coerce.number().optional(),
   download: z.string().optional(),
 });
 
@@ -48,6 +52,7 @@ export async function GET(request: NextRequest) {
       ids: searchParams.get('ids') ?? '',
       ratio: searchParams.get('ratio') ?? '1x1',
       hideName: searchParams.get('hideName') ?? undefined,
+      nameScale: searchParams.get('nameScale') ?? undefined,
       download: searchParams.get('download') ?? undefined,
     });
 
@@ -112,6 +117,7 @@ export async function GET(request: NextRequest) {
         cards={cards}
         ratio={ratio as PostRatio}
         wordmarkUrl={wordmarkUrl}
+        nameScale={clampNameScale(parsed.data.nameScale ?? NAME_SCALE_DEFAULT)}
       />,
       { width, height, fonts },
     );

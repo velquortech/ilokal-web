@@ -35,24 +35,24 @@ vi.mock('next/link', () => ({
 const html = (node: React.ReactElement) => renderToStaticMarkup(node);
 
 describe('the step spine follows the wizard', () => {
-  it('lists five steps while documents are switched off', () => {
+  it('lists six steps while documents are switched off', () => {
     // The MVP shape: no permits, so no Documents step.
     const steps = getRegistrationStepMeta(false);
     const markup = html(<StepSpine steps={steps} />);
 
-    expect(steps).toHaveLength(5);
-    expect(markup).toContain('5 steps, start to finish');
+    expect(steps).toHaveLength(6);
+    expect(markup).toContain('6 steps, start to finish');
     expect(markup).toContain('Business Category');
     expect(markup).toContain('Review &amp; Submit');
     expect(markup).not.toContain('Documents');
   });
 
-  it('grows to six the moment the flag is on', () => {
+  it('grows to seven the moment the flag is on', () => {
     const steps = getRegistrationStepMeta(true);
     const markup = html(<StepSpine steps={steps} />);
 
-    expect(steps).toHaveLength(6);
-    expect(markup).toContain('6 steps, start to finish');
+    expect(steps).toHaveLength(7);
+    expect(markup).toContain('7 steps, start to finish');
     expect(markup).toContain('Documents');
   });
 

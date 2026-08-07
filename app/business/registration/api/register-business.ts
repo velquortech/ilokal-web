@@ -51,6 +51,25 @@ export async function createRegistrationOfferings(
   });
 }
 
+/**
+ * Phase 4 — the optional launch deal.
+ *
+ * Safe to call twice: the server skips a code the business already has.
+ */
+export async function createRegistrationDeal(
+  businessId: string,
+  deal: {
+    code: string;
+    description?: string;
+    discount_type: 'percentage' | 'fixed_amount';
+    discount_value: number;
+    duration_days: number;
+    publish: boolean;
+  },
+) {
+  return await apiClient.post(`/api/web/businesses/${businessId}/deal`, deal);
+}
+
 /** Phase 2 — upload a single registration file (each ≤ 2 MB, own request). */
 export async function uploadRegistrationFile(
   businessId: string,

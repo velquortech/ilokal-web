@@ -17,6 +17,7 @@ export type RegistrationStepId =
   | 'gallery'
   | 'documents'
   | 'offerings'
+  | 'deal'
   | 'review';
 
 export interface RegistrationStepMeta {
@@ -59,6 +60,12 @@ export const REGISTRATION_STEP_META: Record<
     description:
       'Add at least one item so your shop page is not empty on day one.',
   },
+  deal: {
+    id: 'deal',
+    title: 'A Launch Deal',
+    description:
+      'Optional. Give shoppers a reason to walk in — you can skip this.',
+  },
   review: {
     id: 'review',
     title: 'Review & Submit',
@@ -80,8 +87,16 @@ export function getRegistrationStepIds(
   requireDocuments: boolean,
 ): RegistrationStepId[] {
   return requireDocuments
-    ? ['category', 'information', 'gallery', 'documents', 'offerings', 'review']
-    : ['category', 'information', 'gallery', 'offerings', 'review'];
+    ? [
+        'category',
+        'information',
+        'gallery',
+        'documents',
+        'offerings',
+        'deal',
+        'review',
+      ]
+    : ['category', 'information', 'gallery', 'offerings', 'deal', 'review'];
 }
 
 export function getRegistrationStepMeta(

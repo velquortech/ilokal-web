@@ -138,6 +138,62 @@ export const stepOfferingsSchema = z.object({
     ),
 });
 
+/**
+ * The optional first deal.
+ *
+ * OPTIONAL, unlike the menu step, and the ordering is the reason: a shop with
+ * no menu has nothing to discount. Deals are item 5 on the setup checklist to
+ * the menu's 4, and making both mandatory would double the abandonment cost of
+ * a step nobody has asked for yet.
+ *
+ * `null` means skipped. An absent object is a deliberate choice, not a
+ * half-filled form, so nothing is written and Submit is unaffected.
+ */
+export const MAX_DEAL_DURATION_DAYS = 365;
+
+export const registrationDealSchema = z
+  .object({
+    code: z
+      .string()
+      .trim()
+      .min(1, 'Enter a code customers will type or show')
+      .max(50),
+    description: z.string().trim().max(500).optional(),
+    discount_type: z.enum(['percentage', 'fixed_amount']),
+    discount_value: z
+      .number({ error: 'Enter how much off' })
+      .positive('Discount must be more than zero'),
+    // No `.default()` here, for the same reason `on_request` has none: a
+    // default splits zod's input and output types, and `useForm<BusinessProps>`
+    // refuses the mismatch. The step always sets it.
+    duration_days: z.number().int().positive().max(MAX_DEAL_DURATION_DAYS),
+    /**
+     * 🔴 Defaults to FALSE — the deal is created as a draft.
+     *
+     * A published coupon inside its date window enters `mobile_deals`, which
+     * is the app's Deals front page, and is immediately REDEEMABLE: a real
+     * `user_redemptions` row, a real 6-character cashier code, and a real
+     * notification to the owner, for a discount a first-time owner may have
+     * ticked past without reading. Publishing has to be something they choose,
+     * not something the form assumes.
+     */
+    publish: z.boolean(),
+  })
+  .superRefine((val, ctx) => {
+    // A percentage over 100 is a coupon that pays the customer to shop.
+    if (val.discount_type === 'percentage' && val.discount_value > 100) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'A percentage discount cannot be more than 100%',
+        path: ['discount_value'],
+      });
+    }
+  });
+
+export const stepDealSchema = z.object({
+  deal: registrationDealSchema.nullable(),
+});
+
 export const step5Schema = z.object({
   accepted_terms: z
     .boolean()
@@ -152,6 +208,7 @@ export const fullSchema = step1Schema
   .merge(step3Schema)
   .merge(step4Schema)
   .merge(stepOfferingsSchema)
+  .merge(stepDealSchema)
   .merge(step5Schema);
 
 export type BusinessProps = z.infer<typeof fullSchema>;

@@ -7,6 +7,7 @@ import { BusinessProps } from '../validator/business-registration-form-schema';
 import { StepProgress } from './step-progress';
 import { RegistrationNav } from './register-nav';
 import {
+  createRegistrationDeal,
   createRegistrationOfferings,
   registerBusiness,
   uploadRegistrationFile,
@@ -157,6 +158,24 @@ export function ShopRegistrationContent() {
         defaultKindForMode(offeringMode),
       );
       uploadedRef.current.add('offerings');
+    }
+
+    // Phase 4 — the optional deal. `null` means the owner skipped the step,
+    // which is a deliberate choice and not a half-filled form, so nothing is
+    // written and the submission is unaffected. Same replay guard as above.
+    const deal = data.deal;
+    if (deal && !uploadedRef.current.has('deal')) {
+      await createRegistrationDeal(bid, {
+        code: deal.code,
+        description: deal.description,
+        discount_type: deal.discount_type,
+        discount_value: deal.discount_value,
+        duration_days: deal.duration_days,
+        // The owner's explicit choice, passed through untouched — defaulting
+        // it anywhere in this chain is how a draft becomes a live discount.
+        publish: deal.publish,
+      });
+      uploadedRef.current.add('deal');
     }
   };
 

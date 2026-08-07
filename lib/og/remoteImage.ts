@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import sharp from 'sharp';
 
 /**
  * Fetching the images a social post draws, safely.
@@ -23,6 +24,16 @@ import path from 'node:path';
  * - **Byte cap.** A 4 GB "image" is a memory exhaustion, not a slow render.
  * - **Content type.** `image/*` only.
  *
+ * ⚠️ **The renderer cannot read WebP, and every production logo IS WebP.**
+ * `convertToWebP` re-encodes every upload, so `shop-logos` holds nothing else —
+ * and Satori dies on one with `TypeError: u2 is not iterable`, part-way through
+ * its image parser. Reproduced rather than inferred: the same render succeeds
+ * with a PNG and throws with a WebP of identical dimensions. This is what took
+ * the route down in production, as `FUNCTION_INVOCATION_FAILED` with no log at
+ * all, because the throw lands in the streaming body rather than in the
+ * handler. So every image is transcoded to PNG here, by the `sharp` the upload
+ * pipeline already uses.
+ *
  * Every failure returns `null`, which the card layer already handles by drawing
  * initials. A logo that cannot be fetched costs one card its picture; it must
  * never cost the whole post, and it must never take the request with it —
@@ -32,6 +43,15 @@ import path from 'node:path';
 
 /** Enough for a logo; a legitimate one is orders of magnitude under this. */
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Longest edge handed to the renderer.
+ *
+ * The biggest a logo is ever drawn is a little over a third of a 1080px canvas,
+ * so anything past this is memory and decode time spent on pixels that are
+ * thrown away.
+ */
+const MAX_IMAGE_EDGE = 1024;
 
 /** Long enough for a cold storage read, short enough not to hold a lambda. */
 const FETCH_TIMEOUT_MS = 4000;
@@ -119,12 +139,45 @@ export async function fetchImageAsDataUrl(
     const bytes = Buffer.from(await response.arrayBuffer());
     if (bytes.byteLength > MAX_IMAGE_BYTES) return null;
 
-    return `data:${type.split(';')[0]};base64,${bytes.toString('base64')}`;
+    return await toRenderablePng(bytes);
   } catch (error: unknown) {
     // A timeout, a DNS failure, a disallowed redirect. All the same to a card:
     // draw the initials.
     console.warn('[og/remoteImage] image fetch failed', {
       origin: safeOrigin(url),
+      error: error instanceof Error ? error.message : 'unknown',
+    });
+    return null;
+  }
+}
+
+/**
+ * Re-encodes to PNG, which is the only thing the renderer is trusted with here.
+ *
+ * Not a format check — a transcode. Sniffing the type and rejecting WebP would
+ * leave every real logo drawn as initials, since WebP is all the bucket holds.
+ * `sharp` decodes WebP, JPEG, AVIF, GIF and SVG, so this also removes the
+ * question of what else Satori might choke on, and it is the same decoder the
+ * upload path already runs.
+ *
+ * `failOn: 'none'` because a slightly malformed image that still decodes should
+ * produce a logo rather than an initials card; a truly undecodable one throws
+ * and is caught.
+ */
+async function toRenderablePng(bytes: Buffer): Promise<string | null> {
+  try {
+    const png = await sharp(bytes, { failOn: 'none', animated: false })
+      .resize({
+        width: MAX_IMAGE_EDGE,
+        height: MAX_IMAGE_EDGE,
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+      .png()
+      .toBuffer();
+    return `data:image/png;base64,${png.toString('base64')}`;
+  } catch (error: unknown) {
+    console.warn('[og/remoteImage] could not transcode to PNG', {
       error: error instanceof Error ? error.message : 'unknown',
     });
     return null;

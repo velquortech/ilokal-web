@@ -247,3 +247,27 @@ describe('the preview stays put while the rail scrolls', () => {
     expect(mount?.className).not.toContain('min-h-');
   });
 });
+
+describe('the download action is reachable without scrolling', () => {
+  it('sits above the post, not below it', () => {
+    // A 4:5 preview is taller than the fold, so a button underneath had to be
+    // scrolled to — and the column is pinned, so scrolling the rail never
+    // brings it back.
+    render([SHOPS[0].id]);
+    act(() => vi.advanceTimersByTime(400));
+
+    const column = container.querySelector('.xl\\:sticky')!;
+    const link = column.querySelector('a[href*="download=1"]')!;
+    const mount = column.querySelector('.w-fit')!;
+
+    expect(
+      link.compareDocumentPosition(mount) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('rides the pinned column, so it cannot scroll out of view', () => {
+    render([SHOPS[0].id]);
+    const column = container.querySelector('.xl\\:sticky')!;
+    expect(column.querySelector('a[href*="download=1"]')).toBeTruthy();
+  });
+});

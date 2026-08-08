@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { withSentryConfig } from '@sentry/nextjs';
 
 function parseImageUrl(url: string | undefined): {
   protocol: 'http' | 'https';
@@ -230,4 +231,51 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Sentry wraps the whole config object, so everything above has to survive the
+// wrap — in particular `outputFileTracingIncludes` (the welcome-post brand
+// fonts, whose absence is silent and visible only as off-brand output in
+// production) and `experimental.serverActions.bodySizeLimit`. Both are asserted
+// in `__test__/config/sentry-config.contract.test.ts`.
+//
+// 🔴 Browser events go through a SAME-ORIGIN tunnel, not straight to Sentry.
+//
+// Two reasons, and the first is the one that decided it (SN4). The CSP above is
+// hand-maintained and `connect-src` currently names exactly three origins; the
+// alternative was widening it with a third-party wildcard
+// (`https://*.ingest.sentry.io`). The tunnel means the CSP does not change at
+// all — the request is same-origin, already covered by `'self'` — so there is no
+// way to get this subtly wrong, and no way for a future CSP edit to silently
+// break reporting. That failure mode is the dangerous one: a client install
+// appears to work in dev and sends nothing in production.
+//
+// Second, ad-blockers block requests to Sentry's ingest hosts by name, which
+// quietly drops a slice of real user errors.
+//
+// ⚠️ The cost: `/monitoring` is an unauthenticated POST endpoint that forwards
+// bodies to Sentry, i.e. a way for anyone to burn the event quota (SN9). It is
+// rate-limited by IP in `proxy.ts`, which is why that path is in the matcher.
+export default withSentryConfig(nextConfig, {
+  tunnelRoute: '/monitoring',
+
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Keep build logs quiet unless something is actually wrong.
+  silent: !process.env.CI,
+
+  // Upload maps but do not serve them: a public `.map` next to the bundle hands
+  // the full server and client source to anyone who asks for it.
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
+
+  // `disableLogger` is deliberately NOT set here. The build warns that it is
+  // deprecated AND "Not supported with Turbopack", which is what this repo
+  // builds with, and its replacement (`webpack.treeshake.removeDebugLogging`)
+  // is webpack-only. Measured cost of setting it anyway: see the CHANGELOG.
+
+  // Now that the browser is instrumented, a client stack trace is only useful
+  // if the maps for those bundles were uploaded too.
+  widenClientFileUpload: true,
+});

@@ -1,5 +1,185 @@
 # Changelog
 
+## 2026-08-08 — Sentry, phases 2–5: actions, browser, and the decision not to record (feat/sentry-monitoring)
+
+> **No schema, API-contract or auth change.** Builds on the phase-1 entry below.
+> Adds the browser and edge runtimes, the Server Action funnel, a root error
+> boundary, and one new rate-limited path in `proxy.ts`.
+
+- **🔴 Phase 2 closed the blind spot that automatic instrumentation cannot
+  reach.** A Server Action catches its own error and RETURNS
+  `{ success: false, error: { code } }` — by design, per `ApiResponse<T>` — so
+  it never throws and Next's `onRequestError` never sees it. 75 catch sites
+  across 16 files now call `logActionError`.
+- **The log call was REPLACED, not supplemented.** Every site already read
+  `console.error('[createProductAction]', error)` — the action name was
+  already there. `logActionError('createProductAction', error)` logs
+  **byte-identically** and reports, so the line people grep in a log stream is
+  unchanged and existing console spies still pass. Inserting a second line at
+  75 sites would have been the same work and left the log layer noisier.
+- **`loggedServerError` was refactored onto the same helper** rather than
+  keeping its own copy — the repo's own DRY rule, and it means the API and
+  action funnels cannot drift on tag shape or on which errors get dropped.
+- **A contract sweep now fails on any bare `console.error('[name]', err)` left
+  in a `'use server'` file**, which is what a missed catch looks like.
+- **🔴 Browser events go through a same-origin tunnel, and that was the
+  security decision of this phase.** The alternative was widening the
+  hand-maintained CSP with `https://*.ingest.sentry.io`. The tunnel means
+  `connect-src` **does not change at all** — so there is no way to get it subtly
+  wrong, and no way for a future CSP edit to silently break reporting. That
+  failure mode is the dangerous one: a direct install appears to work in dev and
+  sends nothing in production. It also survives ad-blockers, which block ingest
+  hosts by name.
+- **🔴 The tunnel is an unauthenticated POST that forwards to Sentry**, i.e. a
+  free way for anyone to spend the event quota — and a spent quota drops real
+  errors too. Rate-limited by IP in `proxy.ts` (60/60s) before anything is
+  forwarded, using the existing limiter.
+- **It turned out to be a REWRITE, not a route handler** — `/monitoring(/?)` in
+  `afterFiles`. Two consequences worth recording: the proxy runs before
+  `afterFiles` rewrites, so the limit does apply; and the source matches the
+  **trailing-slash form too**, so guarding only the exact path left an
+  unlimited way in. Both forms are now matched, in the guard and the matcher.
+- **`app/global-error.tsx` added** (SN3). An error in the root layout, or in
+  `error.tsx` itself, is catchable nowhere else — `error.tsx` renders inside the
+  layout it would need to replace. It replaces the whole document, so it brings
+  its own `<html>`/`<body>` and is styled **inline** against the brand neutrals:
+  no stylesheet, font or provider is guaranteed to have loaded at that point.
+- **`app/error.tsx` finally does what it has always claimed.** It has told users
+  "our team has been notified" since it was written while nothing notified
+  anyone. It reports now, and shows the event id — a support conversation that
+  starts with a reference is a search; one that starts with "a page broke" is an
+  investigation.
+- **Phase 4 — Session Replay is deliberately NOT shipped, and that is the
+  outcome, not an omission.** It records the DOM of a real owner's dashboard:
+  coupon codes, customer names, phone numbers. The unsubscribe-class question
+  (plan §5 Q4) is unanswered, and this is a product and legal decision rather
+  than a config default. A contract test asserts its absence so enabling it has
+  to be deliberate.
+- **🔴 The measured client cost, which is the honest headline: +87.4 KB gz over
+  the no-Sentry baseline** (1,490,783 → 1,578,194). Two separable parts —
+  **+14.6 KB** of debug-ID injection that phase 1 already carried, and
+  **+72.8 KB** for the browser SDK itself. That lands on `/home`, `/explore` and
+  `/for-business`, the pages a stranger loads first, and it is exactly why
+  phase 1 shipped server-only instead of installing everything at once.
+- **Tests (+17, 2618 → 2635):** the capture helper (10 — no DSN means the SDK is
+  never imported, the tag and level, extra only when given, and each dropped
+  class, plus proof that `logActionError` still logs a redirect it will not
+  report), and the contract sweep extended to all three runtimes, the tunnel's
+  three-way lockstep (`tunnelRoute` / `SENTRY_TUNNEL_PATH` / matcher), both
+  error boundaries, and the absence of Replay.
+- Verified: `yarn lint` + **2635** tests + a clean `yarn build` with zero
+  warnings, plus the tunnel rewrite confirmed present in `routes-manifest.json`.
+- **Not done, and it is the one that matters:** no error has ever reached a real
+  Sentry project from this code. Everything above is verified by tests, builds
+  and manifests — **not** by an event arriving. The first deploy with a DSN must
+  confirm five distinct issues with readable frames, and check that
+  `SENTRY_AUTH_TOKEN` was actually set: a missing token fails **open**, so the
+  build succeeds and every stack trace stays minified with no error anywhere.
+- **Still deferred:** `Sentry.setUser` (SN15) — see the plan; setting it without
+  verified per-request isolation risks attributing one user's id to another
+  user's event.
+
+## 2026-08-08 — Sentry, phase 1: the server half (feat/sentry-monitoring)
+
+> **No schema, API-contract or auth change.** One new dependency
+> (`@sentry/nextjs@10.69.0`, approved — the stack is otherwise frozen), two new
+> root file-convention files, and one edit to the API 500 funnel. Plan, parity
+> table (SN1–SN20) and the remaining phases:
+> [`.claude/SENTRY_MONITORING.md`](.claude/SENTRY_MONITORING.md) (local, not
+> committed). The standing reference is
+> [`.claude/docs/monitoring.md`](.claude/docs/monitoring.md).
+
+- **`app/error.tsx` has been telling users "our team has been notified" since it
+  was written, and nothing in the repo notified anyone.** Zero occurrences of
+  `sentry` anywhere. That sentence is the reason this is phase 1 and not a
+  nice-to-have: the app was making a promise it had no mechanism to keep.
+- **Server-only, deliberately.** No `instrumentation-client.ts`, no
+  `sentry.edge.config.ts`. It captures every API 500 and every server render
+  crash while costing the public pages (`/home`, `/explore`, `/for-business`)
+  effectively nothing, and needs **no CSP change** — a server→Sentry request is
+  not subject to browser CSP. Client monitoring is phase 3 and needs its own
+  approval, because that is where the bundle cost and the `connect-src` work
+  actually land.
+- **🔴 The client-bundle claim was measured, not assumed — and the first
+  measurement was wrong.** A naive before/after showed **+15.7 KB gzipped** and
+  no `sentry` string anywhere in the client output, which does not add up. Two
+  bad hypotheses were tested and discarded (`CI=1`, then `disableLogger`) before
+  an A/B with the wrap bypassed isolated it, and stripping the artifacts proved
+  it exactly: **100% of the delta is Sentry's debug-ID injection** — a ~290-byte
+  prelude plus a `//# debugId=` comment on each of 97 chunks, **157 B gz per
+  chunk, 1.02% overall**. Strip them and the bundle lands within 635 B of the
+  no-Sentry baseline. Kept: it is what makes an uploaded source map resolve, and
+  a page loads a subset of the 98 chunks rather than all of them.
+- **`sourcemaps.assets` does NOT stop that injection** — it scopes the upload,
+  not the stamping. Tried, measured, reverted rather than left in as config that
+  looks like it does something.
+- **🔴 `disableLogger: true` was removed after the build itself objected.** It is
+  deprecated, its replacement is webpack-only, and the build prints
+  *"Not supported with Turbopack"* — which is what this repo builds with. It was
+  a no-op that added a warning to every build. A contract test now forbids it.
+- **SN2 (the branch's biggest risk) is largely answered: Sentry does not use the
+  webpack plugin here.** It runs through Next 16's `runAfterProductionCompile`
+  hook, which is Turbopack-native — `✓ Completed runAfterProductionCompile in
+  929ms` on a clean build. Source-map upload was declined only for the expected
+  reason (no auth token). **Still unproven end-to-end:** that an uploaded map
+  actually resolves a production frame. That needs a DSN, an org and a deploy.
+- **One edit instruments 60 call sites.** `loggedServerError(context, error)` is
+  the single funnel for API 500s, and it already receives a context string —
+  which becomes the Sentry tag, so events group by the call site that raised
+  them rather than by driver text.
+- **The SDK is imported dynamically, and only when `SENTRY_DSN` is set.** A
+  static import would pull it into every API-route test; the suite is 2618 tests
+  and must stay offline. This makes that guarantee structural rather than
+  something a mock has to keep remembering.
+- **No DSN ⇒ `enabled: false`**, so dev and CI are silent by construction rather
+  than by queuing events nobody receives.
+- **The DSN is `SENTRY_DSN`, never `NEXT_PUBLIC_SENTRY_DSN`.** Nothing in the
+  browser needs it while this is server-only, and the prefix would inline it
+  into every visitor's bundle — the rule that governs the Supabase service-role
+  key. A contract test forbids the public name.
+- **Redaction is by key SEGMENT, and its tests earned their keep immediately:**
+  the first regex matched only the last segment, so `phone_number` and
+  `token_hash` both walked straight through. Segment matching also covers
+  camelCase, which the TypeScript side of this codebase uses throughout.
+- **`code` is matched on key AND value shape, and that compromise is the point.**
+  Blanket-redacting `code` would strip `42P01` and `VALIDATION_ERROR` out of
+  every event — the single most useful field, leaving the tool to report that
+  something failed without saying what. Cashier codes are 6–7 characters from an
+  alphabet that **excludes `0`, `1`, `I`, `L`, `O`**, so a SQLSTATE cannot
+  collide with one. **In a URL the rule is stricter and unconditional**, because
+  `?code=` there is the PKCE authorization code.
+- **Request bodies and cookies are deleted outright**, and breadcrumb URLs are
+  scrubbed — every Supabase call carries an Authorization header and a PostgREST
+  query string full of column filters (`?email=eq.…`).
+- **`beforeSend` drops control-flow throws** (`redirect()`, both `notFound()`
+  digest spellings, `AbortError`). Unfiltered these are the majority of events:
+  every `redirect()` in the app throws one and the proxy redirects on each
+  unauthenticated navigation. `isRedirectError` was reused rather than forked.
+- **Tests (+43, 2575 → 2618):** the redaction and drop rules (26, as pure
+  functions — a helper only reachable through an SDK's `beforeSend` is a helper
+  nobody tests), plus a 17-test contract sweep pinning that the wrap did not eat
+  `outputFileTracingIncludes` (the welcome-post brand fonts, which fail
+  **silently and only in production**, and had no test before this) or
+  `bodySizeLimit`, that no client config file exists, that no `NEXT_PUBLIC_`
+  DSN is read, and that the SDK import stays lazy. The sweep strips comments
+  first — these files name the traps they forbid.
+- **`.env.example` created**, with a `!.env.example` exception added to
+  `.gitignore`, which was swallowing it via `.env*`. It documents which three
+  vars are **build-time only** — a missing `SENTRY_AUTH_TOKEN` fails **open**:
+  the build succeeds and simply uploads nothing, so every production stack trace
+  stays minified with no error anywhere.
+- Verified: `yarn lint` + **2618** tests + a clean `yarn build` (`.next` removed
+  first, no dev server running) with **zero** warnings.
+- **Not done:** **SN15** (`setUser({ id })`) is deliberately deferred, not
+  forgotten — see the plan's "Still open" for why shipping it unverified risks
+  attributing one user's id to another request's event, which is a worse defect
+  than the missing field. Phase 2 (Server Actions — the real blind spot: 34
+  files that catch and return an error code rather than throwing, so automatic
+  instrumentation sees none of them), phase 3 (client + CSP), phase 4 (replay).
+- **Found on the way, unrelated:** `app/error.tsx` imports `framer-motion`,
+  which is **not** in `package.json` — it resolves only because `motion@12`
+  depends on it. One line, own branch.
+
 ## 2026-08-07 — A shop can no longer register with an empty menu (feat/registration-menu-required)
 
 > **No schema migration.** Two new wizard steps, two new API routes, and the

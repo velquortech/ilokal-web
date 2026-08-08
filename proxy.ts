@@ -26,8 +26,44 @@ const MOBILE_RATE_WINDOW_MS = Number(
   process.env.MOBILE_RATE_WINDOW_MS ?? 60_000,
 );
 
+// Sentry's browser tunnel. Must equal `tunnelRoute` in next.config.ts and be
+// present in this file's matcher, or the limit below silently never runs.
+// Asserted in `__test__/config/sentry-config.contract.test.ts`.
+export const SENTRY_TUNNEL_PATH = '/monitoring';
+// Deliberately tighter than the mobile budget: a browser session reports a
+// handful of events, not hundreds. Generous enough for a page that is genuinely
+// erroring in a loop to still get its first events through.
+const SENTRY_TUNNEL_RATE_LIMIT = Number(
+  process.env.SENTRY_TUNNEL_RATE_LIMIT ?? 60,
+);
+const SENTRY_TUNNEL_WINDOW_MS = Number(
+  process.env.SENTRY_TUNNEL_WINDOW_MS ?? 60_000,
+);
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // The Sentry browser tunnel (`tunnelRoute` in next.config.ts). It is an
+  // UNAUTHENTICATED POST endpoint that forwards bodies to Sentry, so without a
+  // limit it is a free way for anyone to exhaust the event quota — which would
+  // take real errors down with it, since Sentry drops events once the quota is
+  // spent. Rate-limited by IP, then returned immediately: it carries no session
+  // and must not go through the auth/role logic below.
+  // Sentry's rewrite source is `/monitoring(/?)`, so the trailing-slash form is
+  // tunnelled too — matching only the exact path would leave a way in that is
+  // rate-limited by nothing.
+  if (
+    pathname === SENTRY_TUNNEL_PATH ||
+    pathname === `${SENTRY_TUNNEL_PATH}/`
+  ) {
+    const { allowed, retryAfterSec } = rateLimit(
+      `sentry-tunnel:${clientIp(request)}`,
+      SENTRY_TUNNEL_RATE_LIMIT,
+      SENTRY_TUNNEL_WINDOW_MS,
+    );
+    if (!allowed) return tooManyRequestsResponse(retryAfterSec);
+    return NextResponse.next({ request });
+  }
 
   // Rate-limit the whole mobile API surface before any auth/DB work, so a flood
   // can't even reach getUser()/PostgREST.
@@ -297,6 +333,12 @@ export const config = {
     // Same reason: `/for-business` reads the session to pick its CTA and to
     // redirect an owner who already has a shop.
     '/for-business',
+    // The Sentry browser tunnel — matched only so it can be rate-limited
+    // before it forwards anything (SN9). Keep in lockstep with
+    // `SENTRY_TUNNEL_PATH` and `tunnelRoute` in next.config.ts. Both forms,
+    // because Sentry's rewrite source is `/monitoring(/?)`.
+    '/monitoring',
+    '/monitoring/',
     '/api/admin',
     '/api/admin/:path+',
     '/api/protected/:path+',

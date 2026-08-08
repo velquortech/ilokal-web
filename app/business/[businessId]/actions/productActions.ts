@@ -27,6 +27,7 @@ import {
 import { rateLimit } from '@/app/api/helpers/rateLimit';
 import * as productQuery from '@/lib/api/products/productQuery';
 import * as productService from '@/lib/api/products/productService';
+import { logActionError } from '@/lib/utils/captureError';
 import {
   uploadWebP,
   ImageProcessingError,
@@ -98,7 +99,7 @@ export async function createProductAction(
       validation.data,
     );
   } catch (error) {
-    console.error('[createProductAction]', error);
+    logActionError('createProductAction', error);
     return {
       success: false,
       error: {
@@ -141,7 +142,7 @@ export async function updateProductAction(
       validation.data,
     );
   } catch (error) {
-    console.error('[updateProductAction]', error);
+    logActionError('updateProductAction', error);
     return {
       success: false,
       error: {
@@ -165,7 +166,7 @@ export async function deleteProductAction(
 
     return await productService.deleteProduct(id, verify.business!.id);
   } catch (error) {
-    console.error('[deleteProductAction]', error);
+    logActionError('deleteProductAction', error);
     return {
       success: false,
       error: {
@@ -217,7 +218,7 @@ export async function updateProductStatusAction(
       status: parsed.data,
     });
   } catch (error) {
-    console.error('[updateProductStatusAction]', error);
+    logActionError('updateProductStatusAction', error);
     return {
       success: false,
       error: {
@@ -266,7 +267,7 @@ export async function updateProductsStatusAction(
       parsed.data.status,
     );
   } catch (error) {
-    console.error('[updateProductsStatusAction]', error);
+    logActionError('updateProductsStatusAction', error);
     return {
       success: false,
       error: {
@@ -306,7 +307,7 @@ export async function getBusinessProductsAction(): Promise<
       data: result.products,
     };
   } catch (error) {
-    console.error('[getBusinessProductsAction]', error);
+    logActionError('getBusinessProductsAction', error);
     return {
       success: false,
       error: {
@@ -349,7 +350,7 @@ export async function applySaleAction(
       validation.data,
     );
   } catch (error) {
-    console.error('[applySaleAction]', error);
+    logActionError('applySaleAction', error);
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to apply sale' },
@@ -370,7 +371,7 @@ export async function removeSaleAction(
 
     return await productService.removeSale(id, verify.business!.id);
   } catch (error) {
-    console.error('[removeSaleAction]', error);
+    logActionError('removeSaleAction', error);
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to remove sale' },
@@ -403,7 +404,7 @@ export async function getBusinessProductsPaginatedAction(
 
     return { success: true, data: result as PaginatedProductsResponse };
   } catch (error) {
-    console.error('[getBusinessProductsPaginatedAction]', error);
+    logActionError('getBusinessProductsPaginatedAction', error);
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch products' },
@@ -434,7 +435,7 @@ export async function getBusinessProductStatsAction(): Promise<
     );
     return { success: true, data: stats };
   } catch (error) {
-    console.error('[getBusinessProductStatsAction]', error);
+    logActionError('getBusinessProductStatsAction', error);
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch stats' },
@@ -478,7 +479,7 @@ export async function getCategoriesAction(
       data: result.categories,
     };
   } catch (error) {
-    console.error('[getCategoriesAction]', error);
+    logActionError('getCategoriesAction', error);
     return {
       success: false,
       error: {
@@ -565,7 +566,7 @@ export async function uploadProductImageAction(
 
     return { success: true, data: { url: publicUrl } };
   } catch (error) {
-    console.error('[uploadProductImageAction]', error);
+    logActionError('uploadProductImageAction', error);
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to upload image' },

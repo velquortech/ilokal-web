@@ -19,6 +19,7 @@ import {
 } from '@/lib/validation/branches';
 import * as branchService from '@/lib/api/branches/branchService';
 import * as branchQuery from '@/lib/api/branches/branchQuery';
+import { logActionError } from '@/lib/utils/captureError';
 import {
   uploadWebP,
   ImageProcessingError,
@@ -96,7 +97,7 @@ export async function uploadBranchDocumentAction(
 
     return { success: true, data: { url: signed?.signedUrl ?? filePath } };
   } catch (error) {
-    console.error('[uploadBranchDocumentAction]', error);
+    logActionError('uploadBranchDocumentAction', error);
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to upload document' },
@@ -178,7 +179,7 @@ export async function uploadBranchImageAction(
 
     return { success: true, data: { url: publicUrl } };
   } catch (error) {
-    console.error('[uploadBranchImageAction]', error);
+    logActionError('uploadBranchImageAction', error);
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to upload image' },
@@ -210,7 +211,7 @@ export async function getBusinessBranchesAction(
 
     return { success: true, data: result as PaginatedBranchesResponse };
   } catch (error) {
-    console.error('[getBusinessBranchesAction]', error);
+    logActionError('getBusinessBranchesAction', error);
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch branches' },
@@ -250,7 +251,7 @@ export async function getBusinessBranchStatsAction(): Promise<
       },
     };
   } catch (error) {
-    console.error('[getBusinessBranchStatsAction]', error);
+    logActionError('getBusinessBranchStatsAction', error);
     return {
       success: false,
       error: {
@@ -286,7 +287,7 @@ export async function getBusinessBranchByIdAction(
 
     return { success: true, data: branch };
   } catch (error) {
-    console.error('[getBusinessBranchByIdAction]', error);
+    logActionError('getBusinessBranchByIdAction', error);
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch branch' },
@@ -328,7 +329,7 @@ export async function createBranchAction(
       revalidatePath(`/business/${verify.business!.id}/branches`);
     return result;
   } catch (error) {
-    console.error('[createBranchAction]', error);
+    logActionError('createBranchAction', error);
     return {
       success: false,
       error: {
@@ -387,7 +388,7 @@ export async function updateBranchAction(
       revalidatePath(`/business/${verify.business!.id}/branches`);
     return res;
   } catch (error) {
-    console.error('[updateBranchAction]', error);
+    logActionError('updateBranchAction', error);
     return {
       success: false,
       error: {
@@ -432,7 +433,7 @@ export async function deleteBranchAction(
       revalidatePath(`/business/${verify.business!.id}/branches`);
     return result;
   } catch (error) {
-    console.error('[deleteBranchAction]', error);
+    logActionError('deleteBranchAction', error);
     return {
       success: false,
       error: {

@@ -26,6 +26,7 @@ import {
   updateFeaturedDealSchema,
 } from '@/lib/validation/coupons';
 import couponService from '@/lib/services/couponService';
+import { logActionError } from '@/lib/utils/captureError';
 import {
   getCouponsPaginated,
   getCouponStatsByBusiness,
@@ -59,7 +60,7 @@ export async function getBusinessCouponsPaginatedAction(
 
     return { success: true, data: result as PaginatedCouponsResponse };
   } catch (error) {
-    console.error('[getBusinessCouponsPaginatedAction]', error);
+    logActionError('getBusinessCouponsPaginatedAction', error);
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch coupons' },
@@ -82,7 +83,7 @@ export async function getBusinessCouponStatsAction(branchId?: string): Promise<
     const stats = await getCouponStatsByBusiness(verify.business!.id, branchId);
     return { success: true, data: stats };
   } catch (error) {
-    console.error('[getBusinessCouponStatsAction]', error);
+    logActionError('getBusinessCouponStatsAction', error);
     return {
       success: false,
       error: {
@@ -126,7 +127,7 @@ export async function createCouponAction(
     if (result.success) revalidatePath('/business/coupons');
     return result;
   } catch (error) {
-    console.error('[createCouponAction]', error);
+    logActionError('createCouponAction', error);
     return {
       success: false,
       error: {
@@ -190,7 +191,7 @@ export async function updateCouponAction(
     if (result.success) revalidatePath('/business/coupons');
     return result;
   } catch (error) {
-    console.error('[updateCouponAction]', error);
+    logActionError('updateCouponAction', error);
     return {
       success: false,
       error: {
@@ -237,7 +238,7 @@ export async function deleteCouponAction(
     if (result.success) revalidatePath('/business/coupons');
     return result;
   } catch (error) {
-    console.error('[deleteCouponAction]', error);
+    logActionError('deleteCouponAction', error);
     return {
       success: false,
       error: {
@@ -275,7 +276,7 @@ export async function redeemCouponAction(
       user.id,
     )) as ApiResponse<CouponDetailResponse>;
   } catch (error) {
-    console.error('[redeemCouponAction]', error);
+    logActionError('redeemCouponAction', error);
     return {
       success: false,
       error: {
@@ -317,7 +318,7 @@ export async function createFeaturedDealAction(
     if (result.success) revalidatePath('/business/coupons');
     return result;
   } catch (error) {
-    console.error('[createFeaturedDealAction]', error);
+    logActionError('createFeaturedDealAction', error);
     return {
       success: false,
       error: {
@@ -381,7 +382,7 @@ export async function updateFeaturedDealAction(
     if (result.success) revalidatePath('/business/coupons');
     return result;
   } catch (error) {
-    console.error('[updateFeaturedDealAction]', error);
+    logActionError('updateFeaturedDealAction', error);
     return {
       success: false,
       error: {
@@ -430,7 +431,7 @@ export async function deleteFeaturedDealAction(
     if (result.success) revalidatePath('/business/coupons');
     return result;
   } catch (error) {
-    console.error('[deleteFeaturedDealAction]', error);
+    logActionError('deleteFeaturedDealAction', error);
     return {
       success: false,
       error: {
@@ -471,7 +472,7 @@ export async function getRedeemedCouponsAction(
       data: result as PaginatedRedemptionRecordsResponse,
     };
   } catch (error) {
-    console.error('[getRedeemedCouponsAction]', error);
+    logActionError('getRedeemedCouponsAction', error);
     return {
       success: false,
       error: {
@@ -496,7 +497,7 @@ export async function getRedemptionSummaryStatsAction(
     );
     return { success: true, data: stats };
   } catch (error) {
-    console.error('[getRedemptionSummaryStatsAction]', error);
+    logActionError('getRedemptionSummaryStatsAction', error);
     return {
       success: false,
       error: {

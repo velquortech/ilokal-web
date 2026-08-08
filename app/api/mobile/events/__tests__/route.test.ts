@@ -80,7 +80,11 @@ describe('GET /api/mobile/events', () => {
           image_url: 'raw/path/banner.jpg',
           status: 'approved',
           business: [
-            { id: 'biz-1', shop_name: 'The Artisan Roastery', logo_url: 'raw/logo.jpg' },
+            {
+              id: 'biz-1',
+              shop_name: 'The Artisan Roastery',
+              logo_url: 'raw/logo.jpg',
+            },
           ],
           product: null,
         },

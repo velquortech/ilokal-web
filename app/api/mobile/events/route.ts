@@ -67,7 +67,10 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1);
+    const page = Math.max(
+      1,
+      parseInt(searchParams.get('page') ?? '1', 10) || 1,
+    );
     const perPageRaw = parseInt(searchParams.get('per_page') ?? '20', 10);
     const perPage = Math.min(
       50,

@@ -345,6 +345,14 @@ code must follow these:
   timestamp as the version; after applying, UPDATE
   `supabase_migrations.schema_migrations` to the local file's version or the
   next `db push` re-applies everything.
+- **Errors go to Sentry; product analytics does not.** Sentry answers "what
+  broke and for whom"; pageviews, funnels and growth stay in `view_events` +
+  the `analytics_*` RPCs. **A new Server Action must call `logActionError` in
+  its catch** — actions return `{ success: false, error: { code } }` instead of
+  throwing, so nothing reports them automatically. API 500s are already covered
+  via `loggedServerError`. Never `sendDefaultPii: true`, and scrub through
+  `lib/utils/monitoring.ts` rather than inline. Details:
+  `.claude/docs/monitoring.md`.
 - **One `<Toaster>` only** — sonner renders every toast in every mounted
   Toaster; the single instance lives in `app/layout.tsx` (top-right). Never
   mount another. Pending-action toasts use a stable id
@@ -384,6 +392,7 @@ Load on request (read when topic is relevant):
 - `.claude/docs/analytics-dashboard.md` — analytics panel ideas, RFM segments, retention queries, automation nudges
 - `.claude/docs/DESIGN.md` — **brand v1.0**: palette, measured contrast ledger, OKLCH token tables (light/dark/sidebar/chart), type system, radius scale. Read before any significant visual work — the "Design system" section above is only the trap list.
 - `.claude/docs/caching-strategy.md` — Next.js App Router caching layers, Supabase data-fetching rules
+- `.claude/docs/monitoring.md` — **Sentry**: which funnel reports what, the PII scrubbing rules, the `/monitoring` tunnel. Read before adding a Server Action (its catch must call `logActionError` — nothing is automatic there) or editing the CSP
 - `.claude/docs/code-principles.md` — TypeScript rules, naming conventions, anti-patterns
 - `.claude/docs/component-standards.md` — file structure, naming, shadcn/ui usage rules
 - `.claude/docs/git-workflow.md` — conventional commits format, branch naming, PR process

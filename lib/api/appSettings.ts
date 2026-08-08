@@ -3,6 +3,7 @@
 import { cache } from 'react';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { isDynamicUsageError } from '@/lib/utils/dynamicUsage';
+import { logActionError } from '@/lib/utils/captureError';
 
 // Platform flags stored in app_settings (see .claude/REGISTRATION_GATING.md).
 // Fallbacks are the pre-flag legacy behavior: documents required, no
@@ -54,7 +55,7 @@ const readPublicFlags = cache(
       .maybeSingle();
 
     if (error) {
-      console.error('[readPublicFlags]', error);
+      logActionError('readPublicFlags', error);
       return null;
     }
     return (data as Record<string, unknown> | null) ?? null;
@@ -202,7 +203,7 @@ export async function getOnboardingTourEnabled(): Promise<boolean> {
       .maybeSingle();
 
     if (error) {
-      console.error('[getOnboardingTourEnabled]', error);
+      logActionError('getOnboardingTourEnabled', error);
       return false;
     }
 
@@ -215,7 +216,7 @@ export async function getOnboardingTourEnabled(): Promise<boolean> {
   } catch (err) {
     if (isDynamicUsageError(err)) throw err;
 
-    console.error('[getOnboardingTourEnabled]', err);
+    logActionError('getOnboardingTourEnabled', err);
     return false;
   }
 }

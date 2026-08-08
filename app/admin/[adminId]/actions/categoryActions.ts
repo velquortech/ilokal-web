@@ -17,6 +17,7 @@ import {
   updateCategorySchema,
 } from '@/lib/validation/products';
 import categoryService from '@/lib/services/categoryService';
+import { logActionError } from '@/lib/utils/captureError';
 
 // ===== Admin Category Actions =====
 
@@ -74,7 +75,7 @@ export async function createCategoryAction(
 
     return await categoryService.create(validation.data);
   } catch (error) {
-    console.error('[createCategoryAction]', error);
+    logActionError('createCategoryAction', error);
     return {
       success: false,
       error: {
@@ -140,7 +141,7 @@ export async function updateCategoryAction(
 
     return await categoryService.update(id, validation.data);
   } catch (error) {
-    console.error('[updateCategoryAction]', error);
+    logActionError('updateCategoryAction', error);
     return {
       success: false,
       error: {
@@ -193,7 +194,7 @@ export async function deleteCategoryAction(
 
     return await categoryService.delete(id);
   } catch (error) {
-    console.error('[deleteCategoryAction]', error);
+    logActionError('deleteCategoryAction', error);
     return {
       success: false,
       error: {

@@ -18,6 +18,7 @@ import {
   type BookingRequest,
 } from '@/lib/types/booking';
 import { businessPath } from '@/config/routeConfig';
+import { logActionError } from '@/lib/utils/captureError';
 
 type DecideResult =
   | { ok: true; booking: BookingRequest }
@@ -50,7 +51,7 @@ export async function decideBookingAction(
     revalidatePath(businessPath(businessId, 'bookings'));
     return { ok: true, booking: result.data };
   } catch (err) {
-    console.error('[decideBookingAction]', err);
+    logActionError('decideBookingAction', err);
     return { ok: false, message: 'Could not update this booking right now.' };
   }
 }

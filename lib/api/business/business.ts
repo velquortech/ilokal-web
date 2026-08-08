@@ -4,6 +4,7 @@ import { BusinessShop } from '@/providers/BusinessProvider';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { uploadWebP, IMAGE_PRESETS } from '@/lib/api/helpers/image';
 import { MAX_REGISTRATION_OFFERINGS } from '@/lib/validation/products';
+import { logActionError } from '@/lib/utils/captureError';
 
 // Registration is split into two phases so no single request exceeds Vercel's
 // 4.5 MB function body limit (a one-shot multipart POST with logo + banner +
@@ -273,7 +274,7 @@ export async function getOwnedBusinessId(
   } catch (err) {
     // Logged, not swallowed silently: a transient failure and "no shop" lead
     // to the same render, and only one of them is worth knowing about.
-    console.error('[getOwnedBusinessId]', err);
+    logActionError('getOwnedBusinessId', err);
     return null;
   }
 }

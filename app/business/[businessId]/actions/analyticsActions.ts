@@ -4,6 +4,7 @@ import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import * as analyticsService from '@/lib/api/analytics/businessAnalyticsService';
 import * as analyticsQuery from '@/lib/api/analytics/businessAnalyticsQuery';
 import type { ApiResponse, BusinessAnalyticsDashboard } from '@/lib/types';
+import { logActionError } from '@/lib/utils/captureError';
 
 export async function getBusinessAnalyticsDashboardAction(
   businessId: string,
@@ -74,7 +75,7 @@ export async function getBusinessAnalyticsDashboardAction(
       },
     };
   } catch (error) {
-    console.error('[getBusinessAnalyticsDashboardAction]', error);
+    logActionError('getBusinessAnalyticsDashboardAction', error);
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to load analytics' },

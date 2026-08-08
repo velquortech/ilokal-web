@@ -40,6 +40,7 @@ import {
   IMAGE_PRESETS,
 } from '@/lib/api/helpers/image';
 import type { ApiError, ApiResponse, Event } from '@/lib/types';
+import { logActionError } from '@/lib/utils/captureError';
 
 const RATE_LIMIT = Number(process.env.BUSINESS_ACTION_RATE_LIMIT ?? 30);
 const RATE_WINDOW_MS = Number(
@@ -152,7 +153,7 @@ export async function createEventAction(
     if (result.success) revalidate(g.businessId);
     return result;
   } catch (error) {
-    console.error('[createEventAction]', error);
+    logActionError('createEventAction', error);
     return fail('INTERNAL_ERROR', 'Failed to create the event.');
   }
 }
@@ -193,7 +194,7 @@ export async function updateEventAction(
     if (result.success) revalidate(g.businessId);
     return result;
   } catch (error) {
-    console.error('[updateEventAction]', error);
+    logActionError('updateEventAction', error);
     return fail('INTERNAL_ERROR', 'Failed to update the event.');
   }
 }
@@ -236,7 +237,7 @@ export async function setEventStatusAction(
     if (result.success) revalidate(g.businessId);
     return result;
   } catch (error) {
-    console.error('[setEventStatusAction]', error);
+    logActionError('setEventStatusAction', error);
     return fail('INTERNAL_ERROR', 'Failed to update the event.');
   }
 }
@@ -258,7 +259,7 @@ export async function archiveEventAction(
     if (result.success) revalidate(g.businessId);
     return result;
   } catch (error) {
-    console.error('[archiveEventAction]', error);
+    logActionError('archiveEventAction', error);
     return fail('INTERNAL_ERROR', 'Failed to remove the event.');
   }
 }
@@ -301,7 +302,7 @@ export async function uploadEventImageAction(
     if (error instanceof ImageProcessingError) {
       return fail('VALIDATION_ERROR', 'That image could not be read.');
     }
-    console.error('[uploadEventImageAction]', error);
+    logActionError('uploadEventImageAction', error);
     return fail('INTERNAL_ERROR', 'Failed to upload the image.');
   }
 }

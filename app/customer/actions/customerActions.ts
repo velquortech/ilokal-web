@@ -24,6 +24,7 @@ import {
 } from '@/lib/api/bookings/bookingService';
 import { ROUTES } from '@/config/routeConfig';
 import type { BookingRequest } from '@/lib/types/booking';
+import { logActionError } from '@/lib/utils/captureError';
 
 export type CustomerActionError =
   | 'AUTH_REQUIRED'
@@ -106,7 +107,7 @@ export async function followBusinessAction(
 
     // 23505 = already following — treat as success (idempotent toggle).
     if (error && error.code !== '23505') {
-      console.error('[followBusinessAction]', error);
+      logActionError('followBusinessAction', error);
       return {
         ok: false,
         code: 'SERVER_ERROR',
@@ -115,7 +116,7 @@ export async function followBusinessAction(
     }
     return { ok: true };
   } catch (err) {
-    console.error('[followBusinessAction]', err);
+    logActionError('followBusinessAction', err);
     return {
       ok: false,
       code: 'SERVER_ERROR',
@@ -142,7 +143,7 @@ export async function unfollowBusinessAction(
       .eq('business_id', businessId);
 
     if (error) {
-      console.error('[unfollowBusinessAction]', error);
+      logActionError('unfollowBusinessAction', error);
       return {
         ok: false,
         code: 'SERVER_ERROR',
@@ -151,7 +152,7 @@ export async function unfollowBusinessAction(
     }
     return { ok: true };
   } catch (err) {
-    console.error('[unfollowBusinessAction]', err);
+    logActionError('unfollowBusinessAction', err);
     return {
       ok: false,
       code: 'SERVER_ERROR',
@@ -227,7 +228,7 @@ export async function redeemCouponAction(
       .maybeSingle();
 
     if (branchError) {
-      console.error('[redeemCouponAction]', branchError);
+      logActionError('redeemCouponAction', branchError);
       return {
         ok: false,
         code: 'SERVER_ERROR',
@@ -269,7 +270,7 @@ export async function redeemCouponAction(
         .eq('business_id', coupon.business_id);
 
       if (followError) {
-        console.error('[redeemCouponAction]', followError);
+        logActionError('redeemCouponAction', followError);
         return {
           ok: false,
           code: 'SERVER_ERROR',
@@ -292,7 +293,7 @@ export async function redeemCouponAction(
       .eq('user_id', auth.userId);
 
     if (redemptionsError) {
-      console.error('[redeemCouponAction]', redemptionsError);
+      logActionError('redeemCouponAction', redemptionsError);
       return {
         ok: false,
         code: 'SERVER_ERROR',
@@ -335,7 +336,7 @@ export async function redeemCouponAction(
       .single();
 
     if (insertError || !redemption) {
-      console.error('[redeemCouponAction]', insertError);
+      logActionError('redeemCouponAction', insertError);
       return {
         ok: false,
         code: 'SERVER_ERROR',
@@ -371,7 +372,7 @@ export async function redeemCouponAction(
 
     return { ok: true, redemption };
   } catch (err) {
-    console.error('[redeemCouponAction]', err);
+    logActionError('redeemCouponAction', err);
     return {
       ok: false,
       code: 'SERVER_ERROR',
@@ -434,7 +435,7 @@ export async function requestBookingAction(
     revalidatePath(ROUTES.CUSTOMER.BOOKINGS);
     return { ok: true, booking: result.data };
   } catch (err) {
-    console.error('[requestBookingAction]', err);
+    logActionError('requestBookingAction', err);
     return {
       ok: false,
       code: 'SERVER_ERROR',
@@ -470,7 +471,7 @@ export async function cancelBookingAction(
     revalidatePath(ROUTES.CUSTOMER.BOOKINGS);
     return { ok: true, booking: result.data };
   } catch (err) {
-    console.error('[cancelBookingAction]', err);
+    logActionError('cancelBookingAction', err);
     return {
       ok: false,
       code: 'SERVER_ERROR',

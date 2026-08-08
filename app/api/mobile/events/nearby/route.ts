@@ -12,6 +12,7 @@ import {
   type MobileEventRow,
 } from '@/app/api/helpers/mobileEvent';
 import { getEventsEnabled } from '@/lib/api/appSettings';
+import type { MobileNearbyEvent } from '@/lib/types';
 
 /**
  * Events near a point.
@@ -53,13 +54,9 @@ type NearbyRpcRow = {
   distance_meters: number;
 };
 
-/**
- * One emitted row: the shared mobile event shape plus the distance the RPC
- * ranked by. Named so the drop-a-missing-row filter can state what survives —
- * a bare `Record<string, unknown>` would not carry `distance_meters`, which is
- * the one field this endpoint exists to add.
- */
-type EmittedNearbyRow = Record<string, unknown> & { distance_meters: number };
+// One emitted row is a `MobileNearbyEvent` — the shared mobile event shape
+// plus the distance the RPC ranked by, which is the one field this endpoint
+// exists to add.
 
 export async function GET(req: NextRequest) {
   try {
@@ -156,7 +153,7 @@ export async function GET(req: NextRequest) {
     //    the point of this endpoint — so the RPC's sequence drives the output
     //    and the hydrated rows are looked up against it.
     const byId = new Map<string, MobileEventRow>(
-      ((rowData ?? []) as unknown as MobileEventRow[]).map((row) => [
+      ((rowData ?? []) as MobileEventRow[]).map((row) => [
         row.id as string,
         row,
       ]),
@@ -175,7 +172,7 @@ export async function GET(req: NextRequest) {
           distance_meters: near.distance_meters,
         };
       })
-      .filter((event): event is EmittedNearbyRow => event !== null);
+      .filter((event): event is MobileNearbyEvent => event !== null);
 
     return successResponse({
       events,

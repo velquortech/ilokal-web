@@ -33,6 +33,7 @@ vi.mock('@/app/api/helpers/storage', () => ({
   ),
 }));
 
+import { MOBILE_EVENT_SELECT } from '@/app/api/helpers/mobileEvent';
 import { createBearerClient } from '@/supabase/bearer';
 import { getEventsEnabled } from '@/lib/api/appSettings';
 import { GET as listGET } from '../route';
@@ -174,6 +175,24 @@ function mockNearby(
     from: vi.fn(() => ({ select: vi.fn(() => hydrate) })),
   } as unknown as ReturnType<typeof createBearerClient>);
 }
+
+describe('the fixture matches what the routes actually select', () => {
+  it('supplies exactly the scalar columns MOBILE_EVENT_SELECT projects', () => {
+    // Without this, `DB_ROW` is a hand-written object independent of the
+    // projection — so deleting a column from the select would still parse
+    // green HERE, and this suite's "runs the real response" claim would be
+    // weaker than it reads. Tying the two together is what makes a green run
+    // mean something.
+    const projectedScalars = MOBILE_EVENT_SELECT.split('\n')
+      .map((line) => line.trim().replace(/,$/, ''))
+      .filter((line) => line.length > 0 && !line.includes('('));
+    const fixtureScalars = Object.keys(DB_ROW).filter(
+      (key) => key !== 'business' && key !== 'product',
+    );
+
+    expect(fixtureScalars.sort()).toEqual([...projectedScalars].sort());
+  });
+});
 
 describe('GET /api/mobile/events satisfies eventsResponseSchema', () => {
   it('parses a populated page', async () => {

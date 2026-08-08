@@ -12,7 +12,13 @@
 
 import { cache } from 'react';
 import { createServerSupabaseClient } from '@/supabase/server';
-import { resolveStorageUrl } from '@/app/api/helpers/storage';
+// All image resolution now goes through the shared event-media helper — this
+// module no longer names a storage bucket of its own, which is the point of
+// the de-fork.
+import {
+  resolveEventMedia,
+  type StorageClient,
+} from '@/app/api/helpers/eventMedia';
 import { describeDbError } from '@/lib/utils/describeDbError';
 import { ilikePattern } from '@/lib/utils/postgrestSearch';
 import { eventIdSchema } from '@/lib/validation/events';
@@ -43,13 +49,6 @@ type EmbeddedRow = Record<string, unknown> & {
   product?: unknown;
 };
 
-function firstOrNull<T>(value: unknown): T | null {
-  if (Array.isArray(value)) return (value[0] as T) ?? null;
-  return (value as T) ?? null;
-}
-
-type StorageClient = Parameters<typeof resolveStorageUrl>[0];
-
 /**
  * Shape one row for rendering.
  *
@@ -66,33 +65,12 @@ type StorageClient = Parameters<typeof resolveStorageUrl>[0];
  */
 function normalise(supabase: StorageClient, row: EmbeddedRow): EventWithRefs {
   const event = row as unknown as EventWithRefs;
-  const business = firstOrNull<EventWithRefs['business']>(row.business);
-  const product = firstOrNull<EventWithRefs['product']>(row.product);
+  const { image_url, business, product } = resolveEventMedia<
+    NonNullable<EventWithRefs['business']>,
+    NonNullable<EventWithRefs['product']>
+  >(supabase, row);
 
-  return {
-    ...event,
-    image_url: resolveStorageUrl(supabase, 'event-images', event.image_url),
-    business: business
-      ? {
-          ...business,
-          logo_url: resolveStorageUrl(
-            supabase,
-            'shop-logos',
-            business.logo_url,
-          ),
-        }
-      : null,
-    product: product
-      ? {
-          ...product,
-          image_url: resolveStorageUrl(
-            supabase,
-            'product-images',
-            product.image_url,
-          ),
-        }
-      : null,
-  };
+  return { ...event, image_url, business, product };
 }
 
 const EMPTY_PAGE = (perPage: number): PaginatedEvents => ({

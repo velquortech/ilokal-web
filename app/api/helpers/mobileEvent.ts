@@ -1,8 +1,16 @@
-import { resolveStorageUrl } from '@/app/api/helpers/storage';
+import {
+  resolveEventMedia,
+  type StorageClient,
+} from '@/app/api/helpers/eventMedia';
+import type {
+  EventBusinessRef,
+  EventProductRef,
+  MobileEventWithRefs,
+} from '@/lib/types';
 
 /**
  * The mobile events read contract — one column list and one normaliser, shared
- * by `GET /api/mobile/events` and `GET /api/mobile/events/:id`.
+ * by `GET /api/mobile/events`, `/:id` and `/nearby`.
  *
  * ── Why an explicit column list, not `*` ────────────────────────────────────
  *
@@ -23,15 +31,26 @@ import { resolveStorageUrl } from '@/app/api/helpers/storage';
  * grants: a column added to `events` later stays private by default. Unlike
  * those, this one needs no migration — the gate is the projection.
  *
- * The list is exactly `MobileEventWithRefs` (mobile `types/events.ts`), which
- * is `EventWithRefs` (lib/types/event.ts) minus the review trio, `priority`
- * and `location`. `latitude`/`longitude` ARE included: they are the DB's
- * generated read-only projections of `location`, which is what makes the point
- * usable to a client (PostgREST hands `location` itself back as WKB hex).
+ * The list is exactly `MobileEventWithRefs`, which is `EventWithRefs` minus
+ * the review trio, `priority` and `location`. `latitude`/`longitude` ARE
+ * included: they are the DB's generated read-only projections of `location`,
+ * which is what makes the point usable to a client (PostgREST hands
+ * `location` itself back as WKB hex).
  *
- * `status` is included even though both routes filter to `approved` — mobile's
- * schema declares it a required key, and a required key that is merely always
- * the same value still has to be present.
+ * `status` is included even though every route filters to `approved` —
+ * mobile's schema declares it a required key, and a required key that is
+ * merely always the same value still has to be present.
+ *
+ * ── Why the product embed selects `status` ──────────────────────────────────
+ *
+ * Products RLS (`20260526000007`) gates only `archived_at` and the shop being
+ * verified — NOT `products.status`. So an offering the owner later set to
+ * `unlisted` or `disabled` is still readable by anon, and embedding it
+ * unfiltered would republish, on the event, an offering the shop has taken
+ * down. Every other public product read filters `status = 'active'`
+ * (`productQuery.getPublicMenu`, the mobile products route); this one has to
+ * as well. `status` is projected so the normaliser can decide, and dropped
+ * before the response — it is not part of the mobile product contract.
  */
 export const MOBILE_EVENT_SELECT = `
   id,
@@ -54,69 +73,59 @@ export const MOBILE_EVENT_SELECT = `
   updated_at,
   archived_at,
   business:businesses ( id, shop_name, logo_url ),
-  product:products ( id, name, image_url )
+  product:products ( id, name, image_url, status )
 `;
 
-/** A row as it arrives, before the embeds are unwrapped. */
-export type MobileEventRow = Record<string, unknown> & {
-  business?: unknown;
-  product?: unknown;
+/**
+ * The promoted offering as SELECTED — carries `status` so the gate below can
+ * read it. Deliberately wider than `EventProductRef`, which is what is
+ * actually returned.
+ */
+type ProductEmbed = EventProductRef & { status: string };
+
+/**
+ * A row as it arrives. The embeds are typed as "one or many" because PostgREST
+ * returns a to-one embed as an ARRAY — modelling that here is what lets
+ * `normaliseMobileEvent` declare a real return type instead of
+ * `Record<string, unknown>`.
+ */
+export type MobileEventRow = Omit<
+  MobileEventWithRefs,
+  'business' | 'product'
+> & {
+  business: EventBusinessRef | EventBusinessRef[] | null;
+  product: ProductEmbed | ProductEmbed[] | null;
 };
 
-type StorageClient = Parameters<typeof resolveStorageUrl>[0];
-
 /**
- * PostgREST returns a to-one embed as an ARRAY. Reading `.shop_name` off it
- * yields `undefined`, which renders as a shop with no name — so every read
- * unwraps first.
- */
-function firstOrNull<T>(value: unknown): T | null {
-  if (Array.isArray(value)) return (value[0] as T) ?? null;
-  return (value as T) ?? null;
-}
-
-/**
- * Shape one row for a mobile client: unwrap the two to-one embeds and resolve
- * every stored image path to a URL.
+ * Shape one row for a mobile client.
  *
- * The resolution is not optional. Seeds store full public URLs while real
- * uploads store raw in-bucket paths, so handing back the stored value
- * unchanged yields a broken image for exactly the events real users created —
- * the standing mobile-route rule in CLAUDE.md.
+ * The return type is `MobileEventWithRefs` rather than an open record, so a
+ * projection that drifts from the contract is a COMPILE error at every call
+ * site rather than something only the contract test notices.
  */
 export function normaliseMobileEvent(
   supabase: StorageClient,
   row: MobileEventRow,
-): Record<string, unknown> {
-  const business = firstOrNull<Record<string, unknown>>(row.business);
-  const product = firstOrNull<Record<string, unknown>>(row.product);
+): MobileEventWithRefs {
+  const { image_url, business, product } = resolveEventMedia<
+    EventBusinessRef,
+    ProductEmbed
+  >(supabase, row);
+
+  // An offering the shop has unlisted or disabled is not promoted, and its
+  // `status` never reaches the client — mobile's product schema is
+  // `{ id, name, image_url }`, and returning a field the contract does not
+  // declare is how the next reader starts depending on it.
+  const publicProduct: EventProductRef | null =
+    product && product.status === 'active'
+      ? { id: product.id, name: product.name, image_url: product.image_url }
+      : null;
 
   return {
     ...row,
-    business: business
-      ? {
-          ...business,
-          logo_url: resolveStorageUrl(
-            supabase,
-            'shop-logos',
-            (business.logo_url as string | null) ?? null,
-          ),
-        }
-      : null,
-    product: product
-      ? {
-          ...product,
-          image_url: resolveStorageUrl(
-            supabase,
-            'product-images',
-            (product.image_url as string | null) ?? null,
-          ),
-        }
-      : null,
-    image_url: resolveStorageUrl(
-      supabase,
-      'event-images',
-      (row.image_url as string | null) ?? null,
-    ),
+    image_url,
+    business,
+    product: publicProduct,
   };
 }

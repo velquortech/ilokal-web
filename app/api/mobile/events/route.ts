@@ -60,6 +60,9 @@ function isEventTimeFilter(value: string): value is EventTimeFilter {
   return (EVENT_TIME_FILTERS as readonly string[]).includes(value);
 }
 
+/** Longest search term accepted. Past this it is a load test, not a search. */
+const MAX_SEARCH_LEN = 100;
+
 export async function GET(req: NextRequest) {
   try {
     // The kill switch, before any DB work. An endpoint still serving while the
@@ -72,7 +75,10 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = req.nextUrl;
 
-    const whenRaw = searchParams.get('when') ?? 'upcoming';
+    // `|| 'upcoming'`, not `?? 'upcoming'`: a client that always appends the
+    // key sends `?when=`, and an empty string is a request for the default,
+    // not a 400.
+    const whenRaw = searchParams.get('when')?.trim() || 'upcoming';
     if (!isEventTimeFilter(whenRaw)) {
       return badRequestResponse({
         message: `when must be one of ${EVENT_TIME_FILTERS.join(', ')}`,
@@ -90,7 +96,12 @@ export async function GET(req: NextRequest) {
       50,
       Math.max(1, Number.isFinite(perPageRaw) ? perPageRaw : 20),
     );
-    const search = (searchParams.get('q') ?? '').trim();
+    // Capped, not just trimmed: the term becomes two leading-wildcard `ilike`s,
+    // which no index can help with, so an unbounded string is a free way to
+    // make the DB work hard. `ilikePattern` handles the escaping.
+    const search = (searchParams.get('q') ?? '')
+      .trim()
+      .slice(0, MAX_SEARCH_LEN);
     const from = (page - 1) * perPage;
 
     const supabase = createBearerClient();
@@ -139,7 +150,7 @@ export async function GET(req: NextRequest) {
       return loggedServerError('mobile/events', error);
     }
 
-    const rows = (data ?? []) as unknown as MobileEventRow[];
+    const rows = (data ?? []) as MobileEventRow[];
     const events = rows.map((row) => normaliseMobileEvent(supabase, row));
     const total = count ?? events.length;
 

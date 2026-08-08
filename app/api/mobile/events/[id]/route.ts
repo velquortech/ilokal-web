@@ -76,10 +76,7 @@ export async function GET(
       return notFoundResponse({ message: 'Event not found' });
     }
 
-    const event = normaliseMobileEvent(
-      supabase,
-      data as unknown as MobileEventRow,
-    );
+    const event = normaliseMobileEvent(supabase, data as MobileEventRow);
 
     return successResponse({ event });
   } catch {

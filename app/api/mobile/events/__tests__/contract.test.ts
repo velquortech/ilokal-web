@@ -90,6 +90,45 @@ const PRIVATE_COLUMNS = [
   'location',
 ];
 
+/** A storage client stub — `resolveStorageUrl` is mocked, so it is never read. */
+function client(): Parameters<typeof normaliseMobileEvent>[0] {
+  return {} as Parameters<typeof normaliseMobileEvent>[0];
+}
+
+/**
+ * A complete row, so the fixture cannot drift from `MobileEventRow` — the
+ * partial object literals this replaced type-checked only because the row was
+ * typed as an open record.
+ */
+function row(
+  overrides: Partial<Parameters<typeof normaliseMobileEvent>[1]> = {},
+): Parameters<typeof normaliseMobileEvent>[1] {
+  return {
+    id: 'e1',
+    business_id: null,
+    product_id: null,
+    name: 'Night market',
+    description: null,
+    address: 'Iznart St',
+    latitude: null,
+    longitude: null,
+    image_url: null,
+    starts_at: '2036-01-01T00:00:00.000Z',
+    ends_at: '2036-01-02T00:00:00.000Z',
+    daily_start_time: null,
+    daily_end_time: null,
+    link_url: null,
+    ticket_url: null,
+    status: 'approved',
+    created_at: '2035-01-01T00:00:00.000Z',
+    updated_at: '2035-01-01T00:00:00.000Z',
+    archived_at: null,
+    business: null,
+    product: null,
+    ...overrides,
+  };
+}
+
 describe('the shared projection', () => {
   it('projects exactly the columns mobile declares, in no more and no fewer', () => {
     expect(projectedColumns(MOBILE_EVENT_SELECT).sort()).toEqual(
@@ -104,14 +143,28 @@ describe('the shared projection', () => {
     }
   });
 
+  it('mentions no private column ANYWHERE in the select, embeds included', () => {
+    // `projectedColumns` drops every line containing `(`, so a private column
+    // smuggled onto an embed line — `review_note, business:businesses ( … )` —
+    // would slip past the two assertions above: a blind spot in exactly the
+    // dimension this file exists to guard. A raw scan has no such hole.
+    for (const column of PRIVATE_COLUMNS) {
+      expect(MOBILE_EVENT_SELECT).not.toMatch(
+        new RegExp(`\\b${column}\\b`, 'i'),
+      );
+    }
+  });
+
   it('embeds the business and product refs with only their public fields', () => {
     // A `business:businesses (*)` would re-open the same hole one level down —
     // `businesses` carries owner ids and verification state.
     expect(MOBILE_EVENT_SELECT).toContain(
       'business:businesses ( id, shop_name, logo_url )',
     );
+    // The product embed also selects `status` — products RLS does not gate it,
+    // so the normaliser has to, and it is stripped before the response.
     expect(MOBILE_EVENT_SELECT).toContain(
-      'product:products ( id, name, image_url )',
+      'product:products ( id, name, image_url, status )',
     );
   });
 });
@@ -173,10 +226,8 @@ describe('route-level guards and row shaping', () => {
     // `null` in, `null` out — not the literal string "null", which is what an
     // unguarded template interpolation produces and what renders as a broken
     // image on the device.
-    const resolved = normaliseMobileEvent(
-      {} as Parameters<typeof normaliseMobileEvent>[0],
-      { id: 'e1', image_url: null, business: null, product: null },
-    );
+    const resolved = normaliseMobileEvent(client(), row());
+
     expect(resolved.image_url).toBeNull();
     expect(resolved.business).toBeNull();
     expect(resolved.product).toBeNull();
@@ -184,19 +235,55 @@ describe('route-level guards and row shaping', () => {
 
   it('unwraps a to-one embed PostgREST returned as an array', () => {
     const resolved = normaliseMobileEvent(
-      {} as Parameters<typeof normaliseMobileEvent>[0],
-      {
-        id: 'e1',
-        image_url: null,
+      client(),
+      row({
         business: [{ id: 'b1', shop_name: 'Roastery', logo_url: null }],
-        product: [{ id: 'p1', name: 'Kape', image_url: null }],
-      },
+        product: [
+          { id: 'p1', name: 'Kape', image_url: null, status: 'active' },
+        ],
+      }),
     );
+
     // Reading `.shop_name` off the array yields undefined, which renders as a
     // shop with no name.
-    expect((resolved.business as { shop_name: string }).shop_name).toBe(
-      'Roastery',
+    expect(resolved.business?.shop_name).toBe('Roastery');
+    expect(resolved.product?.name).toBe('Kape');
+  });
+
+  it.each([['unlisted'], ['disabled']])(
+    'drops a %s offering instead of republishing it on the event',
+    (status) => {
+      // Products RLS (20260526000007) gates only `archived_at` and the shop
+      // being verified — NOT `status` — so anon can still read a row the owner
+      // has taken down. Every other public product read filters
+      // `status = 'active'`; embedding it unfiltered would put an offering the
+      // shop unlisted back in front of customers.
+      const resolved = normaliseMobileEvent(
+        client(),
+        row({ product: [{ id: 'p1', name: 'Kape', image_url: null, status }] }),
+      );
+
+      expect(resolved.product).toBeNull();
+    },
+  );
+
+  it('never returns the product `status` it selected in order to decide', () => {
+    // `status` is projected so the gate above can read it, and mobile's product
+    // contract is `{ id, name, image_url }` — returning an undeclared field is
+    // how the next reader starts depending on it.
+    const resolved = normaliseMobileEvent(
+      client(),
+      row({
+        product: [
+          { id: 'p1', name: 'Kape', image_url: null, status: 'active' },
+        ],
+      }),
     );
-    expect((resolved.product as { name: string }).name).toBe('Kape');
+
+    expect(resolved.product).toEqual({
+      id: 'p1',
+      name: 'Kape',
+      image_url: null,
+    });
   });
 });

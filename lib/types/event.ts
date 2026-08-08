@@ -122,7 +122,52 @@ export interface EventWithRefs extends Event {
   distance_meters?: number;
 }
 
-/** One row of the `events_nearby` RPC. */
+/**
+ * The columns `/api/mobile/events*` deliberately withholds.
+ *
+ * `review_note` is an admin's rejection text about an unpublished proposal,
+ * `reviewed_by` is an `auth.users` id, and `priority` is internal banner
+ * placement. RLS is row-level and cannot express this, so the projection does
+ * — see `MOBILE_EVENT_SELECT` in `app/api/helpers/mobileEvent.ts`, which is
+ * the runtime half of this type.
+ */
+export type PrivateEventColumn =
+  | 'review_note'
+  | 'reviewed_by'
+  | 'reviewed_at'
+  | 'priority';
+
+/**
+ * Exactly what every `/api/mobile/events*` route returns.
+ *
+ * Written as an `Omit` of `Event` rather than a fresh field list so the two
+ * cannot drift: this IS `EventWithRefs` minus the review flow and `priority`,
+ * which is precisely how the mobile repo's own `MobileEventWithRefs`
+ * (`types/events.ts`) describes itself.
+ *
+ * `distance_meters` is optional here because only the nearby feed carries it —
+ * see `MobileNearbyEvent`, which makes it required.
+ */
+export interface MobileEventWithRefs extends Omit<Event, PrivateEventColumn> {
+  business: EventBusinessRef | null;
+  product: EventProductRef | null;
+  distance_meters?: number;
+}
+
+/** One row of `GET /api/mobile/events/nearby`. */
+export type MobileNearbyEvent = MobileEventWithRefs & {
+  distance_meters: number;
+};
+
+/**
+ * One row of the `events_nearby` RPC ITSELF — a flat, deliberately narrow
+ * projection, not what the mobile endpoint returns.
+ *
+ * The RPC does the one thing only PostGIS can do (rank by distance) and the
+ * route hydrates those ids through `MOBILE_EVENT_SELECT`, so this shape stops
+ * at the route boundary. Widening the RPC to carry the whole event would spell
+ * the mobile column list out a second time, in SQL, where it drifts.
+ */
 export interface NearbyEvent {
   id: string;
   name: string;

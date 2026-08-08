@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import { createServerSupabaseClient } from '@/supabase/server';
 import type { ApiResponse, ApiError, BusinessProfileData } from '@/lib/types';
+import { logActionError } from '@/lib/utils/captureError';
 import {
   updateBusinessProfileSchema,
   type UpdateBusinessProfileInput,
@@ -142,7 +143,7 @@ export async function updateBusinessProfileAction(
     if (error || !updated) {
       // Never the driver's own message: it names tables, columns and
       // constraints. Logged server-side, generic to the client.
-      console.error('[updateBusinessProfileAction:write]', error);
+      logActionError('updateBusinessProfileAction:write', error);
       return {
         success: false,
         error: {
@@ -171,7 +172,7 @@ export async function updateBusinessProfileAction(
           .from('business-logos')
           .remove([oldPath]);
         if (logoError) {
-          console.error('[updateBusinessProfileAction:logoCleanup]', logoError);
+          logActionError('updateBusinessProfileAction:logoCleanup', logoError);
         }
       }
     }
@@ -211,7 +212,7 @@ export async function updateBusinessProfileAction(
 
     return { success: true, data: updated as BusinessProfileData };
   } catch (err) {
-    console.error('[updateBusinessProfileAction]', err);
+    logActionError('updateBusinessProfileAction', err);
     return {
       success: false,
       error: {

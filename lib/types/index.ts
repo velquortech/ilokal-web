@@ -73,6 +73,11 @@ export type {
   EventBusinessRef,
   EventProductRef,
   EventWithRefs,
+  // The mobile read contract — `EventWithRefs` minus the review flow and
+  // `priority`. See `MOBILE_EVENT_SELECT` for the runtime half.
+  PrivateEventColumn,
+  MobileEventWithRefs,
+  MobileNearbyEvent,
   NearbyEvent,
   EventListMetadata,
   PaginatedEvents,

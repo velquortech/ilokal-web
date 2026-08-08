@@ -10,7 +10,11 @@ import { eventPath } from '@/config/routeConfig';
 import { brandToneFor } from '@/lib/utils/brandTone';
 import { formatEventWhen, eventPhase } from '@/lib/utils/eventSchedule';
 import { cn } from '@/lib/utils';
-import type { NearbyEvent } from '@/lib/types';
+// This page reads `/api/mobile/events/nearby`, which returns the MOBILE event
+// shape — the route hydrates the RPC's ranked ids through
+// `MOBILE_EVENT_SELECT`. The RPC's own flat row is typed `NearbyEvent` and
+// stops at the route boundary, so it is deliberately NOT the type here.
+import type { MobileNearbyEvent } from '@/lib/types';
 
 const RADII = [
   { meters: 5000, label: '5 km' },
@@ -35,7 +39,7 @@ export function NearbyEventsContent() {
   const [geo, setGeo] = React.useState<GeoState>('locating');
   const [pos, setPos] = React.useState<[number, number] | null>(null);
   const [radius, setRadius] = React.useState(20000);
-  const [events, setEvents] = React.useState<NearbyEvent[] | null>(null);
+  const [events, setEvents] = React.useState<MobileNearbyEvent[] | null>(null);
   const [failed, setFailed] = React.useState(false);
 
   React.useEffect(() => {
@@ -147,7 +151,7 @@ export function NearbyEventsContent() {
   );
 }
 
-function NearbyCard({ event }: { event: NearbyEvent }) {
+function NearbyCard({ event }: { event: MobileNearbyEvent }) {
   const live = eventPhase(event) === 'live';
 
   return (

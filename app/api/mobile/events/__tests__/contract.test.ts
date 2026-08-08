@@ -90,7 +90,7 @@ const PRIVATE_COLUMNS = [
   'location',
 ];
 
-describe('mobile events read contract', () => {
+describe('the shared projection', () => {
   it('projects exactly the columns mobile declares, in no more and no fewer', () => {
     expect(projectedColumns(MOBILE_EVENT_SELECT).sort()).toEqual(
       [...MOBILE_EVENT_COLUMNS].sort(),
@@ -114,8 +114,22 @@ describe('mobile events read contract', () => {
       'product:products ( id, name, image_url )',
     );
   });
+});
 
-  it.each([['route.ts'], ['[id]/route.ts']])(
+/**
+ * All three mobile event surfaces. `nearby` is in the sweep because it is the
+ * one that used to answer with a DIFFERENT shape — the `events_nearby` RPC's
+ * flat 12-column row, which mobile's `eventsResponseSchema` (commented "also
+ * the nearby shape") could never have parsed.
+ */
+const MOBILE_EVENT_ROUTES = [
+  ['route.ts'],
+  ['[id]/route.ts'],
+  ['nearby/route.ts'],
+];
+
+describe('every mobile event route shares one projection', () => {
+  it.each(MOBILE_EVENT_ROUTES)(
     '%s selects through the shared contract and never with a wildcard',
     (file) => {
       const code = source(file);
@@ -126,16 +140,28 @@ describe('mobile events read contract', () => {
     },
   );
 
-  it.each([['route.ts'], ['[id]/route.ts']])(
+  it.each(MOBILE_EVENT_ROUTES)(
     '%s shapes rows through the shared normaliser rather than its own copy',
     (file) => {
       const code = source(file);
       expect(code).toContain('normaliseMobileEvent');
-      // Each route hand-rolling the embed unwrap is how the two drift.
+      // Each route hand-rolling the embed unwrap is how the three drift.
       expect(code).not.toContain('firstOrNull');
     },
   );
 
+  it('nearby never re-emits the RPC row it used to return', () => {
+    const code = source('nearby/route.ts');
+    // `business_name` is the RPC's flat string; mobile needs a `business`
+    // OBJECT, and the presence of the former means the flat row leaked back.
+    expect(code).not.toContain('business_name');
+    // Distance is the whole point of the endpoint and must survive the
+    // hydrate, which reads by id and knows nothing about it.
+    expect(code).toContain('distance_meters');
+  });
+});
+
+describe('route-level guards and row shaping', () => {
   it('validates the detail id with z.guid(), not a hand-rolled character class', () => {
     const code = source('[id]/route.ts');
     expect(code).toContain('eventIdSchema');

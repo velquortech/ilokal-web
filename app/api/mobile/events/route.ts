@@ -46,6 +46,20 @@ import type { EventTimeFilter } from '@/lib/types';
  * a future authenticated caller honest.
  */
 
+/**
+ * Narrow a raw query param to the filter union.
+ *
+ * A type PREDICATE rather than `raw as EventTimeFilter` before the check: a
+ * cast would tell the compiler the value is valid on the very branch that
+ * rejects it, so the types would stop documenting the guard that is doing the
+ * work. Here the narrowing comes out of the same check that enforces it, and
+ * the membership test reads the shared constant — so adding a fourth filter to
+ * `EVENT_TIME_FILTERS` cannot leave this route rejecting it.
+ */
+function isEventTimeFilter(value: string): value is EventTimeFilter {
+  return (EVENT_TIME_FILTERS as readonly string[]).includes(value);
+}
+
 export async function GET(req: NextRequest) {
   try {
     // The kill switch, before any DB work. An endpoint still serving while the
@@ -58,14 +72,14 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = req.nextUrl;
 
-    // Read off the shared constant rather than a literal list — the union and
-    // the runtime check cannot drift if a fourth filter is ever added.
-    const when = (searchParams.get('when') ?? 'upcoming') as EventTimeFilter;
-    if (!EVENT_TIME_FILTERS.includes(when)) {
+    const whenRaw = searchParams.get('when') ?? 'upcoming';
+    if (!isEventTimeFilter(whenRaw)) {
       return badRequestResponse({
         message: `when must be one of ${EVENT_TIME_FILTERS.join(', ')}`,
       });
     }
+    // Narrowed by the guard above — no cast needed from here on.
+    const when = whenRaw;
 
     const page = Math.max(
       1,

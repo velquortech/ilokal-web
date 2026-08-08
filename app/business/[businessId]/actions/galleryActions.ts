@@ -39,6 +39,7 @@ import {
 } from '@/config/routeConfig';
 import { storagePathsToDelete, toStoragePaths } from '@/lib/utils/storage';
 import type { ApiError, ApiResponse } from '@/lib/types';
+import { logActionError } from '@/lib/utils/captureError';
 
 const RATE_LIMIT = Number(process.env.BUSINESS_ACTION_RATE_LIMIT ?? 30);
 const RATE_WINDOW_MS = Number(
@@ -109,7 +110,7 @@ export async function updateBusinessGalleryAction(
     .single();
 
   if (readError) {
-    console.error('[updateBusinessGalleryAction:read]', readError);
+    logActionError('updateBusinessGalleryAction:read', readError);
     return fail('DB_ERROR', 'Could not load your gallery. Please try again.');
   }
 
@@ -162,7 +163,7 @@ export async function updateBusinessGalleryAction(
     .single();
 
   if (error || !updated) {
-    console.error('[updateBusinessGalleryAction:write]', error);
+    logActionError('updateBusinessGalleryAction:write', error);
     return fail('DB_ERROR', 'Could not save your gallery. Please try again.');
   }
 
@@ -182,7 +183,7 @@ export async function updateBusinessGalleryAction(
       .from(GALLERY_BUCKET)
       .remove(toDelete);
     if (removeError) {
-      console.error('[updateBusinessGalleryAction:cleanup]', removeError);
+      logActionError('updateBusinessGalleryAction:cleanup', removeError);
     }
   }
 

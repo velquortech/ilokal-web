@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { captureServerError } from '@/lib/utils/captureError';
 
 export function generalErrorResponse<T>(data?: T): Response {
   return new NextResponse(
@@ -13,11 +14,16 @@ export function generalErrorResponse<T>(data?: T): Response {
 // Log the real (backend/Supabase) error server-side, return a generic 500 to the
 // client. Never forward `error.message` to mobile clients — it leaks table/column
 // names, constraint names, RLS hints, and SQL, and is meaningless to end users.
+//
+// This is also the single funnel for API 500s — 60 call sites across `app/api`
+// — which is why the Sentry capture lives here rather than being sprinkled
+// through the routes (`.claude/SENTRY_MONITORING.md`, SN8).
 export function loggedServerError(
   context: string,
   error?: { message?: string } | null,
 ): Response {
   if (error?.message) console.error(`[${context}]`, error.message);
+  captureServerError(context, error);
   return generalErrorResponse();
 }
 

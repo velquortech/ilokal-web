@@ -35,6 +35,7 @@ import {
   IMAGE_PRESETS,
 } from '@/lib/api/helpers/image';
 import type { ApiResponse, Event, NotificationType } from '@/lib/types';
+import { logActionError } from '@/lib/utils/captureError';
 
 /** Same caps the owner's upload enforces — one number, one meaning. */
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
@@ -128,7 +129,7 @@ export async function decideEventAction(
     revalidate();
     return result;
   } catch (error) {
-    console.error('[decideEventAction]', error);
+    logActionError('decideEventAction', error);
     return fail('INTERNAL_ERROR', 'Failed to record the decision.');
   }
 }
@@ -210,7 +211,7 @@ export async function setEventPriorityAction(
     if (result.success) revalidate();
     return result;
   } catch (error) {
-    console.error('[setEventPriorityAction]', error);
+    logActionError('setEventPriorityAction', error);
     return fail('INTERNAL_ERROR', 'Failed to update the order.');
   }
 }
@@ -243,7 +244,7 @@ export async function createPlatformEventAction(
     if (result.success) revalidate();
     return result;
   } catch (error) {
-    console.error('[createPlatformEventAction]', error);
+    logActionError('createPlatformEventAction', error);
     return fail('INTERNAL_ERROR', 'Failed to create the event.');
   }
 }
@@ -279,7 +280,7 @@ export async function updatePlatformEventAction(
     if (result.success) revalidate();
     return result;
   } catch (error) {
-    console.error('[updatePlatformEventAction]', error);
+    logActionError('updatePlatformEventAction', error);
     return fail('INTERNAL_ERROR', 'Failed to update the event.');
   }
 }
@@ -300,7 +301,7 @@ export async function archivePlatformEventAction(
     if (result.success) revalidate();
     return result;
   } catch (error) {
-    console.error('[archivePlatformEventAction]', error);
+    logActionError('archivePlatformEventAction', error);
     return fail('INTERNAL_ERROR', 'Failed to remove the event.');
   }
 }
@@ -342,7 +343,7 @@ export async function uploadPlatformEventImageAction(
     if (error instanceof ImageProcessingError) {
       return fail('VALIDATION_ERROR', 'That image could not be read.');
     }
-    console.error('[uploadPlatformEventImageAction]', error);
+    logActionError('uploadPlatformEventImageAction', error);
     return fail('INTERNAL_ERROR', 'Failed to upload the image.');
   }
 }

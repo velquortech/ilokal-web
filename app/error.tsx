@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, Home, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
+import * as Sentry from '@sentry/nextjs';
 import { ROUTES } from '@/config/routeConfig';
 
 interface ErrorProps {
@@ -11,14 +12,21 @@ interface ErrorProps {
   reset: () => void;
 }
 
-//sample
-
 export default function Error({ error, reset }: ErrorProps) {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [eventId, setEventId] = useState<string | null>(null);
 
   useEffect(() => {
     setIsLoaded(true);
   }, []);
+
+  // This page has told users "our team has been notified" since it was written,
+  // while nothing in the repo notified anyone. That is what makes this the
+  // point of the whole branch rather than a detail of it — the claim below is
+  // only true because of this call.
+  useEffect(() => {
+    setEventId(Sentry.captureException(error));
+  }, [error]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -154,6 +162,13 @@ export default function Error({ error, reset }: ErrorProps) {
           <p className="text-sm text-slate-400">
             If the problem persists, please contact our support team.
           </p>
+          {/* A support conversation that starts with a reference is a search;
+              one that starts with "a page broke" is an investigation. */}
+          {eventId && (
+            <p className="mt-3 font-mono text-xs text-slate-500">
+              Reference: {eventId}
+            </p>
+          )}
         </motion.div>
       </motion.div>
     </div>

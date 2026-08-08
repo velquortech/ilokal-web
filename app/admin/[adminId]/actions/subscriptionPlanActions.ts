@@ -6,6 +6,7 @@
  */
 
 import type { ApiResponse } from '@/lib/types';
+import { logActionError } from '@/lib/utils/captureError';
 
 async function callPlanApi(
   path: string,
@@ -28,7 +29,7 @@ async function callPlanApi(
 
     return await response.json();
   } catch (error) {
-    console.error('[callPlanApi]', error);
+    logActionError('callPlanApi', error);
     return {
       success: false,
       error: {

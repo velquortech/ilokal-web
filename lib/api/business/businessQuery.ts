@@ -7,6 +7,7 @@
 
 import { createServerSupabaseClient } from '@/supabase/server';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
+import { logActionError } from '@/lib/utils/captureError';
 import {
   Business,
   AdminBusiness,
@@ -442,12 +443,12 @@ export async function getBusinessCategoryOptions(): Promise<
       .order('name', { ascending: true });
 
     if (error) {
-      console.error('[getBusinessCategoryOptions]', error);
+      logActionError('getBusinessCategoryOptions', error);
       return [];
     }
     return data ?? [];
   } catch (err) {
-    console.error('[getBusinessCategoryOptions]', err);
+    logActionError('getBusinessCategoryOptions', err);
     return [];
   }
 }
@@ -480,7 +481,7 @@ export async function getBusinessGallery(businessId: string): Promise<{
       .maybeSingle();
 
     if (error) {
-      console.error('[getBusinessGallery]', error);
+      logActionError('getBusinessGallery', error);
       return { images: [], failed: true, found: false };
     }
     if (!data) return { images: [], failed: false, found: false };
@@ -493,7 +494,7 @@ export async function getBusinessGallery(businessId: string): Promise<{
 
     return { images, failed: false, found: true };
   } catch (err) {
-    console.error('[getBusinessGallery]', err);
+    logActionError('getBusinessGallery', err);
     return { images: [], failed: true, found: false };
   }
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { verifyCurrentUserIsAdmin } from '@/lib/api/admin/adminActionHelpers';
 import { AdminActionResponse } from '@/lib/types/admin';
+import { logActionError } from '@/lib/utils/captureError';
 
 /**
  * Every admin-flippable flag in `app_settings`.
@@ -57,14 +58,14 @@ export async function updateRegistrationSettingAction(
     });
 
     if (error) {
-      console.error('[updateRegistrationSettingAction]', error);
+      logActionError('updateRegistrationSettingAction', error);
       return { success: false, error: 'Failed to update setting' };
     }
 
     revalidatePath('/admin', 'layout');
     return { success: true, data: { key, value } };
   } catch (error) {
-    console.error('[updateRegistrationSettingAction]', error);
+    logActionError('updateRegistrationSettingAction', error);
     return { success: false, error: 'Failed to update setting' };
   }
 }

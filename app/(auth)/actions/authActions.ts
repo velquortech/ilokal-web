@@ -8,6 +8,7 @@ import {
   SUPABASE_COOKIE_OPTIONS,
 } from '@/supabase/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
+import { logActionError } from '@/lib/utils/captureError';
 import { rateLimit, clientIp } from '@/app/api/helpers/rateLimit';
 import { ROUTES, businessPath } from '@/config/routeConfig';
 import { User } from '@/lib/types/user';
@@ -86,7 +87,8 @@ export async function loginAction(
     try {
       ip = clientIp({ headers: await headers() });
     } catch {
-      // non-request scope — keep the fallback key
+      // sentry-opt-out: non-request scope — `headers()` throws outside a
+      // request, which is expected here and not a fault. Keep the fallback key.
     }
     const ipCheck = rateLimit(
       `auth:login:ip:${ip}`,
@@ -194,7 +196,7 @@ export async function loginAction(
   } catch (error) {
     // Full detail stays in the server log; the client gets hand-written copy.
     // Rethrowing here is what produced Next's redaction notice in the browser.
-    console.error('[loginAction] Error:', error);
+    logActionError('loginAction', error);
     return fail(
       'INTERNAL_ERROR',
       'We couldn’t sign you in just now. Please try again.',
@@ -329,7 +331,7 @@ export async function signupAction(
       message: 'Account created successfully',
     };
   } catch (error) {
-    console.error('[signupAction] Error:', error);
+    logActionError('signupAction', error);
     return fail(
       'INTERNAL_ERROR',
       'We couldn’t create your account just now. Please try again.',
@@ -501,9 +503,9 @@ export async function signOutAction(): Promise<SignOutOutcome> {
     const { error } = await supabase.auth.signOut();
     if (!error) return { ok: true, revoked: hadSession };
 
-    console.error('[signOutAction] Error signing out:', error);
+    logActionError('signOutAction:revoke', error);
   } catch (error) {
-    console.error('[signOutAction] Error signing out:', error);
+    logActionError('signOutAction:revoke', error);
   }
 
   // The revoke failed. Expire the cookies so this browser cannot keep using the
@@ -512,7 +514,10 @@ export async function signOutAction(): Promise<SignOutOutcome> {
     await clearSupabaseAuthCookies();
     return { ok: true, revoked: false };
   } catch (cookieError) {
-    console.error('[signOutAction] Failed to clear auth cookies:', cookieError);
+    // Distinct context from the revoke failure above: the two are different
+    // faults with different consequences (tokens still live vs. this browser
+    // still holding a session), and a shared tag would group them as one issue.
+    logActionError('signOutAction:clearCookies', cookieError);
     return { ok: false, revoked: false };
   }
 }
@@ -526,7 +531,7 @@ export async function verifySessionAction(): Promise<{ user: User } | null> {
     if (!auth.authorized) return null;
     return { user: auth.profile as User };
   } catch (error) {
-    console.error('[verifySessionAction] Error:', error);
+    logActionError('verifySessionAction', error);
     return null;
   }
 }
@@ -591,24 +596,40 @@ export async function signupFormAction(
         ? error.message
         : 'Failed to sign up. Please try again.';
 
-    console.error('[signupFormAction] Error:', errorMessage);
+    // `logActionError` drops control-flow throws itself (`isExpectedError`), so
+    // the NEXT_REDIRECT case below is not reported as a fault.
+    logActionError('signupFormAction', error);
 
     // Check if it's a redirect (from Next.js)
     if (errorMessage.includes('NEXT_REDIRECT')) {
       return { success: true };
     }
 
-    // Check if error is email-related
-    const isEmailError =
-      errorMessage.toLowerCase().includes('email') ||
+    // ST12: `errorMessage` is the RAW thrown message. It is used to CLASSIFY
+    // the failure and must never be what the client receives — this is the
+    // unauthenticated signup path, so a Supabase message here would hand a
+    // stranger table, column and constraint names.
+    //
+    // PR #43 review: the bare `includes('email')` test used to be part of this
+    // condition. That was safe while the raw message was echoed back, and
+    // became wrong the moment the reply asserted a specific cause — GoTrue's
+    // "Email rate limit exceeded" and "Error sending confirmation email" both
+    // contain "email" and would have told the visitor their address was already
+    // registered, sending them to a sign-in they cannot complete. Only phrases
+    // that actually mean "taken" may claim it.
+    const isAlreadyRegistered =
       errorMessage.toLowerCase().includes('already registered') ||
       errorMessage.toLowerCase().includes('already exists') ||
       errorMessage.toLowerCase().includes('user already');
 
-    if (isEmailError) {
-      return { fieldErrors: { email: errorMessage } };
+    if (isAlreadyRegistered) {
+      return {
+        fieldErrors: {
+          email: 'That email is already registered. Try signing in instead.',
+        },
+      };
     }
 
-    return { error: errorMessage };
+    return { error: 'Failed to sign up. Please try again.' };
   }
 }

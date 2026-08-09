@@ -545,15 +545,20 @@ export async function uploadProductImageAction(
         maxDimension: IMAGE_PRESETS.product,
       });
     } catch (err) {
+      // `ImageProcessingError` is USER INPUT — a HEIC, an animated GIF, a
+      // corrupt file — and the action deliberately answers it as a
+      // VALIDATION_ERROR with hand-written copy. Reporting it would file every
+      // rejected upload as an application fault, at owner-driven volume,
+      // against a monthly event quota. Return before the capture.
       if (err instanceof ImageProcessingError) {
         return {
           success: false,
           error: { code: 'VALIDATION_ERROR', message: err.message },
         };
       }
-      // Storage error — log server-side, return a generic message (don't leak
-      // the raw driver error to the owner-facing client).
-      console.error('[uploadProductImageAction] Upload error:', err);
+      // Storage error — a real fault. Distinct context tag so it cannot group
+      // with the outer action's own failures.
+      logActionError('uploadProductImageAction:upload', err);
       return {
         success: false,
         error: { code: 'UPLOAD_ERROR', message: 'Failed to upload image' },

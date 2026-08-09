@@ -1,5 +1,7 @@
 'use server';
 
+import { logActionError } from '@/lib/utils/captureError';
+
 import { revalidatePath } from 'next/cache';
 import type { AdminCreateUserInput } from '@/lib/types/admin';
 import { AdminActionResponse, AdminUser } from '@/lib/types/admin';
@@ -36,9 +38,10 @@ export async function createAdminAction(
     revalidatePath('/admin', 'layout');
     return { success: true, data };
   } catch (error) {
+    logActionError('createAdminAction', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to create admin',
+      error: 'Failed to create admin',
     };
   }
 }
@@ -61,9 +64,10 @@ export async function updateAdminAction(
     revalidatePath('/admin', 'layout');
     return { success: true, data };
   } catch (error) {
+    logActionError('updateAdminAction', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to update admin',
+      error: 'Failed to update admin',
     };
   }
 }
@@ -82,9 +86,10 @@ export async function deleteAdminAction(
     revalidatePath('/admin', 'layout');
     return { success: true };
   } catch (error) {
+    logActionError('deleteAdminAction', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to delete admin',
+      error: 'Failed to delete admin',
     };
   }
 }
@@ -106,12 +111,10 @@ export async function updateAdminStatusAction(
     revalidatePath('/admin', 'layout');
     return { success: true, data };
   } catch (error) {
+    logActionError('updateAdminStatusAction', error);
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to update admin status',
+      error: 'Failed to update admin status',
     };
   }
 }
@@ -137,10 +140,10 @@ export async function createConsumerAction(
     revalidatePath('/admin', 'layout');
     return { success: true, data };
   } catch (error) {
+    logActionError('createConsumerAction', error);
     return {
       success: false,
-      error:
-        error instanceof Error ? error.message : 'Failed to create consumer',
+      error: 'Failed to create consumer',
     };
   }
 }
@@ -163,10 +166,10 @@ export async function updateConsumerAction(
     revalidatePath('/admin', 'layout');
     return { success: true, data };
   } catch (error) {
+    logActionError('updateConsumerAction', error);
     return {
       success: false,
-      error:
-        error instanceof Error ? error.message : 'Failed to update consumer',
+      error: 'Failed to update consumer',
     };
   }
 }
@@ -184,10 +187,10 @@ export async function deleteConsumerAction(
     revalidatePath('/admin', 'layout');
     return { success: true };
   } catch (error) {
+    logActionError('deleteConsumerAction', error);
     return {
       success: false,
-      error:
-        error instanceof Error ? error.message : 'Failed to delete consumer',
+      error: 'Failed to delete consumer',
     };
   }
 }
@@ -213,12 +216,10 @@ export async function createBusinessOwnerAction(
     revalidatePath('/admin', 'layout');
     return { success: true, data };
   } catch (error) {
+    logActionError('createBusinessOwnerAction', error);
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to create business owner',
+      error: 'Failed to create business owner',
     };
   }
 }
@@ -240,12 +241,10 @@ export async function updateBusinessOwnerAction(
     revalidatePath('/admin', 'layout');
     return { success: true, data };
   } catch (error) {
+    logActionError('updateBusinessOwnerAction', error);
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to update business owner',
+      error: 'Failed to update business owner',
     };
   }
 }
@@ -264,12 +263,10 @@ export async function deleteBusinessOwnerAction(
     revalidatePath('/admin', 'layout');
     return { success: true };
   } catch (error) {
+    logActionError('deleteBusinessOwnerAction', error);
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to delete business owner',
+      error: 'Failed to delete business owner',
     };
   }
 }
@@ -298,9 +295,10 @@ export async function restoreUserAction(
     revalidatePath('/admin', 'layout');
     return { success: true, data };
   } catch (error) {
+    logActionError('restoreUserAction', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to restore user',
+      error: 'Failed to restore user',
     };
   }
 }

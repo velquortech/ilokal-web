@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { verifyCurrentUserIsAdmin } from '@/lib/api/admin/adminActionHelpers';
 import { createServerSupabaseClient } from '@/supabase/server';
 import type { ApiResponse, Branch } from '@/lib/types';
+import { logActionError } from '@/lib/utils/captureError';
 
 export async function getPendingBranchesAction(): Promise<
   ApiResponse<{ branches: (Branch & { business_name: string })[] }>
@@ -42,7 +43,8 @@ export async function getPendingBranchesAction(): Promise<
     }));
 
     return { success: true, data: { branches } };
-  } catch {
+  } catch (error) {
+    logActionError('getPendingBranchesAction', error);
     return {
       success: false,
       error: {
@@ -86,7 +88,8 @@ export async function approveBranchAction(
 
     revalidatePath('/admin/branches');
     return { success: true, data: null };
-  } catch {
+  } catch (error) {
+    logActionError('approveBranchAction', error);
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to approve branch' },
@@ -128,7 +131,8 @@ export async function rejectBranchAction(
 
     revalidatePath('/admin/branches');
     return { success: true, data: null };
-  } catch {
+  } catch (error) {
+    logActionError('rejectBranchAction', error);
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to reject branch' },
@@ -166,7 +170,8 @@ export async function getBranchDocumentsAction(
     }
 
     return { success: true, data: { documents: data ?? [] } };
-  } catch {
+  } catch (error) {
+    logActionError('getBranchDocumentsAction', error);
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch documents' },

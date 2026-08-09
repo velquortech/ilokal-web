@@ -1,5 +1,110 @@
 # Changelog
 
+## 2026-08-09 — Mobile events API, and the column list that is the contract (feat/mobile-events-api)
+
+> **No schema migration, no auth change, no RLS change.** Three new public
+> mobile routes, one new shared read contract, and one behaviour change on the
+> existing web event surfaces (the promoted-offering gate). Ships **dark** with
+> the rest of events, behind `app_settings.enable_events`.
+
+- **`GET /api/mobile/events`, `/:id` and `/nearby`** — the endpoints behind the
+  mobile app's `fetchEvents()` / `fetchEvent()` / `fetchNearbyEvents()`. Public
+  (`createBearerClient`), kill-switch first, `.range()`d, `.eq('status',
+  'approved').is('archived_at', null)` restated on every read.
+- **🔴 The column list IS the security boundary, and `select('*')` was the
+  leak.** RLS is ROW-level: the public policy on `events` decides which rows an
+  anonymous caller may read and says nothing about which COLUMNS come back. A
+  wildcard select therefore shipped `review_note` — **the admin's rejection text
+  on an unpublished proposal** — plus `reviewed_by` (an `auth.users` id),
+  `reviewed_at`, `priority` and the raw WKB `location`, to every unauthenticated
+  device.
+- **Nothing broke, which is what made it durable.** Mobile's schemas are plain
+  `z.object()`, so unknown keys are **STRIPPED, not rejected** — the columns
+  arrived, were dropped, and no parse error, render fault or log line ever
+  appeared. Same reasoning that made `get_business_public_info` and
+  `public_feature_flags` fixed-return-list functions: a column added to `events`
+  later stays private by default. Unlike those, this one needed **no migration**
+  — the gate is the projection.
+- **🔴 `/nearby` returned a shape mobile cannot parse.** `events_nearby` is a
+  flat 12-column projection with a `business_name` STRING; mobile's
+  `eventsResponseSchema` (commented "also the nearby shape") wants the full
+  `MobileEventWithRefs`, with `business`/`product` as OBJECTS and nine further
+  keys as **required-nullable**. Nullable is not optional, so `parseOrThrow`
+  would have thrown an `ApiError` and taken the screen down — not degraded.
+- **Fixed WITHOUT widening the RPC, deliberately.** A `RETURNS TABLE` change
+  needs DROP + CREATE rather than `CREATE OR REPLACE` — a HIGH-risk migration
+  onto an already-deep cloud queue, plus a window where anon callers get
+  PGRST202 (the hazard the `public_feature_flags` rollout recorded). It would
+  also have spelled the mobile column list out a SECOND time, in SQL, where
+  nothing keeps it in step. Instead the RPC keeps doing the one thing only
+  PostGIS can — rank ids by distance — and the route hydrates that page of ids
+  through the **same projection** the other two routes use. Nearby inherits the
+  contract rather than restating it.
+- **Two ordering traps in that merge, both asserted.** `.in()` answers in
+  arbitrary order and distance ordering is the entire point, so the RPC's
+  sequence drives the output. And `has_more` counts `ranked.length`, **not**
+  `events.length` — a row archived between the two reads is dropped to keep
+  every emitted row a complete document, and measuring the dropped-row case
+  would make one archived event look like the end of the feed.
+- **🔴 The promoted offering republished what the shop had taken down.**
+  Products RLS (`20260526000007`) gates only `archived_at` and the shop being
+  verified — **not `products.status`**. So an offering the owner later set to
+  `unlisted` or `disabled` was still readable by anon, and embedding it
+  unfiltered put it back on a public event. Every other public product read
+  filters `status = 'active'` (`getPublicMenu`, the mobile products route); these
+  did not.
+- **Gated by AUDIENCE, not blanket** — `EventAudience = 'public' | 'internal'`.
+  A blanket filter would have hidden a disabled offering from the **owner's own
+  event table** and the **admin review queue**, destroying exactly the
+  diagnostic signal those surfaces exist to show. `status` is selected so the
+  normaliser can decide and **dropped before the response**: returning a field
+  the mobile contract does not declare is how the next reader starts depending
+  on it.
+- **The heart button needed no API at all.** Checked before building: mobile
+  bookmarking is device-local by design. The detail route is therefore
+  deliberately **not** date-filtered, so a bookmarked or shared event keeps
+  resolving after it finishes — the same reasoning that keeps the public event
+  RLS policy undated.
+- **`resolveEventMedia` de-forks the read.** Embed-unwrapping and storage
+  resolution were verbatim copies in `eventQuery.ts` and `mobileEvent.ts`. The
+  bucket names especially are the kind of literal that must exist once — a typo
+  in one copy resolves to a 404 image on half the app. Mechanics are shared;
+  **policy is not** (which rows, and which offering, differ per surface). The
+  de-fork immediately made `resolveStorageUrl` an unused import in `eventQuery`,
+  which is the signal it worked.
+- **`catch {}` reported the wrong half.** All three routes funnelled an expected
+  PostgREST `error` through `loggedServerError` while the outer catch swallowed
+  the **unexpected** throws — a normaliser bug, a throwing storage helper —
+  answering with a 500 no log stream or tracker could attribute. Backwards: the
+  unanticipated failure is the one worth a name. Same blind spot #43 closed on
+  the business routes.
+- **That fix forced the merge, and the merge is the lesson.** #43 widened
+  `loggedServerError`'s `error` param to `unknown` precisely so a `catch (error)`
+  binding could reach the funnel without a cast. The two branches' file sets are
+  **disjoint**, so git reported a clean merge while `tsc` reported three errors —
+  the conflict was in a **signature, not a line**. Next 16 does not typecheck at
+  build, so casting instead would have shipped silently.
+- **Tests (+~50):** a projection contract (exact column list, private columns
+  absent, a raw scan so an embed line cannot smuggle one back), a
+  **schema-parity** suite that rebuilds mobile's Zod schemas and parses all three
+  real responses — including a case asserting the OLD flat row fails on 11 named
+  keys, so the regression stays legible — the nearby two-query ordering and
+  dropped-row paths, and six audience-gate tests pinning both directions. The
+  contract sweep **strips comments first**: these routes quote what they removed,
+  and a sweep that fails on its own explanation teaches people to delete the
+  explanation.
+- **Every guard was proven by breaking it** — the bare catch reintroduced on one
+  route, watched to fail on that route alone, and restored.
+- Verified: `yarn lint` + **2714** tests + a clean `yarn build` + **0** `tsc`
+  errors in the touched files (repo total unchanged at 59 pre-existing).
+- **Not verified — needs a browser:** the web product gate is the only
+  user-visible behaviour change here, and Supabase was not running in this
+  environment, so it has not been clicked through on a seeded event with an
+  `unlisted` offering. `/events/nearby` likewise.
+- **Not done:** events remain dark on cloud — the flag is false *and* the events
+  migrations are still in the unapplied queue, so these endpoints answer with the
+  empty-but-valid payload in production until both land.
+
 ## 2026-08-08 — Sentry, phases 2–5: actions, browser, and the decision not to record (feat/sentry-monitoring)
 
 > **No schema, API-contract or auth change.** Builds on the phase-1 entry below.

@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server';
 import { createBearerClient } from '@/supabase/bearer';
 import {
   badRequestResponse,
-  generalErrorResponse,
   successResponse,
   loggedServerError,
 } from '@/app/api/helpers/response';
@@ -159,7 +158,13 @@ export async function GET(req: NextRequest) {
       total,
       has_more: from + events.length < total,
     });
-  } catch {
-    return generalErrorResponse();
+  } catch (error) {
+    // Not a bare `catch {}`. The branches above report the failures we EXPECT
+    // (PostgREST handed back an `error`); this one catches the ones we did not
+    // — a normaliser bug, a throwing storage helper — which are precisely the
+    // ones worth a name. Swallowing the unanticipated failure while reporting
+    // the anticipated one is backwards, and is the blind spot PR #43 closed on
+    // the peer business routes. Response body is unchanged.
+    return loggedServerError('mobile/events', error);
   }
 }

@@ -203,6 +203,22 @@ describe('every mobile event route shares one projection', () => {
     },
   );
 
+  it.each(MOBILE_EVENT_ROUTES)(
+    '%s names an unexpected throw rather than swallowing it',
+    (file) => {
+      const code = source(file);
+
+      // A bare `catch {}` binds nothing, so the cause is destroyed and a 500
+      // here is observable by no means at all — not Sentry, not the log
+      // stream. That is the blind spot PR #43 closed across the business
+      // routes, and these three shipped with the same shape. The branches that
+      // handle a PostgREST `error` are the EXPECTED failures; this catch holds
+      // the unexpected ones, which are the ones worth a name.
+      expect(code).not.toMatch(/catch\s*\{/);
+      expect(code).toContain('loggedServerError');
+    },
+  );
+
   it('nearby never re-emits the RPC row it used to return', () => {
     const code = source('nearby/route.ts');
     // `business_name` is the RPC's flat string; mobile needs a `business`

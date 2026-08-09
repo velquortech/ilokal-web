@@ -545,6 +545,7 @@ export async function uploadProductImageAction(
         maxDimension: IMAGE_PRESETS.product,
       });
     } catch (err) {
+      logActionError('uploadProductImageAction', err);
       if (err instanceof ImageProcessingError) {
         return {
           success: false,

@@ -1,6 +1,6 @@
 import { createBearerClient } from '@/supabase/bearer';
 import {
-  generalErrorResponse,
+  loggedServerError,
   notFoundResponse,
   successResponse,
 } from '@/app/api/helpers/response';
@@ -46,7 +46,9 @@ export async function GET(req: NextRequest, { params }: Params) {
         instagram: shareUrl,
       },
     });
-  } catch {
-    return generalErrorResponse();
+  } catch (error) {
+    // Was a bare `catch {}` that destroyed the cause. Same generic body out,
+    // the difference is that the server now records what happened.
+    return loggedServerError('mobile/businesses/[businessId]/share', error);
   }
 }

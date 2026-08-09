@@ -67,11 +67,18 @@ describe('getBusinessCountsAction', () => {
     expect(result).toEqual({ error: 'db down' });
   });
 
-  it('surfaces a thrown error as a failure result', async () => {
-    countBusinessesByStatus.mockRejectedValue(new Error('boom'));
+  it('surfaces a thrown error without leaking its message (ST12)', async () => {
+    // This test used to assert `{ error: 'boom' }` — i.e. it pinned the leak.
+    // A thrown value here is a raw driver error: `error.message` carries table,
+    // column and constraint names, which CLAUDE.md forbids sending to a client.
+    // The detail goes to Sentry via `logActionError` instead (ST4).
+    countBusinessesByStatus.mockRejectedValue(
+      new Error('relation "businesses" does not exist'),
+    );
 
     const result = await getBusinessCountsAction();
 
-    expect(result).toEqual({ error: 'boom' });
+    expect(result).toEqual({ error: 'Failed to fetch counts' });
+    expect(JSON.stringify(result)).not.toMatch(/relation|businesses/i);
   });
 });

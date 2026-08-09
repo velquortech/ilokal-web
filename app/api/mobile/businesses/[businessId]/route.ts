@@ -1,6 +1,6 @@
 import { createBearerClient } from '@/supabase/bearer';
 import {
-  generalErrorResponse,
+  loggedServerError,
   notFoundResponse,
   successResponse,
 } from '@/app/api/helpers/response';
@@ -115,7 +115,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
     };
 
     return successResponse({ business });
-  } catch {
-    return generalErrorResponse();
+  } catch (error) {
+    // Was a bare `catch {}`: the cause was destroyed, so a 500 on this route —
+    // public business detail, one of the hottest reads in the app — was
+    // observable by no means at all, Sentry or log stream. The response body is
+    // unchanged; `loggedServerError` returns the same generic shape.
+    return loggedServerError('mobile/businesses/[businessId]', error);
   }
 }

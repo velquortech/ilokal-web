@@ -14,6 +14,7 @@ import { createServerSupabaseClient } from '@/supabase/server';
 import { User } from '@/lib/types/user';
 import { ROUTES } from '@/config/routeConfig';
 import { isDynamicUsageError } from '@/lib/utils/dynamicUsage';
+import { captureServerError } from '@/lib/utils/captureError';
 
 /**
  * Fetch the current user from the server session
@@ -124,6 +125,12 @@ export async function getAdminUserOrRedirect(): Promise<User> {
     };
   } catch (error) {
     if (isRedirectError(error) || isDynamicUsageError(error)) throw error;
+    // ST5: anything reaching here is a genuine failure — a Supabase outage, a
+    // PostgREST 5xx — and the response to it is to sign the user out. Without a
+    // report, a partial outage presents as *every admin being logged out* with
+    // nothing anywhere to explain it. The control-flow throws are rethrown
+    // above, so this only ever reports a real fault.
+    captureServerError('getAdminUserOrRedirect', error);
     console.error('[getAdminUserOrRedirect] Error:', error);
     redirect(ROUTES.AUTH.SIGN_IN);
   }
@@ -184,6 +191,8 @@ export async function getBusinessUserOrRedirect(): Promise<User> {
     };
   } catch (error) {
     if (isRedirectError(error) || isDynamicUsageError(error)) throw error;
+    // Same reasoning as `getAdminUserOrRedirect` above.
+    captureServerError('getBusinessUserOrRedirect', error);
     console.error('[getBusinessUserOrRedirect] Error:', error);
     redirect(ROUTES.AUTH.SIGN_IN);
   }

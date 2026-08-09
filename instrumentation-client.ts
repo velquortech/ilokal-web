@@ -50,11 +50,41 @@ Sentry.init({
 
   // Browser extensions and cross-origin script errors produce events that are
   // not this app's code and cannot be actioned.
+  //
+  // ⚠️ A filter that is too broad drops REAL events and does it invisibly —
+  // the same failure shape the same-origin tunnel was chosen to avoid. Every
+  // entry below therefore matches a symbol this codebase does not contain:
+  // `messageHandlers`, `sendDataToNative`, `postMessage` and
+  // `navigation_performance_logger` each appear 0 times across
+  // app/components/lib/config/providers/hooks. Re-check that before widening
+  // one, and never match on a bare word like `postMessage` that we might
+  // legitimately start using.
   ignoreErrors: [
     'ResizeObserver loop limit exceeded',
     'ResizeObserver loop completed with undelivered notifications',
     'Non-Error promise rejection captured',
+
+    // Meta's in-app browser (Facebook / Messenger) injects its own native
+    // bridge into every page it renders, and that bridge throws on unload when
+    // the native side has already gone away. Not our bundle: the Android half
+    // lives in `app://navigation_performance_logger_android` (see denyUrls),
+    // and the iOS half runs inline in the document, so it reports against our
+    // own path and can only be caught by message.
+    //
+    // This matters more than the event count suggests — a large share of PH
+    // traffic arrives through those in-app browsers, both fired on /signup,
+    // and the tunnel is rate-limited at 60/60s: a spent quota drops real
+    // errors too. (JAVASCRIPT-NEXTJS-2, JAVASCRIPT-NEXTJS-3)
+    'Error invoking postMessage: Java object is gone',
+    /window\.webkit\.messageHandlers/,
+    /\bsendDataToNative\b/,
   ],
+
+  // Frames whose URL is not this app. `denyUrls` matches the event's frame
+  // URLs, so it catches the Android bridge (which loads as its own `app://`
+  // script) but NOT the iOS one, which is evaluated in the document's own
+  // context — hence the message matches above.
+  denyUrls: [/^app:\/\/navigation_performance_logger_android/],
 
   beforeSend(event, hint) {
     if (isExpectedError(hint?.originalException)) return null;

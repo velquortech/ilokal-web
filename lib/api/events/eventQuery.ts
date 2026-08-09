@@ -41,7 +41,7 @@ import type {
 const SELECT_WITH_REFS = `
   *,
   business:businesses ( id, shop_name, logo_url ),
-  product:products ( id, name, image_url )
+  product:products ( id, name, image_url, status )
 `;
 
 type EmbeddedRow = Record<string, unknown> & {
@@ -50,27 +50,56 @@ type EmbeddedRow = Record<string, unknown> & {
 };
 
 /**
- * Shape one row for rendering.
+ * Who is going to read this row.
  *
- * Two things happen here, both of which look optional until they bite:
+ * `'public'` — anyone on `/events`, `/events/[id]` or the `/explore` banner.
+ * `'internal'` — the owner's own event list and the admin review queue.
  *
- * 1. `business` and `product` are to-one embeds, which PostgREST returns as
- *    ARRAYS. Reading `.shop_name` off an array yields undefined and renders as
- *    a shop with no name.
- * 2. Image columns hold RAW STORAGE PATHS. `uploadWebP` returns `data.path`,
- *    so a real upload stores `<businessId>/<file>.webp` — handing that to
- *    `next/image` produces a relative URL that 404s. Seeds store full URLs
- *    instead, and `resolveStorageUrl` passes those through untouched, so one
- *    call covers both.
+ * A named union rather than a boolean flag, because the call sites are where
+ * this decision has to be legible.
  */
-function normalise(supabase: StorageClient, row: EmbeddedRow): EventWithRefs {
+type EventAudience = 'public' | 'internal';
+
+/** The promoted offering as SELECTED — `status` is read, then dropped. */
+type ProductEmbed = NonNullable<EventWithRefs['product']> & { status: string };
+
+/**
+ * Shape one row for rendering: unwrap the to-one embeds, resolve the stored
+ * image paths (both via the shared event-media helper), and decide whether the
+ * promoted offering is one this audience should see.
+ */
+function normalise(
+  supabase: StorageClient,
+  row: EmbeddedRow,
+  audience: EventAudience,
+): EventWithRefs {
   const event = row as unknown as EventWithRefs;
   const { image_url, business, product } = resolveEventMedia<
     NonNullable<EventWithRefs['business']>,
-    NonNullable<EventWithRefs['product']>
+    ProductEmbed
   >(supabase, row);
 
-  return { ...event, image_url, business, product };
+  // Products RLS (20260526000007) gates only `archived_at` and the shop being
+  // verified — NOT `products.status`. So an offering the owner set to
+  // `unlisted` or `disabled` is still readable, and `/events/[eventId]` renders
+  // "Featuring <name>" straight from this field: without the gate, a public
+  // event page advertises an offering the shop has taken down.
+  //
+  // Deliberately NOT applied to `'internal'`. The owner's list and the admin's
+  // review queue are the two places where "this event promotes an offering you
+  // have disabled" is the useful signal — hiding it there would turn a
+  // diagnosable state into a silent one.
+  //
+  // `status` is dropped either way: `EventWithRefs['product']` does not declare
+  // it, and returning an undeclared field is how the next reader starts
+  // depending on it.
+  const visibleProduct: EventWithRefs['product'] = product
+    ? audience === 'internal' || product.status === 'active'
+      ? { id: product.id, name: product.name, image_url: product.image_url }
+      : null
+    : null;
+
+  return { ...event, image_url, business, product: visibleProduct };
 }
 
 const EMPTY_PAGE = (perPage: number): PaginatedEvents => ({
@@ -149,7 +178,7 @@ export async function getPublicEvents(
     const total = count ?? 0;
     return {
       events: (data ?? []).map((row) =>
-        normalise(supabase, row as EmbeddedRow),
+        normalise(supabase, row as EmbeddedRow, 'public'),
       ),
       metadata: {
         total,
@@ -195,7 +224,9 @@ export async function getBannerEvents(limit = 8): Promise<EventWithRefs[]> {
       console.error('[getBannerEvents]', describeDbError(error));
       return [];
     }
-    return (data ?? []).map((row) => normalise(supabase, row as EmbeddedRow));
+    return (data ?? []).map((row) =>
+      normalise(supabase, row as EmbeddedRow, 'public'),
+    );
   } catch (err) {
     console.error('[getBannerEvents]', err);
     return [];
@@ -238,7 +269,7 @@ export const getEventById = cache(
       }
       if (!data) return { error: 'NOT_FOUND' };
 
-      return { event: normalise(supabase, data as EmbeddedRow) };
+      return { event: normalise(supabase, data as EmbeddedRow, 'public') };
     } catch (err) {
       console.error('[getEventById]', err);
       return { error: 'LOAD_FAILED' };
@@ -290,7 +321,7 @@ export async function getEventsForBusiness(
     const total = count ?? 0;
     return {
       events: (data ?? []).map((row) =>
-        normalise(supabase, row as EmbeddedRow),
+        normalise(supabase, row as EmbeddedRow, 'internal'),
       ),
       metadata: {
         total,
@@ -346,7 +377,7 @@ export async function getEventsForReview(
     const total = count ?? 0;
     return {
       events: (data ?? []).map((row) =>
-        normalise(supabase, row as EmbeddedRow),
+        normalise(supabase, row as EmbeddedRow, 'internal'),
       ),
       metadata: {
         total,

@@ -160,6 +160,7 @@ export async function uploadBranchImageAction(
         maxDimension: IMAGE_PRESETS.hero,
       });
     } catch (err) {
+      logActionError('uploadBranchImageAction', err);
       if (err instanceof ImageProcessingError) {
         return {
           success: false,

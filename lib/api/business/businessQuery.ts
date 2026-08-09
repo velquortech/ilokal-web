@@ -58,6 +58,7 @@ export async function getBusinessById(
       error: null,
     };
   } catch (err) {
+    logActionError('getBusinessById', err);
     return {
       business: null,
       error: err instanceof Error ? err.message : 'Failed to fetch business',
@@ -140,6 +141,7 @@ export async function getBusinessesPaginated(
       error: null as string | null,
     };
   } catch (err) {
+    logActionError('getBusinessesPaginated', err);
     return {
       data: [],
       total: 0,
@@ -186,6 +188,7 @@ export async function getBusinessesByStatus(
       error: null as string | null,
     };
   } catch (err) {
+    logActionError('getBusinessesByStatus', err);
     return {
       businesses: [],
       error: err instanceof Error ? err.message : 'Failed to fetch businesses',
@@ -225,6 +228,7 @@ export async function countBusinessesByStatus(): Promise<{
 
     return { counts, error: null as string | null };
   } catch (err) {
+    logActionError('countBusinessesByStatus', err);
     return {
       counts: {},
       error: err instanceof Error ? err.message : 'Failed to count businesses',
@@ -259,6 +263,7 @@ export async function updateBusinessStatus(
 
     return { business: data as Business, error: null };
   } catch (err) {
+    logActionError('updateBusinessStatus', err);
     return {
       business: null,
       error: err instanceof Error ? err.message : 'Failed to update business',
@@ -297,6 +302,7 @@ export async function updateBusinessProfile(
 
     return { business: data as Business, error: null };
   } catch (err) {
+    logActionError('updateBusinessProfile', err);
     return {
       business: null,
       error: err instanceof Error ? err.message : 'Failed to update business',
@@ -331,6 +337,7 @@ export async function archiveBusinessById(
 
     return { success: true, error: null };
   } catch (err) {
+    logActionError('archiveBusinessById', err);
     return {
       success: false,
       error: err instanceof Error ? err.message : 'Failed to archive business',
@@ -358,6 +365,7 @@ export async function deleteBusinessById(
 
     return { success: true, error: null };
   } catch (err) {
+    logActionError('deleteBusinessById', err);
     return {
       success: false,
       error: err instanceof Error ? err.message : 'Failed to delete business',
@@ -409,7 +417,12 @@ export async function getBusinessProfileData(
           (url) => resolve('interior-images', url) ?? url,
         ) ?? null,
     } as BusinessProfileData;
-  } catch {
+  } catch (error) {
+    // This function collapses "no such shop" and "the read failed" into one
+    // `null` (noted in CLAUDE.md's gallery entry), so without a report a
+    // failing read is indistinguishable from a missing business — to the
+    // caller AND to us.
+    logActionError('getBusinessProfileData', error);
     return null;
   }
 }

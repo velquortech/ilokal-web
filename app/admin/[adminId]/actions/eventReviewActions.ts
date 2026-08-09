@@ -184,6 +184,7 @@ async function notifyOwner(
       console.error('[decideEventAction] notify failed', notify.error);
     }
   } catch (error) {
+    logActionError('decideEventAction', error);
     console.error('[decideEventAction] notify threw', error);
   }
 }

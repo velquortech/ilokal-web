@@ -1,5 +1,7 @@
 'use server';
 
+import { logActionError } from '@/lib/utils/captureError';
+
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { User } from '@/lib/types/user';
 import {
@@ -69,8 +71,8 @@ export async function updateCurrentUserProfileAction(
 
     return { success: true, data: updatedUser };
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'An unexpected error occurred';
+    logActionError('updateCurrentUserProfileAction', error);
+    const errorMessage = 'An unexpected error occurred';
     console.error('[updateCurrentUserProfileAction] Error:', errorMessage);
     return {
       success: false,

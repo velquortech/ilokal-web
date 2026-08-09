@@ -1,5 +1,7 @@
 'use server';
 
+import { logActionError } from '@/lib/utils/captureError';
+
 import { revalidatePath } from 'next/cache';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import {
@@ -172,7 +174,7 @@ export async function upsertBusinessSettingsAction(
     revalidatePath(businessSettingsPath(businessId));
     return { success: true, data: result };
   } catch (err) {
-    console.error('[upsertBusinessSettingsAction] error:', err);
+    logActionError('upsertBusinessSettingsAction', err);
     return {
       success: false,
       error: { code: 'DB_ERROR', message: 'Failed to save settings' },
@@ -206,7 +208,7 @@ export async function updateNotificationPreferencesAction(
     );
     return { success: true, data: result };
   } catch (err) {
-    console.error('[updateNotificationPreferencesAction] error:', err);
+    logActionError('updateNotificationPreferencesAction', err);
     return {
       success: false,
       error: { code: 'DB_ERROR', message: 'Failed to save preferences' },

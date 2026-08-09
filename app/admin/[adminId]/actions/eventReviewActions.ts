@@ -184,8 +184,11 @@ async function notifyOwner(
       console.error('[decideEventAction] notify failed', notify.error);
     }
   } catch (error) {
-    logActionError('decideEventAction', error);
-    console.error('[decideEventAction] notify threw', error);
+    // Distinct context from the action's own catch: "the decision failed" and
+    // "the decision succeeded but the owner was never told" are different
+    // faults with different follow-ups, and a shared tag groups them as one
+    // issue. Same reasoning as `signOutAction:revoke` / `:clearCookies`.
+    logActionError('decideEventAction:notify', error);
   }
 }
 

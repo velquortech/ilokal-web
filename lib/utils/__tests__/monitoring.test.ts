@@ -228,3 +228,27 @@ describe('scrubHeaders', () => {
     });
   });
 });
+
+describe('email inside a value (PR #43 review)', () => {
+  it('redacts an address Postgres embedded in error text', () => {
+    // Key-based redaction misses this: the key is `details`, which is not
+    // sensitive and must survive — it names the constraint that fired.
+    const scrubbed = scrubObject({
+      code: '23505',
+      details: 'Key (email)=(owner@shop.ph) already exists.',
+    }) as Record<string, string>;
+
+    expect(scrubbed.details).not.toContain('owner@shop.ph');
+    expect(scrubbed.details).toContain('Key (email)=');
+    // The SQLSTATE is the most useful field in the event and must not be eaten.
+    expect(scrubbed.code).toBe('23505');
+  });
+
+  it('leaves ordinary text alone', () => {
+    const scrubbed = scrubObject({
+      message: 'relation "view_events" does not exist',
+    }) as Record<string, string>;
+
+    expect(scrubbed.message).toBe('relation "view_events" does not exist');
+  });
+});

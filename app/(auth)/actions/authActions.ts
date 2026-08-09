@@ -605,19 +605,24 @@ export async function signupFormAction(
       return { success: true };
     }
 
-    // Check if error is email-related
-    const isEmailError =
-      errorMessage.toLowerCase().includes('email') ||
+    // ST12: `errorMessage` is the RAW thrown message. It is used to CLASSIFY
+    // the failure and must never be what the client receives — this is the
+    // unauthenticated signup path, so a Supabase message here would hand a
+    // stranger table, column and constraint names.
+    //
+    // PR #43 review: the bare `includes('email')` test used to be part of this
+    // condition. That was safe while the raw message was echoed back, and
+    // became wrong the moment the reply asserted a specific cause — GoTrue's
+    // "Email rate limit exceeded" and "Error sending confirmation email" both
+    // contain "email" and would have told the visitor their address was already
+    // registered, sending them to a sign-in they cannot complete. Only phrases
+    // that actually mean "taken" may claim it.
+    const isAlreadyRegistered =
       errorMessage.toLowerCase().includes('already registered') ||
       errorMessage.toLowerCase().includes('already exists') ||
       errorMessage.toLowerCase().includes('user already');
 
-    // ST12: `errorMessage` is the RAW thrown message. It is used above to
-    // classify the failure, and must not be what the client receives — this is
-    // the unauthenticated signup path, so a Supabase message here would hand a
-    // stranger table, column and constraint names. Classify on the raw text,
-    // answer with hand-written copy.
-    if (isEmailError) {
+    if (isAlreadyRegistered) {
       return {
         fieldErrors: {
           email: 'That email is already registered. Try signing in instead.',

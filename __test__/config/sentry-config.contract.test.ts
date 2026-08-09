@@ -237,10 +237,14 @@ describe('in-app browser noise filters (ST10)', () => {
   // were this, on /signup — and a large share of PH traffic arrives that way,
   // against a tunnel rate-limited at 60/60s where a spent quota drops REAL
   // errors too.
+  // Sweep for the symbols the filters ACTUALLY match on. `postMessage` was in
+  // this list originally, but no filter matches the bare word — the entry is
+  // the full sentence `Error invoking postMessage: Java object is gone`. Left
+  // in, a legitimate future `window.postMessage`/worker call would fail this
+  // test for no over-filtering reason, and a guard that cries wolf gets deleted.
   const filtered = [
     'messageHandlers',
     'sendDataToNative',
-    'postMessage',
     'navigation_performance_logger',
   ];
 
@@ -322,7 +326,11 @@ describe('both error funnels report (SN7, SN8)', () => {
    * the first `}` — which is usually the returned object literal.
    */
   function* catchBlocks(source: string) {
-    const re = /\}\s*catch\s*(?:\((\w+)\))?\s*\{/g;
+    // `\(\w+\)` matched only a bare identifier, so `catch (err: unknown)` and
+    // `catch ({ message })` were skipped ENTIRELY and passed the guard silently
+    // — the same false-green this test exists to kill. `lib/services/*` already
+    // uses the annotated form, so the shape is in-repo.
+    const re = /\}\s*catch\s*(?:\([^)]*\))?\s*\{/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(source))) {
       let depth = 0;

@@ -106,12 +106,37 @@ function isCodeKey(key: string): boolean {
 }
 
 /**
+ * An email address embedded in a VALUE rather than named by a key.
+ *
+ * Key-based redaction misses these entirely, and Postgres puts them in error
+ * text verbatim: `Key (email)=(a@b.com) already exists.` The key there is
+ * `details`, which is not sensitive and must stay — it is how you tell which
+ * constraint fired — so the address has to be removed from inside the string.
+ *
+ * Only email. A phone pattern over free text would also match ids, SQLSTATEs
+ * and row counts, and silently strip the fields that make an event useful; the
+ * false-positive cost is worse than the leak it would close.
+ */
+const EMAIL_IN_TEXT = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
+
+export function redactEmails(value: string): string {
+  return value.replace(EMAIL_IN_TEXT, REDACTED);
+}
+
+/**
  * Decide the replacement for one key/value pair.
  * Exported because it is the whole redaction policy in one place.
  */
 export function scrubEntry(key: string, value: unknown): unknown {
   if (isSensitiveKey(key)) return REDACTED;
   if (isCodeKey(key) && isRedemptionCode(value)) return REDACTED;
+  // `sendDefaultPii` is false, but that only governs what the SDK attaches on
+  // its own — it does nothing about an address sitting inside driver text we
+  // hand it ourselves.
+  if (typeof value === 'string' && value.includes('@')) {
+    const redacted = redactEmails(value);
+    if (redacted !== value) return redacted;
+  }
   return undefined; // "no opinion" — caller keeps recursing
 }
 

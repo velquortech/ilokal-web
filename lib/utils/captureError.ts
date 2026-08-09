@@ -122,7 +122,14 @@ function fingerprintFor(
       ? (error as { code: string }).code
       : 'unknown';
 
-  return { fingerprint: ['{{ default }}', context, code] };
+  // `{{ default }}` is deliberately NOT included here. For a stackless capture
+  // Sentry's default components derive from the object's KEY SET (the
+  // "Non-Error exception captured with keys: …" value), so keeping it would let
+  // `{code, message}` and `{code, message, details, hint}` from the same
+  // context and SQLSTATE split into two issues — the exact collapse-vs-split
+  // problem this function exists to fix, one level down. The context and the
+  // code are the whole signal here.
+  return { fingerprint: [context, code] };
 }
 
 /**

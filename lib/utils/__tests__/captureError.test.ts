@@ -204,7 +204,6 @@ describe('grouping fingerprint (ST7)', () => {
     await flush();
 
     expect(optionsOf(0).fingerprint).toEqual([
-      '{{ default }}',
       'mobile/businesses/[businessId]/view',
       '23503',
     ]);
@@ -233,11 +232,7 @@ describe('grouping fingerprint (ST7)', () => {
   it('falls back to "unknown" when there is no code', async () => {
     captureServerError('routeA', { message: 'no code here' });
     await flush();
-    expect(optionsOf(0).fingerprint).toEqual([
-      '{{ default }}',
-      'routeA',
-      'unknown',
-    ]);
+    expect(optionsOf(0).fingerprint).toEqual(['routeA', 'unknown']);
   });
 });
 

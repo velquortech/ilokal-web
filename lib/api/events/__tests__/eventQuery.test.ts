@@ -382,10 +382,12 @@ describe('the promoted offering is gated by audience, not by RLS', () => {
     expect(banner.product).toBeNull();
   });
 
-  it('SHOWS it to the owner, whose list is where that state is diagnosable', async () => {
-    // The owner's list and the admin's review queue are the two places where
-    // "this event promotes an offering you have disabled" is the useful
-    // signal. Hiding it there would turn a fixable state into a silent one.
+  it('SHOWS it to the owner, who has to see the link they created', async () => {
+    // The owner's list and the admin's review queue must still say WHICH
+    // offering the event promotes, whatever its status — blanking it there
+    // would leave an owner unable to see a link they made. Note this does not
+    // surface WHY: `status` is dropped on both branches, so a badge on the
+    // owner's table is still a UI addition, not something this covers.
     mockClient({ data: [productRow('disabled')], error: null, count: 1 });
 
     const result = await getEventsForBusiness('biz-1', {});
@@ -405,6 +407,88 @@ describe('the promoted offering is gated by audience, not by RLS', () => {
       name: 'Kape',
       image_url: null,
     });
+  });
+});
+
+describe("the reviewer's record never reaches a public surface", () => {
+  /**
+   * `SELECT_WITH_REFS` leads with `*`, and it has to: the owner's event table
+   * and the admin review queue both render `review_note`. So the gate is the
+   * audience, not the projection.
+   *
+   * This is not an API-only concern, which is what made it easy to miss.
+   * `getPublicEvents` and `getBannerEvents` pass their rows straight into
+   * `'use client'` components, and React serialises client-component props
+   * into the RSC flight payload — so these columns were reaching anonymous
+   * visitors of `/events` and `/explore` in the wire response, rendering
+   * nothing and logging nothing. Reproduced against a running production build
+   * with a canary note before this test was written.
+   */
+  const reviewedRow = () => ({
+    id: 'evt-1',
+    image_url: null,
+    business: [],
+    product: null,
+    review_note: 'photo shows another shop branding',
+    reviewed_by: 'admin-user-uuid',
+    reviewed_at: '2026-08-01T00:00:00.000Z',
+    priority: 7,
+    // Not declared on `Event`, so no type mentions it — but `select('*')`
+    // returns it as PostGIS WKB hex regardless. A type-driven strip misses it.
+    location: '0101000020E6100000AE47E17A14AE5E40',
+  });
+
+  const PRIVATE = [
+    'review_note',
+    'reviewed_by',
+    'reviewed_at',
+    'priority',
+    'location',
+  ];
+
+  it.each(PRIVATE)('strips %s from the public detail page', async (column) => {
+    mockClient({ data: reviewedRow(), error: null });
+
+    const result = await getEventById(EVENT_ID);
+
+    expect('event' in result && column in result.event).toBe(false);
+  });
+
+  it('strips them from the public list and the banner', async () => {
+    mockClient({ data: [reviewedRow()], error: null, count: 1 });
+    const list = await getPublicEvents({});
+    for (const column of PRIVATE) {
+      expect(column in list.events[0]).toBe(false);
+    }
+
+    mockClient({ data: [reviewedRow()], error: null });
+    const [banner] = await getBannerEvents();
+    for (const column of PRIVATE) {
+      expect(column in banner).toBe(false);
+    }
+  });
+
+  it('still returns everything the public surfaces DO render', async () => {
+    // A strip that also removed the payload would pass every assertion above
+    // while breaking the page, so the survivors are pinned too.
+    mockClient({ data: reviewedRow(), error: null });
+
+    const result = await getEventById(EVENT_ID);
+
+    expect('event' in result && result.event.id).toBe('evt-1');
+  });
+
+  it('KEEPS review_note for the owner, whose table renders it', async () => {
+    // `event-table/columns.tsx:68` shows the rejection reason on a rejected
+    // event. Stripping it for everyone would have turned a leak fix into a
+    // blank explanation on the surface that exists to explain.
+    mockClient({ data: [reviewedRow()], error: null, count: 1 });
+
+    const result = await getEventsForBusiness('biz-1', {});
+
+    expect(
+      (result.events[0] as unknown as Record<string, unknown>).review_note,
+    ).toBe('photo shows another shop branding');
   });
 });
 

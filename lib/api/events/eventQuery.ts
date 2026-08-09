@@ -30,6 +30,7 @@ import type {
   EventWithRefs,
   NearbyEvent,
   PaginatedEvents,
+  PrivateEventColumn,
 } from '@/lib/types';
 
 /**
@@ -64,6 +65,49 @@ type EventAudience = 'public' | 'internal';
 type ProductEmbed = NonNullable<EventWithRefs['product']> & { status: string };
 
 /**
+ * Columns a PUBLIC reader must never receive.
+ *
+ * `SELECT_WITH_REFS` leads with `*` and has to keep doing so: the owner's event
+ * table and the admin review queue both render `review_note` (the rejection
+ * reason), so narrowing the projection would break the two surfaces that need
+ * it. The gate therefore lives here, on the audience that must not see them.
+ *
+ * This is not theoretical, and it is not only an API concern. `getPublicEvents`
+ * and `getBannerEvents` hand their rows straight to `'use client'` components
+ * (`events-browser.tsx`, `event-banner.tsx`), and React serialises
+ * client-component props into the RSC flight payload — so every column reached
+ * an anonymous visitor to `/events` and `/explore`, in the wire response, with
+ * nothing rendered and nothing logged. Confirmed against a running production
+ * build before this was written: a canary review note planted on an approved
+ * event appeared in both pages' payloads.
+ *
+ * `location` is in the list but NOT in `PrivateEventColumn`, and that gap is
+ * the point: `Event` does not declare `location`, so no type mentions it, yet
+ * `select('*')` returns it anyway as PostGIS WKB hex. A type-driven strip alone
+ * would have missed it.
+ */
+const PUBLIC_STRIPPED_COLUMNS: readonly (PrivateEventColumn | 'location')[] = [
+  'review_note',
+  'reviewed_by',
+  'reviewed_at',
+  'priority',
+  'location',
+];
+
+/**
+ * Drop the reviewer's record before a row leaves for a public surface.
+ *
+ * A shallow copy, because the row is handed to callers that spread it — and
+ * mutating the object the cache may hand to an internal caller next would turn
+ * a leak fix into a data-loss bug on the admin queue.
+ */
+function withoutPrivateColumns(event: EventWithRefs): EventWithRefs {
+  const copy = { ...event } as Record<string, unknown>;
+  for (const column of PUBLIC_STRIPPED_COLUMNS) delete copy[column];
+  return copy as unknown as EventWithRefs;
+}
+
+/**
  * Shape one row for rendering: unwrap the to-one embeds, resolve the stored
  * image paths (both via the shared event-media helper), and decide whether the
  * promoted offering is one this audience should see.
@@ -85,10 +129,15 @@ function normalise(
   // "Featuring <name>" straight from this field: without the gate, a public
   // event page advertises an offering the shop has taken down.
   //
-  // Deliberately NOT applied to `'internal'`. The owner's list and the admin's
-  // review queue are the two places where "this event promotes an offering you
-  // have disabled" is the useful signal — hiding it there would turn a
-  // diagnosable state into a silent one.
+  // Deliberately NOT applied to `'internal'`. On the owner's list and the
+  // admin review queue the row must still show WHICH offering the event
+  // promotes, whatever its status — blanking it there would leave an owner
+  // unable to see the link they created.
+  //
+  // Note what this does NOT do: `status` is dropped on both branches, so the
+  // internal surfaces show the offering's name but say nothing about it being
+  // unlisted or disabled. Surfacing that is a UI addition (a badge on the
+  // owner's table), not something this function can express today.
   //
   // `status` is dropped either way: `EventWithRefs['product']` does not declare
   // it, and returning an undeclared field is how the next reader starts
@@ -99,7 +148,9 @@ function normalise(
       : null
     : null;
 
-  return { ...event, image_url, business, product: visibleProduct };
+  const shaped = { ...event, image_url, business, product: visibleProduct };
+
+  return audience === 'public' ? withoutPrivateColumns(shaped) : shaped;
 }
 
 const EMPTY_PAGE = (perPage: number): PaginatedEvents => ({

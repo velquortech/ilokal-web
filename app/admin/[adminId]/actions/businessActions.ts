@@ -19,6 +19,7 @@ import {
   AdminBusiness,
   PaginatedBusinessResponse,
 } from '@/lib/types/business';
+import { logActionError } from '@/lib/utils/captureError';
 
 // ============================================================================
 // AUTHORIZATION CHECK
@@ -61,8 +62,9 @@ export async function getBusinessesAction(
 
     return data || { error: 'No data returned' };
   } catch (err) {
+    logActionError('getBusinessesAction', err);
     return {
-      error: err instanceof Error ? err.message : 'Failed to fetch businesses',
+      error: 'Failed to fetch businesses',
     };
   }
 }
@@ -94,9 +96,10 @@ export async function getBusinessAction(
       data: business || undefined,
     };
   } catch (err) {
+    logActionError('getBusinessAction', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to fetch business',
+      error: 'Failed to fetch business',
     };
   }
 }
@@ -119,8 +122,9 @@ export async function getBusinessCountsAction(): Promise<
 
     return { counts };
   } catch (err) {
+    logActionError('getBusinessCountsAction', err);
     return {
-      error: err instanceof Error ? err.message : 'Failed to fetch counts',
+      error: 'Failed to fetch counts',
     };
   }
 }
@@ -156,9 +160,10 @@ export async function verifyBusinessAction(
 
     return { success: true, data };
   } catch (err) {
+    logActionError('verifyBusinessAction', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to verify business',
+      error: 'Failed to verify business',
     };
   }
 }
@@ -190,9 +195,10 @@ export async function rejectBusinessAction(
 
     return { success: true, data };
   } catch (err) {
+    logActionError('rejectBusinessAction', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to reject business',
+      error: 'Failed to reject business',
     };
   }
 }
@@ -228,9 +234,10 @@ export async function suspendBusinessAction(
 
     return { success: true, data };
   } catch (err) {
+    logActionError('suspendBusinessAction', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to suspend business',
+      error: 'Failed to suspend business',
     };
   }
 }
@@ -259,10 +266,10 @@ export async function reactivateBusinessAction(
 
     return { success: true, data };
   } catch (err) {
+    logActionError('reactivateBusinessAction', err);
     return {
       success: false,
-      error:
-        err instanceof Error ? err.message : 'Failed to reactivate business',
+      error: 'Failed to reactivate business',
     };
   }
 }
@@ -299,9 +306,10 @@ export async function updateBusinessAction(
 
     return { success: true, data };
   } catch (err) {
+    logActionError('updateBusinessAction', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to update business',
+      error: 'Failed to update business',
     };
   }
 }
@@ -333,9 +341,10 @@ export async function archiveBusinessAction(
 
     return { success: true };
   } catch (err) {
+    logActionError('archiveBusinessAction', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to archive business',
+      error: 'Failed to archive business',
     };
   }
 }
@@ -364,9 +373,10 @@ export async function deleteBusinessAction(
 
     return { success: true };
   } catch (err) {
+    logActionError('deleteBusinessAction', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to delete business',
+      error: 'Failed to delete business',
     };
   }
 }

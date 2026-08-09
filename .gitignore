@@ -62,3 +62,4 @@ claude.md
 # Variable font cuts: the image renderer (Satori) cannot parse them, so they
 # are never the file to commit. Static cuts only.
 assets/fonts/*-Variable.ttf
+.claude/SENTRY_TRIAGE.md

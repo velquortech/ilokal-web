@@ -18,12 +18,30 @@ export function generalErrorResponse<T>(data?: T): Response {
 // This is also the single funnel for API 500s — 60 call sites across `app/api`
 // — which is why the Sentry capture lives here rather than being sprinkled
 // through the routes (`.claude/SENTRY_MONITORING.md`, SN8).
+// `error` is `unknown`, not `{ message?: string }`. A `catch (error)` binding is
+// typed `unknown`, so the narrower signature forced every catch-block caller to
+// cast — and Next 16's build does not type-check, so a wrong cast here would
+// ship silently. Widening keeps the 60 existing call sites working (they pass
+// PostgrestError objects) and lets any catch reach the funnel directly.
 export function loggedServerError(
   context: string,
-  error?: { message?: string } | null,
+  error?: unknown,
+  // ST8: the id of the user this 500 happened to, where the handler already has
+  // one (`getMobileUser` / `assertAuthorized`). Id only — never email or name.
+  // Optional because most public routes genuinely have no user.
+  userId?: string,
 ): Response {
-  if (error?.message) console.error(`[${context}]`, error.message);
-  captureServerError(context, error);
+  const message =
+    typeof error === 'object' && error !== null && 'message' in error
+      ? (error as { message?: unknown }).message
+      : undefined;
+
+  // Unchanged behaviour: only a real string message is logged, and the log line
+  // keeps the `[context] message` shape people grep for.
+  if (typeof message === 'string' && message)
+    console.error(`[${context}]`, message);
+
+  captureServerError(context, error, undefined, userId);
   return generalErrorResponse();
 }
 

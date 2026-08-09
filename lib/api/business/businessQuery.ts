@@ -8,6 +8,7 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { logActionError } from '@/lib/utils/captureError';
+import { isDynamicUsageError } from '@/lib/utils/dynamicUsage';
 import {
   Business,
   AdminBusiness,
@@ -50,7 +51,7 @@ export async function getBusinessById(
       .single();
 
     if (error) {
-      return { business: null, error: error.message };
+      return { business: null, error: 'Failed to fetch business' };
     }
 
     return {
@@ -58,9 +59,11 @@ export async function getBusinessById(
       error: null,
     };
   } catch (err) {
+    if (isDynamicUsageError(err)) throw err;
+    logActionError('getBusinessById', err);
     return {
       business: null,
-      error: err instanceof Error ? err.message : 'Failed to fetch business',
+      error: 'Failed to fetch business',
     };
   }
 }
@@ -131,7 +134,7 @@ export async function getBusinessesPaginated(
     const { data, error, count } = await query;
 
     if (error) {
-      return { data: [], total: 0, error: error.message };
+      return { data: [], total: 0, error: 'Failed to fetch businesses' };
     }
 
     return {
@@ -140,10 +143,12 @@ export async function getBusinessesPaginated(
       error: null as string | null,
     };
   } catch (err) {
+    if (isDynamicUsageError(err)) throw err;
+    logActionError('getBusinessesPaginated', err);
     return {
       data: [],
       total: 0,
-      error: err instanceof Error ? err.message : 'Failed to fetch businesses',
+      error: 'Failed to fetch businesses',
     };
   }
 }
@@ -178,7 +183,7 @@ export async function getBusinessesByStatus(
       .eq('status', status);
 
     if (error) {
-      return { businesses: [], error: error.message };
+      return { businesses: [], error: 'Failed to fetch businesses' };
     }
 
     return {
@@ -186,9 +191,11 @@ export async function getBusinessesByStatus(
       error: null as string | null,
     };
   } catch (err) {
+    if (isDynamicUsageError(err)) throw err;
+    logActionError('getBusinessesByStatus', err);
     return {
       businesses: [],
-      error: err instanceof Error ? err.message : 'Failed to fetch businesses',
+      error: 'Failed to fetch businesses',
     };
   }
 }
@@ -206,7 +213,7 @@ export async function countBusinessesByStatus(): Promise<{
     const { data, error } = await supabase.from('businesses').select('status');
 
     if (error) {
-      return { counts: {}, error: error.message };
+      return { counts: {}, error: 'Failed to count businesses' };
     }
 
     const counts = {
@@ -225,9 +232,11 @@ export async function countBusinessesByStatus(): Promise<{
 
     return { counts, error: null as string | null };
   } catch (err) {
+    if (isDynamicUsageError(err)) throw err;
+    logActionError('countBusinessesByStatus', err);
     return {
       counts: {},
-      error: err instanceof Error ? err.message : 'Failed to count businesses',
+      error: 'Failed to count businesses',
     };
   }
 }
@@ -254,14 +263,16 @@ export async function updateBusinessStatus(
       .single();
 
     if (error) {
-      return { business: null, error: error.message };
+      return { business: null, error: 'Failed to update business' };
     }
 
     return { business: data as Business, error: null };
   } catch (err) {
+    if (isDynamicUsageError(err)) throw err;
+    logActionError('updateBusinessStatus', err);
     return {
       business: null,
-      error: err instanceof Error ? err.message : 'Failed to update business',
+      error: 'Failed to update business',
     };
   }
 }
@@ -292,14 +303,16 @@ export async function updateBusinessProfile(
       .single();
 
     if (error) {
-      return { business: null, error: error.message };
+      return { business: null, error: 'Failed to update business' };
     }
 
     return { business: data as Business, error: null };
   } catch (err) {
+    if (isDynamicUsageError(err)) throw err;
+    logActionError('updateBusinessProfile', err);
     return {
       business: null,
-      error: err instanceof Error ? err.message : 'Failed to update business',
+      error: 'Failed to update business',
     };
   }
 }
@@ -326,14 +339,16 @@ export async function archiveBusinessById(
       .eq('id', businessId);
 
     if (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: 'Failed to archive business' };
     }
 
     return { success: true, error: null };
   } catch (err) {
+    if (isDynamicUsageError(err)) throw err;
+    logActionError('archiveBusinessById', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to archive business',
+      error: 'Failed to archive business',
     };
   }
 }
@@ -353,14 +368,16 @@ export async function deleteBusinessById(
       .eq('id', businessId);
 
     if (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: 'Failed to delete business' };
     }
 
     return { success: true, error: null };
   } catch (err) {
+    if (isDynamicUsageError(err)) throw err;
+    logActionError('deleteBusinessById', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to delete business',
+      error: 'Failed to delete business',
     };
   }
 }
@@ -409,7 +426,12 @@ export async function getBusinessProfileData(
           (url) => resolve('interior-images', url) ?? url,
         ) ?? null,
     } as BusinessProfileData;
-  } catch {
+  } catch (error) {
+    // This function collapses "no such shop" and "the read failed" into one
+    // `null` (noted in CLAUDE.md's gallery entry), so without a report a
+    // failing read is indistinguishable from a missing business — to the
+    // caller AND to us.
+    logActionError('getBusinessProfileData', error);
     return null;
   }
 }
@@ -448,6 +470,7 @@ export async function getBusinessCategoryOptions(): Promise<
     }
     return data ?? [];
   } catch (err) {
+    if (isDynamicUsageError(err)) throw err;
     logActionError('getBusinessCategoryOptions', err);
     return [];
   }
@@ -494,6 +517,7 @@ export async function getBusinessGallery(businessId: string): Promise<{
 
     return { images, failed: false, found: true };
   } catch (err) {
+    if (isDynamicUsageError(err)) throw err;
     logActionError('getBusinessGallery', err);
     return { images: [], failed: true, found: false };
   }

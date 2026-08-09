@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server';
 import { createBearerClient } from '@/supabase/bearer';
 import {
   badRequestResponse,
-  generalErrorResponse,
   successResponse,
   loggedServerError,
 } from '@/app/api/helpers/response';
@@ -182,7 +181,10 @@ export async function GET(req: NextRequest) {
       // single archived event look like the end of the feed.
       has_more: from + ranked.length < total,
     });
-  } catch {
-    return generalErrorResponse();
+  } catch (error) {
+    // See the note on the list route. This route runs two queries and a merge,
+    // so it has the most code between the reported branches and here — i.e. the
+    // most room for a throw that would otherwise arrive anonymous.
+    return loggedServerError('mobile/events/nearby', error);
   }
 }

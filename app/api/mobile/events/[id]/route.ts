@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server';
 import { createBearerClient } from '@/supabase/bearer';
 import {
   badRequestResponse,
-  generalErrorResponse,
   notFoundResponse,
   successResponse,
   loggedServerError,
@@ -79,7 +78,9 @@ export async function GET(
     const event = normaliseMobileEvent(supabase, data as MobileEventRow);
 
     return successResponse({ event });
-  } catch {
-    return generalErrorResponse();
+  } catch (error) {
+    // See the note on the list route: the branches above report the failures we
+    // expect, so a bare catch here would drop exactly the unanticipated ones.
+    return loggedServerError('mobile/events/[id]', error);
   }
 }

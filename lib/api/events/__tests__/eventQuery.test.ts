@@ -15,6 +15,7 @@ import {
   getPublicEvents,
   getBannerEvents,
   getEventById,
+  getEventsForBusiness,
   getPendingReviewCount,
   getNearbyEvents,
 } from '../eventQuery';
@@ -337,6 +338,73 @@ describe('storage paths are resolved before rendering', () => {
     expect(event.image_url).toBe(
       'https://cdn.example/event-images/biz-1/poster.webp',
     );
+  });
+});
+
+describe('the promoted offering is gated by audience, not by RLS', () => {
+  // Products RLS (20260526000007) gates only `archived_at` and the shop being
+  // verified — NOT `products.status`. So an offering the owner set to
+  // `unlisted` or `disabled` is still readable here, and
+  // `/events/[eventId]:197` renders "Featuring <name>" straight from it.
+  const productRow = (status: string) => ({
+    id: 'evt-1',
+    image_url: null,
+    business: [],
+    product: [{ id: 'p1', name: 'Kape', image_url: null, status }],
+  });
+
+  it.each([['unlisted'], ['disabled']])(
+    'hides a %s offering from the public detail page',
+    async (status) => {
+      mockClient({ data: productRow(status), error: null });
+
+      const result = await getEventById(EVENT_ID);
+
+      expect('event' in result && result.event.product).toBeNull();
+    },
+  );
+
+  it('keeps an active offering on the public detail page', async () => {
+    mockClient({ data: productRow('active'), error: null });
+
+    const result = await getEventById(EVENT_ID);
+
+    expect('event' in result && result.event.product?.name).toBe('Kape');
+  });
+
+  it('hides it from the public list and the banner too', async () => {
+    mockClient({ data: [productRow('disabled')], error: null, count: 1 });
+    const list = await getPublicEvents({});
+    expect(list.events[0].product).toBeNull();
+
+    mockClient({ data: [productRow('disabled')], error: null });
+    const [banner] = await getBannerEvents();
+    expect(banner.product).toBeNull();
+  });
+
+  it('SHOWS it to the owner, whose list is where that state is diagnosable', async () => {
+    // The owner's list and the admin's review queue are the two places where
+    // "this event promotes an offering you have disabled" is the useful
+    // signal. Hiding it there would turn a fixable state into a silent one.
+    mockClient({ data: [productRow('disabled')], error: null, count: 1 });
+
+    const result = await getEventsForBusiness('biz-1', {});
+
+    expect(result.events[0].product?.name).toBe('Kape');
+  });
+
+  it('never leaks the product `status` it selected in order to decide', async () => {
+    // `EventWithRefs['product']` is `{ id, name, image_url }`; returning an
+    // undeclared field is how the next reader starts depending on it.
+    mockClient({ data: productRow('active'), error: null });
+
+    const result = await getEventById(EVENT_ID);
+
+    expect('event' in result && result.event.product).toEqual({
+      id: 'p1',
+      name: 'Kape',
+      image_url: null,
+    });
   });
 });
 

@@ -72,8 +72,6 @@ export async function updateCurrentUserProfileAction(
     return { success: true, data: updatedUser };
   } catch (error) {
     logActionError('updateCurrentUserProfileAction', error);
-    const errorMessage = 'An unexpected error occurred';
-    console.error('[updateCurrentUserProfileAction] Error:', errorMessage);
     return {
       success: false,
       error: {

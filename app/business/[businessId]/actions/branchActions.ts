@@ -160,14 +160,14 @@ export async function uploadBranchImageAction(
         maxDimension: IMAGE_PRESETS.hero,
       });
     } catch (err) {
-      logActionError('uploadBranchImageAction', err);
+      // User input, not a fault — see the matching note in `productActions.ts`.
       if (err instanceof ImageProcessingError) {
         return {
           success: false,
           error: { code: 'VALIDATION_ERROR', message: err.message },
         };
       }
-      console.error('[uploadBranchImageAction] Upload error:', err);
+      logActionError('uploadBranchImageAction:upload', err);
       return {
         success: false,
         error: { code: 'UPLOAD_ERROR', message: 'Failed to upload image' },

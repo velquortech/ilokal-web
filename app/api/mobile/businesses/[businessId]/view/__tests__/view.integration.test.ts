@@ -91,7 +91,12 @@ describe('POST /api/mobile/businesses/[businessId]/view', () => {
     // `loggedServerError` is the only thing on this path that logs, and it is
     // also what reports to Sentry — so a silent console proves neither ran.
     mockAuth({
-      error: { code: '23503', message: 'foreign key violation', details: null },
+      error: {
+        code: '23503',
+        message:
+          'insert or update on table "view_events" violates foreign key constraint "view_events_business_id_fkey"',
+        details: `Key (business_id)=(${BUSINESS_ID}) is not present in table "businesses".`,
+      },
     });
 
     await POST(makeRequest(), makeParams());
@@ -112,6 +117,49 @@ describe('POST /api/mobile/businesses/[businessId]/view', () => {
     const body = await (await POST(makeRequest(), makeParams())).text();
 
     expect(body).not.toMatch(/view_events|foreign key|constraint|businesses/i);
+  });
+
+  it('reports a 23503 on a DIFFERENT foreign key instead of 404ing it', async () => {
+    // PR #43 review, 🔴. `view_events` has three FKs, so matching 23503 on the
+    // SQLSTATE alone answered "shop not found" to a fault that is neither about
+    // the shop nor the caller's fault — and reported nothing.
+    //
+    // Reachable: the admin hard-delete removes the `profiles` row and leaves
+    // the auth user, so an orphaned-but-valid JWT trips
+    // `view_events_user_id_fkey`.
+    mockAuth({
+      error: {
+        code: '23503',
+        message:
+          'insert or update on table "view_events" violates foreign key constraint "view_events_user_id_fkey"',
+        details:
+          'Key (user_id)=(11111111-1111-1111-1111-111111111111) is not present in table "profiles".',
+      },
+    });
+
+    const res = await POST(makeRequest(), makeParams());
+
+    expect(res.status).toBe(500);
+    expect(consoleError).toHaveBeenCalled();
+  });
+
+  it('404s a malformed business id without reaching the database', async () => {
+    // Otherwise 22P02 becomes a reported 500 on every malformed request.
+    const rpc = mockAuth({ error: null });
+
+    const res = await POST(
+      new NextRequest(
+        'http://localhost/api/mobile/businesses/not-a-uuid/view',
+        {
+          method: 'POST',
+        },
+      ),
+      { params: Promise.resolve({ businessId: 'not-a-uuid' }) },
+    );
+
+    expect(res.status).toBe(404);
+    expect(rpc).not.toHaveBeenCalled();
+    expect(consoleError).not.toHaveBeenCalled();
   });
 
   it('still 500s and reports any other SQLSTATE', async () => {

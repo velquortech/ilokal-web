@@ -231,23 +231,85 @@ describe('the capture helper', () => {
   });
 });
 
+describe('in-app browser noise filters (ST10)', () => {
+  // Meta's in-app browser injects a native bridge into every page it renders,
+  // and that bridge throws on unload. Two of the first five production issues
+  // were this, on /signup — and a large share of PH traffic arrives that way,
+  // against a tunnel rate-limited at 60/60s where a spent quota drops REAL
+  // errors too.
+  // Sweep for the symbols the filters ACTUALLY match on. `postMessage` was in
+  // this list originally, but no filter matches the bare word — the entry is
+  // the full sentence `Error invoking postMessage: Java object is gone`. Left
+  // in, a legitimate future `window.postMessage`/worker call would fail this
+  // test for no over-filtering reason, and a guard that cries wolf gets deleted.
+  const filtered = [
+    'messageHandlers',
+    'sendDataToNative',
+    'navigation_performance_logger',
+  ];
+
+  it('filters both halves of the Meta bridge', () => {
+    // Android reports from its own `app://` script, so denyUrls catches it.
+    expect(clientConfig).toMatch(
+      /denyUrls:\s*\[[^\]]*navigation_performance_logger_android/,
+    );
+    // iOS runs inline in the document and reports against OUR path, so it can
+    // only be matched by message.
+    expect(clientConfig).toMatch(/window\\\.webkit\\\.messageHandlers/);
+    expect(clientConfig).toContain(
+      'Error invoking postMessage: Java object is gone',
+    );
+  });
+
+  it('never filters a symbol this codebase actually uses', () => {
+    // THE load-bearing assertion. An over-broad ignore drops real events and
+    // does it invisibly — there is no error anywhere, the events simply stop.
+    // The filters above are only safe because none of these symbols appears in
+    // first-party code. The day someone legitimately adds `postMessage`, this
+    // fails and forces the filter to be re-narrowed rather than silently
+    // eating that feature's errors.
+    const hits = execSync(
+      `grep -rln -e ${filtered.map((s) => `'${s}'`).join(' -e ')} ` +
+        'app components lib config providers hooks || true',
+      { encoding: 'utf8', cwd: ROOT },
+    )
+      .split('\n')
+      .filter((f) => f && !f.includes('__tests__') && !f.includes('__test__'));
+
+    expect(hits).toEqual([]);
+  });
+});
+
 describe('both error funnels report (SN7, SN8)', () => {
   const response = read('app/api/helpers/response.ts');
 
   it('the API 500 funnel captures', () => {
-    expect(response).toMatch(/captureServerError\(context, error\)/);
+    expect(response).toMatch(/captureServerError\(context, error/);
     expect(response).not.toMatch(/^import .*@sentry\/nextjs/m);
   });
 
-  it('no Server Action still logs a failure without reporting it', () => {
-    // The action layer's blind spot is structural: an action catches its own
-    // error and RETURNS a code, so it never throws and `onRequestError` never
-    // sees it. `logActionError` is the funnel; a bare
-    // `console.error('[someAction]', err)` is one that got missed.
-    const actionFiles = execSync(
-      'grep -rln "\'use server\'" app lib --include=*.ts',
-      { encoding: 'utf8', cwd: ROOT },
-    )
+  it('user attribution stays id-only (ST8 / SN15)', () => {
+    // `sendDefaultPii` is false in all three runtimes; the ST8 userId parameter
+    // must not become the way PII gets in anyway. The capture helper may set a
+    // user, but only ever `{ id }`.
+    const capture = stripComments(read('lib/utils/captureError.ts'));
+    expect(capture).toMatch(/scope\.setUser\(\{ id: userId \}\)/);
+    expect(capture).not.toMatch(
+      /setUser\([^)]*\b(email|username|ip_address)\b/,
+    );
+    // `withScope`, never a bare `Sentry.setUser` — the latter writes to a scope
+    // that outlives the call, so a later event from a DIFFERENT request can
+    // inherit this user's id. That is the defect SN15 refused to ship.
+    expect(capture).toMatch(/Sentry\.withScope\(/);
+    expect(capture).not.toMatch(/Sentry\.setUser\(/);
+  });
+
+  /** Every `'use server'` file, minus types/validation/tests. */
+  const actionFiles = () =>
+    execSync('grep -rln "\'use server\'" app lib --include=*.ts', {
+      encoding: 'utf8',
+      cwd: ROOT,
+    })
       .split('\n')
       .filter(
         (f) =>
@@ -257,16 +319,71 @@ describe('both error funnels report (SN7, SN8)', () => {
           !f.startsWith('lib/validation'),
       );
 
+  /**
+   * Yield each `catch` block's body, with its opening line kept so an opt-out
+   * comment on the catch itself is visible. Brace-matched rather than
+   * regex-sliced: a catch body contains braces, and the naive version stops at
+   * the first `}` — which is usually the returned object literal.
+   */
+  function* catchBlocks(source: string) {
+    // `\(\w+\)` matched only a bare identifier, so `catch (err: unknown)` and
+    // `catch ({ message })` were skipped ENTIRELY and passed the guard silently
+    // — the same false-green this test exists to kill. `lib/services/*` already
+    // uses the annotated form, so the shape is in-repo.
+    const re = /\}\s*catch\s*(?:\([^)]*\))?\s*\{/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(source))) {
+      let depth = 0;
+      for (let p = m.index + m[0].length - 1; p < source.length; p++) {
+        if (source[p] === '{') depth++;
+        else if (source[p] === '}' && --depth === 0) {
+          yield { body: source.slice(m.index, p + 1), line: m.index };
+          break;
+        }
+      }
+    }
+  }
+
+  it('every Server Action catch reports, rethrows, or opts out explicitly', () => {
+    // ST6. This assertion replaced one that hunted a known-bad LOG SHAPE
+    // (`console.error('[name]', err)`). That version proved only that the
+    // original codemod converted what it converted: it matched neither
+    // `console.error('[loginAction] Error:', error)` (extra text inside the
+    // string) nor a catch that logs nothing at all — and 36 unreported catch
+    // blocks across six files passed it green.
+    //
+    // Coverage is the invariant, so coverage is what is asserted. A catch may
+    // report, rethrow, or say in a `sentry-opt-out:` comment why it is neither.
+    // The opt-out exists because some catches are genuinely control flow (a
+    // `headers()` call outside a request scope), and a guard with no escape
+    // hatch gets disabled rather than satisfied.
     const missed: string[] = [];
-    for (const file of actionFiles) {
-      const source = stripComments(read(file));
-      // The exact shape the codemod converted: a tagged log of a caught value.
-      const bare = source.match(
-        /console\.error\('\[[A-Za-z0-9_.:/[\]-]+\]',\s*[A-Za-z_$][A-Za-z0-9_$]*\);/g,
-      );
-      if (bare) missed.push(`${file}: ${bare.join(', ')}`);
+
+    for (const file of actionFiles()) {
+      const raw = read(file);
+      for (const block of catchBlocks(raw)) {
+        if (/sentry-opt-out:/.test(block.body)) continue;
+
+        const code = stripComments(block.body);
+        if (/logActionError|captureServerError|loggedServerError/.test(code))
+          continue;
+        if (/\bthrow\b/.test(code)) continue;
+
+        const lineNo = raw.slice(0, block.line).split('\n').length;
+        missed.push(`${file}:${lineNo}`);
+      }
     }
 
     expect(missed).toEqual([]);
+  });
+
+  it('the opt-out has to give a reason, not just the marker', () => {
+    // Otherwise `sentry-opt-out:` becomes a silencer people paste in.
+    for (const file of actionFiles()) {
+      for (const block of catchBlocks(read(file))) {
+        const optOut = block.body.match(/sentry-opt-out:(.*)/);
+        if (optOut) expect(optOut[1].trim().length).toBeGreaterThan(15);
+      }
+    }
   });
 });

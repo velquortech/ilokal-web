@@ -21,16 +21,69 @@ jobs:
         with:
           version: latest
 
-      - name: Set database URL based on branch
+      # Authenticates over the Management API with a personal access token
+      # instead of a raw Postgres connection string. Three reasons this beats
+      # --db-url from a GitHub runner:
+      #   * No database password to store, leak or rotate.
+      #   * No IPv4 problem. Supabase direct connections are IPv6-only without
+      #     the paid add-on and GitHub-hosted runners are IPv4-only, so a
+      #     direct --db-url fails on the network before it fails on auth;
+      #     avoiding it also avoids the session-vs-transaction pooler trap
+      #     (5432 works for migrations, 6543 does not).
+      #   * The token is revocable on its own, separately from DB credentials.
+      # Trade-off, stated plainly: a PAT is ACCOUNT-scoped, so it can reach
+      # every project the owning account can see. Use a dedicated CI token.
+      - name: Select the target project
         run: |
-          if [ "$GITHUB_REF" == "refs/heads/main" ]; then
-            echo "SUPABASE_DB_URL=${{ secrets.SUPABASE_DB_URL_PRODUCTION }}" >> $GITHUB_ENV
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            echo "SUPABASE_PROJECT_REF=$PROJECT_REF_PRODUCTION" >> "$GITHUB_ENV"
           else
-            echo "SUPABASE_DB_URL=${{ secrets.SUPABASE_DB_URL_ACCEPTANCE }}" >> $GITHUB_ENV
+            echo "SUPABASE_PROJECT_REF=$PROJECT_REF_ACCEPTANCE" >> "$GITHUB_ENV"
+          fi
+        env:
+          PROJECT_REF_PRODUCTION: ${{ secrets.SUPABASE_PROJECT_REF_PRODUCTION }}
+          PROJECT_REF_ACCEPTANCE: ${{ secrets.SUPABASE_PROJECT_REF_ACCEPTANCE }}
+
+      # Without this, an unset secret expands to an empty string and the CLI
+      # answers with a 40-line usage dump — which is what every run of this
+      # workflow did, in 11-16 seconds, unnoticed, while the PR pipeline stayed
+      # green. Fail with a sentence that names the secret instead.
+      - name: Verify the required secrets are set
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          missing=""
+          [ -z "$SUPABASE_ACCESS_TOKEN" ] && missing="$missing SUPABASE_ACCESS_TOKEN"
+          [ -z "$SUPABASE_PROJECT_REF" ] && missing="$missing SUPABASE_PROJECT_REF_PRODUCTION"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secret(s):$missing. Set them under Settings > Secrets and variables > Actions. Create the token at https://supabase.com/dashboard/account/tokens. Until they are set, NO migration reaches the database and every push to main silently leaves cloud behind."
+            exit 1
           fi
 
       - name: Apply Supabase migrations
-        run: supabase db push --db-url $SUPABASE_DB_URL
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase link --project-ref "$SUPABASE_PROJECT_REF"
+          supabase db push --linked
+
+      # `db push` keys on the migration VERSION, so a migration whose ledger row
+      # already exists is SKIPPED WHOLE — including statements added to the file
+      # after it was first applied. Not hypothetical: idx_products_section_id was
+      # added to 20260801061117 in a later commit and never reached the database,
+      # while the migration still read as applied. `db push` cannot detect this;
+      # only comparing declared objects against the live catalog can.
+      - name: Verify every declared object exists on the database
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase db query --linked -f supabase/reports/cloud_object_inventory.sql > inventory.json
+          if grep -q '"status": *"MISSING"' inventory.json; then
+            echo "::error::Objects declared by migrations are MISSING from the database. A migration was probably edited in place after it was applied, so db push skipped the change. Apply the missing statements by hand, then re-run."
+            grep -B2 '"status": *"MISSING"' inventory.json
+            exit 1
+          fi
+          echo "All declared objects present."
 
   Production-preview:
     runs-on: ${{ matrix.os }}

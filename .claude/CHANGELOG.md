@@ -1,5 +1,136 @@
 # Changelog
 
+## 2026-08-10 — The migration queue was already applied, and the doc said otherwise (chore/cloud-migration-audit)
+
+> **No code change. ONE migration applied to PRODUCTION**
+> (`20260808090000_nearby_banner`, approved by the repo owner before the push),
+> plus a `CLAUDE.md` correction and one new read-only report. The migration was
+> already merged to `main` in `a47090c`; this only applied it to cloud.
+
+- **🔴 `CLAUDE.md` claimed cloud was missing an 18–23 migration backlog. It was
+  wrong: 23 of the 24 were already applied.** The banner told everyone that
+  `events`, `product_sections`, `booking_requests`, the offering columns, both
+  menu-follow-up RPCs and the 4-column `public_feature_flags()` did not exist on
+  `ilokal-database` and that queries against them would 42P01 in production.
+  Every one of them was live. The doc has been steering people away from tables
+  that had been in production for weeks — **a stale "it isn't there" costs
+  exactly as much as a stale "it is"**, and this is the second time this file's
+  migration-state section has drifted (see 2026-08-05).
+- **The count was wrong three ways in one file** — 18 in the header, 23 in the
+  Schema state prose, 24 on disk. `20260808090000_nearby_banner` was in none of
+  the lists; it shipped with the mobile `banner_url` work and was never added.
+  The bullet now carries the re-derivation command instead of a hand-maintained
+  number.
+- **🔴 Why that one survived while 23 louder migrations landed: it fails
+  silently.** It is a `DROP FUNCTION` + `CREATE` adding `banner_url` to
+  `nearby_businesses`'s `RETURNS TABLE`. On cloud the function still existed and
+  still SUCCEEDED — it just returned 18 columns instead of 19. Mobile's schemas
+  are plain `z.object()`, so the absent key was dropped and the nearby cards
+  fell back to `interior_images[0]`. No error, no failed request, no log line.
+  **A missing table 42P01s on first call; a missing return column just
+  degrades** — which is why the probe checks `pg_get_function_result()` and not
+  merely `proname`.
+- **`supabase/reports/cloud_drift_probe.sql` (new)** — one read-only SELECT,
+  one verdict per migration. It exists because **the ledger cannot answer this
+  question**: the Supabase MCP's `apply_migration` records its OWN timestamp as
+  the version and the 2026-07-17 rollout hand-rewrote every row, so a
+  `schema_migrations` row can exist without its DDL (and `db push` then silently
+  SKIPS it) or DDL can exist under a different version string. The probe reports
+  DDL presence and ledger presence **separately** and names the reconcile action
+  for each mismatch.
+- **The three data-only migrations get row probes, not object probes**
+  (`20260805120000`, `20260805130000`, `20260807000000` — rows in `categories` /
+  `business_categories`, no DDL). An object probe returns "present" for them
+  unconditionally, i.e. it would report success without checking anything.
+- **🔴 Object existence is not version existence, and that gap was nearly
+  shipped as a conclusion.** PR #18 rewrote the seven `20260727*` files, PR #27
+  rewrote `20260804233000` and PR #29 rewrote `20260805090000` — all **in
+  place**, after cloud may have seen them. A pre-review draft satisfies every
+  existence check. Section 2 of the probe asserts four things only the
+  post-review file has; all four PASS. The load-bearing one: **`booking_requests`
+  has exactly three policies and no non-admin UPDATE policy**, so cloud has PR
+  #18's fix and not the draft whose `FOR UPDATE` policy lacked a `WITH CHECK`
+  (Postgres reuses `USING`, so a direct PostgREST `PATCH` could rewrite
+  `user_id`/`status`/`starts_at` or re-decide a settled booking).
+- **Two probe rows were unsound and passed anyway** — caught in review, worth
+  recording because both returned the right answer for the wrong reason. The
+  enum check joined `pg_type` but never filtered `typname`, so any enum in the
+  database carrying an `on_request` label satisfied it; and
+  `categories.business_type_id IS NOT NULL` is satisfied by three *later*
+  migrations that also pin categories, so it was not a discriminator for the one
+  it was labelled with. Both now scoped, with the reason in a comment.
+- **`supabase db query -f` returns only the LAST result set** — verified, not
+  assumed. Splitting the version assertions into a second statement would have
+  silently hidden all 24 migration verdicts. They are `UNION ALL`'d into one
+  statement and the file says why.
+- **Flag values recorded from the database rather than assumed:**
+  `enable_events` **true** · `enable_bookings` false · `enable_onboarding_tour`
+  true · `auto_verify_businesses` true · `require_business_documents` false.
+  **Events are NOT dark on cloud** — the "ships dark" note described the seeded
+  default, not the current value. Scoped deliberately: the flag was verified,
+  not whether the deployed build carries the events code.
+- **`db push` needs no ledger reconcile** — it records the FILE's version
+  (confirmed on this apply). The reconcile ritual applies only to the MCP's
+  `apply_migration`. Conflating them means hand-editing the ledger after every
+  push, which is its own risk. Also used `db push --linked` over
+  `make migrate-cloud`: that target demands a cloud `SUPABASE_DB_URL` with a DB
+  password, which `.env` does not carry (it holds the LOCAL string only), while
+  `--linked` goes through the Management API on a PAT.
+- **Rollback artifact saved before the DROP** (`pg_get_functiondef`, 3020 B).
+  Recorded in `CLAUDE.md` as a standing step for `DROP FUNCTION` migrations,
+  alongside the PGRST202 window the `public_feature_flags` rollout documented.
+- **Verified post-apply, not assumed:** 19-column signature carrying
+  `banner_url`, `SECURITY DEFINER` and `search_path = public, postgis` intact,
+  EXECUTE re-granted to `anon`/`authenticated`/`service_role` (ACL byte-identical
+  to pre-apply), ledger row present at the correct version, and **a live call
+  returning real `banner_url` values**. `supabase migration list --linked` now
+  shows both columns populated for all 24.
+- Verified: `yarn lint` (0 findings) + **2727** tests + a clean `yarn build`
+  (`.next` removed first, no dev server running).
+- **🔴 A second, deeper sweep found a REAL partial application — and it is the
+  exact failure the first sweep documents as its own blind spot.**
+  `supabase/reports/cloud_object_inventory.sql` (new) checks all **98** named
+  objects the queued migrations declare (26 functions, 24 indexes, 16 policies,
+  11 triggers, 21 columns) rather than one discriminator apiece.
+  `idx_products_section_id` was **missing from cloud** while `20260801061117`
+  read APPLIED — its sibling index `idx_products_business_section`, defined
+  three lines above it in the same file, was present.
+- **The cause generalises, which is why it is worth a report file rather than a
+  one-off fix.** The index was added to the migration in a LATER commit
+  (`ad680af`) than the one that created it (`b2c9a32`). Cloud had already
+  applied the file and written its ledger row, so `db push` — which keys on the
+  version — skipped it, and the added statement never landed. **Any migration
+  edited in place after cloud applied it silently loses the edit**, and this
+  repo edits migrations in place routinely: PR #18 rewrote seven, PR #21, #27
+  and #29 rewrote one each. The 2026-07-27 entry's own framing ("edits the seven
+  unmerged migrations in place") is only safe while *unmerged*.
+- **Created on cloud, matching the file byte for byte**
+  (`ON public.products USING btree (section_id) WHERE (section_id IS NOT
+  NULL)`), on a 49-row/208 kB table, so the lock was negligible. Its absence had
+  no measurable cost today; it would have, silently, as `products` grows —
+  the archive trigger and the FK's RI check both scan on `section_id`.
+- **All 16 RLS policies verified present.** That was the check worth running
+  first: a missing *index* is a performance bug, a missing *policy* is a
+  security one, and the same in-place-edit mechanism could drop either.
+- **⚠️ OVERLAPS `origin/docs/migration-queue-accuracy` (`2c70564`), which is
+  already pushed.** A parallel session corrected the same block from the other
+  direction: it caught the 23-vs-24 count, added the `20260808090000` entry, and
+  drew the same `db push`-vs-MCP reconcile distinction — but **without probing
+  cloud**, so it preserved the false "Until they land, cloud has no events
+  tables…" claim that this audit disproves. It also fixed a dangling reference
+  this branch had missed (`ratings(user_id, product_id)` cited
+  `20260528000000`, which is not a file; the migration is
+  `20260528000006_ratings_unique_user_product`). **That fix is carried into this
+  branch** — verified independently against `supabase/migrations/` — so merging
+  this cannot regress it. The two branches WILL conflict on the Migration state
+  bullet; take this one's body (it is the probed version) and keep that
+  reference fix.
+- **Not done:** the local Supabase stack was down for this work, so nothing was
+  re-verified against local; and the nearby cards were not viewed in a browser —
+  the RPC was proven to return `banner_url`, not that the mobile client renders
+  it. The two overlapping branches are not reconciled here — that is a
+  merge-order decision for a human.
+
 ## 2026-08-09 — Mobile events API, and the column list that is the contract (feat/mobile-events-api)
 
 > **No schema migration, no auth change, no RLS change.** Three new public

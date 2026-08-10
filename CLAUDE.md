@@ -1,16 +1,25 @@
 # CLAUDE.md — iLokal Web
 
-<!-- TEMP: remove once the migration queue below is empty on cloud -->
-> **⚠️ The database this file describes is AHEAD of cloud.** Events, the
-> offerings model, product sections, bookings and the onboarding work have all
-> merged to `main`, but **18 migrations after `20260717082537` are not confirmed
-> applied to `ilokal-database`** — see "Migration state" under Schema state for
-> the queue and the apply procedure. Read that before writing any query against
-> a table those migrations touch, and before assuming a feature flag exists.
+> **✅ Local and cloud are IN SYNC as of 2026-08-10 — all 24 migrations after
+> `20260717082537` are applied to `ilokal-database`, verified by object
+> existence and cross-checked with `supabase migration list --linked`.**
+> There is no pending queue. This banner claimed a large unapplied backlog for
+> months and that claim was **wrong** — 23 of the 24 were already live; the
+> 24th (`20260808090000_nearby_banner`) was applied on 2026-08-10.
 >
-> Features that ship **dark** behind `app_settings`: events
-> (`enable_events`), bookings (`enable_bookings`). The onboarding tour
-> (`enable_onboarding_tour`) ships **on**, seeded by its own migration.
+> **Do not re-add a "cloud is behind" warning from memory.** Re-derive it:
+> `yarn supabase db query --linked -f supabase/reports/cloud_drift_probe.sql`
+> (read-only, one verdict per migration). A stale "it isn't there" costs as
+> much as a stale "it is" — the old banner told people to avoid tables that
+> had been in production for weeks.
+>
+> **Flag values ON CLOUD (read from `app_settings`, not assumed):**
+> `enable_events` **true** · `enable_bookings` **false** ·
+> `enable_onboarding_tour` **true** · `auto_verify_businesses` **true** ·
+> `require_business_documents` **false**. Events are **not dark** — the
+> "ships dark" note that used to sit here described the seeded default, not the
+> current value. (Whether events RENDER also depends on the deployed build
+> carrying the events code; only the flag was verified.) Bookings remain dark.
 
 ## Commands
 
@@ -197,7 +206,7 @@ Key facts about the current normalized schema (as of 2026-06-08):
 
 - **`coupons`** — fully normalized in `20260523000000`. Columns: `code` (NOT `title`), `discount` JSONB `{type:'percentage'|'fixed_amount', value:number}` (NOT `type` enum), `expiry_date` (NOT `end_date`), `status` (`draft|published`). `redeem_time_limit_minutes` is gone. `promotion_type` (`'coupon' | 'deal'`, migration `20260523000001`) — the deals feed (`/api/mobile/deals`) filters `promotion_type = 'deal'`. Redemption caps live on the row: `max_redemptions_per_user`, `max_redemptions_global`, `current_redemptions`. `requires_follow` (boolean, default false; renamed from `requires_subscription` in `20260605000004`) — when true the redeem route requires the user to follow the business first. `branch_id` (nullable FK → `branches`, `20260528000001`; `null` = all branches) scopes a coupon to one branch — carried through `CreateCouponRequest`, `createCouponSchema`/`updateCouponSchema`, and `couponService`.
 - **`products.status`** — `'active' | 'unlisted' | 'disabled'` (NOT `inactive|archived`). `is_available` is kept in sync by trigger; `status` is canonical. Also has `sale_price` (nullable) and `category_id` → `categories(id, name, slug)` (the `categories` table, NOT `business_categories`).
-- **Ratings** — two tables: `ratings` (product-level: `product_id`, `business_id`, `review_text`) and `business_ratings` (`comment`). Mobile rating routes `upsert` with `onConflict`, so each needs a matching UNIQUE: `ratings(user_id, product_id)` (`20260528000000`) and `business_ratings(user_id, business_id)` (`20260508000003`).
+- **Ratings** — two tables: `ratings` (product-level: `product_id`, `business_id`, `review_text`) and `business_ratings` (`comment`). Mobile rating routes `upsert` with `onConflict`, so each needs a matching UNIQUE: `ratings(user_id, product_id)` (`20260528000006`) and `business_ratings(user_id, business_id)` (`20260508000003`).
 - **Redemptions** — `user_redemptions` is the live table (has `expires_at`, `is_claimed`, `branch_id`). `coupon_redemptions` is a dead table — never insert into or query it; use `user_redemptions` for all redemption reads/writes (routes, analytics, service layer). `user_redemptions.coupon_id` has an FK → `coupons(id)` (restored in `20260530000000`; the `20260523000000` normalization dropped it via CASCADE, which broke PostgREST nested `coupons(...)` selects until restored).
 - **Coupon claim flow** — redeeming inserts a `user_redemptions` row (`is_claimed=false`); claiming flips it via `PATCH /api/protected/mobile/redemptions/[id]/claim` with an atomic `.eq('is_claimed', false)` guard. RLS `"Users manage own interactions"` (`FOR ALL USING auth.uid() = user_id`) lets the user's RLS-scoped client do both. The redeem route (POST) also enforces a follow gate (`requires_follow` → 403) and rejects a second unclaimed, unexpired redemption of the same coupon (active-dupe → 400). Full rule matrix in `.claude/docs/coupon-rules.md`.
 - **`follows`** — social follow table, renamed from `subscriptions` in `20260605000000` (distinct from the billing tables `subscription_plans`/`business_subscriptions`). Policies are self (`"Users manage own follows"`) + admin only — **never publicly readable**. A `USING(true)` public read (`20260607000000`) leaked the whole follow graph to anon and was dropped in `20260608000001`. Follower counts (nearby/detail badges) come from `get_follower_counts(p_business_ids uuid[])`, a SECURITY DEFINER RPC (granted anon/authenticated) returning counts only — never `user_id`. Don't re-add a broad SELECT on `follows`.
@@ -206,41 +215,88 @@ Key facts about the current normalized schema (as of 2026-06-08):
 - **Deals promotion** — the explore feed (`/api/mobile/deals`) sizes bento cards by `subscription_plans.features_promo_boost` (boolean, `20260530000002`), NOT by `price`. The anon feed reads promoted subs via the public SELECT policy in `20260530000003` (active subs on promo-boost plans only). Set the flag on new promoted plans, or they silently won't get boosted.
 - **Coupon access invariant** — every route that fetches a coupon for display or redemption must filter `.eq('status', 'published').is('archived_at', null).lte('start_date', now)`. Omitting any of the three allows draft, archived, or not-yet-active coupons to be acted on.
 - **`increment_coupon_redemptions(p_coupon_id uuid)`** — SECURITY DEFINER RPC (`20260527000001`). Call via `supabase.rpc('increment_coupon_redemptions', { p_coupon_id })` after inserting into `user_redemptions`. Returns `true` if incremented, `false` if global cap already hit. Must be SECURITY DEFINER — authenticated users have no UPDATE policy on `coupons`. Only the **global** cap is race-safe via this RPC; the per-user cap in the redeem route is a non-atomic count-then-insert (TOCTOU) — concurrent redeems by one user can slip past it.
-- **⚠️ Migration state (2026-08-07): local is 23 migrations AHEAD of cloud.**
-  Cloud (`ilokal-database`) was last confirmed in sync at `20260717082537`.
-  Everything after that is applied **locally only** and needs human approval →
-  `make migrate-cloud` → a `supabase_migrations.schema_migrations` ledger
-  reconcile (the Supabase MCP records its own timestamp as the version, so the
-  ledger must be rewritten to the local file's version or the next `db push`
-  re-applies everything). Apply in timestamp order:
-  `20260717093122` (role from JWT metadata) · `20260723000000` (registration
-  gating flags) · `20260725000000` (rating summary RPC) · `20260727000000`–
-  `20260727000006` (offerings discriminators, vertical profiles, quote pricing,
-  service attributes, mobile columns, booking requests, public info RPC) ·
-  `20260801061117` (product sections) · `20260801064656` (category scoping) ·
-  `20260802034107` (events) · `20260804061500` (events review fixes) ·
-  `20260804233000` (onboarding state) · `20260805090000` (public registration
-  flags) · `20260805120000` (offering categories for every vertical) ·
-  `20260805130000` (retail trades: auto supply, hardware, agrivet, pharmacy,
-  pet, sports) · `20260806090000` (menu follow-up read side: the
-  `admin_businesses_missing_menu` RPC + `businesses.menu_reminder_sent_at`) ·
-  `20260806093000` (menu follow-up send target:
-  `admin_business_followup_target`) · `20260807000000` (service trades: pest
-  control, water refilling station) · `20260807120000` (`coupons.image_url` +
-  `mobile_deals` projecting it as `deal_image_url`) · `20260807140000`
-  (`analytics_platform_growth` RPC + `created_at` indexes on `profiles` and
-  `businesses`).
-  **Until they land, cloud has no events tables, no `product_sections`, no
-  `booking_requests`, no offering columns, neither menu-follow-up RPC nor its
-  `menu_reminder_sent_at` column, and a 2-column `public_feature_flags()`** — so
-  a query written against any of those works locally and 42P01/42703s in
-  production. Verify against the live DB, not against this list, before
-  assuming.
-  Three are **data-only** (`20260805120000`, `20260805130000`,
-  `20260807000000` — rows in `categories` / `business_categories`, no DDL), so
-  cloud does not error without them; it just offers a Services or Tourism shop a
-  single offering category, and has no shop type an auto supply store, a pest
-  control operator or a water refilling station can register as.
+- **Migration state — IN SYNC. Verified against the live cloud DB 2026-08-10.**
+  All **24** migrations after `20260717082537` are applied to
+  `ilokal-database`, with 24 matching `schema_migrations` rows
+  (`max(version) = 20260808090000`). `supabase migration list --linked` shows
+  both columns populated for every row. Everything from `20260717093122`
+  through `20260808090000` — the offerings model, product sections, events,
+  booking requests, onboarding columns, both menu-follow-up RPCs, the 4-column
+  `public_feature_flags()`, the data-only trade seeds, and `banner_url` on
+  `nearby_businesses` — is present on cloud. Confirmed by object existence,
+  not by the ledger alone:
+  `public.events` (24 cols, 1 row), `public.product_sections` (5 rows),
+  `public.booking_requests` (0 rows), and
+  `public_feature_flags() RETURNS TABLE(enable_events, enable_bookings,
+  require_business_documents, auto_verify_businesses)`.
+  **Scope of that claim:** ONE discriminator object per migration, plus four
+  post-review version assertions (below). It proves each migration ran; it does
+  not prove every statement inside it landed — so a second sweep,
+  `supabase/reports/cloud_object_inventory.sql`, checks **all 98 named
+  objects** (26 functions, 24 indexes, 16 policies, 11 triggers, 21 columns).
+  Currently 0 missing.
+  - **🔴 That second sweep found a real partial application, and the cause
+    generalises.** `idx_products_section_id` was absent from cloud while
+    `20260801061117` read APPLIED. It was added to the migration file in a
+    LATER commit (`ad680af`) than the one that created it (`b2c9a32`) — cloud
+    had already applied the file and written its ledger row, so `db push`
+    skipped it and the added statement never landed. **Any migration edited in
+    place after cloud applied it silently loses the edit**, and this repo edits
+    migrations in place routinely (PR #18, #21, #27, #29 all did). The index was
+    created on cloud on 2026-08-10, matching the file's definition byte for
+    byte. Re-run the inventory sweep after any in-place migration edit.
+  - **Cloud holds the POST-REVIEW versions, checked explicitly.** Several of
+    these files were edited in place after review (PR #18 rewrote the seven
+    `20260727*`; PR #27 rewrote `20260804233000`; PR #29 rewrote
+    `20260805090000`), and a pre-review draft satisfies a plain existence
+    check. All four assertions PASS — notably **`booking_requests` has exactly
+    three policies and no non-admin UPDATE policy**, i.e. the PR #18 fix for
+    the missing `WITH CHECK` is on cloud, not the draft that allowed a direct
+    PostgREST `PATCH` to rewrite `user_id`/`status`/`starts_at`.
+  > **This bullet claimed the exact opposite until 2026-08-10** — that cloud had
+  > none of these tables and that queries against them would 42P01. That was
+  > false, and it is the reason to re-probe rather than read: a stale "it isn't
+  > there" is as expensive as a stale "it is".
+  - **`20260808090000_nearby_banner` was the last gap; applied 2026-08-10.**
+    It sat unapplied while 23 louder migrations landed, because **it failed
+    silently**: the RPC still succeeded, `banner_url` was simply absent from
+    the row, mobile's `z.object()` dropped the unknown-absent key, and the
+    nearby cards fell back to `interior_images[0]`. No error, no log line.
+    **Signature drift on an RPC is invisible in a way a missing table never
+    is** — a missing table 42P01s on first call; a missing return column just
+    degrades. Verified post-apply: 19-column signature, `SECURITY DEFINER` and
+    `search_path = public, postgis` intact, EXECUTE re-granted to
+    `anon`/`authenticated`/`service_role`, and a live call returning real
+    `banner_url` values.
+  - **Apply procedure** (still needs human approval per Workflow):
+    prefer `yarn supabase db push --linked --yes` — it authenticates with a PAT
+    over the Management API and needs no cloud `SUPABASE_DB_URL`, which is what
+    `make migrate-cloud` demands and what `.env` does not carry (it holds the
+    LOCAL connection string only). **`db push` records the FILE's version in
+    the ledger, so no reconcile is needed** — confirmed on the
+    `20260808090000` apply. The reconcile warning still stands for the Supabase
+    **MCP**'s `apply_migration`, which records its OWN timestamp as the
+    version; that row must be rewritten to the local file's version or the next
+    `db push` re-applies everything.
+    Before any `DROP FUNCTION` + `CREATE` migration, save the current
+    definition (`pg_get_functiondef`) as a rollback artifact, and expect a brief
+    window where anon callers get PGRST202 — the hazard the
+    `public_feature_flags` rollout recorded.
+  - **Re-verify, don't trust this bullet.** The probe is checked in at
+    `supabase/reports/cloud_drift_probe.sql` (read-only; one verdict per
+    migration, reporting DDL presence and ledger presence separately):
+    `yarn supabase login --token <PAT>` → `yarn supabase link --project-ref
+    skvgasimllpyhyudpycu` → `yarn supabase db query --linked -f
+    supabase/reports/cloud_drift_probe.sql`. Add a row to its `VALUES` list
+    for each new migration.
+    The ledger is a hint, not the fact — a row can exist without its DDL (and
+    then `db push` silently SKIPS it) or DDL can exist under a different
+    version string. For the three **data-only** migrations
+    (`20260805120000`, `20260805130000`, `20260807000000` — rows in
+    `categories` / `business_categories`, no DDL) an object probe is
+    meaningless; probe rows instead (`'Rooms & Stays'`,
+    `'Auto Supply / Motor Parts'`, `'Water Refilling Station'` — all three
+    present on cloud).
 - **Notable DB facts (through `20260717082537`, confirmed on both):**
   `sync_role_to_jwt` trigger (role/status → JWT `app_metadata`),
   `increment_coupon_redemptions` RPC, `UNIQUE ratings(user_id, product_id)`,

@@ -3,13 +3,18 @@
 # Run after `make migrate-reset` whenever the Docker volume is wiped.
 # Usage: bash supabase/seeders/seed-storage.sh
 #
-# Images come from loremflickr.com, which serves a real Flickr photo matching
-# the KEYWORD in the URL path (e.g. .../400/400/coffee → a coffee photo). Each
+# Images come from picsum.photos, which serves a deterministic photo per
+# SEED (e.g. .../seed/coffee/400/400 → a stable coffee-tagged image). Each
 # upload passes a keyword that matches the shop or product so test data looks
 # professional and on-topic — logos, interiors, menu items, and services all
-# resolve to relevant photos instead of random images. A deterministic
-# ?lock=<hash-of-path> is appended per image so every rerun yields the same
-# photo and no two slots collide. See the `lf` helper below.
+# resolve to relevant photos instead of random images. A deterministic lock is
+# baked into the seed path per upload so every rerun yields the same photo and
+# no two slots collide. See the `lf` helper below.
+#
+# NOTE: loremflickr was the original source but is not in next/image's
+# remotePatterns allowlist (see next.config.ts) — anything it seeded 404s
+# through the image optimizer — and it is unusably slow. picsum.photos IS
+# allowlisted, and its images also load in browsers that block Flickr.
 
 set -euo pipefail
 
@@ -34,11 +39,13 @@ TMP=$(mktemp -d)
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-# lf <w> <h> <keyword> -> a loremflickr URL for a photo matching <keyword>.
+# lf <w> <h> <keyword> -> a picsum.photos URL for a photo matching <keyword>.
+# picsum puts the seed FIRST: https://picsum.photos/seed/<keyword>/<w>/<h>.
 # Keep keywords broad and singular (e.g. "coffee", "bakery", "massage") so
-# Flickr reliably has matches; the per-path lock is added at upload time.
+# the seed reliably resolves to an on-topic photo; the per-path lock is baked
+# into the seed at upload time.
 lf() {
-  printf 'https://loremflickr.com/%s/%s/%s' "$1" "$2" "$3"
+  printf 'https://picsum.photos/seed/%s/%s/%s' "$3" "$1" "$2"
 }
 
 create_bucket() {
@@ -62,12 +69,16 @@ upload() {
     echo "  skipped $bucket/$path (already exists)"
     return
   fi
-  # Append a deterministic lock (hash of the storage path) to loremflickr URLs
+  # Bake a deterministic lock (hash of the storage path) into the picsum seed
   # so every rerun fetches the same photo and each slot gets a distinct image.
-  if [[ "$url" == *loremflickr.com/* && "$url" != *lock=* ]]; then
+  # (picsum ignores query params, so `?lock=` would be a no-op — the lock has
+  # to live in the seed path itself.)
+  if [[ "$url" == *picsum.photos/seed/* ]]; then
     local lock
     lock=$(printf '%s' "$path" | cksum | cut -d' ' -f1)
-    if [[ "$url" == *\?* ]]; then url="$url&lock=$lock"; else url="$url?lock=$lock"; fi
+    # Insert the lock between the seed keyword and the dimensions:
+    # .../seed/<keyword>/<w>/<h>  ->  .../seed/<keyword>-<lock>/<w>/<h>
+    url=$(printf '%s' "$url" | sed -E "s|(/seed/[^/]+)/|\\1-$lock/|")
   fi
   local tmp_file="$TMP/$(echo "$path" | tr '/' '_')"
   # Don't let a single flaky download (set -e) abort the whole seed run.

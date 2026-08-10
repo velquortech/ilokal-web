@@ -26,18 +26,13 @@ const imageRemotePatterns: Array<{
   port?: string;
   pathname?: string;
 }> = [
-  {
-    protocol: 'http',
-    hostname: '127.0.0.1',
-    port: '54321',
-    pathname: '/**',
-  },
-  {
-    protocol: 'http',
-    hostname: 'localhost',
-    port: '54321',
-    pathname: '/**',
-  },
+  // The local Supabase stack (127.0.0.1:54321 / localhost:54321) is NOT listed
+  // here: in dev the optimizer is globally disabled (images.unoptimized below),
+  // so remotePatterns is never consulted; in prod storage URLs point at the
+  // cloud host, which arrives via prodImageUrl from NEXT_IMAGE_PUBLIC_URL.
+  // The dev storage origin still reaches the CSP img-src below via
+  // NEXT_PUBLIC_SUPABASE_URL (the host storage URLs are actually built from),
+  // so local images keep loading with either hostname.
   {
     protocol: 'https',
     hostname: 'images.unsplash.com',
@@ -78,8 +73,21 @@ const buildCSPImageSources = (): string => {
   if (process.env.NEXT_PUBLIC_PUBLIC_STORAGE_URL) {
     sources.push(process.env.NEXT_PUBLIC_PUBLIC_STORAGE_URL);
   }
-  if (prodImageUrl) {
-    sources.push(`${prodImageUrl.protocol}://${prodImageUrl.hostname}`);
+  // Storage image URLs are built from the Supabase client's URL
+  // (supabase.storage.getPublicUrl → NEXT_PUBLIC_SUPABASE_URL), NOT from
+  // NEXT_IMAGE_PUBLIC_URL. In dev that is the local stack — e.g.
+  // http://127.0.0.1:54321 or http://localhost:54321 — and a host-only origin
+  // (`http://127.0.0.1`) would NOT match the `:54321` port in img-src. Derive
+  // it here (with port) so dev storage images keep loading whether or not
+  // NEXT_IMAGE_PUBLIC_URL is set, and regardless of which hostname is used.
+  // prodImageUrl needs no explicit push: it is already in imageRemotePatterns,
+  // so the loop above emitted it (with its port, deduped).
+  const storageUrl = parseImageUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  if (storageUrl) {
+    const origin = storageUrl.port
+      ? `${storageUrl.protocol}://${storageUrl.hostname}:${storageUrl.port}`
+      : `${storageUrl.protocol}://${storageUrl.hostname}`;
+    if (!sources.includes(origin)) sources.push(origin);
   }
   return sources.join(' ');
 };

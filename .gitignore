@@ -59,6 +59,11 @@ claude.md
 .claude/ERROR_HANDLING.md
 .claude/SHOP_GALLERY.md
 
+# Live git worktrees of this same repo. Each is a full second checkout with its
+# own node_modules, so `git add -A` in the parent would stage two entire copies
+# of the tree. Git never tracks them anyway — this only stops the accident.
+.claude/worktrees/
+
 # Variable font cuts: the image renderer (Satori) cannot parse them, so they
 # are never the file to commit. Static cuts only.
 assets/fonts/*-Variable.ttf

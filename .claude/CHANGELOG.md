@@ -87,6 +87,31 @@
   shows both columns populated for all 24.
 - Verified: `yarn lint` (0 findings) + **2727** tests + a clean `yarn build`
   (`.next` removed first, no dev server running).
+- **🔴 A second, deeper sweep found a REAL partial application — and it is the
+  exact failure the first sweep documents as its own blind spot.**
+  `supabase/reports/cloud_object_inventory.sql` (new) checks all **98** named
+  objects the queued migrations declare (26 functions, 24 indexes, 16 policies,
+  11 triggers, 21 columns) rather than one discriminator apiece.
+  `idx_products_section_id` was **missing from cloud** while `20260801061117`
+  read APPLIED — its sibling index `idx_products_business_section`, defined
+  three lines above it in the same file, was present.
+- **The cause generalises, which is why it is worth a report file rather than a
+  one-off fix.** The index was added to the migration in a LATER commit
+  (`ad680af`) than the one that created it (`b2c9a32`). Cloud had already
+  applied the file and written its ledger row, so `db push` — which keys on the
+  version — skipped it, and the added statement never landed. **Any migration
+  edited in place after cloud applied it silently loses the edit**, and this
+  repo edits migrations in place routinely: PR #18 rewrote seven, PR #21, #27
+  and #29 rewrote one each. The 2026-07-27 entry's own framing ("edits the seven
+  unmerged migrations in place") is only safe while *unmerged*.
+- **Created on cloud, matching the file byte for byte**
+  (`ON public.products USING btree (section_id) WHERE (section_id IS NOT
+  NULL)`), on a 49-row/208 kB table, so the lock was negligible. Its absence had
+  no measurable cost today; it would have, silently, as `products` grows —
+  the archive trigger and the FK's RI check both scan on `section_id`.
+- **All 16 RLS policies verified present.** That was the check worth running
+  first: a missing *index* is a performance bug, a missing *policy* is a
+  security one, and the same in-place-edit mechanism could drop either.
 - **⚠️ OVERLAPS `origin/docs/migration-queue-accuracy` (`2c70564`), which is
   already pushed.** A parallel session corrected the same block from the other
   direction: it caught the 23-vs-24 count, added the `20260808090000` entry, and

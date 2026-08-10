@@ -197,7 +197,7 @@ Key facts about the current normalized schema (as of 2026-06-08):
 
 - **`coupons`** — fully normalized in `20260523000000`. Columns: `code` (NOT `title`), `discount` JSONB `{type:'percentage'|'fixed_amount', value:number}` (NOT `type` enum), `expiry_date` (NOT `end_date`), `status` (`draft|published`). `redeem_time_limit_minutes` is gone. `promotion_type` (`'coupon' | 'deal'`, migration `20260523000001`) — the deals feed (`/api/mobile/deals`) filters `promotion_type = 'deal'`. Redemption caps live on the row: `max_redemptions_per_user`, `max_redemptions_global`, `current_redemptions`. `requires_follow` (boolean, default false; renamed from `requires_subscription` in `20260605000004`) — when true the redeem route requires the user to follow the business first. `branch_id` (nullable FK → `branches`, `20260528000001`; `null` = all branches) scopes a coupon to one branch — carried through `CreateCouponRequest`, `createCouponSchema`/`updateCouponSchema`, and `couponService`.
 - **`products.status`** — `'active' | 'unlisted' | 'disabled'` (NOT `inactive|archived`). `is_available` is kept in sync by trigger; `status` is canonical. Also has `sale_price` (nullable) and `category_id` → `categories(id, name, slug)` (the `categories` table, NOT `business_categories`).
-- **Ratings** — two tables: `ratings` (product-level: `product_id`, `business_id`, `review_text`) and `business_ratings` (`comment`). Mobile rating routes `upsert` with `onConflict`, so each needs a matching UNIQUE: `ratings(user_id, product_id)` (`20260528000000`) and `business_ratings(user_id, business_id)` (`20260508000003`).
+- **Ratings** — two tables: `ratings` (product-level: `product_id`, `business_id`, `review_text`) and `business_ratings` (`comment`). Mobile rating routes `upsert` with `onConflict`, so each needs a matching UNIQUE: `ratings(user_id, product_id)` (`20260528000006`) and `business_ratings(user_id, business_id)` (`20260508000003`).
 - **Redemptions** — `user_redemptions` is the live table (has `expires_at`, `is_claimed`, `branch_id`). `coupon_redemptions` is a dead table — never insert into or query it; use `user_redemptions` for all redemption reads/writes (routes, analytics, service layer). `user_redemptions.coupon_id` has an FK → `coupons(id)` (restored in `20260530000000`; the `20260523000000` normalization dropped it via CASCADE, which broke PostgREST nested `coupons(...)` selects until restored).
 - **Coupon claim flow** — redeeming inserts a `user_redemptions` row (`is_claimed=false`); claiming flips it via `PATCH /api/protected/mobile/redemptions/[id]/claim` with an atomic `.eq('is_claimed', false)` guard. RLS `"Users manage own interactions"` (`FOR ALL USING auth.uid() = user_id`) lets the user's RLS-scoped client do both. The redeem route (POST) also enforces a follow gate (`requires_follow` → 403) and rejects a second unclaimed, unexpired redemption of the same coupon (active-dupe → 400). Full rule matrix in `.claude/docs/coupon-rules.md`.
 - **`follows`** — social follow table, renamed from `subscriptions` in `20260605000000` (distinct from the billing tables `subscription_plans`/`business_subscriptions`). Policies are self (`"Users manage own follows"`) + admin only — **never publicly readable**. A `USING(true)` public read (`20260607000000`) leaked the whole follow graph to anon and was dropped in `20260608000001`. Follower counts (nearby/detail badges) come from `get_follower_counts(p_business_ids uuid[])`, a SECURITY DEFINER RPC (granted anon/authenticated) returning counts only — never `user_id`. Don't re-add a broad SELECT on `follows`.
@@ -206,13 +206,17 @@ Key facts about the current normalized schema (as of 2026-06-08):
 - **Deals promotion** — the explore feed (`/api/mobile/deals`) sizes bento cards by `subscription_plans.features_promo_boost` (boolean, `20260530000002`), NOT by `price`. The anon feed reads promoted subs via the public SELECT policy in `20260530000003` (active subs on promo-boost plans only). Set the flag on new promoted plans, or they silently won't get boosted.
 - **Coupon access invariant** — every route that fetches a coupon for display or redemption must filter `.eq('status', 'published').is('archived_at', null).lte('start_date', now)`. Omitting any of the three allows draft, archived, or not-yet-active coupons to be acted on.
 - **`increment_coupon_redemptions(p_coupon_id uuid)`** — SECURITY DEFINER RPC (`20260527000001`). Call via `supabase.rpc('increment_coupon_redemptions', { p_coupon_id })` after inserting into `user_redemptions`. Returns `true` if incremented, `false` if global cap already hit. Must be SECURITY DEFINER — authenticated users have no UPDATE policy on `coupons`. Only the **global** cap is race-safe via this RPC; the per-user cap in the redeem route is a non-atomic count-then-insert (TOCTOU) — concurrent redeems by one user can slip past it.
-- **⚠️ Migration state (2026-08-07): local is 23 migrations AHEAD of cloud.**
+- **⚠️ Migration state (2026-08-10): local is 24 migrations AHEAD of cloud.**
   Cloud (`ilokal-database`) was last confirmed in sync at `20260717082537`.
   Everything after that is applied **locally only** and needs human approval →
-  `make migrate-cloud` → a `supabase_migrations.schema_migrations` ledger
-  reconcile (the Supabase MCP records its own timestamp as the version, so the
-  ledger must be rewritten to the local file's version or the next `db push`
-  re-applies everything). Apply in timestamp order:
+  `make migrate-cloud`. The ledger reconcile that used to follow is **specific
+  to the Supabase MCP path**: `apply_migration` records its OWN timestamp as the
+  version, so `supabase_migrations.schema_migrations` has to be rewritten to the
+  local file's version or the next `db push` re-applies everything. `supabase db
+  push` (what `make migrate-cloud` runs) records the version from the FILENAME,
+  so that path needs no reconcile — and a spurious ledger rewrite on production
+  is its own risk. The 2026-07-17 apply went through the MCP only because that
+  environment had no cloud `SUPABASE_DB_URL`. Apply in timestamp order:
   `20260717093122` (role from JWT metadata) · `20260723000000` (registration
   gating flags) · `20260725000000` (rating summary RPC) · `20260727000000`–
   `20260727000006` (offerings discriminators, vertical profiles, quote pricing,
@@ -229,7 +233,8 @@ Key facts about the current normalized schema (as of 2026-06-08):
   control, water refilling station) · `20260807120000` (`coupons.image_url` +
   `mobile_deals` projecting it as `deal_image_url`) · `20260807140000`
   (`analytics_platform_growth` RPC + `created_at` indexes on `profiles` and
-  `businesses`).
+  `businesses`) · `20260808090000` (`nearby_banner`: `banner_url` on the
+  `nearby_businesses` RPC projection).
   **Until they land, cloud has no events tables, no `product_sections`, no
   `booking_requests`, no offering columns, neither menu-follow-up RPC nor its
   `menu_reminder_sent_at` column, and a 2-column `public_feature_flags()`** — so

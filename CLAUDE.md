@@ -231,8 +231,20 @@ Key facts about the current normalized schema (as of 2026-06-08):
   require_business_documents, auto_verify_businesses)`.
   **Scope of that claim:** ONE discriminator object per migration, plus four
   post-review version assertions (below). It proves each migration ran; it does
-  not prove every statement inside it landed. A partially-applied migration
-  whose discriminator exists would still read APPLIED.
+  not prove every statement inside it landed — so a second sweep,
+  `supabase/reports/cloud_object_inventory.sql`, checks **all 98 named
+  objects** (26 functions, 24 indexes, 16 policies, 11 triggers, 21 columns).
+  Currently 0 missing.
+  - **🔴 That second sweep found a real partial application, and the cause
+    generalises.** `idx_products_section_id` was absent from cloud while
+    `20260801061117` read APPLIED. It was added to the migration file in a
+    LATER commit (`ad680af`) than the one that created it (`b2c9a32`) — cloud
+    had already applied the file and written its ledger row, so `db push`
+    skipped it and the added statement never landed. **Any migration edited in
+    place after cloud applied it silently loses the edit**, and this repo edits
+    migrations in place routinely (PR #18, #21, #27, #29 all did). The index was
+    created on cloud on 2026-08-10, matching the file's definition byte for
+    byte. Re-run the inventory sweep after any in-place migration edit.
   - **Cloud holds the POST-REVIEW versions, checked explicitly.** Several of
     these files were edited in place after review (PR #18 rewrote the seven
     `20260727*`; PR #27 rewrote `20260804233000`; PR #29 rewrote

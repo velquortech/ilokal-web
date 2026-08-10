@@ -54,7 +54,9 @@ describe('resolveStorageUrl', () => {
       'b1/1786278978809-Screenshot%202026-08-08%20095928.webp',
     );
     // getPublicUrl must receive the raw key (spaces), not the encoded form.
-    expect(lastPath()).toBe('b1/1786278978809-Screenshot 2026-08-08 095928.webp');
+    expect(lastPath()).toBe(
+      'b1/1786278978809-Screenshot 2026-08-08 095928.webp',
+    );
     // And the resulting URL is encoded exactly once (%20, never %2520).
     expect(url).toContain('Screenshot%202026-08-08%20095928.webp');
     expect(url).not.toContain('%2520');

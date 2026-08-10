@@ -36,6 +36,18 @@ yarn-error.log*
 # must never hold a value.
 !.env.example
 
+# Claude Code MCP server config. Local-only because the useful form of it is
+# per-developer: the URL carries `project_ref`, which pins WHICH Supabase
+# project your MCP session talks to. Committed, that silently makes production
+# the default target for everyone who opens the repo. Copy the template and set
+# your own ref (a preview branch, a personal project, or production if you mean
+# it). Note git does NOT stop tracking a file just because it is listed here —
+# this only works because `.mcp.json` was untracked with `git rm --cached`.
+.mcp.json
+# ...except the documented template, which holds a placeholder ref only and
+# must never hold a real project reference.
+!.mcp.json.example
+
 # vercel
 .vercel
 

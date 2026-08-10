@@ -25,6 +25,12 @@ export default tseslint.config(
       'next-**',
       'lib/types/database.ts',
       'WORKFLOW/**',
+      // Live git worktrees of this same repo (see .gitignore). Each holds its
+      // own full checkout — including a .next build with tens of thousands of
+      // generated chunks — so linting them is both wrong (they belong to other
+      // branches with their own configs) and pathologically slow. Mirrors the
+      // `.claude/worktrees` exclusion already in vitest.config.ts.
+      '.claude/worktrees/**',
     ],
   },
 

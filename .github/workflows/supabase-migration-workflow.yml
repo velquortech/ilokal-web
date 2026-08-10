@@ -66,11 +66,15 @@ jobs:
             exit 1
           fi
 
-      # `--yes` is required, not decorative: `db push` asks for confirmation
-      # before applying, and a runner has no TTY to answer with. `link` was
-      # checked the same way and does NOT prompt for a database password with
-      # stdin closed (it exits 0), which is what makes the passwordless PAT
-      # path above viable here.
+      # `--yes` is on CLAUDE.md's authority, which documents it as the required
+      # form; a runner has no TTY to answer a confirmation prompt with, and the
+      # flag is harmless if none is asked. NOT independently reproduced here —
+      # a --dry-run fails earlier, on the version mismatch described below, so
+      # the prompt is never reached. Treat it as inherited, not measured.
+      #
+      # `link` WAS measured: it does not prompt for a database password with
+      # stdin closed (exit 0), which is what makes the passwordless PAT path
+      # above viable here.
       #
       # Expected failure worth recognising in the log:
       #   "Remote migration versions not found in local migrations directory"

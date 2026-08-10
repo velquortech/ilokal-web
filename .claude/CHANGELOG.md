@@ -50,11 +50,16 @@
   value that can be passed explicitly. Verified against 2.101.0 by running all
   four variants. The step now passes it anyway: the default is undocumented,
   and a default that changes would silently reshape what is parsed.
-- **`db push` needs `--yes`, which it did not have.** It asks for confirmation
-  before applying and a runner has no TTY to answer with. `link` was checked
-  the same way and does **not** prompt for a database password with stdin
-  closed (exit 0) — which is what makes the passwordless PAT path viable here.
-  Both checked rather than assumed.
+- **`db push` gained `--yes`, which it did not have — on authority, not
+  measurement, and the difference is stated in the file.** `CLAUDE.md`
+  documents `--yes` as the required form and a runner has no TTY to answer a
+  prompt with, so the flag is right either way; but a `--dry-run` here fails
+  earlier on the version mismatch below, so the prompt was never reached and
+  the claim is **inherited**. `link` by contrast **was** measured: it does not
+  prompt for a database password with stdin closed (exit 0), which is what
+  makes the passwordless PAT path viable. This file has twice had to walk back
+  a confident sentence; a verified claim and a documented one are not the same
+  thing and are labelled differently here.
 - **CLI pinned to 2.101.0 instead of `latest`.** `latest` is already 2.113.0,
   so CI was running a version nobody here has, in a workflow nobody watches —
   the exact conditions under which a silent flag change becomes a silent
@@ -83,6 +88,17 @@
   (https://supabase.com/dashboard/account/tokens) and
   `SUPABASE_PROJECT_REF_PRODUCTION`. Until then the guard fails the job with a
   sentence naming them, instead of a usage dump nobody read.
+- **🔴 Follow-up for whoever merges PR #48: its migration has ZERO coverage
+  from the check this branch adds.** `cloud_object_inventory.sql` tests a
+  function by `proname` only, and `nearby_is_new` changes a **return column**,
+  not a function's existence — the exact class the 2026-08-10 audit proved is
+  invisible, since a missing return column degrades silently while a missing
+  table 42P01s on first call. It is why the drift probe checks
+  `pg_get_function_result()`. So an in-place edit to `20260811000000` would
+  pass this guard with `is_new` absent. The inventory needs a row asserting
+  `is_new` in `nearby_businesses`'s signature; it belongs with #48, not here,
+  because adding it now makes `main` fail against a migration `main` does not
+  have.
 - **Found, deliberately not fixed:** the `Production-preview` job runs
   `yarn install` **before** `actions/checkout@v4` — installing in an empty
   directory. It has never been reached, because it `needs: Deploy-migration`

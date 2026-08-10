@@ -1,5 +1,96 @@
 # Changelog
 
+## 2026-08-11 — The migration deploy has never run, and the check added to prove it did could not fail (chore/migration-ci-verified)
+
+> **No schema, API-contract or auth change. One file:
+> `.github/workflows/supabase-migration-workflow.yml`.** Nothing was applied to
+> production by this branch — the only cloud access was the checked-in
+> read-only inventory. **Still blocked on two repository secrets** (below), and
+> on PR #48 merging (below). Continues the 2026-08-10 audit: that entry found
+> the drift, this one finds the mechanism.
+
+- **🔴 Every run of "Deploy Supabase Migrations" has FAILED — 8 of 8, each in
+  11–16 seconds.** `supabase db push --db-url $SUPABASE_DB_URL` with
+  `SUPABASE_DB_URL_PRODUCTION` never set, so the flag expanded to empty and the
+  CLI answered with a usage dump. **No migration has ever reached the database
+  through CI.** Invisible because the PR pipeline is a separate workflow and
+  stayed green. That is the mechanism behind the drift the audit found, and the
+  reason migrations were being applied by hand — which is how the repository
+  and production diverged in the first place.
+- **Switched to `--linked` + a personal access token rather than repairing the
+  `--db-url` path.** No database password to store or rotate; no IPv4 problem
+  (Supabase direct connections are IPv6-only without the paid add-on and
+  GitHub-hosted runners are IPv4-only, so `--db-url` fails on the *network*
+  before it fails on auth, and it also avoids the session-vs-transaction pooler
+  trap); the token revokes independently of DB credentials. Trade-off recorded
+  in the file: a PAT is **account-scoped**, so use a dedicated CI token.
+- **🔴 The verification step added to prove the push worked could not itself
+  fail.** It ran the object inventory and grepped for `'"status": *"MISSING"'`.
+  On empty, truncated or reshaped output that pattern matches nothing and the
+  step prints **"All declared objects present."** A guard that can only ever
+  *find* a problem, never show that it *looked*, is the same class of defect as
+  the workflow it guards — a check whose failure mode is silent success.
+- **Fixed by asserting the check RAN before trusting it:** the expected row
+  count is derived from the inventory file itself
+  (`grep -cE "^  \('(function|index|trigger|policy|column)',"` → 98) and
+  compared against `jq '.rows | length'`. Any mismatch fails, naming both
+  numbers. Missing objects are then found by parsing, not by grepping a
+  fragment.
+- **Proven by breaking it, five ways, against real cloud output** (the guard
+  text was extracted from the shipping YAML, not retyped, so the test cannot
+  drift from what runs): healthy → exit 0 "All 98 declared objects present";
+  one status flipped to MISSING → exit 1, names the object; **empty output →
+  exit 1** (the old version's silent pass); 97 rows → exit 1 "returned 97 rows,
+  expected 98"; a reshaped result with no `.rows` → jq exits non-zero and
+  `set -e` ends the job.
+- **🔴 `--output csv` and `--output table` are REJECTED by this command.** The
+  global `--output` (`env|pretty|json|toml|yaml`) **shadows** the command's own
+  (`table|json|csv`), and the help text prints both while saying nothing about
+  which wins. `json` works only because it is in both sets — it is the sole
+  value that can be passed explicitly. Verified against 2.101.0 by running all
+  four variants. The step now passes it anyway: the default is undocumented,
+  and a default that changes would silently reshape what is parsed.
+- **`db push` needs `--yes`, which it did not have.** It asks for confirmation
+  before applying and a runner has no TTY to answer with. `link` was checked
+  the same way and does **not** prompt for a database password with stdin
+  closed (exit 0) — which is what makes the passwordless PAT path viable here.
+  Both checked rather than assumed.
+- **CLI pinned to 2.101.0 instead of `latest`.** `latest` is already 2.113.0,
+  so CI was running a version nobody here has, in a workflow nobody watches —
+  the exact conditions under which a silent flag change becomes a silent
+  non-deploy. 2.101.0 is what `package.json` installs and what every flag above
+  was verified against, so a CI failure now reproduces locally.
+- **Secrets move to `env:` rather than `${{ }}` inside `run:`.** `${{ }}`
+  substitutes literal text *before* the shell parses it, so a value containing
+  `$`, a backtick or a quote would be mangled or partially executed.
+- **🔴 Cloud is ONE migration AHEAD of `main`, and it will fail the first real
+  run.** The ledger holds **129** rows against **128** files on disk: version
+  `20260811000000` (`nearby_is_new`) was applied to production while **PR #48
+  is still open and unmerged**, and `nearby_businesses` on cloud already
+  returns `is_new`. `db push` refuses outright — *"Remote migration versions
+  not found in local migrations directory"* — and is right to. **Merge PR #48
+  before or with this**, or the first push to `main` after the secrets are set
+  goes red and this fix gets blamed for it. The failure mode is named in the
+  workflow file so a log reader recognises it. It is also the same out-of-band
+  manual apply that the broken CI caused — a second instance, four days after
+  the audit.
+- **Verified read-only against `ilokal-database`** (the documented
+  re-derivation, no writes): **98/98** declared objects present, 0 missing;
+  ledger tail `20260807120000, 20260807140000, 20260808090000, 20260811000000`.
+  Plus YAML parse, both jobs and all six step names intact.
+- **Not done — this cannot deploy anything yet.** Two repository secrets are
+  still unset and only a repo admin can set them: `SUPABASE_ACCESS_TOKEN`
+  (https://supabase.com/dashboard/account/tokens) and
+  `SUPABASE_PROJECT_REF_PRODUCTION`. Until then the guard fails the job with a
+  sentence naming them, instead of a usage dump nobody read.
+- **Found, deliberately not fixed:** the `Production-preview` job runs
+  `yarn install` **before** `actions/checkout@v4` — installing in an empty
+  directory. It has never been reached, because it `needs: Deploy-migration`
+  and that job has always failed. So the day the secrets land, a never-executed
+  and plainly broken job runs for the first time. Left out of this change so
+  the diff stays about the migration path; it is a one-line reorder and its own
+  commit.
+
 ## 2026-08-10 — The migration queue was already applied, and the doc said otherwise (chore/cloud-migration-audit)
 
 > **No code change. ONE migration applied to PRODUCTION**

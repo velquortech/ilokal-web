@@ -16,10 +16,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Pinned, not `latest`. Every flag this job depends on was verified
+      # against exactly this version, and it is the one the repo installs
+      # (package.json: supabase ^2.101.0) — so a CI failure here reproduces
+      # locally instead of being a version nobody has. `latest` in a workflow
+      # nobody watches is how a silent flag change becomes a silent non-deploy,
+      # which is the failure this job exists to end. Bump it deliberately.
       - name: Install Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.101.0
 
       # Authenticates over the Management API with a personal access token
       # instead of a raw Postgres connection string. Three reasons this beats
@@ -60,12 +66,25 @@ jobs:
             exit 1
           fi
 
+      # `--yes` is required, not decorative: `db push` asks for confirmation
+      # before applying, and a runner has no TTY to answer with. `link` was
+      # checked the same way and does NOT prompt for a database password with
+      # stdin closed (it exits 0), which is what makes the passwordless PAT
+      # path above viable here.
+      #
+      # Expected failure worth recognising in the log:
+      #   "Remote migration versions not found in local migrations directory"
+      # means the DATABASE is ahead of this branch — someone applied a
+      # migration out of band, typically from a branch that has not merged yet.
+      # `db push` refuses rather than guessing, and it is right to. Fix it by
+      # merging the branch that owns that migration; only use
+      # `supabase migration repair` if the version is genuinely never coming.
       - name: Apply Supabase migrations
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           supabase link --project-ref "$SUPABASE_PROJECT_REF"
-          supabase db push --linked
+          supabase db push --linked --yes
 
       # `db push` keys on the migration VERSION, so a migration whose ledger row
       # already exists is SKIPPED WHOLE — including statements added to the file
@@ -77,13 +96,45 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          supabase db query --linked -f supabase/reports/cloud_object_inventory.sql > inventory.json
-          if grep -q '"status": *"MISSING"' inventory.json; then
-            echo "::error::Objects declared by migrations are MISSING from the database. A migration was probably edited in place after it was applied, so db push skipped the change. Apply the missing statements by hand, then re-run."
-            grep -B2 '"status": *"MISSING"' inventory.json
+          set -euo pipefail
+          inventory=supabase/reports/cloud_object_inventory.sql
+
+          # `json` is the only format this command accepts EXPLICITLY. The
+          # global --output (env|pretty|json|toml|yaml) shadows the command's
+          # own (table|json|csv), so `--output csv` and `--output table` are
+          # both REJECTED outright — verified against 2.101.0. Passing `json`
+          # anyway pins the shape, because the default is undocumented and a
+          # default that changes would silently reshape what is parsed below.
+          supabase db query --linked --output json -f "$inventory" > inventory.json
+
+          # Prove the check RAN before trusting what it says. A guard that can
+          # only ever find a problem — never show it looked — is the same class
+          # of bug as the workflow it guards: the previous version of this step
+          # grepped for a JSON fragment, so empty, truncated or reshaped output
+          # matched nothing and reported "all present". Compare the row count
+          # against the objects the file declares; any mismatch fails here.
+          expected=$(grep -cE "^  \('(function|index|trigger|policy|column)'," "$inventory" || true)
+          if [ "$expected" -lt 1 ]; then
+            echo "::error::Could not count the objects declared by $inventory — its shape changed. Update this step; do not delete the count."
             exit 1
           fi
-          echo "All declared objects present."
+          # Empty output leaves jq silent rather than failing, so name it 0
+          # instead of printing "returned  rows". A reshaped result (no .rows)
+          # makes jq exit non-zero and `set -e` ends the job, which is correct.
+          actual=$(jq '.rows | length' inventory.json)
+          actual=${actual:-0}
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::Inventory returned $actual rows, expected $expected. The query did not run to completion, so a zero-missing verdict would mean nothing."
+            exit 1
+          fi
+
+          missing=$(jq -r '.rows[] | select(.status != "ok") | "  \(.kind)  \(.name)"' inventory.json)
+          if [ -n "$missing" ]; then
+            echo "::error::Objects declared by migrations are MISSING from the database. A migration was probably edited in place after it was applied, so db push skipped the change. Apply the missing statements by hand, then re-run."
+            echo "$missing"
+            exit 1
+          fi
+          echo "All $actual declared objects present."
 
   Production-preview:
     runs-on: ${{ matrix.os }}

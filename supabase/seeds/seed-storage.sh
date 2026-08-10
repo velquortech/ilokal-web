@@ -120,6 +120,16 @@ upload "shop-logos" "11111111-1111-1111-1111-111111111104/logo.jpg" "$(lf 400 40
 upload "shop-logos" "11111111-1111-1111-1111-111111111105/logo.jpg" "$(lf 400 400 salad)"      # Luna & Leaf Bistro
 
 # ---------------------------------------------------------------------------
+# Banners  (1200x500, wide cover) — the card cover image (mobile + web explore)
+# ---------------------------------------------------------------------------
+echo "Uploading banners..."
+upload "shop-banners" "11111111-1111-1111-1111-111111111101/banner.jpg" "$(lf 1200 500 coffee)"
+upload "shop-banners" "11111111-1111-1111-1111-111111111102/banner.jpg" "$(lf 1200 500 bakery)"
+upload "shop-banners" "11111111-1111-1111-1111-111111111103/banner.jpg" "$(lf 1200 500 hardware)"
+upload "shop-banners" "11111111-1111-1111-1111-111111111104/banner.jpg" "$(lf 1200 500 hairsalon)"
+upload "shop-banners" "11111111-1111-1111-1111-111111111105/banner.jpg" "$(lf 1200 500 restaurant)"
+
+# ---------------------------------------------------------------------------
 # Interior images  (800x500 hero, 800x520 gallery) — venue-type keywords
 # ---------------------------------------------------------------------------
 echo "Uploading interior images..."
@@ -203,6 +213,22 @@ upload "shop-logos" "11111111-1111-1111-1111-111111111113/logo.jpg" "$(lf 400 40
 upload "shop-logos" "11111111-1111-1111-1111-111111111114/logo.jpg" "$(lf 400 400 hotel)"       # Casa Ilongga B&B
 upload "shop-logos" "11111111-1111-1111-1111-111111111115/logo.jpg" "$(lf 400 400 pottery)"     # Ilonggo Craft Workshop
 upload "shop-logos" "11111111-1111-1111-1111-111111111116/logo.jpg" "$(lf 400 400 guitar)"      # The Lampara Live Music Bar
+
+# ---------------------------------------------------------------------------
+# New businesses — Banners (1200x500)
+# ---------------------------------------------------------------------------
+echo "Uploading new business banners..."
+upload "shop-banners" "11111111-1111-1111-1111-111111111106/banner.jpg" "$(lf 1200 500 pub)"
+upload "shop-banners" "11111111-1111-1111-1111-111111111107/banner.jpg" "$(lf 1200 500 streetfood)"
+upload "shop-banners" "11111111-1111-1111-1111-111111111108/banner.jpg" "$(lf 1200 500 grocery)"
+upload "shop-banners" "11111111-1111-1111-1111-111111111109/banner.jpg" "$(lf 1200 500 boutique)"
+upload "shop-banners" "11111111-1111-1111-1111-111111111110/banner.jpg" "$(lf 1200 500 books)"
+upload "shop-banners" "11111111-1111-1111-1111-111111111111/banner.jpg" "$(lf 1200 500 spa)"
+upload "shop-banners" "11111111-1111-1111-1111-111111111112/banner.jpg" "$(lf 1200 500 gym)"
+upload "shop-banners" "11111111-1111-1111-1111-111111111113/banner.jpg" "$(lf 1200 500 repair)"
+upload "shop-banners" "11111111-1111-1111-1111-111111111114/banner.jpg" "$(lf 1200 500 hotel)"
+upload "shop-banners" "11111111-1111-1111-1111-111111111115/banner.jpg" "$(lf 1200 500 pottery)"
+upload "shop-banners" "11111111-1111-1111-1111-111111111116/banner.jpg" "$(lf 1200 500 music)"
 
 # ---------------------------------------------------------------------------
 # New businesses — Interior images (800x500 hero, 800x520 gallery)
@@ -347,22 +373,27 @@ upload "product-images" "33333333-3333-3333-3333-333333333369/product.jpg" "$(lf
 echo "Uploading cross-province business images..."
 # Pitstop Mango Café (Guimaras)
 upload "shop-logos"      "11111111-1111-1111-1111-111111111117/logo.jpg"     "$(lf 400 400 mango)"
+upload "shop-banners"    "11111111-1111-1111-1111-111111111117/banner.jpg"   "$(lf 1200 500 mango)"
 upload "interior-images" "11111111-1111-1111-1111-111111111117/hero.jpg"     "$(lf 800 500 cafe)"
 upload "interior-images" "11111111-1111-1111-1111-111111111117/gallery1.jpg" "$(lf 800 520 coffeeshop)"
 # Antique Seafood Grill (Antique)
 upload "shop-logos"      "11111111-1111-1111-1111-111111111118/logo.jpg"     "$(lf 400 400 seafood)"
+upload "shop-banners"    "11111111-1111-1111-1111-111111111118/banner.jpg"   "$(lf 1200 500 seafood)"
 upload "interior-images" "11111111-1111-1111-1111-111111111118/hero.jpg"     "$(lf 800 500 restaurant)"
 upload "interior-images" "11111111-1111-1111-1111-111111111118/gallery1.jpg" "$(lf 800 520 seafood)"
 # Roxas Bay Brews (Capiz)
 upload "shop-logos"      "11111111-1111-1111-1111-111111111119/logo.jpg"     "$(lf 400 400 coffee)"
+upload "shop-banners"    "11111111-1111-1111-1111-111111111119/banner.jpg"   "$(lf 1200 500 coffee)"
 upload "interior-images" "11111111-1111-1111-1111-111111111119/hero.jpg"     "$(lf 800 500 cafe)"
 upload "interior-images" "11111111-1111-1111-1111-111111111119/gallery1.jpg" "$(lf 800 520 coffeeshop)"
 # Kalibo Heritage Bakeshop (Aklan)
 upload "shop-logos"      "11111111-1111-1111-1111-111111111120/logo.jpg"     "$(lf 400 400 bread)"
+upload "shop-banners"    "11111111-1111-1111-1111-111111111120/banner.jpg"   "$(lf 1200 500 bakery)"
 upload "interior-images" "11111111-1111-1111-1111-111111111120/hero.jpg"     "$(lf 800 500 bakery)"
 upload "interior-images" "11111111-1111-1111-1111-111111111120/gallery1.jpg" "$(lf 800 520 pastry)"
 # Bacolod Wellness Retreat (Negros Occidental)
 upload "shop-logos"      "11111111-1111-1111-1111-111111111121/logo.jpg"     "$(lf 400 400 spa)"
+upload "shop-banners"    "11111111-1111-1111-1111-111111111121/banner.jpg"   "$(lf 1200 500 spa)"
 upload "interior-images" "11111111-1111-1111-1111-111111111121/hero.jpg"     "$(lf 800 500 spa)"
 upload "interior-images" "11111111-1111-1111-1111-111111111121/gallery1.jpg" "$(lf 800 520 wellness)"
 

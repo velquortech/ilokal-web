@@ -503,4 +503,12 @@ ON CONFLICT (id) DO UPDATE SET
   address  = EXCLUDED.address,
   location = EXCLUDED.location;
 
+-- Seed banners: every seed shop gets a banner (raw storage path, resolved by the
+-- API against the shop-banners bucket — same convention as logo_url). Without
+-- these the mobile cards fall back to interior_images[0]; with them they show
+-- the curated cover image like the web explore card does.
+UPDATE public.businesses
+SET banner_url = id || '/banner.jpg'
+WHERE id::text LIKE '11111111-1111-1111-1111-1111111111%';
+
 SET session_replication_role = DEFAULT;

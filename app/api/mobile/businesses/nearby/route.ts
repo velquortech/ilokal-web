@@ -158,6 +158,11 @@ export async function GET(req: NextRequest) {
           'shop-logos',
           b.logo_url as string | null,
         ),
+        banner_url: resolveStorageUrl(
+          supabase,
+          'shop-banners',
+          b.banner_url as string | null,
+        ),
         interior_images:
           (b.interior_images as string[] | null)?.map((url) =>
             resolveStorageUrl(supabase, 'interior-images', url),

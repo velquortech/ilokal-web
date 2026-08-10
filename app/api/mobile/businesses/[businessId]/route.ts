@@ -22,7 +22,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       .from('businesses')
       .select(
         `
-        id, shop_name, description, logo_url, interior_images, status,
+        id, shop_name, description, logo_url, banner_url, interior_images, status,
         business_category,
         profiles!owner_id(full_name, email),
         business_categories!category_id(name, business_types!business_type_id(name, icon))
@@ -104,6 +104,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const business = {
       ...rest,
       logo_url: resolveStorageUrl(supabase, 'shop-logos', data.logo_url),
+      banner_url: resolveStorageUrl(supabase, 'shop-banners', data.banner_url),
       interior_images:
         data.interior_images?.map((url: string) =>
           resolveStorageUrl(supabase, 'interior-images', url),

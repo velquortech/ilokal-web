@@ -115,6 +115,14 @@ seed-db:
 # documented in supabase/seeds/README.md.
 seed: seed-storage seed-db
 
+# ── Live snapshot for local testing ───────────────────────────────────────────
+# Replace the local Docker DB's data with a snapshot of the LIVE (cloud) DB.
+# The connection string comes from SUPABASE_DB_URL (inline, wins) or, if unset,
+# SUPABASE_LIVE_DB_URL in the git-ignored .env (recommended). Refuses localhost.
+# Replaces public/auth/storage data; the migration ledger is kept.
+# See .claude/docs/live-db-snapshot.md for details and limitations.
+pull-live:
+	@bash supabase/scripts/pull-live.sh
 
 # ── Cloud deploy (APK preview build) ──────────────────────────────────────────
 # Full flow: `make deploy-cloud` = migrate-cloud (schema + buckets) then seed-cloud
@@ -195,4 +203,4 @@ review:
 	yarn test:run
 	@echo "Review complete: lint, build, and tests passed"
 
-.PHONY: all init-log setup-supabase clean report-backlog migrate-new migrate-up migrate-diff migrate-reset stop-db run-dev test test-run test-ui test-coverage review seed-storage seed-db seed seed-cloud migrate-cloud deploy-cloud
+.PHONY: all init-log setup-supabase clean report-backlog migrate-new migrate-up migrate-diff migrate-reset stop-db run-dev test test-run test-ui test-coverage review seed-storage seed-db seed pull-live seed-cloud migrate-cloud deploy-cloud

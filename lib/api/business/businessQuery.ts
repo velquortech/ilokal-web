@@ -452,23 +452,50 @@ export async function getBusinessProfileData(
  *
  * Soft-deleted rows are filtered, per the embedded-relation convention. Never
  * throws — a failed read renders an empty picker, not a broken page.
+ *
+ * Filtered to categories that actually HAVE browseable businesses (verified,
+ * unarchived) — the same contract as the mobile business-types endpoint — so
+ * the picker never offers a dead category. `include` force-keeps category ids
+ * even when they currently have no other business (the shop being edited is
+ * itself the only member), so an existing selection can always be saved back.
  */
-export async function getBusinessCategoryOptions(): Promise<
-  { id: string; name: string }[]
-> {
+export async function getBusinessCategoryOptions(options?: {
+  include?: string[];
+}): Promise<{ id: string; name: string }[]> {
   try {
     const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase
       .from('business_categories')
-      .select('id, name')
+      .select('id, name, businesses!businesses_category_id_fkey!inner(id)')
       .is('deleted_at', null)
+      .eq('is_active', true)
+      .filter('businesses.status', 'eq', 'verified')
+      .filter('businesses.archived_at', 'is', null)
       .order('name', { ascending: true });
 
     if (error) {
       logActionError('getBusinessCategoryOptions', error);
       return [];
     }
-    return data ?? [];
+    const listed = (data ?? []).map((c) => ({ id: c.id, name: c.name }));
+
+    // Re-add include-ids the filter dropped (rare: the shop's own category
+    // may have no OTHER verified business yet), keeping the list sorted.
+    const include = (options?.include ?? []).filter(Boolean);
+    const missing = include.filter((id) => !listed.some((c) => c.id === id));
+    if (missing.length > 0) {
+      const { data: extras, error: extrasError } = await supabase
+        .from('business_categories')
+        .select('id, name')
+        .in('id', missing)
+        .eq('is_active', true)
+        .is('deleted_at', null);
+      if (!extrasError && extras) {
+        listed.push(...extras.map((c) => ({ id: c.id, name: c.name })));
+        listed.sort((a, b) => a.name.localeCompare(b.name));
+      }
+    }
+    return listed;
   } catch (err) {
     if (isDynamicUsageError(err)) throw err;
     logActionError('getBusinessCategoryOptions', err);

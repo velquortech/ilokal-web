@@ -333,6 +333,13 @@ export const config = {
     // Same reason: `/for-business` reads the session to pick its CTA and to
     // redirect an owner who already has a shop.
     '/for-business',
+    // Same reason again: the hosted legal pages mount `PublicShell`, whose
+    // header reads the session. The DOCUMENTS themselves are static and must
+    // stay reachable signed-out — these entries only refresh an expiring
+    // token, since `isProtectedPath` is false for both, so a Play reviewer or
+    // a crawler with no cookies is unaffected.
+    '/privacy',
+    '/delete-account',
     // The Sentry browser tunnel — matched only so it can be rate-limited
     // before it forwards anything (SN9). Keep in lockstep with
     // `SENTRY_TUNNEL_PATH` and `tunnelRoute` in next.config.ts. Both forms,

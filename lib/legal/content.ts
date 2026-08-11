@@ -47,8 +47,40 @@ export type LegalDoc = {
   sections: LegalSection[];
 };
 
-/** Where deletion and data-rights requests go. Also used by /delete-account. */
-export const PRIVACY_CONTACT_EMAIL = 'privacy@ilokal.app';
+/**
+ * Where deletion and data-rights requests go — or `null` while no mailbox
+ * exists.
+ *
+ * ⚠️ Currently `null`, and the reason is worse than "the mailbox is unread".
+ * The address the legal copy inherited from the mobile repo is
+ * `privacy@ilokal.app`, and **`ilokal.app` does not exist** — no A record, no
+ * NS, NXDOMAIN as of 2026-08-11. Mail to it hard-bounces. `ilokal.shop` is the
+ * real domain (Vercel DNS) but publishes **no MX record**, so it cannot
+ * receive mail either, at any address. `no-reply@` was considered and is doubly
+ * wrong: send-only by convention, on the domain that does not resolve.
+ *
+ * Shipping a dead `mailto:` on the one page whose job is "here is how to reach
+ * us" is worse than shipping no channel — it looks like a working route, and a
+ * request into it disappears silently.
+ *
+ * TO RESTORE: add an MX record for `ilokal.shop` (Cloudflare Email Routing or
+ * Google Workspace both do forwarding in minutes), then set this to
+ * `privacy@ilokal.shop`. That single edit re-enables the channel on both pages
+ * and in the policy text.
+ *
+ * Everything that renders a contact channel is gated on this being non-null,
+ * so **setting it to a working address is the only change needed** to restore
+ * the email route on both pages and in the policy text. A test asserts no
+ * `mailto:` ships while it is null.
+ *
+ * 🔴 WHY THIS MATTERS BEYOND TIDINESS: Google Play's data-deletion requirement
+ * is that a user can request account deletion **without installing the app** —
+ * that is the entire reason the Data-deletion URL is collected. With no
+ * off-app channel, `/delete-account` documents the in-app route and the data
+ * handling but cannot satisfy that clause. Acceptable exposure for closed
+ * testing; resolve before production. One working mailbox closes it.
+ */
+export const PRIVACY_CONTACT_EMAIL: string | null = null;
 
 /**
  * Days an archived account is kept before its personal fields are purged.
@@ -59,14 +91,36 @@ export const PRIVACY_CONTACT_EMAIL = 'privacy@ilokal.app';
  */
 export const ACCOUNT_PURGE_AFTER_DAYS = 90;
 
+/**
+ * How the policy tells people to reach us, given there may be no address.
+ *
+ * Computed once rather than written out three times, so restoring
+ * `PRIVACY_CONTACT_EMAIL` fixes the intro, the rights section and the contact
+ * section together. Writing "email us at X" in three places is how one of them
+ * keeps a dead address after the other two are fixed.
+ */
+const CONTACT_CLAUSE = PRIVACY_CONTACT_EMAIL
+  ? `email ${PRIVACY_CONTACT_EMAIL}`
+  : 'use the contact details published on our website';
+
+/**
+ * ⚠️ Deliberately does not invent a route that does not exist. With no working
+ * mailbox (see `PRIVACY_CONTACT_EMAIL`) the only thing this policy can honestly
+ * point at for deletion is the in-app control. A privacy policy with no
+ * contactable controller is itself a gap under RA 10173 and a weak point in a
+ * Play review — it is recorded here rather than papered over.
+ */
+const CONTACT_SENTENCE = PRIVACY_CONTACT_EMAIL
+  ? `Questions or requests? Email ${PRIVACY_CONTACT_EMAIL} — we’re happy to help.`
+  : 'We are setting up a contact address for privacy requests and will publish it here. In the meantime, you can delete your account yourself in the app under Profile → Account Settings → Delete Account.';
+
 export const PRIVACY_POLICY: LegalDoc = {
   id: 'privacy',
   title: 'Privacy Policy',
   // Newer than the app's own "August 8, 2026" on purpose: the deletion section
   // below was corrected after that date.
   lastUpdated: 'August 11, 2026',
-  intro:
-    'This Privacy Policy explains what information iLokal collects when you use the app, how we use and share it, and the choices you have. We wrote it to be easy to read — if anything is unclear, contact us at privacy@ilokal.app.',
+  intro: `This Privacy Policy explains what information iLokal collects when you use the app, how we use and share it, and the choices you have. We wrote it to be easy to read — if anything is unclear, ${CONTACT_CLAUSE}.`,
   sections: [
     {
       heading: 'Who we are',
@@ -159,13 +213,34 @@ export const PRIVACY_POLICY: LegalDoc = {
       ],
     },
     {
+      // Mirrors the mobile policy's "Deactivating your account", added the
+      // same day. Kept ahead of deletion, and phrased so the reversible option
+      // is the one a hesitant user meets first — the shape Facebook uses, and
+      // the reason the pair exists rather than a single destructive control.
+      //
+      // Deliberately does NOT claim the profile becomes invisible while
+      // deactivated: mobile protected routes gate on JWT validity, not account
+      // status (TD-018), so only deletion's archive earns that claim.
+      heading: 'Deactivating your account',
+      paragraphs: [
+        'If you want a break rather than a deletion, you can deactivate instead, in the app under Profile → Account Settings → Deactivate Account.',
+        'Deactivating is reversible: it signs you out and pauses your account, and your data is kept while it is deactivated. You can reactivate by signing back in. Deactivation does not delete anything — to remove your details, use Delete Account.',
+      ],
+    },
+    {
       // ⚠️ The one section that intentionally differs from the in-app copy.
       // See the file header for why. Describe the archive, not a deletion that
       // does not happen.
       heading: 'Deleting your account',
       paragraphs: [
-        'You can delete your account in the app under Profile → Account Settings → Delete Account, or by emailing privacy@ilokal.app from your registered address. You do not need the app installed to ask us — see the account deletion page on our website.',
-        'Deleting archives your account straight away: you are signed out, your profile stops being visible to anyone, and you can no longer sign in with it. We keep the archived record for 90 days so the account can be restored if you delete it by mistake or change your mind — write to privacy@ilokal.app within that window and we will bring it back.',
+        'You can delete your account in the app under Profile → Account Settings → Delete Account.',
+        // Deliberately does NOT claim sign-in is blocked. It is on the web
+        // (the login gate 403s any profile with `archived_at` set) but NOT on
+        // mobile: GoTrue has no view of `profiles`, the app checks
+        // `archived_at` nowhere, and an archived user can re-authenticate —
+        // verified end-to-end. Fixing that is mobile work; until then the
+        // policy states only what actually holds on both.
+        'Deleting archives your account straight away: you are signed out on every device and your profile stops being visible to anyone. We keep the archived record for 90 days before removing your personal details, so a deletion made by mistake is not immediately irreversible.',
         'After 90 days we purge the personal fields — your email address, name, phone number and profile photo. Records of things you did, such as offers you redeemed, may be kept for the businesses’ own records and for legal and fraud-prevention reasons, in a form that no longer identifies you.',
       ],
     },
@@ -189,9 +264,7 @@ export const PRIVACY_POLICY: LegalDoc = {
     },
     {
       heading: 'Contact',
-      paragraphs: [
-        'Questions or requests? Email privacy@ilokal.app — we’re happy to help.',
-      ],
+      paragraphs: [CONTACT_SENTENCE],
     },
   ],
 };

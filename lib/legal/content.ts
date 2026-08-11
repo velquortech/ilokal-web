@@ -48,39 +48,38 @@ export type LegalDoc = {
 };
 
 /**
- * Where deletion and data-rights requests go — or `null` while no mailbox
- * exists.
+ * Where deletion and data-rights requests go, or `null` when no mailbox exists.
  *
- * ⚠️ Currently `null`, and the reason is worse than "the mailbox is unread".
- * The address the legal copy inherited from the mobile repo is
- * `privacy@ilokal.app`, and **`ilokal.app` does not exist** — no A record, no
- * NS, NXDOMAIN as of 2026-08-11. Mail to it hard-bounces. `ilokal.shop` is the
- * real domain (Vercel DNS) but publishes **no MX record**, so it cannot
- * receive mail either, at any address. `no-reply@` was considered and is doubly
- * wrong: send-only by convention, on the domain that does not resolve.
+ * Set to `privacy@ilokal.shop` (owner's choice, 2026-08-11). `ilokal.shop` is
+ * the real domain — Vercel DNS, and the one the web app is served from. The
+ * address the legal copy originally inherited, `privacy@ilokal.app`, is gone
+ * for good: **`ilokal.app` does not exist** (no A record, no NS, NXDOMAIN), so
+ * mail to it hard-bounced. `no-reply@` was considered and rejected twice over —
+ * send-only by convention, and on that same non-existent domain.
  *
- * Shipping a dead `mailto:` on the one page whose job is "here is how to reach
- * us" is worse than shipping no channel — it looks like a working route, and a
- * request into it disappears silently.
+ * 🔴 MERGE PRECONDITION — `ilokal.shop` had **no MX record** when this was
+ * wired (ENODATA, 2026-08-11), so the address does not receive mail *yet*.
+ * That is safe only because this branch is not deployed. **Do not merge or
+ * deploy until MX resolves**, or `/delete-account` ships a `mailto:` that
+ * bounces — which is worse than offering no channel at all, because it looks
+ * like a working route and swallows the request. Verify in one line:
  *
- * TO RESTORE: add an MX record for `ilokal.shop` (Cloudflare Email Routing or
- * Google Workspace both do forwarding in minutes), then set this to
- * `privacy@ilokal.shop`. That single edit re-enables the channel on both pages
- * and in the policy text.
+ *   node -e "require('dns').promises.resolveMx('ilokal.shop').then(console.log)"
  *
- * Everything that renders a contact channel is gated on this being non-null,
- * so **setting it to a working address is the only change needed** to restore
- * the email route on both pages and in the policy text. A test asserts no
- * `mailto:` ships while it is null.
+ * Setup is two MX records at any forwarder (ImprovMX / ForwardEmail work with
+ * Vercel DNS; Cloudflare Email Routing would need the nameservers moved).
  *
- * 🔴 WHY THIS MATTERS BEYOND TIDINESS: Google Play's data-deletion requirement
- * is that a user can request account deletion **without installing the app** —
- * that is the entire reason the Data-deletion URL is collected. With no
- * off-app channel, `/delete-account` documents the in-app route and the data
- * handling but cannot satisfy that clause. Acceptable exposure for closed
- * testing; resolve before production. One working mailbox closes it.
+ * Everything that renders a contact channel is gated on this constant, so it
+ * is the single switch for the email route on both pages, the policy intro and
+ * the contact section. A test pins the domain, so the dead one cannot return.
+ *
+ * WHY IT MATTERS: Google Play's data-deletion requirement is that a user can
+ * request account deletion **without installing the app** — the entire reason
+ * the Data-deletion URL is collected. Until this mailbox actually receives,
+ * `/delete-account` documents the in-app route and the data handling but does
+ * not satisfy that clause.
  */
-export const PRIVACY_CONTACT_EMAIL: string | null = null;
+export const PRIVACY_CONTACT_EMAIL: string | null = 'privacy@ilokal.shop';
 
 /**
  * Days an archived account is kept before its personal fields are purged.

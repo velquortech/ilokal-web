@@ -143,12 +143,26 @@
   And **the 90-day claim is enforced by prose, not by a test**: the suite pins
   that the pages and the migration quote the same number, but nothing fails if
   this merges, the Play URLs go live, and the migration is never applied.
-- **⚠️ Open question, and it blocks the deletion page's only request channel:**
-  whether `privacy@ilokal.app` actually receives mail. It is inherited from the
-  mobile repo, which itself lists contact emails as an unresolved pre-release
-  item, and the web app is on `ilokal.shop`. A Data-deletion URL whose one
-  channel bounces fails the requirement it exists to satisfy — and it is the
-  single thing on that page a reviewer might test.
+- **🔴 The inherited contact address was not merely unread — its domain does
+  not exist.** `privacy@ilokal.app` came from the mobile repo, and `ilokal.app`
+  has **no A record and no NS: NXDOMAIN**. Mail to it hard-bounced. `ilokal.ph`
+  turned out to be a test fixture only. `no-reply@` was proposed and rejected
+  twice over: send-only by convention, and on that same non-existent domain.
+  Every address in the legal copy pointed somewhere unreachable.
+- **Now `privacy@ilokal.shop`** — the domain the app is actually served from.
+  Every contact route is gated on one constant, so it is the single switch for
+  the email route on both pages, the policy intro and the contact section. A
+  test pins the domain (and rejects `ilokal.app`, `ilokal.ph` and a `no-reply@`
+  local-part) so a dead address cannot come back.
+- **⚠️ MERGE PRECONDITION — `ilokal.shop` had no MX record when this was wired
+  (ENODATA, 2026-08-11), so the address does not receive mail yet.** Safe only
+  because the branch is not deployed. **Do not merge or deploy until MX
+  resolves**, or the page ships a bouncing `mailto:` — worse than no channel,
+  because it looks like a working route and swallows the request. Verify:
+  `node -e "require('dns').promises.resolveMx('ilokal.shop').then(console.log)"`.
+  Two MX records at any forwarder does it; the suite cannot check this, because
+  it is offline by contract, so the assertion is on the domain and the DNS
+  check is a deploy-time step.
 
 ## 2026-08-10 — The migration queue was already applied, and the doc said otherwise (chore/cloud-migration-audit)
 

@@ -105,13 +105,16 @@ seed-storage:
 	@bash supabase/seeds/seed-storage.sh
 
 seed-db:
-	@for f in supabase/seeds/users.sql supabase/seeds/subscription_plans.sql supabase/seeds/business_categories.sql supabase/seeds/businesses.sql supabase/seeds/products.sql supabase/seeds/coupons.sql supabase/seeds/ratings.sql supabase/seeds/business_subscriptions.sql supabase/seeds/business_posts.sql supabase/seeds/follows.sql supabase/seeds/bulk_seed.sql supabase/seeds/view_counts.sql; do \
+	@for f in supabase/seeds/users.sql supabase/seeds/subscription_plans.sql supabase/seeds/business_categories.sql supabase/seeds/businesses.sql supabase/seeds/products.sql supabase/seeds/coupons.sql supabase/seeds/ratings.sql supabase/seeds/business_subscriptions.sql supabase/seeds/business_posts.sql supabase/seeds/events.sql supabase/seeds/events_enable.sql supabase/seeds/follows.sql supabase/seeds/bulk_seed.sql supabase/seeds/view_counts.sql supabase/seeds/real_world_gaps.sql; do \
 		echo "  seeding $$f..."; \
 		docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < $$f; \
 	done
 	@echo "DB seed complete."
 
+# Seeding strategy, run order, and the no-shared-photos / gaps contracts are
+# documented in supabase/seeds/README.md.
 seed: seed-storage seed-db
+
 
 # ── Cloud deploy (APK preview build) ──────────────────────────────────────────
 # Full flow: `make deploy-cloud` = migrate-cloud (schema + buckets) then seed-cloud
@@ -145,7 +148,7 @@ migrate-cloud:
 # uploads storage objects to the cloud buckets. Run `make migrate-cloud` first.
 # Re-runnable: seeds use ON CONFLICT and the lockdown is idempotent.
 CLOUD_SEED_FILES = users subscription_plans business_categories businesses products \
-                   coupons ratings business_subscriptions business_posts follows \
+                   coupons ratings business_subscriptions business_posts events follows \
                    bulk_seed view_counts
 
 seed-cloud:

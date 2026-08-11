@@ -1,5 +1,123 @@
 # Changelog
 
+## 2026-08-11 — Play Store blockers: hosted policy, a deletion URL, and a delete that could never have worked (feat/play-store-legal-pages)
+
+> **ONE new migration (`20260811120000_purge_archived_profiles.sql`) — applied
+> NOWHERE. Needs approval.** Two new public pages, one route-config block, one
+> proxy-matcher entry, one footer link. Companion changes live in the
+> **`ilokal-mobile`** repo (edge function + legal copy) and are listed at the
+> bottom. Google Play rejects the App content step — closed testing
+> included — without a hosted privacy policy URL; there was none.
+
+- **🔴 The `delete-account` edge function was never deployed, and would not
+  have worked if it had been.** `supabase functions list` against
+  `ilokal-database` returns **zero** functions, so every in-app "Delete
+  Account" tap failed while the Data Safety form claimed deletion worked. But
+  the interesting half is the second one: the function called
+  `admin.auth.admin.deleteUser()`, which CASCADEs `auth.users` → `profiles`,
+  and **three tables reference `profiles` with ON DELETE NO ACTION** —
+  `businesses.owner_id`, `follows.user_id`, `user_redemptions.user_id`. So the
+  delete raised a foreign key violation for any user who owns a shop, follows
+  a business, or has ever redeemed an offer. Measured against production:
+  **21 of 58 profiles (36%) would have failed**, and that ratio only grows,
+  because following and redeeming are the two things the app is for.
+- **Rewritten as an archive, which is also what was asked for.** It now writes
+  `archived_at` + `status='inactive'` and revokes every session — **mirroring
+  `DELETE /api/protected/mobile/me` exactly**, because two surfaces that both
+  say "delete my account" must not mean two different things. The app invokes
+  it **by name** and only checks for an error, so this is a pure server-side
+  behaviour change: **no client release, and the built AAB stays valid.**
+- **Idempotency is load-bearing here in a way it was not on the web.** The
+  `.is('archived_at', null)` guard preserves the ORIGINAL timestamp, and that
+  timestamp is what the 90-day purge counts from — without it a double-tap
+  silently restarts the retention clock.
+- **Session revocation is non-fatal on purpose.** The archive is what the user
+  asked for and it has already landed; failing the call would report "deletion
+  failed" for an account that IS deleted, and the retry would then be a no-op
+  against the guard, so the user could never get a success.
+- **🔴 The policy said something the system does not do.** Section 11 read
+  *"This permanently removes your account and the profile data tied to it."*
+  Under an archive that is false, and under the FKs above it was never
+  achievable. The hosted copy describes the archive, the 90-day recovery
+  window and the purge. A contract test fails on any return of the phrase —
+  **proven by putting it back and watching that one test go red.**
+- **`/privacy` (new) — the URL Play asks for.** The wording already existed and
+  was already finalized; it had no URL, living only in the mobile app's in-app
+  reader and, on the web, inside a registration dialog **behind auth**. So this
+  was a hosting problem, not a writing one.
+- **Mirrored in the mobile repo's own `LegalSection[]` shape, deliberately.**
+  Re-typing legal prose into a new format is how two copies of a policy start
+  disagreeing; copying the structure makes syncing a **structural diff** rather
+  than a proofread, and leaves exactly one intentional divergence (section 11)
+  for a reviewer to find.
+- **`/delete-account` (new) — the Data-deletion URL.** Play's requirement is
+  that a user can REQUEST deletion **without installing the app**, and that the
+  page says what is deleted, what is kept, and for how long. So the email route
+  carries equal weight to the in-app steps, and the window is a number rather
+  than "a period of time".
+- **Deliberately no form and no sign-in on that page.** A form would be a new
+  unauthenticated, side-effecting endpoint that mutates accounts by email
+  address — an account-enumeration oracle at best — for a flow that is manual
+  anyway, since identity has to be confirmed before archiving on someone's
+  say-so.
+- **Both served from a route GROUP (`app/(legal)/`)**, which adds no path
+  segment. These two strings get typed into the Play Console and the store
+  listing, where nothing in this repo can see them: a rename leaves a dead link
+  in a submission nobody re-reads until the next review. The group can be
+  reorganised without moving the URLs, and the paths are pinned by a test that
+  hard-codes them as the record of what was submitted.
+- **Added to the proxy matcher**, for the reason `/explore` and `/for-business`
+  already are: both mount `PublicShell`, whose header reads the session, and
+  unmatched, nothing refreshes an expiring token — a live session renders as
+  signed-out. `isProtectedPath` is false for both, so anonymous readers take
+  the refresh path only and are unaffected.
+- **🔴 The purge migration was written wrong twice, and the schema caught it
+  both times.** `profiles.email` is **NOT NULL**, so the first draft's
+  `SET email = NULL` would have failed on **every** run — a purge job that
+  silently never purges, which is the same silent-success class as the CI
+  guard fixed the day before. It writes a per-id tombstone on the `.invalid`
+  TLD (RFC 2606, can never resolve) instead. And keying idempotency on
+  `full_name IS NOT NULL` would have **permanently skipped every user who never
+  set a name**, since that column is nullable. Both pinned by tests.
+- **The purge anonymises rather than deletes**, for the same FK reason as
+  above: blanking name/phone/avatar/email keeps the rows those three NO ACTION
+  constraints point at, while the person behind them stops being identifiable.
+  Service-role only, pinned `search_path`, bounded per run with
+  `FOR UPDATE SKIP LOCKED`, daily via pg_cron in the idiom
+  `20260630000001_notification_outbox.sql` established.
+- **⚠️ KNOWN GAP, stated in the migration:** it purges `public.profiles` only.
+  The address also lives in `auth.users.email` and
+  `auth.identities.identity_data`. Writing to the auth schema by hand can break
+  GoTrue invariants, and the supported route — admin delete of the auth user —
+  is exactly what the NO ACTION FKs refuse. Closing it properly means changing
+  those three constraints to ON DELETE SET NULL / CASCADE so a real delete
+  becomes possible. That is why the wording says personal fields are *purged*
+  rather than that every trace is erased.
+- **⚠️ PRECONDITION — the migration must be applied BEFORE the URLs go into the
+  Play Console.** Both pages tell users their personal fields are purged after
+  90 days. Until the job is applied and scheduled, that is a claim the system
+  does not keep.
+- **Tests (+14):** the two paths pinned as submitted, both unprotected, both in
+  the matcher, footer link present, the two pages cross-linking, the retention
+  window shared between the pages and the migration's default, a contact
+  address on both, no empty section, and four on the purge job (never nulls
+  the NOT NULL column, never keys on the nullable one, service-role only,
+  pinned search_path).
+- **Companion changes in `ilokal-mobile` (not this repo, committed there):**
+  `supabase/functions/delete-account/index.ts` rewritten to archive;
+  `services/api/accountService.ts` docstring corrected (it said "Permanently
+  delete"); section 11 of both `constants/legal.ts` and
+  `legal/PRIVACY_POLICY.md` rewritten; `legal/README.md` records the hosted
+  URLs as a fourth place to keep in sync.
+- **Not done:** the function is **prepared, not deployed** — the repo owner
+  runs it (`supabase functions deploy delete-account --project-ref
+  skvgasimllpyhyudpycu`). The migration is unapplied. `/terms` is **not**
+  built: it is not one of the Play blockers and the copy exists, so it is a
+  cheap follow-up rather than a transcription of 94 lines of legal prose into
+  this branch. And **any AAB built before today still shows the old
+  "permanently removes" sentence in-app**; the hosted copy is authoritative
+  until the next build.
+
 ## 2026-08-10 — The migration queue was already applied, and the doc said otherwise (chore/cloud-migration-audit)
 
 > **No code change. ONE migration applied to PRODUCTION**

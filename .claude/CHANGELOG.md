@@ -149,11 +149,22 @@
   turned out to be a test fixture only. `no-reply@` was proposed and rejected
   twice over: send-only by convention, and on that same non-existent domain.
   Every address in the legal copy pointed somewhere unreachable.
-- **Now `privacy@ilokal.shop`** — the domain the app is actually served from.
-  Every contact route is gated on one constant, so it is the single switch for
-  the email route on both pages, the policy intro and the contact section. A
-  test pins the domain (and rejects `ilokal.app`, `ilokal.ph` and a `no-reply@`
-  local-part) so a dead address cannot come back.
+- **Now `support@ilokal.shop`** — the domain the app is actually served from.
+  `support@` rather than `privacy@` so the two repos agree: the mobile repo's
+  `legal/README.md` already names `support@` as its default, and one staffed
+  inbox beats two aliases nobody watches. (A dedicated privacy alias is worth
+  revisiting once a DPO is appointed and NPC registration lands — both open
+  items there.) Every contact route is gated on one constant, so it is the
+  single switch for the email route on both pages, the policy intro and the
+  contact section. A test pins the domain and rejects `ilokal.app`, `ilokal.ph`
+  and a `no-reply@` local-part, so a dead address cannot come back.
+- **On `no-reply@`, since it was proposed twice:** the objection is direction,
+  not the prefix. `noreply@anthropic.com` in a `Co-Authored-By:` trailer is an
+  *identity* — send-only by design, and correct for that job. This address is
+  an *inbound* request channel, and Play's clause is that a user can **request**
+  deletion through it; an address announcing "we don't read this" defeats the
+  one job it has. The test therefore rejects a `no-reply@` local-part here and
+  nowhere else.
 - **⚠️ MERGE PRECONDITION — `ilokal.shop` had no MX record when this was wired
   (ENODATA, 2026-08-11), so the address does not receive mail yet.** Safe only
   because the branch is not deployed. **Do not merge or deploy until MX

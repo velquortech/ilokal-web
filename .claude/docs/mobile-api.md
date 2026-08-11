@@ -103,9 +103,57 @@ Shops Near Me — returns verified branches ordered by distance. Backed by the `
       "logo_url": "string",
       "interior_images": ["url"]
     }
+  ],
+  "category_counts": [
+    {
+      "business_type": "Food & Beverage",
+      "category_name": "Café",
+      "count": 3
+    }
   ]
 }
 ```
+
+`category_counts` is the radius-wide availability aggregate for Explore's
+category filters (per business type / sub-category, verified branches in the
+radius). Computed by the `nearby_business_type_counts` RPC
+(`supabase/migrations/20260812000000_nearby_business_type_counts.sql`) —
+deliberately NOT filtered by the active `category`/`subcategory`/`q`, so the
+filter dropdowns stay stable while browsing; the counts are returned in both
+the paged and the legacy `limit` shapes.
+
+### `GET /api/mobile/business-types`
+
+Static reference list backing Explore's category filter — the business types
+and their sub-categories. Filtered so a type/category only appears when it has
+at least one **browseable** business (`status='verified'`, `archived_at IS
+NULL`) — the same contract as the nearby feed — so the filter never advertises
+a dead category. The DB read is cached for 5 min.
+
+**Response 200**
+
+```json
+{
+  "business_types": [
+    {
+      "id": "uuid",
+      "name": "Food & Beverage",
+      "description": "string",
+      "icon": "Coffee",
+      "business_categories": [
+        { "id": "uuid", "name": "Café", "description": "string", "image_url": "string" }
+      ]
+    }
+  ]
+}
+```
+
+> **Shape note:** the filter is implemented as a PostgREST inner join on
+> `businesses`, but the join's `businesses` id array is **stripped** before the
+> payload is returned. Business ids are not part of this reference contract and
+> are never exposed here — the endpoint carries only the shape above. (Business
+> ids are, however, public via the browse/detail endpoints, where they are the
+> resource identifier.)
 
 ### `GET /api/mobile/businesses/:businessId`
 

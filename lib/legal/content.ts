@@ -67,17 +67,22 @@ export type LegalDoc = {
  * Until then a general support inbox that is actually read beats a specialist
  * one that is not.
  *
- * 🔴 MERGE PRECONDITION — `ilokal.shop` had **no MX record** when this was
- * wired (ENODATA, 2026-08-11), so the address does not receive mail *yet*.
- * That is safe only because this branch is not deployed. **Do not merge or
- * deploy until MX resolves**, or `/delete-account` ships a `mailto:` that
- * bounces — which is worse than offering no channel at all, because it looks
- * like a working route and swallows the request. Verify in one line:
+ * ✅ MX RESOLVES — verified 2026-08-11 through two independent public
+ * resolvers (Google 8.8.8.8 and Cloudflare 1.1.1.1), both returning
+ * `10 mx1.improvmx.com | 20 mx2.improvmx.com`. Mail for the domain is routed.
+ * This was a merge precondition while the zone had no MX at all (ENODATA), for
+ * a reason worth keeping: a `mailto:` that bounces is worse than no channel,
+ * because it looks like a working route and swallows the request. Re-check in
+ * one line if the domain's DNS is ever touched:
  *
  *   node -e "require('dns').promises.resolveMx('ilokal.shop').then(console.log)"
  *
- * Setup is two MX records at any forwarder (ImprovMX / ForwardEmail work with
- * Vercel DNS; Cloudflare Email Routing would need the nameservers moved).
+ * ⚠️ Still unproven from here: that the mailbox ACCEPTS and a human reads it.
+ * DNS proves routing, not delivery, and port 25 is blocked outbound on the
+ * machine this was set up from, so no SMTP acceptance probe was possible. The
+ * definitive test is a real email to this address landing in the destination
+ * inbox — worth doing once before the Play submission, since this is the one
+ * thing on `/delete-account` a reviewer might actually exercise.
  *
  * Everything that renders a contact channel is gated on this constant, so it
  * is the single switch for the email route on both pages, the policy intro and

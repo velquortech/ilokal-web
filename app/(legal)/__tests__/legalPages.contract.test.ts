@@ -119,19 +119,61 @@ describe('privacy policy content', () => {
     );
   });
 
-  it('gives a contact address on both pages', () => {
-    // Play requires a way to request deletion without installing the app.
-    expect(
-      PRIVACY_POLICY.sections.some((s) =>
-        [...(s.paragraphs ?? []), ...(s.bullets ?? [])].some((t) =>
-          t.includes(PRIVACY_CONTACT_EMAIL),
-        ),
-      ),
-    ).toBe(true);
+  it('never renders a contact address that cannot receive mail', () => {
+    // `ilokal.app` does not resolve (NXDOMAIN) and `ilokal.shop` publishes no
+    // MX record, so `PRIVACY_CONTACT_EMAIL` is null. A dead `mailto:` on the
+    // page whose job is "how to reach us" is worse than no channel: it looks
+    // like a working route and swallows the request.
+    const rendered = [
+      PRIVACY_POLICY.intro,
+      ...PRIVACY_POLICY.sections.flatMap((s) => [
+        ...(s.paragraphs ?? []),
+        ...(s.bullets ?? []),
+      ]),
+    ].join(' ');
 
-    const deletion = read('app/(legal)/delete-account/page.tsx');
+    if (PRIVACY_CONTACT_EMAIL === null) {
+      expect(rendered).not.toMatch(/@ilokal\.(app|shop|ph)/);
+      expect(rendered).not.toMatch(/mailto:/);
+    } else {
+      // Restored: it must be the address the constant names, not a stale one.
+      expect(rendered).toContain(PRIVACY_CONTACT_EMAIL);
+    }
+  });
+
+  it('gates every email route on the constant, so one edit restores them', () => {
+    // The page must not hard-code an address anywhere; each block renders only
+    // when there is a mailbox to render.
+    const deletion = stripComments(read('app/(legal)/delete-account/page.tsx'));
+    expect(deletion).not.toMatch(/mailto:[a-z]/i); // only the template form
     expect(deletion).toContain('PRIVACY_CONTACT_EMAIL');
-    expect(deletion).toContain('mailto:');
+    // Both the standalone section and the recovery sentence are conditional.
+    const guards = deletion.match(/mailtoHref && PRIVACY_CONTACT_EMAIL/g) ?? [];
+    expect(guards.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('still documents the in-app route, which is the only one that works', () => {
+    const deletion = read('app/(legal)/delete-account/page.tsx');
+    expect(deletion).toContain('Account Settings');
+    expect(deletion).toContain('Delete Account');
+  });
+
+  it('does not claim sign-in is blocked, because on mobile it is not', () => {
+    // True on the web (the login gate 403s an archived profile) and FALSE on
+    // mobile: GoTrue has no view of `profiles`, the app checks `archived_at`
+    // nowhere, and an archived user re-authenticates successfully — verified
+    // end-to-end against a live stack. Blocking that is mobile work; until
+    // then neither surface may promise it.
+    const deletionSection = PRIVACY_POLICY.sections.find(
+      (section) => section.heading === 'Deleting your account',
+    );
+    const policyText = (deletionSection?.paragraphs ?? []).join(' ');
+    const page = stripComments(read('app/(legal)/delete-account/page.tsx'));
+
+    for (const text of [policyText, page]) {
+      expect(text).not.toMatch(/no longer sign in/i);
+      expect(text).not.toMatch(/cannot sign in/i);
+    }
   });
 
   it('has no empty section', () => {

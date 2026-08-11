@@ -69,7 +69,7 @@ VALUES
       '11111111-1111-1111-1111-111111111103/hero.jpg'
     ],
     'verified',
-    (SELECT id FROM public.business_categories WHERE name = 'Specialty Shop' LIMIT 1)
+    (SELECT id FROM public.business_categories WHERE name = 'Gift / Specialty Shop' LIMIT 1)
   ),
   (
     '11111111-1111-1111-1111-111111111104',
@@ -140,7 +140,7 @@ VALUES
       '11111111-1111-1111-1111-111111111108/gallery1.jpg'
     ],
     'verified',
-    (SELECT id FROM public.business_categories WHERE name = 'Local Grocery / Convenience Store' LIMIT 1)
+    (SELECT id FROM public.business_categories WHERE name = 'Sari-sari / Convenience Store' LIMIT 1)
   ),
   (
     '11111111-1111-1111-1111-111111111109',
@@ -155,7 +155,7 @@ VALUES
       '11111111-1111-1111-1111-111111111109/gallery2.jpg'
     ],
     'verified',
-    (SELECT id FROM public.business_categories WHERE name = 'Clothing & Apparel' LIMIT 1)
+    (SELECT id FROM public.business_categories WHERE name = 'Clothing / Apparel' LIMIT 1)
   ),
   (
     '11111111-1111-1111-1111-111111111110',

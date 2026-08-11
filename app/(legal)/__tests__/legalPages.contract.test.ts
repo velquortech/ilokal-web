@@ -141,6 +141,31 @@ describe('privacy policy content', () => {
     }
   });
 
+  it('never uses a domain that cannot receive mail', () => {
+    // `ilokal.app` does not exist — no A record, no NS, NXDOMAIN — so every
+    // address the legal copy originally carried hard-bounced. `ilokal.ph` is
+    // only ever a test fixture. The contact address must live on the domain
+    // the app is actually served from.
+    //
+    // This asserts the DOMAIN, not DNS: the suite is offline by contract, so
+    // it cannot check for an MX record. Whether the mailbox receives is a
+    // deploy-time precondition, recorded on the constant itself.
+    if (PRIVACY_CONTACT_EMAIL !== null) {
+      expect(PRIVACY_CONTACT_EMAIL).toMatch(/@ilokal\.shop$/);
+      expect(PRIVACY_CONTACT_EMAIL).not.toMatch(/@ilokal\.(app|ph)$/);
+      expect(PRIVACY_CONTACT_EMAIL).not.toMatch(/^no-?reply@/i);
+    }
+
+    // And nothing may hard-code a dead address alongside the constant.
+    for (const file of [
+      'lib/legal/content.ts',
+      'app/(legal)/delete-account/page.tsx',
+      'app/(legal)/privacy/page.tsx',
+    ]) {
+      expect(stripComments(read(file))).not.toContain('@ilokal.app');
+    }
+  });
+
   it('gates every email route on the constant, so one edit restores them', () => {
     // The page must not hard-code an address anywhere; each block renders only
     // when there is a mailbox to render.

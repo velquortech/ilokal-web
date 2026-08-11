@@ -103,20 +103,52 @@
   address on both, no empty section, and four on the purge job (never nulls
   the NOT NULL column, never keys on the nullable one, service-role only,
   pinned search_path).
-- **Companion changes in `ilokal-mobile` (not this repo, committed there):**
+- **Companion changes in `ilokal-mobile` (not this repo, left uncommitted —
+  that checkout is on `main`):**
   `supabase/functions/delete-account/index.ts` rewritten to archive;
   `services/api/accountService.ts` docstring corrected (it said "Permanently
   delete"); section 11 of both `constants/legal.ts` and
   `legal/PRIVACY_POLICY.md` rewritten; `legal/README.md` records the hosted
-  URLs as a fourth place to keep in sync.
-- **Not done:** the function is **prepared, not deployed** — the repo owner
+  URLs as a fourth place to keep in sync; plus a new `e2e.local.mjs` beside the
+  function.
+- **✅ The rewritten function is VERIFIED against a real Supabase stack**, not
+  merely typechecked. `deno check` is clean, and a 16-assertion end-to-end run
+  (throwaway user → sign in → invoke with that user's own JWT) confirms: HTTP
+  200, the profile row **still exists** (archive, not delete), `status`
+  `inactive`, `archived_at` set, the caller's JWT refused afterwards (GoTrue
+  answers 403 for a revoked session, not 401), and a replay reporting
+  `already_archived` with the **timestamp unchanged** — the guard that protects
+  the retention clock.
+- **🔴 That run caught a real bug in the rewrite, and the bug was invisible
+  from the outside.** `admin.signOut(jwt, scope)` takes a **JWT, not a user
+  id** (`GoTrueAdminApi.signOut(jwt, …)`), so the first version's
+  `signOut(user.id, 'global')` type-checked, compiled, and **failed at
+  runtime** — while the call is non-fatal, so the function still answered
+  `200 success`. Proven by reverting just that argument: `sessions_revoked`
+  goes `false` and **the "deleted" user's old token still returns 200 from
+  `/auth/v1/user`**. A user who deleted their account would have stayed signed
+  in on a valid token, with nothing in the response saying so. Restored, and
+  re-verified green.
+- **Not done:** the function is **verified but not deployed** — the repo owner
   runs it (`supabase functions deploy delete-account --project-ref
-  skvgasimllpyhyudpycu`). The migration is unapplied. `/terms` is **not**
-  built: it is not one of the Play blockers and the copy exists, so it is a
-  cheap follow-up rather than a transcription of 94 lines of legal prose into
-  this branch. And **any AAB built before today still shows the old
-  "permanently removes" sentence in-app**; the hosted copy is authoritative
-  until the next build.
+  skvgasimllpyhyudpycu --use-api`; never `--prune`, which deletes functions
+  absent locally). The migration is unapplied. `/terms` is **not** built: it is
+  not one of the Play blockers and the copy exists, so it is a cheap follow-up
+  rather than a transcription of 94 lines of legal prose into this branch. And
+  **any AAB built before today still shows the old "permanently removes"
+  sentence in-app**; the hosted copy is authoritative until the next build.
+- **Not verified:** neither page has been opened in a browser. The function was
+  proven against the LOCAL stack, not production — worth one throwaway account
+  through `e2e.local.mjs` after the deploy, since the two databases can differ.
+  And **the 90-day claim is enforced by prose, not by a test**: the suite pins
+  that the pages and the migration quote the same number, but nothing fails if
+  this merges, the Play URLs go live, and the migration is never applied.
+- **⚠️ Open question, and it blocks the deletion page's only request channel:**
+  whether `privacy@ilokal.app` actually receives mail. It is inherited from the
+  mobile repo, which itself lists contact emails as an unresolved pre-release
+  item, and the web app is on `ilokal.shop`. A Data-deletion URL whose one
+  channel bounces fails the requirement it exists to satisfy — and it is the
+  single thing on that page a reviewer might test.
 
 ## 2026-08-10 — The migration queue was already applied, and the doc said otherwise (chore/cloud-migration-audit)
 

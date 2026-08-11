@@ -50,12 +50,22 @@ export type LegalDoc = {
 /**
  * Where deletion and data-rights requests go, or `null` when no mailbox exists.
  *
- * Set to `privacy@ilokal.shop` (owner's choice, 2026-08-11). `ilokal.shop` is
- * the real domain — Vercel DNS, and the one the web app is served from. The
- * address the legal copy originally inherited, `privacy@ilokal.app`, is gone
- * for good: **`ilokal.app` does not exist** (no A record, no NS, NXDOMAIN), so
- * mail to it hard-bounced. `no-reply@` was considered and rejected twice over —
- * send-only by convention, and on that same non-existent domain.
+ * Set to `support@ilokal.shop` (owner's choice, 2026-08-11). `support@` rather
+ * than `privacy@` so the two repos' legal copy agrees — the mobile repo's
+ * `legal/README.md` already names `support@` as its default contact — and
+ * because one staffed inbox beats two aliases nobody watches.
+ *
+ * `ilokal.shop` is the real domain: Vercel DNS, and the one the web app is
+ * served from. The address the legal copy originally inherited,
+ * `privacy@ilokal.app`, is gone for good — **`ilokal.app` does not exist** (no
+ * A record, no NS, NXDOMAIN), so mail to it hard-bounced. `no-reply@` was
+ * considered and rejected twice over: send-only by convention, which is the
+ * opposite of an inbound request channel, and on that same dead domain.
+ *
+ * WORTH REVISITING: a dedicated privacy alias is best practice once a DPO is
+ * appointed and NPC registration lands (both open items in the mobile repo).
+ * Until then a general support inbox that is actually read beats a specialist
+ * one that is not.
  *
  * 🔴 MERGE PRECONDITION — `ilokal.shop` had **no MX record** when this was
  * wired (ENODATA, 2026-08-11), so the address does not receive mail *yet*.
@@ -79,7 +89,7 @@ export type LegalDoc = {
  * `/delete-account` documents the in-app route and the data handling but does
  * not satisfy that clause.
  */
-export const PRIVACY_CONTACT_EMAIL: string | null = 'privacy@ilokal.shop';
+export const PRIVACY_CONTACT_EMAIL: string | null = 'support@ilokal.shop';
 
 /**
  * Days an archived account is kept before its personal fields are purged.

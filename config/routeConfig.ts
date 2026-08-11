@@ -40,6 +40,21 @@ export const ROUTES = {
     FOR_BUSINESS: '/for-business',
   },
 
+  /**
+   * Hosted legal surfaces. Public, no auth, no kill switch.
+   *
+   * These two strings are typed into the Google Play Console (App content →
+   * Privacy policy, and Data safety → Data deletion) and into the store
+   * listing, so they are the hardest URLs in the product to change: renaming
+   * one silently breaks a compliance link that lives outside this repo. They
+   * are served from a route GROUP — `app/(legal)/` — precisely so the group
+   * can be reorganised without moving the paths.
+   */
+  LEGAL: {
+    PRIVACY: '/privacy',
+    DELETE_ACCOUNT: '/delete-account',
+  },
+
   // Dashboard/Protected routes by role
   DASHBOARD: {
     ADMIN: '/admin',

@@ -165,15 +165,29 @@
   deletion through it; an address announcing "we don't read this" defeats the
   one job it has. The test therefore rejects a `no-reply@` local-part here and
   nowhere else.
-- **⚠️ MERGE PRECONDITION — `ilokal.shop` had no MX record when this was wired
-  (ENODATA, 2026-08-11), so the address does not receive mail yet.** Safe only
-  because the branch is not deployed. **Do not merge or deploy until MX
-  resolves**, or the page ships a bouncing `mailto:` — worse than no channel,
-  because it looks like a working route and swallows the request. Verify:
-  `node -e "require('dns').promises.resolveMx('ilokal.shop').then(console.log)"`.
-  Two MX records at any forwarder does it; the suite cannot check this, because
-  it is offline by contract, so the assertion is on the domain and the DNS
-  check is a deploy-time step.
+- **✅ MX now resolves — the merge precondition is cleared.** Verified
+  2026-08-11 through two independent public resolvers (Google `8.8.8.8` and
+  Cloudflare `1.1.1.1`), both returning `10 mx1.improvmx.com |
+  20 mx2.improvmx.com`. It was a hard precondition while the zone had no MX at
+  all, because a bouncing `mailto:` is worse than no channel — it looks like a
+  working route and swallows the request. The suite cannot check DNS (it is
+  offline by contract), so the test asserts the DOMAIN and the lookup is a
+  deploy-time step: `node -e
+  "require('dns').promises.resolveMx('ilokal.shop').then(console.log)"`.
+- **The diagnosis on the way there is worth keeping.** The first "it's added"
+  showed no MX on the apex, none on `support.`/`mail.` subdomains, and **zero
+  TXT records anywhere** — and that last one is the tell: forwarders almost
+  always want a verification TXT beside the MX, so nothing at all having landed
+  meant the write never reached the zone. The alias had been created at the
+  forwarder (a routing rule, invisible to DNS) without adding the two MX
+  records at Vercel. Worth remembering that an MX record's Name field is the
+  DOMAIN (`@`), never the mailbox — the mailbox is configured at the forwarder.
+- **⚠️ Still unproven: that the mailbox ACCEPTS and someone reads it.** DNS
+  proves routing, not delivery. An SMTP acceptance probe (`RCPT TO`, stopping
+  before `DATA`) was attempted and could not run — port 25 is blocked outbound
+  from this machine. **Send one real email to the address before the Play
+  submission**; it is the single thing on `/delete-account` a reviewer might
+  actually exercise.
 
 ## 2026-08-10 — The migration queue was already applied, and the doc said otherwise (chore/cloud-migration-audit)
 

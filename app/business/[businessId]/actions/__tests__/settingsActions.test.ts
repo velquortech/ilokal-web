@@ -67,7 +67,7 @@ function makeSupabaseClient(overrides: Record<string, unknown> = {}) {
       }),
       signInWithPassword: vi.fn().mockResolvedValue({ error: null }),
       updateUser: vi.fn().mockResolvedValue({ error: null }),
-      ...overrides.auth,
+      ...((overrides.auth as object) ?? {}),
     },
     from: vi.fn().mockReturnValue({
       update: vi.fn().mockReturnThis(),

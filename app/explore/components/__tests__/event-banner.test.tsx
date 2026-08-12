@@ -59,8 +59,12 @@ function makeEvent(overrides: Partial<EventWithRefs>): EventWithRefs {
     archived_at: null,
     business: null,
     product: null,
+    // Required on EventWithRefs; the Partial spread would widen these to
+    // `| undefined`, so default them and assert the final shape.
+    latitude: null,
+    longitude: null,
     ...overrides,
-  };
+  } as EventWithRefs;
 }
 
 describe('server render', () => {

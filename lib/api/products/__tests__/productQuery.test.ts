@@ -14,6 +14,7 @@ describe('productQuery', () => {
   let chainedMock: {
     select: ReturnType<typeof vi.fn>;
     eq: ReturnType<typeof vi.fn>;
+    is: ReturnType<typeof vi.fn>;
     or: ReturnType<typeof vi.fn>;
     ilike: ReturnType<typeof vi.fn>;
     lte: ReturnType<typeof vi.fn>;
@@ -479,7 +480,9 @@ describe('productQuery', () => {
 
       expect('product' in result).toBe(true);
       if ('product' in result) {
-        expect(result.product.id).toBe('p1');
+        // getProductById returns `{ product?: Product; error?: string }`, so
+        // the `in` guard does not narrow away the optional — non-null assert.
+        expect(result.product!.id).toBe('p1');
       }
     });
 

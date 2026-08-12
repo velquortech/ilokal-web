@@ -99,7 +99,10 @@ const BASE_DEAL = {
 };
 
 async function write(
-  deal: Partial<typeof BASE_DEAL> & { image_url?: string | null } = {},
+  deal: Partial<Omit<typeof BASE_DEAL, 'discount_type'>> & {
+    discount_type?: 'percentage' | 'fixed_amount';
+    image_url?: string | null;
+  } = {},
   options?: Parameters<typeof makeSupabase>[0],
 ) {
   const { supabase, inserted } = makeSupabase(options);

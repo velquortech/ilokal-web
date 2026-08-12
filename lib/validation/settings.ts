@@ -103,7 +103,11 @@ export const updateBusinessSettingsSchema = z.object({
     })
     .optional()
     .nullable(),
-  contact_website: urlOrEmpty,
+  // `.optional()` here, NOT inside `urlOrEmpty`: that chain's transform
+  // (`v => v ?? null`) would otherwise swallow the optionality and make the
+  // key REQUIRED in the inferred input type — a partial settings update like
+  // `{ allow_reviews: true }` would fail typecheck (and `safeParse`).
+  contact_website: urlOrEmpty.optional(),
   contact_phone_public: z.string().max(20).optional().nullable(),
   allow_reviews: z.boolean().optional(),
   coupon_default_expiry_days: z.number().int().min(1).max(365).optional(),

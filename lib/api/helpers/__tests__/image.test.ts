@@ -23,7 +23,9 @@ async function makeImageFile(
   })
     .png()
     .toBuffer();
-  return new File([buf], name, { type });
+  // sharp's Buffer is Buffer<ArrayBufferLike>, which isn't a BlobPart under
+  // the typed-array generics — a Uint8Array copy is.
+  return new File([new Uint8Array(buf)], name, { type });
 }
 
 async function meta(buffer: Buffer) {
@@ -75,7 +77,9 @@ describe('convertToWebP', () => {
     })
       .webp()
       .toBuffer();
-    const file = new File([webpBuf], 'big.webp', { type: 'image/webp' });
+    const file = new File([new Uint8Array(webpBuf)], 'big.webp', {
+      type: 'image/webp',
+    });
     const out = await convertToWebP(file, { maxDimension: 400 });
     const m = await meta(out);
     expect(m.format).toBe('webp');

@@ -189,9 +189,16 @@ describe('decideEventAction', () => {
   });
 
   it('notifies nobody for a platform event — there is no owner', async () => {
+    // Inlined (not `...EVENT`): EVENT is `as never`, and spreading a never is
+    // not an object spread.
     vi.mocked(eventService.decideEvent).mockResolvedValue({
       success: true,
-      data: { ...EVENT, business_id: null } as never,
+      data: {
+        id: EVENT_ID,
+        business_id: null,
+        name: 'Dinagyang street party',
+        priority: 0,
+      } as never,
     });
 
     await decideEventAction(EVENT_ID, { decision: 'approve' });

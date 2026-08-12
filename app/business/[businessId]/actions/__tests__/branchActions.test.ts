@@ -116,7 +116,7 @@ describe('getBusinessBranchesAction', () => {
     vi.mocked(branchQuery.getBranchesByBusinessId).mockResolvedValueOnce({
       branches: [],
       total: 0,
-      error: 'DB connection failed',
+      error: 'Failed to fetch branches: DB connection failed',
     });
     const res = await getBusinessBranchesAction({});
     expect(res.success).toBe(false);
@@ -203,7 +203,7 @@ describe('getBusinessBranchStatsAction', () => {
     vi.mocked(branchQuery.getBranchesByBusinessId).mockResolvedValueOnce({
       branches: [],
       total: 0,
-      error: 'DB connection failed',
+      error: 'Failed to fetch branches: DB connection failed',
     });
     const res = await getBusinessBranchStatsAction();
     expect(res.success).toBe(false);

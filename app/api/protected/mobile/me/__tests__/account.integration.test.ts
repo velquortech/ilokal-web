@@ -39,12 +39,19 @@ function makeSupabase(results: { data: unknown; error: unknown }[]) {
   return { from: vi.fn(() => builder) };
 }
 
-function authWith(results: { data: unknown; error: unknown }[]) {
+type MobileUserContext = NonNullable<Awaited<ReturnType<typeof getMobileUser>>>;
+
+function authWith(
+  results: { data: unknown; error: unknown }[],
+): MobileUserContext {
   return {
+    // The handlers only read user.id — the rest of the shape (supabase's User
+    // plus a real client) is part of getMobileUser's contract, not something
+    // these stubs exercise.
     user: { id: USER_ID },
     token: 'jwt',
     supabase: makeSupabase(results),
-  };
+  } as unknown as MobileUserContext;
 }
 
 const req = () => new NextRequest('http://localhost/api/protected/mobile/me');

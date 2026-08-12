@@ -1,19 +1,18 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/dev/email-preview/route';
-
-const ORIGINAL_ENV = process.env.NODE_ENV;
 
 function req(query = ''): NextRequest {
   return new NextRequest(`http://localhost:3000/api/dev/email-preview${query}`);
 }
 
 afterEach(() => {
-  process.env.NODE_ENV = ORIGINAL_ENV;
+  // NODE_ENV is a read-only property on `process.env`, so use the stub env.
+  vi.unstubAllEnvs();
 });
 
 function setNodeEnv(value: 'development' | 'production' | 'test') {
-  process.env.NODE_ENV = value;
+  vi.stubEnv('NODE_ENV', value);
 }
 
 describe('GET /api/dev/email-preview', () => {

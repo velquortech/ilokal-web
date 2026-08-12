@@ -17,7 +17,9 @@ export default async function RegistrationLayout({
   }
 
   const [{ data }, { requireBusinessDocuments }] = await Promise.all([
-    businessService.getBusinessTypes(),
+    // onlyActive: hide disabled rows (e.g. Tourism & Leisure, on hold) from
+    // the registration picker — admin reads still see them.
+    businessService.getBusinessTypes({ onlyActive: true }),
     getRegistrationSettings(),
   ]);
   const rawBusinessTypes = (data ?? []) as unknown as RawBusinessType[];

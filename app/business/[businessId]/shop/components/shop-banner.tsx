@@ -45,15 +45,23 @@ export function ShopBanner({ business, branch }: ShopBannerProps) {
       {/* 3. Foreground Content */}
       <div className="relative z-10 flex w-full flex-row items-end justify-between p-8">
         <div className="inline-flex items-end gap-5">
-          {/* Logo with clean border */}
+          {/* Logo with clean border — a shop without a logo gets its initial on
+              white (same pattern as the explore grid + public page) instead of
+              a 404 placeholder file. */}
           <div className="relative size-24 shrink-0 overflow-hidden rounded-2xl border-2 border-white/20 shadow-2xl">
-            <Image
-              src={business?.logo_url ?? '/placeholder-logo.png'}
-              alt={business?.shop_name ?? 'Shop Logo'}
-              width={96}
-              height={96}
-              className="aspect-square bg-white object-cover"
-            />
+            {business?.logo_url ? (
+              <Image
+                src={business.logo_url}
+                alt={business.shop_name ?? 'Shop Logo'}
+                width={96}
+                height={96}
+                className="aspect-square bg-white object-cover"
+              />
+            ) : (
+              <div className="text-foreground flex size-full items-center justify-center bg-white text-3xl font-extrabold">
+                {business?.shop_name?.[0]?.toUpperCase() ?? '?'}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col pb-1">

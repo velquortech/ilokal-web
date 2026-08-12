@@ -229,7 +229,7 @@ describe('branchQuery', () => {
       mockClient(chain);
       await getBranchesByBusinessId('biz-1', { status: 'all' });
       const eqCalls = chain.eq.mock.calls;
-      const statusCall = eqCalls.find(([col]: [string]) => col === 'status');
+      const statusCall = eqCalls.find(([col]) => col === 'status');
       expect(statusCall).toBeUndefined();
     });
 

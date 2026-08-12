@@ -109,7 +109,19 @@ VALUES
 
   ('20260808090000','nearby_banner','fn-sig','nearby_businesses() returns banner_url',
    EXISTS (SELECT 1 FROM pg_proc WHERE proname='nearby_businesses'
-           AND pg_get_function_result(oid) LIKE '%banner_url%'))
+           AND pg_get_function_result(oid) LIKE '%banner_url%')),
+
+  ('20260812130000','more_shop_categories','DATA-ONLY','business_categories has ''Carinderia / Eatery''',
+   EXISTS (SELECT 1 FROM public.business_categories WHERE name='Carinderia / Eatery')),
+
+  ('20260813000000','business_type_active_flag','column','business_types.is_active + Tourism flipped off',
+   EXISTS (SELECT 1 FROM information_schema.columns
+           WHERE table_schema='public' AND table_name='business_types' AND column_name='is_active')
+   AND EXISTS (SELECT 1 FROM public.business_types
+               WHERE name='Tourism & Leisure' AND NOT is_active)),
+
+  ('20260814000000','taxonomy_cleanup','DATA-ONLY','business_categories has ''Sari-sari / Convenience Store''',
+   EXISTS (SELECT 1 FROM public.business_categories WHERE name='Sari-sari / Convenience Store'))
 )
 SELECT
   p.version,

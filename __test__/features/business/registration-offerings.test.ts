@@ -88,7 +88,12 @@ vi.mock('@/supabase/server', () => ({
 }));
 
 async function write(
-  offerings: { name: string; price: number | null; on_request: boolean }[],
+  offerings: {
+    name: string;
+    price: number | null;
+    on_request: boolean;
+    image_url?: string | null;
+  }[],
   kind: 'product' | 'service' = 'product',
   options?: Parameters<typeof makeSupabase>[0],
 ) {

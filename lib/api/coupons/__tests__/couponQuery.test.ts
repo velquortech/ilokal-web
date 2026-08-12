@@ -283,7 +283,7 @@ describe('couponQuery', () => {
       await couponQuery.getCouponStatsByBusiness('biz-1');
 
       const branchCall = chainedMock.eq.mock.calls.find(
-        ([col]: [string]) => col === 'branch_id',
+        ([col]) => col === 'branch_id',
       );
       expect(branchCall).toBeUndefined();
     });

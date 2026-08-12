@@ -27,8 +27,9 @@ export async function GET(req: NextRequest) {
     const limit =
       Number.isFinite(limitParam) && limitParam > 0 ? limitParam : null;
 
-    // Server-side filters (Explore tab). Filtering at the DB keeps the paged
-    // payload to a real screenful instead of shipping every match to the client.
+    // Server-side filters (Explore tab). Filtering happens inside the
+    // nearby_businesses_filtered RPC — before any aggregation — so a one-page
+    // browse of a single category never computes the whole radius.
     const category = searchParams.get('category'); // mobile key: Food | Retail | …
     const subcategory = searchParams.get('subcategory'); // business_categories.name
     const search = searchParams.get('q')?.trim();
@@ -44,7 +45,6 @@ export async function GET(req: NextRequest) {
       Math.max(1, Number.isFinite(perPageRaw) ? perPageRaw : 10),
     );
     const from = (page - 1) * perPage;
-    const to = from + perPage - 1;
 
     if (isNaN(lat) || isNaN(lng)) {
       return badRequestResponse({
@@ -63,83 +63,66 @@ export async function GET(req: NextRequest) {
 
     const supabase = createBearerClient();
 
-    // PostgREST treats the set-returning RPC as a relation, so category/search
-    // filters, ordering and range pagination apply on top of it without a DB
-    // function change. `count: 'exact'` backs `has_more`.
-    let query = supabase.rpc(
-      'nearby_businesses',
-      { lat, lng, radius_meters: radius },
-      paginated ? { count: 'exact' } : {},
-    );
-
-    if (category) {
-      query = query.eq('business_type', CATEGORY_TO_BUSINESS_TYPE[category]);
-    }
-    if (subcategory && subcategory !== 'All') {
-      query = query.eq('category_name', subcategory);
-    }
-    if (search) {
-      // Match free text across name, business type, sub-category, and
-      // description so a category-ish query ("restaurant", "salon") or a
-      // descriptive word ("coffee") works — not just exact names. Strip the
-      // chars PostgREST uses as `.or()` delimiters so a stray comma/paren can't
-      // break the filter. AND-ed with any selected category/sub-category above.
-      const s = search.replace(/[,()]/g, ' ').trim();
-      if (s) {
-        query = query.or(
-          `business_name.ilike.%${s}%,` +
-            `business_type.ilike.%${s}%,` +
-            `category_name.ilike.%${s}%,` +
-            `business_description.ilike.%${s}%`,
-        );
-      }
-    }
-
-    if (paginated) {
-      query = query
-        .order('distance_meters', { ascending: true })
-        .range(from, to);
-    } else if (limit != null) {
-      // Cap result rows when a `limit` is given (e.g. Home's nearest-few
-      // preview) so we never transfer every business just to show a handful.
-      // Order by is_featured first — matches nearby_businesses' own intended
-      // order (promoted shops surface before the distance cutoff trims rows).
-      query = query
-        .order('is_featured', { ascending: false })
-        .order('distance_meters', { ascending: true })
-        .limit(limit);
-    }
-
-    const { data, error, count } = await query;
+    // One round-trip: the RPC filters (category/sub-category/search), orders,
+    // pages, tallies the match total (COUNT(*) OVER → total_count) and joins
+    // ratings only for the returned page. No PostgREST filter chain, no exact
+    // count pass, no client-side filtering — the DB returns one screenful.
+    //
+    // Legacy (non-paginated) shape: with a `limit` it returns that many rows
+    // featured-first (Home's nearest-few preview). Without `page` AND without
+    // `limit` it must return ALL matching rows (the web "Shops near me" page) —
+    // so we pass a NULL page_size, which the RPC treats as "no LIMIT".
+    const { data, error } = await supabase.rpc('nearby_businesses_filtered', {
+      lat,
+      lng,
+      radius_meters: radius,
+      filter_business_type: category
+        ? CATEGORY_TO_BUSINESS_TYPE[category]
+        : null,
+      filter_category_name:
+        subcategory && subcategory !== 'All' ? subcategory : null,
+      search: search || null,
+      page_size: paginated ? perPage : limit,
+      page_offset: paginated ? from : 0,
+      sort_featured_first: !paginated && limit != null,
+    });
 
     if (error) {
       return loggedServerError('mobile/businesses/nearby', error);
     }
 
-    const businessIds: string[] = data.map(
-      (b: Record<string, unknown>) => b.business_id as string,
-    );
+    const rows = (data ?? []) as Record<string, unknown>[];
+    const businessIds: string[] = rows.map((b) => b.business_id as string);
 
-    // Ratings (tallied client-side) + follower counts (aggregated by the
-    // get_follower_counts RPC, which keeps the follow graph private). Both keyed
-    // on the same business ids, so fetch in parallel.
-    const [{ data: ratingsData }, { data: followerCounts }] = await Promise.all(
-      [
-        supabase
-          .from('business_ratings')
-          .select('business_id, rating')
-          .in('business_id', businessIds),
+    // Follower counts (aggregated by the get_follower_counts RPC, which keeps
+    // the follow graph private) + the per-type availability aggregate for
+    // Explore's category filters. Both keyed on the same location/radius, so
+    // fetch in parallel. The counts RPC deliberately ignores category /
+    // sub-category / search: availability is a property of the area, so the
+    // dropdown never depends on the rows the active filter happens to return.
+    // Ratings travel with the feed rows now — no separate ratings fetch.
+    const [{ data: followerCounts }, { data: categoryCounts }] =
+      await Promise.all([
         supabase.rpc('get_follower_counts', { p_business_ids: businessIds }),
-      ],
-    );
+        supabase.rpc('nearby_business_type_counts', {
+          lat,
+          lng,
+          radius_meters: radius,
+        }),
+      ]);
 
-    const ratingsMap = new Map<string, { sum: number; count: number }>();
-    for (const r of ratingsData ?? []) {
-      const entry = ratingsMap.get(r.business_id) ?? { sum: 0, count: 0 };
-      entry.sum += r.rating;
-      entry.count += 1;
-      ratingsMap.set(r.business_id, entry);
-    }
+    // PostgREST returns BIGINT as a string — normalise to numbers.
+    const category_counts = (
+      (categoryCounts ?? []) as {
+        business_type: string | null;
+        category_name: string | null;
+        count: number | string;
+      }[]
+    ).map((c) => ({
+      business_type: c.business_type,
+      category_name: c.category_name,
+      count: Number(c.count),
+    }));
 
     const followersMap = new Map<string, number>();
     for (const f of (followerCounts ?? []) as {
@@ -149,42 +132,44 @@ export async function GET(req: NextRequest) {
       followersMap.set(f.business_id, Number(f.follower_count));
     }
 
-    const businesses = data.map((b: Record<string, unknown>) => {
-      const stats = ratingsMap.get(b.business_id as string);
-      return {
-        ...b,
-        logo_url: resolveStorageUrl(
-          supabase,
-          'shop-logos',
-          b.logo_url as string | null,
-        ),
-        banner_url: resolveStorageUrl(
-          supabase,
-          'shop-banners',
-          b.banner_url as string | null,
-        ),
-        interior_images:
-          (b.interior_images as string[] | null)?.map((url) =>
-            resolveStorageUrl(supabase, 'interior-images', url),
-          ) ?? [],
-        average_rating: stats
-          ? Math.round((stats.sum / stats.count) * 10) / 10
-          : 0,
-        rating_count: stats?.count ?? 0,
-        total_followers: followersMap.get(b.business_id as string) ?? 0,
-      };
-    });
+    const businesses = rows.map((b) => ({
+      ...b,
+      logo_url: resolveStorageUrl(
+        supabase,
+        'shop-logos',
+        b.logo_url as string | null,
+      ),
+      banner_url: resolveStorageUrl(
+        supabase,
+        'shop-banners',
+        b.banner_url as string | null,
+      ),
+      interior_images:
+        (b.interior_images as string[] | null)?.map((url) =>
+          resolveStorageUrl(supabase, 'interior-images', url),
+        ) ?? [],
+      // PostgREST serialises BIGINT (rating_count) as a string — normalise to
+      // a number, exactly like `count` and `follower_count` above. average_rating
+      // (NUMERIC) is already a JSON number, but normalise it too so the contract
+      // is stable regardless of how the column type is represented.
+      average_rating: Number(b.average_rating ?? 0),
+      rating_count: Number(b.rating_count ?? 0),
+      total_followers: followersMap.get(b.business_id as string) ?? 0,
+    }));
 
     if (paginated) {
-      const total = count ?? businesses.length;
+      // total_count rides every row of the page (COUNT(*) OVER the filtered
+      // set, before pagination) — read it from the first row.
+      const total = Number(rows[0]?.total_count ?? businesses.length);
       return successResponse({
         businesses,
         total,
         has_more: from + businesses.length < total,
+        category_counts,
       });
     }
 
-    return successResponse({ businesses });
+    return successResponse({ businesses, category_counts });
   } catch {
     return generalErrorResponse();
   }

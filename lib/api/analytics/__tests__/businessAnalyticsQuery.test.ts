@@ -768,7 +768,7 @@ describe('getCouponPerformance', () => {
 
     const branchEqCall = (
       couponChain.eq as ReturnType<typeof vi.fn>
-    ).mock.calls.find(([col]: [string]) => col === 'branch_id');
+    ).mock.calls.find(([col]) => col === 'branch_id');
     expect(branchEqCall).toBeUndefined();
   });
 });

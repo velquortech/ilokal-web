@@ -288,6 +288,7 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          is_active: boolean
           name: string
         }
         Insert: {
@@ -297,6 +298,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          is_active?: boolean
           name: string
         }
         Update: {
@@ -306,6 +308,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          is_active?: boolean
           name?: string
         }
         Relationships: [
@@ -581,6 +584,7 @@ export type Database = {
           description: string | null
           icon: string | null
           id: string
+          is_active: boolean
           name: string
           offering_profile: Json | null
         }
@@ -590,6 +594,7 @@ export type Database = {
           description?: string | null
           icon?: string | null
           id?: string
+          is_active?: boolean
           name: string
           offering_profile?: Json | null
         }
@@ -599,6 +604,7 @@ export type Database = {
           description?: string | null
           icon?: string | null
           id?: string
+          is_active?: boolean
           name?: string
           offering_profile?: Json | null
         }

@@ -10,8 +10,8 @@ export function ShopPendingBanner() {
         <div className="flex w-full items-center gap-3">
           <Clock className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
 
-          <div className="flex items-center gap-2 overflow-hidden">
-            <span className="text-sm font-bold whitespace-nowrap text-amber-900 dark:text-amber-200">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="truncate text-sm font-bold text-amber-900 dark:text-amber-200">
               Awaiting Verification
             </span>
             <span className="hidden truncate text-sm text-amber-800/70 md:inline dark:text-amber-300/60">
@@ -22,7 +22,7 @@ export function ShopPendingBanner() {
 
           <Button
             size="sm"
-            className="ml-auto rounded-full border-none bg-amber-200/80 tracking-tight text-amber-900 hover:bg-amber-200"
+            className="ml-auto shrink-0 rounded-full border-none bg-amber-200/80 tracking-tight text-amber-900 hover:bg-amber-200"
           >
             Contact Support <ExternalLink />
           </Button>

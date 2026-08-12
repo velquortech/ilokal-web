@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Seeds local Supabase Storage with sample business images.
 # Run after `make migrate-reset` whenever the Docker volume is wiped.
-# Usage: bash supabase/seeders/seed-storage.sh
+# Usage: bash supabase/seeds/seed-storage.sh
 #
 # Images come from picsum.photos, which serves a deterministic photo per
 # SEED (e.g. .../seed/coffee/400/400 → a stable coffee-tagged image). Each
@@ -10,6 +10,12 @@
 # resolve to relevant photos instead of random images. A deterministic lock is
 # baked into the seed path per upload so every rerun yields the same photo and
 # no two slots collide. See the `lf` helper below.
+#
+# NO-SHARED-PHOTOS CONTRACT: every filler shop, product, and post gets its OWN
+# object (see the filler loops below; paths mirror bulk_seed.sql). Post images
+# must live in the `business-posts` bucket — the Updates feed resolves post
+# image_url against it (filler posts previously stored interior-images paths
+# there, which 404'd). Full strategy: supabase/seeds/README.md.
 #
 # NOTE: loremflickr was the original source but is not in next/image's
 # remotePatterns allowlist (see next.config.ts) — anything it seeded 404s
@@ -103,6 +109,7 @@ create_bucket "shop-logos"
 create_bucket "interior-images"
 create_bucket "shop-banners"
 create_bucket "product-images"
+create_bucket "business-posts"
 create_bucket "avatars"
 
 # ---------------------------------------------------------------------------
@@ -407,6 +414,79 @@ upload "shop-logos"      "11111111-1111-1111-1111-111111111121/logo.jpg"     "$(
 upload "shop-banners"    "11111111-1111-1111-1111-111111111121/banner.jpg"   "$(lf 1200 500 spa)"
 upload "interior-images" "11111111-1111-1111-1111-111111111121/hero.jpg"     "$(lf 800 500 spa)"
 upload "interior-images" "11111111-1111-1111-1111-111111111121/gallery1.jpg" "$(lf 800 520 wellness)"
+
+# ---------------------------------------------------------------------------
+# Filler businesses (bulk_seed.sql, f0000001-…-001..040) — logos, interiors,
+# banners. Every shop gets its OWN photo set (same <id>/logo.jpg,
+# <id>/hero.jpg + <id>/gallery1.jpg, <id>/banner.jpg conventions as the hero
+# businesses) so no two shops share a photo on explore cards, galleries, or
+# nearby previews. Keywords cycle through a small on-topic set — the
+# deterministic per-path lock keeps every rerun stable and each slot distinct
+# even when the keyword repeats.
+# NOTE: the loop bound (40) mirrors n_biz in bulk_seed.sql — keep in sync.
+# ---------------------------------------------------------------------------
+echo "Uploading filler business logos..."
+FILLER_KEYWORDS=(cafe store restaurant market bakery coffee salon shop bar food)
+for b in $(seq 1 40); do
+  biz=$(printf 'f0000001-0000-0000-0000-%012d' "$b")
+  kw=${FILLER_KEYWORDS[$(((b - 1) % ${#FILLER_KEYWORDS[@]}))]}
+  upload "shop-logos" "$biz/logo.jpg" "$(lf 400 400 "$kw")"
+done
+echo "Uploading filler business interior images..."
+for b in $(seq 1 40); do
+  biz=$(printf 'f0000001-0000-0000-0000-%012d' "$b")
+  kw=${FILLER_KEYWORDS[$(((b - 1) % ${#FILLER_KEYWORDS[@]}))]}
+  upload "interior-images" "$biz/hero.jpg" "$(lf 800 500 "$kw")"
+  upload "interior-images" "$biz/gallery1.jpg" "$(lf 800 520 "$kw")"
+done
+echo "Uploading filler business banners..."
+for b in $(seq 1 40); do
+  biz=$(printf 'f0000001-0000-0000-0000-%012d' "$b")
+  kw=${FILLER_KEYWORDS[$(((b - 1) % ${#FILLER_KEYWORDS[@]}))]}
+  upload "shop-banners" "$biz/banner.jpg" "$(lf 1200 500 "$kw")"
+done
+
+# ---------------------------------------------------------------------------
+# Filler products (bulk_seed.sql, f1000000-…-NNNN) — product photos (400x400)
+# 13 products per filler shop, each with its OWN image
+# (product-images/<prod_id>/product.jpg — same convention as the hero
+# products) so no two products share a photo. The prod id encodes the shop:
+# f1000000-0000-0000-0000-<b*100+p padded to 12> for b in 1..40, p in 1..13,
+# mirroring bulk_seed.sql's prod_id derivation — keep in sync.
+# NOTE: the loop bound (40) mirrors n_biz in bulk_seed.sql — keep in sync.
+# ---------------------------------------------------------------------------
+echo "Uploading filler product images..."
+PRODUCT_KEYWORDS=(coffee bread pastry drink snack food dish plate meal cake)
+for b in $(seq 1 40); do
+  for p in $(seq 1 13); do
+    pid=$(printf 'f1000000-0000-0000-0000-%012d' $((b * 100 + p)))
+    kw=${PRODUCT_KEYWORDS[$(((b + p - 2) % ${#PRODUCT_KEYWORDS[@]}))]}
+    upload "product-images" "$pid/product.jpg" "$(lf 400 400 "$kw")"
+  done
+done
+
+# ---------------------------------------------------------------------------
+# Filler business posts (bulk_seed.sql, f3000000-…-NNNN) — post images (400x400)
+# Each filler Update-feed post gets its OWN image
+# (business-posts/<post_id>/post.jpg — the bucket the Updates feed resolves
+# post image_url against), so no two posts share a photo AND the images
+# actually load (previously filler posts stored interior-images paths that
+# resolve against the wrong bucket → 404s in the feed). Post ids encode the
+# shop: f3000000-0000-0000-0000-<b*10+1> for the main post, and <b*10+2> for
+# the weekend post (every 3rd shop) — mirroring bulk_seed.sql, keep in sync.
+# ---------------------------------------------------------------------------
+echo "Uploading filler business post images..."
+POST_KEYWORDS=(coffee bread pastry drink snack food dish plate meal cake)
+for b in $(seq 1 40); do
+  pid1=$(printf 'f3000000-0000-0000-0000-%012d' $((b * 10 + 1)))
+  kw=${POST_KEYWORDS[$(((b - 1) % ${#POST_KEYWORDS[@]}))]}
+  upload "business-posts" "$pid1/post.jpg" "$(lf 400 400 "$kw")"
+  if [ $((b % 3)) -eq 0 ]; then
+    pid2=$(printf 'f3000000-0000-0000-0000-%012d' $((b * 10 + 2)))
+    kw=${POST_KEYWORDS[$(((b + 1) % ${#POST_KEYWORDS[@]}))]}
+    upload "business-posts" "$pid2/post.jpg" "$(lf 400 400 "$kw")"
+  fi
+done
 
 # ---------------------------------------------------------------------------
 rm -rf "$TMP"

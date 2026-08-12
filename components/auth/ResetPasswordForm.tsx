@@ -2,7 +2,7 @@
 
 import { useState, useTransition, type FormEvent } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'motion/react';
@@ -27,10 +27,19 @@ import { Field, FieldError } from '@/components/ui/field';
 import { ROUTES } from '@/config/routeConfig';
 import { serverErrorText } from '@/lib/utils/errorMessage';
 
-export default function ResetPasswordForm() {
+interface ResetPasswordFormProps {
+  /**
+   * The `token_hash` from the reset email link, read server-side by the page
+   * so the form ships in the prerendered HTML instead of a Suspense fallback.
+   */
+  initialTokenHash?: string | null;
+}
+
+export default function ResetPasswordForm({
+  initialTokenHash,
+}: ResetPasswordFormProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const tokenHash = searchParams.get('token_hash');
+  const tokenHash = initialTokenHash ?? null;
 
   const [serverError, setServerError] = useState('');
   const [showPassword, setShowPassword] = useState(false);

@@ -16,8 +16,10 @@ import { successResponse, loggedServerError } from '@/app/api/helpers/response';
 // categories has a browseable business, and a category appears only if it has
 // one. The join matches the Explore feed contract (`status='verified'`,
 // `archived_at IS NULL`), so the reference list and the browse results always
-// agree on what "has content" means. The count of businesses per category is
-// not exposed — only their existence, via the inner join.
+// agree on what "has content" means. The `businesses` array exists only to
+// drive that filter — it is stripped before the payload is returned, so
+// neither the count nor the business ids leak into this near-static public
+// list.
 const getBusinessTypes = unstable_cache(
   async () => {
     const supabase = createBearerClient();
@@ -33,7 +35,9 @@ const getBusinessTypes = unstable_cache(
       `,
       )
       .is('deleted_at', null)
+      .eq('is_active', true)
       .filter('business_categories.deleted_at', 'is', null)
+      .filter('business_categories.is_active', 'eq', true)
       .filter('business_categories.businesses.status', 'eq', 'verified')
       .filter('business_categories.businesses.archived_at', 'is', null)
       .order('name')
@@ -50,7 +54,17 @@ const getBusinessTypes = unstable_cache(
 export async function GET() {
   try {
     const data = await getBusinessTypes();
-    return successResponse({ business_types: data });
+    // Strip the inner-join's `businesses` id array: it only drives the
+    // "has a browseable business" filter and is not part of the reference
+    // contract. Keep the payload to types → categories(id, name, description,
+    // image_url) so no business ids leak into a near-static public list.
+    const business_types = (data ?? []).map((t) => ({
+      ...t,
+      business_categories: (t.business_categories ?? []).map(
+        ({ businesses: _businesses, ...category }) => category,
+      ),
+    }));
+    return successResponse({ business_types });
   } catch (error) {
     return loggedServerError(
       'mobile/business-types',

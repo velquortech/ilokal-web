@@ -38,6 +38,10 @@ export const ROUTES = {
      * `/sign-in`. Which is the bug this page exists to fix.
      */
     FOR_BUSINESS: '/for-business',
+    // Hosted legal pages — public URLs required by Google Play's App-content
+    // step. Wording mirrors the mobile in-app reader (lib/legal/content.ts).
+    PRIVACY: '/privacy',
+    TERMS: '/terms',
   },
 
   /**

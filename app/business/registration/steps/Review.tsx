@@ -47,7 +47,7 @@ export function ShopReview() {
       </Card>
 
       {/* Step 2: Shop Information */}
-      <Card className="flex flex-col pr-8 md:flex-row">
+      <Card className="flex flex-col md:flex-row md:pr-8">
         <div className="min-w-0 flex-1">
           <CardHeader>
             <CardTitle>Shop Information</CardTitle>

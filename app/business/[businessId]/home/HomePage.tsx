@@ -61,7 +61,7 @@ export default function BusinessHome({
       {!business && (
         <>
           <OnboardingSection onStartTour={openTour} />
-          <div className="grid h-max grid-cols-2 gap-6">
+          <div className="grid h-max grid-cols-1 gap-6 lg:grid-cols-2">
             <RegistrationSteps requireDocuments={requireDocuments} />
             <WhyRegisterCard />
           </div>

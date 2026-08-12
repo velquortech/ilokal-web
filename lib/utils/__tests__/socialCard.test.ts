@@ -54,6 +54,27 @@ describe('businessSocialCard', () => {
     );
   });
 
+  it('prefers the generated branded card over the banner and logo', () => {
+    const card = businessSocialCard({
+      ...BASE,
+      banner: '/b.png',
+      logo: '/l.png',
+      cardImage: '/api/og/business/abc',
+    });
+    expect(card.openGraph?.images).toEqual(['/api/og/business/abc']);
+    expect(card.twitter?.images).toEqual(['/api/og/business/abc']);
+  });
+
+  it('gives the generated card the large twitter card', () => {
+    // It is already the landscape 1200x630 shape, so it never pillarboxes.
+    expect(
+      businessSocialCard({
+        ...BASE,
+        cardImage: '/api/og/business/abc',
+      }).twitter?.card,
+    ).toBe('summary_large_image');
+  });
+
   it('omits images entirely when the shop has none', () => {
     // Absent, not empty: an empty array would emit a blank tag instead of
     // letting the root opengraph-image.png be inherited.

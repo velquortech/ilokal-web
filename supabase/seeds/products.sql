@@ -71,13 +71,13 @@ VALUES
   ('33333333-3333-3333-3333-333333333384', '11111111-1111-1111-1111-111111111107', 'Buko Juice',            'Freshly cracked young coconut water with tender coconut strips',              40, 'fixed',      NULL,          '33333333-3333-3333-3333-333333333384/product.jpg', true,  'active',   NULL),
   ('33333333-3333-3333-3333-333333333385', '11111111-1111-1111-1111-111111111107', 'Pork Barbecue Set (5)', 'Five marinated pork skewers with java rice and atchara',                     150, 'fixed',      NULL,          '33333333-3333-3333-3333-333333333385/product.jpg', true,  'active',   120.00),
 
-  -- Sari-Sari ni Nena — Local Grocery / Convenience Store
+  -- Sari-Sari ni Nena — Sari-sari / Convenience Store
   ('33333333-3333-3333-3333-333333333334', '11111111-1111-1111-1111-111111111108', 'Instant Noodles Bundle','12-pack assorted instant noodles, popular Filipino brands',                   120, 'fixed',      NULL,          '33333333-3333-3333-3333-333333333334/product.jpg', true,  'active',   95.00),
   ('33333333-3333-3333-3333-333333333335', '11111111-1111-1111-1111-111111111108', 'Fresh Eggs',            'Farm-fresh eggs, per dozen',                                                  90, 'fixed',      'per dozen',   '33333333-3333-3333-3333-333333333335/product.jpg', true,  'active',   NULL),
   ('33333333-3333-3333-3333-333333333336', '11111111-1111-1111-1111-111111111108', 'Canned Sardines (6-pack)', 'Assorted sardines in tomato sauce and olive oil',        75, 'fixed',      NULL,          '33333333-3333-3333-3333-333333333336/product.jpg', true,  'active',   NULL),
   ('33333333-3333-3333-3333-333333333337', '11111111-1111-1111-1111-111111111108', 'Rice',                  'Premium milled white rice, sold per kilo',                                    52, 'fixed',      'per kilo',    '33333333-3333-3333-3333-333333333337/product.jpg', true,  'active',   NULL),
 
-  -- Hablon & Hue Boutique — Clothing & Apparel
+  -- Hablon & Hue Boutique — Clothing / Apparel
   ('33333333-3333-3333-3333-333333333338', '11111111-1111-1111-1111-111111111109', 'Hablon Weave Blouse',   'Hand-woven hablon blouse in traditional Ilonggo patterns',                   850, 'fixed',      NULL,          '33333333-3333-3333-3333-333333333338/product.jpg', true,  'active',   680.00),
   ('33333333-3333-3333-3333-333333333339', '11111111-1111-1111-1111-111111111109', 'Souvenir Tote Bag',     'Cotton tote with embroidered Iloilo landmarks and local motifs',              295, 'fixed',      NULL,          '33333333-3333-3333-3333-333333333339/product.jpg', true,  'active',   NULL),
   ('33333333-3333-3333-3333-333333333340', '11111111-1111-1111-1111-111111111109', 'Casual Linen Dress',    'Breathable linen dress with modern Filipino design details',                 1200, 'fixed',      NULL,          '33333333-3333-3333-3333-333333333340/product.jpg', true,  'active',   NULL),

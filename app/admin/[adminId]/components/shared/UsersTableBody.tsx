@@ -2,6 +2,8 @@
 import { Row } from '@tanstack/react-table';
 import { TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { flexRender } from '@tanstack/react-table';
+import { cn } from '@/lib/utils';
+import { responsiveColumnClass } from '@/lib/utils/tableMeta';
 
 interface UsersTableBodyProps<TRow> {
   rows: Row<TRow>[];
@@ -20,6 +22,7 @@ export function UsersTableBody<TRow>({
             {row.getVisibleCells().map((cell) => (
               <TableCell
                 key={cell.id}
+                className={cn(responsiveColumnClass(cell.column))}
                 style={{
                   width: cell.column.getSize(),
                 }}

@@ -108,7 +108,7 @@ export function EventsContent({
   );
 
   return (
-    <div className="font-giest flex h-max flex-1 flex-col space-y-6 pb-8">
+    <div className="font-giest flex h-max min-w-0 flex-1 flex-col space-y-6 pb-8">
       <PageHeader
         title="Events"
         lede="Propose an event and the iLokal team will review it before it goes live."

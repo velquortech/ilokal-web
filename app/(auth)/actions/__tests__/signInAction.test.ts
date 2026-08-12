@@ -108,7 +108,7 @@ describe('signInAction', () => {
     const res = await signInAction('a@b.com', 'password');
 
     expect('rateLimited' in res).toBe(false);
-    if ('rateLimited' in res) return;
+    if (!('user' in res)) throw new Error('expected sign-in success');
     expect(res.user.role).toBe('business_owner');
     expect(res.businessId).toBe('biz-1');
     expect(fromMock).toHaveBeenCalledWith('businesses');
@@ -120,7 +120,7 @@ describe('signInAction', () => {
 
     const res = await signInAction('a@b.com', 'password');
 
-    if ('rateLimited' in res) throw new Error('unexpected rate limit');
+    if (!('user' in res)) throw new Error('expected sign-in success');
     // redirectByRole sends a null businessId to /business/registration.
     expect(res.businessId).toBeNull();
   });
@@ -152,7 +152,7 @@ describe('signInAction', () => {
 
     // Sign-in already succeeded — a lookup failure must not throw, and the
     // driver message must not reach the client.
-    if ('rateLimited' in res) throw new Error('unexpected rate limit');
+    if (!('user' in res)) throw new Error('expected sign-in success');
     expect(res.businessId).toBeNull();
     expect(JSON.stringify(res)).not.toContain('relation "businesses"');
   });
@@ -163,7 +163,7 @@ describe('signInAction', () => {
 
     const res = await signInAction('a@b.com', 'password');
 
-    if ('rateLimited' in res) throw new Error('unexpected rate limit');
+    if (!('user' in res)) throw new Error('expected sign-in success');
     expect(res.user.role).toBe('app_user');
     expect(res.businessId).toBeNull();
     expect(fromMock).not.toHaveBeenCalledWith('businesses');

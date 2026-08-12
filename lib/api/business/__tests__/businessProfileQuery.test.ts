@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
 import { createServerSupabaseClient } from '@/supabase/server';
-import { getBusinessProfileData } from '../businessQuery';
+import {
+  getBusinessCategoryOptions,
+  getBusinessProfileData,
+} from '../businessQuery';
 import type { BusinessProfileData } from '@/lib/types';
 
 vi.mock('@/supabase/server', () => ({
@@ -111,5 +114,105 @@ describe('getBusinessProfileData', () => {
     expect(selectArg).toContain('status');
     expect(selectArg).toContain('category_id');
     expect(selectArg).toContain('banner_url');
+  });
+});
+
+// ─── getBusinessCategoryOptions ──────────────────────────────────────────────
+
+// The options function awaits the END of a `.select().is().filter().order()`
+// chain, then conditionally awaits a SECOND `.select().in().is()` chain for the
+// force-included ids. A thenable chain lets both awaits resolve in order.
+function makeOptionsClient(terminals: unknown[]) {
+  const chain = {
+    select: vi.fn(() => chain),
+    is: vi.fn(() => chain),
+    eq: vi.fn(() => chain),
+    filter: vi.fn(() => chain),
+    in: vi.fn(() => chain),
+    order: vi.fn(() => chain),
+    then: (resolve: (v: unknown) => void) => resolve(terminals.shift()),
+  };
+  const client = {
+    from: vi.fn(() => chain),
+  } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
+  (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(client);
+  return { chain, client };
+}
+
+describe('getBusinessCategoryOptions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('drives the inner join so only categories with a verified business return', async () => {
+    const { chain } = makeOptionsClient([
+      {
+        // PostgREST's `businesses!inner` already dropped the empty category
+        // before this payload was built — the client maps what comes back.
+        data: [{ id: 'c1', name: 'Café', businesses: [{ id: 'b1' }] }],
+        error: null,
+      },
+    ]);
+    const result = await getBusinessCategoryOptions();
+
+    expect(chain.select).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'businesses!businesses_category_id_fkey!inner(id)',
+      ),
+    );
+    expect(chain.filter).toHaveBeenCalledWith(
+      'businesses.status',
+      'eq',
+      'verified',
+    );
+    expect(chain.filter).toHaveBeenCalledWith(
+      'businesses.archived_at',
+      'is',
+      null,
+    );
+    expect(chain.is).toHaveBeenCalledWith('deleted_at', null);
+    // Disabled rows (is_active = false, e.g. Tourism & Leisure on hold) are
+    // not offered by the profile form's category picker.
+    expect(chain.eq).toHaveBeenCalledWith('is_active', true);
+    expect(result).toEqual([{ id: 'c1', name: 'Café' }]);
+  });
+
+  it('force-keeps include-ids the filter dropped, keeping the list sorted', async () => {
+    const { chain } = makeOptionsClient([
+      {
+        data: [{ id: 'c1', name: 'Café', businesses: [{ id: 'b1' }] }],
+        error: null,
+      },
+      {
+        data: [{ id: 'c9', name: 'Solo Shop Category' }],
+        error: null,
+      },
+    ]);
+    const result = await getBusinessCategoryOptions({
+      include: ['c9'],
+    });
+
+    expect(chain.in).toHaveBeenCalledWith('id', ['c9']);
+    expect(result).toEqual([
+      { id: 'c1', name: 'Café' },
+      { id: 'c9', name: 'Solo Shop Category' },
+    ]);
+  });
+
+  it('skips the extras query when every include-id is already listed', async () => {
+    const { chain } = makeOptionsClient([
+      {
+        data: [{ id: 'c1', name: 'Café', businesses: [{ id: 'b1' }] }],
+        error: null,
+      },
+    ]);
+    await getBusinessCategoryOptions({ include: ['c1'] });
+    expect(chain.in).not.toHaveBeenCalled();
+  });
+
+  it('returns [] on a DB error', async () => {
+    makeOptionsClient([{ data: null, error: { message: 'boom' } }]);
+    const result = await getBusinessCategoryOptions();
+    expect(result).toEqual([]);
   });
 });

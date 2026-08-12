@@ -38,6 +38,8 @@ export const createUsersTableColumns = ({
     cell: (info) => (currentPage - 1) * 10 + info.row.index + 1,
     enableSorting: false,
     size: 50,
+    // Row numbers earn their width only once the table has width to spare.
+    meta: { responsiveClassName: 'hidden md:table-cell' },
   }),
   columnHelper.display({
     id: 'avatar',
@@ -68,13 +70,19 @@ export const createUsersTableColumns = ({
     },
     enableSorting: false,
     size: 60,
+    // The name column carries the identity; the avatar is a nice-to-have on a
+    // phone.
+    meta: { responsiveClassName: 'hidden sm:table-cell' },
   }),
   columnHelper.accessor('full_name', {
     header: 'Name',
     cell: (info) =>
       React.createElement(
         'span',
-        { className: 'font-medium' },
+        {
+          className: 'block max-w-40 truncate font-medium md:max-w-56',
+          title: info.getValue() || undefined,
+        },
         info.getValue(),
       ),
     enableSorting: true,
@@ -84,7 +92,11 @@ export const createUsersTableColumns = ({
     cell: (info) =>
       React.createElement(
         'span',
-        { className: 'text-sm text-gray-600' },
+        {
+          className:
+            'block max-w-44 truncate text-sm text-gray-600 md:max-w-64',
+          title: info.getValue() || undefined,
+        },
         info.getValue(),
       ),
     enableSorting: true,
@@ -98,6 +110,9 @@ export const createUsersTableColumns = ({
         info.getValue() || '-',
       ),
     enableSorting: true,
+    // Email and name are how an admin finds a user; a phone is the detail they
+    // tap through for.
+    meta: { responsiveClassName: 'hidden lg:table-cell' },
   }),
   columnHelper.accessor('created_at', {
     header: 'Created',
@@ -108,6 +123,8 @@ export const createUsersTableColumns = ({
         getTimeAgo(info.getValue()),
       ),
     enableSorting: true,
+    // Dates are audit trail, not identity — keep them off the phone.
+    meta: { responsiveClassName: 'hidden lg:table-cell' },
   }),
   columnHelper.accessor('updated_at', {
     header: 'Updated',
@@ -118,6 +135,7 @@ export const createUsersTableColumns = ({
         getTimeAgo(info.getValue()),
       ),
     enableSorting: true,
+    meta: { responsiveClassName: 'hidden lg:table-cell' },
   }),
   columnHelper.display({
     id: 'status',

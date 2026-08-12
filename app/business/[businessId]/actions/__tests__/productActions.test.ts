@@ -59,7 +59,9 @@ async function makeImageFile(name = 'img.png', type = 'image/png') {
   })
     .png()
     .toBuffer();
-  return new File([buf], name, { type });
+  // Buffer<ArrayBufferLike> isn't a BlobPart under the new typed-array types;
+  // a Uint8Array copy is.
+  return new File([new Uint8Array(buf)], name, { type });
 }
 
 describe('createProductAction', () => {

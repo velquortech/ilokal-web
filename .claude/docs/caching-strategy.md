@@ -62,6 +62,7 @@ These are called by the mobile app and unauthenticated browsers.
 | `/api/mobile/businesses/:id/products` | `revalidate = 60`             | Same                                                     |
 | `/api/mobile/businesses/:id/coupons`  | `revalidate = 30`             | Coupon expiry is time-sensitive                          |
 | `/api/mobile/businesses/:id/share`    | `revalidate = 300`            | Share URL is stable                                      |
+| `/api/og/business/:id`                | `public, max-age=300, s-maxage=300, stale-while-revalidate` | OG card — a changed logo/name must show up, so never the year-long immutable `ImageResponse` default |
 
 > **Note:** ISR values above are targets — not all are currently implemented. Add `export const revalidate = N;` to the route file to activate.
 

@@ -56,10 +56,6 @@ vi.mock('motion/react', () => ({
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: replaceMock, refresh: refreshMock }),
-  useSearchParams: () => ({
-    get: (key: string) =>
-      key === 'next' ? params.next : key === 'mfa' ? params.mfa : null,
-  }),
 }));
 
 vi.mock('@/app/(auth)/actions', () => actions);
@@ -95,7 +91,16 @@ afterEach(() => {
 });
 
 function render() {
-  act(() => root.render(<SignInForm />));
+  // The page reads the query string server-side and passes it as props — the
+  // harness mirrors that by driving the same two values through props.
+  act(() =>
+    root.render(
+      <SignInForm
+        initialNext={params.next}
+        mfaRequired={params.mfa === 'required'}
+      />,
+    ),
+  );
 }
 
 function setValue(input: HTMLInputElement, value: string) {

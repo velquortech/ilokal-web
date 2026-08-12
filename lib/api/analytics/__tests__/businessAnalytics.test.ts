@@ -30,7 +30,7 @@ describe('business analytics service', () => {
 
   it('coupon stats returns array', async () => {
     vi.mocked(query.getCouponStats).mockResolvedValueOnce([
-      { coupon_id: 'c1', times_redeemed: 3, total_discount_amount: 150 },
+      { coupon_id: 'c1', times_redeemed: 3 },
     ]);
     const res = await service.getCouponStats('b1');
     expect(res.success).toBe(true);

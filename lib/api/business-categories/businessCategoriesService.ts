@@ -18,13 +18,23 @@ export const businessService = {
   /**
    * BUSINESS TYPES
    */
-  async getBusinessTypes() {
+  async getBusinessTypes(options?: { onlyActive?: boolean }) {
     const supabase = await createServerSupabaseClient();
-    return await supabase
+    let query = supabase
       .from('business_types')
       .select('*, business_categories(*)')
-      .is('deleted_at', null)
-      .order('name');
+      .is('deleted_at', null);
+
+    // Public pickers (registration, …) hide disabled rows (is_active = false,
+    // e.g. Tourism & Leisure while its booking flow is on hold). Admin reads
+    // call without the option and still see every row, including disabled ones.
+    if (options?.onlyActive) {
+      query = query
+        .eq('is_active', true)
+        .filter('business_categories.is_active', 'eq', true);
+    }
+
+    return await query.order('name');
   },
 
   async createBusinessType(
@@ -68,6 +78,7 @@ export const businessService = {
       .from('business_categories')
       .select('*')
       .eq('business_type_id', typeId)
+      .eq('is_active', true)
       .is('deleted_at', null);
   },
 

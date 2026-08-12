@@ -403,4 +403,3 @@ export const TERMS_DOC: LegalDoc = {
     },
   ],
 };
-

@@ -70,7 +70,10 @@ export function LegalDocument({ doc }: { doc: LegalDoc }) {
  * malformed constant should cost the machine-readable attribute, not the whole
  * policy page.
  */
-function toIsoDate(value: string): string {
+function toIsoDate(value: string | undefined): string {
+  // `lastUpdated` is optional on the shared LegalDoc shape (TERMS_DOC has
+  // none); an absent date costs the machine-readable attribute, not the page.
+  if (!value) return '';
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return '';
   return parsed.toISOString().slice(0, 10);

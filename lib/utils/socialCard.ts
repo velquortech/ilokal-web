@@ -24,6 +24,12 @@ export type BusinessCard = {
   banner?: string | null;
   /** Square shop logo, already an absolute URL. */
   logo?: string | null;
+  /**
+   * A generated 1200×630 branded card (absolute or metadataBase-relative).
+   * Wins over banner and logo, and earns `summary_large_image` — it is
+   * already the landscape shape crawlers pillarbox a square into.
+   */
+  cardImage?: string | null;
   /** Absolute or metadataBase-relative canonical path for this page. */
   url: string;
 };
@@ -57,9 +63,10 @@ export function businessSocialCard({
   description,
   banner,
   logo,
+  cardImage,
   url,
 }: BusinessCard): BusinessSocialCardResult {
-  const image = banner || logo || undefined;
+  const image = cardImage || banner || logo || undefined;
   const title = `${name} · ${SITE_NAME}`;
 
   const base = {
@@ -81,9 +88,11 @@ export function businessSocialCard({
       ...(image ? { images: [image] } : {}),
     },
     // A square logo stretched into a 1200x630 card gets pillarboxed with grey
-    // bars, so only a real landscape banner earns the large card.
-    twitter: banner
-      ? { ...base, card: 'summary_large_image' }
-      : { ...base, card: 'summary' },
+    // bars, so only a landscape image earns the large card — a real banner or
+    // the generated branded card, both already 1200x630-ish.
+    twitter:
+      cardImage || banner
+        ? { ...base, card: 'summary_large_image' }
+        : { ...base, card: 'summary' },
   };
 }

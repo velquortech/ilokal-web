@@ -8,14 +8,16 @@ import { businessSocialCard } from '@/lib/utils/socialCard';
 
 import { OpenInApp } from './OpenInApp';
 
-// App + store identifiers. Defaults are the current (placeholder) values; set
-// the real ones via env before publishing:
+// App + store identifiers. Defaults mirror the mobile app's app.json (`scheme`
+// `ilokalmobile`, `android.package` `com.ilokal.app`) so the deep link, the
+// Android intent and the Play Store fallback all resolve to the real app;
+// override via env when the identifiers change:
 //   NEXT_PUBLIC_APP_SCHEME        custom URL scheme (app.json `scheme`)
 //   NEXT_PUBLIC_ANDROID_PACKAGE   Play Store package / app.json android.package
 //   NEXT_PUBLIC_IOS_APP_STORE_ID  numeric App Store id (from App Store Connect)
 const APP_SCHEME = process.env.NEXT_PUBLIC_APP_SCHEME || 'ilokalmobile';
 const ANDROID_PACKAGE =
-  process.env.NEXT_PUBLIC_ANDROID_PACKAGE || 'com.anonymous.ilokalmobile';
+  process.env.NEXT_PUBLIC_ANDROID_PACKAGE || 'com.ilokal.app';
 const IOS_APP_STORE_ID = process.env.NEXT_PUBLIC_IOS_APP_STORE_ID || '';
 
 // Build the deep link + store URLs for a given business. `business/<id>` maps to
@@ -105,11 +107,14 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     description,
     // Shares the card builder with /explore/[businessId] so the two public
     // business surfaces cannot drift. This one has no banner to offer, so the
-    // helper picks the square `summary` card for the logo.
+    // image is the generated Brick Ember card (`/api/og/business/:id`), with
+    // the square logo kept as the fallback if the generated card is ever
+    // dropped. The relative path resolves to an absolute URL via metadataBase.
     ...businessSocialCard({
       name: biz.name,
       description,
       logo: biz.logoUrl,
+      cardImage: `/api/og/business/${businessId}`,
       url: `/s/${businessId}`,
     }),
   };
@@ -124,8 +129,8 @@ export default async function SharedBusinessPage({ params }: Params) {
   const links = buildAppLinks(businessId);
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-[#fbf9f8] px-6 py-16 dark:bg-gray-950">
-      <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-sm dark:bg-gray-900">
+    <main className="bg-background flex min-h-dvh items-center justify-center px-6 py-16">
+      <div className="bg-card w-full max-w-md rounded-3xl p-8 text-center shadow-sm">
         {biz.logoUrl ? (
           // Plain <img>: an external OG image host needn't be in next/image's
           // remote-pattern allowlist, and no optimization is needed for a logo.
@@ -136,17 +141,17 @@ export default async function SharedBusinessPage({ params }: Params) {
             className="mx-auto h-24 w-24 rounded-2xl object-cover"
           />
         ) : (
-          <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-2xl bg-[#004324]/10 text-3xl font-semibold text-[#004324]">
+          <div className="bg-primary/10 text-primary mx-auto flex h-24 w-24 items-center justify-center rounded-2xl text-3xl font-semibold">
             {biz.name.charAt(0).toUpperCase()}
           </div>
         )}
 
-        <h1 className="mt-6 text-2xl font-semibold text-gray-900 dark:text-gray-50">
+        <h1 className="font-display text-foreground mt-6 text-2xl font-bold tracking-tight">
           {biz.name}
         </h1>
 
         {biz.description ? (
-          <p className="mt-3 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+          <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
             {biz.description}
           </p>
         ) : null}
@@ -158,7 +163,7 @@ export default async function SharedBusinessPage({ params }: Params) {
           iosStoreUrl={links.iosStoreUrl}
         />
 
-        <p className="mt-4 text-xs text-gray-400">
+        <p className="text-muted-foreground mt-4 text-xs">
           Discover local businesses and deals near you.
         </p>
       </div>

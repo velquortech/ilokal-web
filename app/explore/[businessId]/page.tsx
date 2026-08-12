@@ -49,11 +49,17 @@ export async function generateMetadata({
     // Declaring `openGraph` here REPLACES the root layout's, so site name,
     // type, locale and url have to be restated — the helper owns that, and
     // keeps twitter:image on the same picture as og:image.
+    //
+    // The image is the same generated Brick Ember card the share route
+    // (`/s/[businessId]`) uses — every public business surface previews as one
+    // brand treatment. The banner and logo stay as fallbacks if the generated
+    // card is ever dropped; the relative path resolves via metadataBase.
     ...businessSocialCard({
       name: business.shop_name,
       description,
       banner: business.banner_url,
       logo: business.logo_url,
+      cardImage: `/api/og/business/${businessId}`,
       url: `/explore/${businessId}`,
     }),
   };

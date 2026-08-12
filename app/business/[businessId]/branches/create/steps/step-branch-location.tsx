@@ -104,7 +104,7 @@ export function StepBranchLocation() {
 
         {geoError && <p className="text-destructive text-sm">{geoError}</p>}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Controller
             name="latitude"
             control={form.control}

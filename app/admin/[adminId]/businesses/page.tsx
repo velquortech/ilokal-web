@@ -62,7 +62,7 @@ export default async function AdminBusinessesPage({
     : { total: 0, page, pageSize, totalPages: 0 };
 
   return (
-    <div className="flex flex-1 flex-col space-y-6">
+    <div className="flex min-w-0 flex-1 flex-col space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">
           Business Documents

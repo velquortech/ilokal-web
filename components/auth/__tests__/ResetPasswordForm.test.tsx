@@ -45,7 +45,6 @@ vi.mock('motion/react', () => ({
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: pushMock }),
-  useSearchParams: () => ({ get: () => state.tokenHash }),
 }));
 
 vi.mock('sonner', () => ({
@@ -76,7 +75,11 @@ afterEach(() => {
 });
 
 function render() {
-  act(() => root.render(<ResetPasswordForm />));
+  // The page reads `token_hash` server-side and passes it as a prop — the
+  // harness mirrors that instead of mocking the URL hook.
+  act(() =>
+    root.render(<ResetPasswordForm initialTokenHash={state.tokenHash} />),
+  );
 }
 
 function setValue(input: HTMLInputElement, value: string) {

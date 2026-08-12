@@ -21,6 +21,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { DataTablePagination } from './DataTablePagination';
+import { cn } from '@/lib/utils';
+import { responsiveColumnClass } from '@/lib/utils/tableMeta';
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -99,7 +101,13 @@ export function DataTable<TData, TValue>({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead
+                    key={header.id}
+                    // A column whose `meta.responsiveClassName` hides it below
+                    // a breakpoint hides its header too, so the two stay in
+                    // step (see `lib/utils/tableMeta`).
+                    className={cn(responsiveColumnClass(header.column))}
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -119,7 +127,10 @@ export function DataTable<TData, TValue>({
                   data-state={row.getIsSelected() ? 'selected' : undefined}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell
+                      key={cell.id}
+                      className={cn(responsiveColumnClass(cell.column))}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext(),

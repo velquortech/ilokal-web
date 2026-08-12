@@ -95,7 +95,7 @@ export function RedeemedCouponsContent({
   const selectedStatus = (searchParams.get('status') as RedemptionStatus) ?? '';
 
   return (
-    <div className="font-giest flex h-max flex-1 flex-col space-y-6 pb-8">
+    <div className="font-giest flex h-max min-w-0 flex-1 flex-col space-y-6 pb-8">
       {/* Branch goes in the eyebrow: which branch you are looking at is the
           context people lose most often on this page. */}
       <PageHeader

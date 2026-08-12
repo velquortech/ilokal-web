@@ -33,13 +33,19 @@ export default async function ProfilePage({ params }: { params: Params }) {
 
   const userId = verify.user!.id;
 
-  const [profile, business, categories] = await Promise.all([
+  const [profile, business] = await Promise.all([
     fetchProfileForPage(userId),
     getBusinessProfileData(businessId),
-    getBusinessCategoryOptions(),
   ]);
 
   if (!business) notFound();
+
+  // Category options are filtered to categories that have businesses (same
+  // contract as the mobile endpoint) — but the shop's OWN category must stay
+  // selectable even when it has no other verified business yet.
+  const categories = await getBusinessCategoryOptions(
+    business.category_id ? { include: [business.category_id] } : undefined,
+  );
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6">

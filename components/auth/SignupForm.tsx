@@ -1,8 +1,7 @@
 'use client';
 
-import { Suspense } from 'react';
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -67,10 +66,18 @@ const ROLE_OPTIONS = [
   },
 ];
 
-function SignupFormContent() {
+interface SignupFormProps {
+  /**
+   * Mobile app signups get a success modal instead of a redirect, read
+   * server-side by the page (`?mobile=true`) so the form ships prerendered.
+   */
+  isMobile?: boolean;
+  /** The validated `?next=` deep link, read server-side by the page. */
+  initialNext?: string | null;
+}
+
+function SignupFormContent({ isMobile = false, initialNext }: SignupFormProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const isMobile = searchParams.get('mobile') === 'true';
   const {
     control,
     register,
@@ -146,7 +153,7 @@ function SignupFormContent() {
       // Customers arriving from an auth nudge deep-link back to where they
       // were (?next=, same-origin-validated); everyone else goes to their
       // role's home.
-      const next = safeNext(searchParams.get('next'));
+      const next = safeNext(initialNext);
       const destination =
         result.role === 'app_user' && next
           ? next
@@ -453,12 +460,12 @@ function SignupFormContent() {
   );
 }
 
-export default function SignupForm() {
-  return (
-    <Suspense fallback={<div />}>
-      <SignupFormContent />
-    </Suspense>
-  );
+/**
+ * No Suspense needed: the page reads the query string server-side and passes
+ * it in, so the form ships in the prerendered HTML — no hydration dependency.
+ */
+export default function SignupForm(props: SignupFormProps) {
+  return <SignupFormContent {...props} />;
 }
 
 function StepDot({ index, active }: { index: number; active: boolean }) {

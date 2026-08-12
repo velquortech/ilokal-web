@@ -71,7 +71,7 @@ export default function UserManagementHub() {
   );
 
   return (
-    <div className="flex flex-1 flex-col space-y-6">
+    <div className="flex min-w-0 flex-1 flex-col space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
@@ -81,12 +81,12 @@ export default function UserManagementHub() {
       </div>
       {/* Tabs */}
       <div>
-        <div className="border-border flex w-full max-w-2xl border-b">
+        <div className="border-border flex w-full max-w-2xl overflow-x-auto border-b">
           {USER_MANAGEMENT_TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as TabId)}
-              className={`flex cursor-pointer items-center justify-center gap-2 px-4 py-3 font-medium transition-colors ${
+              className={`flex shrink-0 cursor-pointer items-center justify-center gap-2 px-4 py-3 font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'border-primary text-primary border-b-2'
                   : 'text-muted-foreground hover:text-foreground'

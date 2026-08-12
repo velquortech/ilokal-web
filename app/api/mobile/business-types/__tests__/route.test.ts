@@ -29,6 +29,7 @@ vi.mock('next/cache', () => ({
 type QueryCall = {
   select: string;
   is: [string, unknown][];
+  eqs: [string, unknown][];
   filters: [string, string, unknown][];
   orders: string[];
 };
@@ -37,7 +38,13 @@ function buildClient(
   rows: unknown[],
   error: { message: string } | null = null,
 ) {
-  const calls: QueryCall = { select: '', is: [], filters: [], orders: [] };
+  const calls: QueryCall = {
+    select: '',
+    is: [],
+    eqs: [],
+    filters: [],
+    orders: [],
+  };
   const terminal = { data: rows, error };
   // Every chain method returns the same object, which is ALSO a thenable —
   // so `await supabase.from(...).select(...)` resolves to `terminal` no matter
@@ -49,6 +56,10 @@ function buildClient(
     }),
     is: vi.fn((col: string, val: unknown) => {
       calls.is.push([col, val]);
+      return chain;
+    }),
+    eq: vi.fn((col: string, val: unknown) => {
+      calls.eqs.push([col, val]);
       return chain;
     }),
     filter: vi.fn((col: string, op: string, val: unknown) => {
@@ -93,7 +104,21 @@ describe('GET /api/mobile/business-types', () => {
     const { calls } = buildClient(TYPES);
     const res = await GET();
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ business_types: TYPES });
+
+    // The inner-join `businesses` ids are stripped from the payload — they only
+    // drive the filter, so the reference list exposes types → categories and
+    // never leaks business ids.
+    const stripped = TYPES.map((t) => ({
+      ...t,
+      business_categories: t.business_categories.map(
+        ({ businesses: _b, ...c }) => c,
+      ),
+    }));
+    const body = await res.json();
+    expect(body).toEqual({ business_types: stripped });
+    expect(body.business_types[0].business_categories[0]).not.toHaveProperty(
+      'businesses',
+    );
 
     // The inner joins are the filter: a type only survives when it has a
     // category that has a business, and a category only when it has one.
@@ -104,8 +129,12 @@ describe('GET /api/mobile/business-types', () => {
 
     // The join contract mirrors the Explore feed: verified + not archived.
     expect(calls.is).toEqual([['deleted_at', null]]);
+    // Disabled rows (is_active = false, e.g. Tourism & Leisure on hold) are
+    // hidden from the reference list at both the type and category level.
+    expect(calls.eqs).toEqual([['is_active', true]]);
     expect(calls.filters).toEqual([
       ['business_categories.deleted_at', 'is', null],
+      ['business_categories.is_active', 'eq', true],
       ['business_categories.businesses.status', 'eq', 'verified'],
       ['business_categories.businesses.archived_at', 'is', null],
     ]);

@@ -9,7 +9,7 @@ export default async function AdminBranchesPage() {
   const branches = result.success ? (result.data?.branches ?? []) : [];
 
   return (
-    <div className="flex flex-1 flex-col space-y-6">
+    <div className="flex min-w-0 flex-1 flex-col space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">
           Branch Applications

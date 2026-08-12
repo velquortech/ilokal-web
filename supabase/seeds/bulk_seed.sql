@@ -13,11 +13,15 @@
 --   * testuser redemptions across the active / claimed / expired filter states
 --
 -- DEPENDS ON (run order — see Makefile CLOUD_SEED_FILES): runs AFTER businesses,
--- products, coupons, follows so it can (a) reuse already-uploaded hero image paths
--- (no new storage objects needed — filler rows point at existing objects per
--- bucket) and (b) reuse the 90-account follower pool from follows.sql
--- (dddddddd-0000-0000-0000-0000000000NN). Runs BEFORE view_counts so its UPDATEs
--- (which key off md5(id) over ALL rows) cover the filler too.
+-- products, coupons, follows so it can reuse the already-seeded 90-account
+-- follower pool from follows.sql (dddddddd-0000-0000-0000-0000000000NN). Each
+-- filler SHOP gets its own logo, banner and interior paths (<id>/logo.jpg,
+-- <id>/banner.jpg, <id>/hero.jpg, <id>/gallery1.jpg), each PRODUCT its own
+-- photo (product-images/<prod_id>/product.jpg), and each POST its own image
+-- (business-posts/<post_id>/post.jpg — the bucket the Updates feed resolves
+-- against) — all uploaded by seed-storage.sh, so no two shops, products, or
+-- posts share an image. Runs BEFORE view_counts so its UPDATEs (which key
+-- off md5(id) over ALL rows) cover the filler too.
 --
 -- Idempotent: deterministic UUIDs (f0/f1/f2/f3/f4/f6 prefixes) + ON CONFLICT, so
 -- it is safe to re-run; the cloud clean-replace wipes first anyway.
@@ -35,9 +39,6 @@ DECLARE
   n_biz      CONSTANT int  := 40;
 
   cat_ids    uuid[];
-  logo_pool  text[];   -- shop-logos paths (reused from hero businesses)
-  intr_pool  text[];   -- interior-images paths
-  prod_pool  text[];   -- product-images paths
   plan_free  uuid; plan_pro_m uuid; plan_pro_y uuid; plan_beta uuid;
 
   name_pre text[] := ARRAY['Sunrise','Golden','Urban','Coastal','Heritage','Bayanihan','Island','Maharlika','Northern','Southern','Riverside','Highland','Downtown','Sampaguita','Iloilo','Panay','Visayan','Tropical','Calle','Plaza'];
@@ -46,7 +47,7 @@ DECLARE
   prod_nn  text[] := ARRAY['Blend','Set','Combo','Plate','Bundle','Pack','Service','Special','Platter','Box'];
 
   b int; p int; c int; k int;
-  biz_id uuid; br_id uuid; coup_id uuid; prod_id uuid; cat_id uuid;
+  biz_id uuid; br_id uuid; coup_id uuid; prod_id uuid; post_id uuid; cat_id uuid;
   lat double precision; lng double precision;
   price numeric; sprice numeric;
   fcount int; rcount int; follower uuid;
@@ -55,18 +56,10 @@ DECLARE
   start_d timestamptz; exp_d timestamptz; arch timestamptz; maxg int; cur int;
 BEGIN
   SELECT array_agg(id ORDER BY name) INTO cat_ids FROM public.business_categories WHERE deleted_at IS NULL;
-  SELECT array_agg(logo_url) INTO logo_pool FROM public.businesses WHERE logo_url IS NOT NULL;
-  SELECT array_agg(x) INTO intr_pool FROM (SELECT unnest(interior_images) x FROM public.businesses WHERE interior_images IS NOT NULL) t WHERE x IS NOT NULL;
-  SELECT array_agg(image_url) INTO prod_pool FROM public.products WHERE image_url IS NOT NULL;
   SELECT id INTO plan_free  FROM public.subscription_plans WHERE name='Free Tier'   LIMIT 1;
   SELECT id INTO plan_pro_m FROM public.subscription_plans WHERE name='Pro Monthly' LIMIT 1;
   SELECT id INTO plan_pro_y FROM public.subscription_plans WHERE name='Pro Yearly'  LIMIT 1;
   SELECT id INTO plan_beta  FROM public.subscription_plans WHERE name='Beta Access' LIMIT 1;
-
-  -- Fallbacks so the script still runs if a pool is somehow empty.
-  IF logo_pool IS NULL THEN logo_pool := ARRAY['11111111-1111-1111-1111-111111111101/logo.jpg']; END IF;
-  IF intr_pool IS NULL THEN intr_pool := ARRAY['11111111-1111-1111-1111-111111111101/hero.jpg']; END IF;
-  IF prod_pool IS NULL THEN prod_pool := logo_pool; END IF;
 
   FOR b IN 1..n_biz LOOP
     biz_id := ('f0000001-0000-0000-0000-' || lpad(b::text,12,'0'))::uuid;
@@ -76,7 +69,8 @@ BEGIN
     lng := 122.55 + (((b * 53) % 100) / 1000.0) - 0.05;   -- ~122.50 .. 122.60
 
     INSERT INTO public.businesses
-      (id, owner_id, shop_name, description, location, logo_url, interior_images, status, category_id, business_category)
+      (id, owner_id, shop_name, description, location, logo_url, banner_url,
+       interior_images, status, category_id, business_category)
     VALUES (
       biz_id, owner_id,
       name_pre[1+(b % array_length(name_pre,1))] || ' ' || name_suf[1+((b*3) % array_length(name_suf,1))],
@@ -84,9 +78,10 @@ BEGIN
       jsonb_build_object('province','Iloilo','city','Iloilo City','barangay','Brgy '||b,
                          'street_address',b||' Sample St.','zip_code','5000',
                          'latitude',lat,'longitude',lng,'geometry','lat:'||lat||',lng:'||lng),
-      logo_pool[1+(b % array_length(logo_pool,1))],
-      ARRAY[ intr_pool[1+(b % array_length(intr_pool,1))],
-             intr_pool[1+((b*2) % array_length(intr_pool,1))] ],
+      biz_id::text || '/logo.jpg',
+      biz_id::text || '/banner.jpg',
+      ARRAY[ biz_id::text || '/hero.jpg',
+             biz_id::text || '/gallery1.jpg' ],
       'verified',
       cat_id,
       jsonb_build_object('name','General','type','predefined')
@@ -109,7 +104,7 @@ BEGIN
         prod_adj[1+((b+p) % array_length(prod_adj,1))] || ' ' || prod_nn[1+((b*2+p) % array_length(prod_nn,1))] || ' ' || p,
         'Sample product '||p||' for business '||b||'.',
         price, sprice,
-        prod_pool[1+((b*p) % array_length(prod_pool,1))],
+        prod_id::text || '/product.jpg',
         CASE WHEN p % 11 = 0 THEN 'disabled' WHEN p % 7 = 0 THEN 'unlisted' ELSE 'active' END,
         cat_id,
         (p % 11 <> 0)
@@ -151,16 +146,23 @@ BEGIN
       ) ON CONFLICT (id) DO NOTHING;
     END LOOP;
 
-    -- ── Updates-feed posts: 1 each + an extra for every 3rd business ──
+    -- ── Updates-feed posts: 1 each + an extra for every 3rd business. Each
+    -- post gets its OWN image (business-posts/<post_id>/post.jpg — the bucket
+    -- the Updates feed resolves post image_url against), so no two posts share
+    -- a photo and the images actually load. seed-storage.sh uploads the objects.
+    post_id := ('f3000000-0000-0000-0000-'||lpad((b*10+1)::text,12,'0'))::uuid;
     INSERT INTO public.business_posts (id, business_id, title, body, image_url, published_at)
-    VALUES (('f3000000-0000-0000-0000-'||lpad((b*10+1)::text,12,'0'))::uuid, biz_id,
+    VALUES (post_id, biz_id,
             'What''s new (#'||b||')', 'Sample update post for the mobile Updates feed.',
-            intr_pool[1+(b % array_length(intr_pool,1))], NOW() - (b||' hours')::interval)
+            post_id::text || '/post.jpg',
+            NOW() - (b||' hours')::interval)
     ON CONFLICT (id) DO NOTHING;
     IF b % 3 = 0 THEN
+      post_id := ('f3000000-0000-0000-0000-'||lpad((b*10+2)::text,12,'0'))::uuid;
       INSERT INTO public.business_posts (id, business_id, title, body, image_url, published_at)
-      VALUES (('f3000000-0000-0000-0000-'||lpad((b*10+2)::text,12,'0'))::uuid, biz_id,
-              'Weekend special (#'||b||')', 'Another sample post.', NULL,
+      VALUES (post_id, biz_id,
+              'Weekend special (#'||b||')', 'Another sample post.',
+              post_id::text || '/post.jpg',
               NOW() - ((b+12)||' hours')::interval)
       ON CONFLICT (id) DO NOTHING;
     END IF;
@@ -215,6 +217,50 @@ BEGIN
     END IF;
 
   END LOOP;
+
+  -- ── Filler shop photos: each shop keeps its OWN logo/banner/interiors ──
+  -- (<id>/logo.jpg, <id>/banner.jpg, <id>/hero.jpg, <id>/gallery1.jpg —
+  -- seed-storage.sh uploads the objects). Covered by ON CONFLICT for new rows
+  -- above; these UPDATEs migrate rows inserted before the distinct paths
+  -- existed (IS DISTINCT FROM matches both NULL and stale shared paths). They
+  -- are no-ops once every filler shop already points at its own photos.
+  -- NOTE: re-running bulk_seed on an already-seeded DB restores rows that
+  -- real_world_gaps nulled; that's fine because gaps runs AFTER bulk_seed in
+  -- the Makefile seed-db loop and re-applies its deterministic nulls.
+  UPDATE public.businesses
+     SET logo_url = id::text || '/logo.jpg'
+   WHERE id::text LIKE 'f0000001-%'
+     AND logo_url IS DISTINCT FROM id::text || '/logo.jpg';
+
+  UPDATE public.businesses
+     SET interior_images = ARRAY[id::text || '/hero.jpg', id::text || '/gallery1.jpg']
+   WHERE id::text LIKE 'f0000001-%'
+     AND interior_images IS DISTINCT FROM ARRAY[id::text || '/hero.jpg', id::text || '/gallery1.jpg'];
+
+  UPDATE public.businesses
+     SET banner_url = id::text || '/banner.jpg'
+   WHERE id::text LIKE 'f0000001-%' AND banner_url IS NULL;
+
+  -- ── Filler product photos: each product keeps its OWN image ──
+  -- (product-images/<prod_id>/product.jpg — seed-storage.sh uploads the
+  -- objects). Covered by ON CONFLICT for new rows; this UPDATE migrates rows
+  -- inserted before the distinct paths existed and is a no-op once every
+  -- filler product already points at its own photo.
+  UPDATE public.products
+     SET image_url = id::text || '/product.jpg'
+   WHERE id::text LIKE 'f1000000-%'
+     AND image_url IS DISTINCT FROM id::text || '/product.jpg';
+
+  -- ── Filler post photos: each post keeps its OWN image ──
+  -- (business-posts/<post_id>/post.jpg — seed-storage.sh uploads the objects;
+  -- the Updates feed resolves against the business-posts bucket). Covered by
+  -- ON CONFLICT for new rows; this UPDATE migrates rows inserted before the
+  -- distinct paths existed and is a no-op once every filler post already
+  -- points at its own photo.
+  UPDATE public.business_posts
+     SET image_url = id::text || '/post.jpg'
+   WHERE id::text LIKE 'f3000000-%'
+     AND image_url IS DISTINCT FROM id::text || '/post.jpg';
 
   -- ── testuser redemptions across the active / claimed / expired filter states ──
   -- Pick currently-valid, published, non-follow-gated filler coupons.

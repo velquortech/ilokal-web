@@ -105,13 +105,24 @@ seed-storage:
 	@bash supabase/seeds/seed-storage.sh
 
 seed-db:
-	@for f in supabase/seeds/users.sql supabase/seeds/subscription_plans.sql supabase/seeds/business_categories.sql supabase/seeds/businesses.sql supabase/seeds/products.sql supabase/seeds/coupons.sql supabase/seeds/ratings.sql supabase/seeds/business_subscriptions.sql supabase/seeds/business_posts.sql supabase/seeds/follows.sql supabase/seeds/bulk_seed.sql supabase/seeds/view_counts.sql; do \
+	@for f in supabase/seeds/users.sql supabase/seeds/subscription_plans.sql supabase/seeds/business_categories.sql supabase/seeds/businesses.sql supabase/seeds/products.sql supabase/seeds/coupons.sql supabase/seeds/ratings.sql supabase/seeds/business_subscriptions.sql supabase/seeds/business_posts.sql supabase/seeds/events.sql supabase/seeds/events_enable.sql supabase/seeds/follows.sql supabase/seeds/bulk_seed.sql supabase/seeds/view_counts.sql supabase/seeds/real_world_gaps.sql; do \
 		echo "  seeding $$f..."; \
 		docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < $$f; \
 	done
 	@echo "DB seed complete."
 
+# Seeding strategy, run order, and the no-shared-photos / gaps contracts are
+# documented in supabase/seeds/README.md.
 seed: seed-storage seed-db
+
+# ── Live snapshot for local testing ───────────────────────────────────────────
+# Replace the local Docker DB's data with a snapshot of the LIVE (cloud) DB.
+# The connection string comes from SUPABASE_DB_URL (inline, wins) or, if unset,
+# SUPABASE_LIVE_DB_URL in the git-ignored .env (recommended). Refuses localhost.
+# Replaces public/auth/storage data; the migration ledger is kept.
+# See .claude/docs/live-db-snapshot.md for details and limitations.
+pull-live:
+	@bash supabase/scripts/pull-live.sh
 
 # ── Cloud deploy (APK preview build) ──────────────────────────────────────────
 # Full flow: `make deploy-cloud` = migrate-cloud (schema + buckets) then seed-cloud
@@ -145,7 +156,7 @@ migrate-cloud:
 # uploads storage objects to the cloud buckets. Run `make migrate-cloud` first.
 # Re-runnable: seeds use ON CONFLICT and the lockdown is idempotent.
 CLOUD_SEED_FILES = users subscription_plans business_categories businesses products \
-                   coupons ratings business_subscriptions business_posts follows \
+                   coupons ratings business_subscriptions business_posts events follows \
                    bulk_seed view_counts
 
 seed-cloud:
@@ -192,4 +203,4 @@ review:
 	yarn test:run
 	@echo "Review complete: lint, build, and tests passed"
 
-.PHONY: all init-log setup-supabase clean report-backlog migrate-new migrate-up migrate-diff migrate-reset stop-db run-dev test test-run test-ui test-coverage review seed-storage seed-db seed seed-cloud migrate-cloud deploy-cloud
+.PHONY: all init-log setup-supabase clean report-backlog migrate-new migrate-up migrate-diff migrate-reset stop-db run-dev test test-run test-ui test-coverage review seed-storage seed-db seed pull-live seed-cloud migrate-cloud deploy-cloud

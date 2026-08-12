@@ -249,14 +249,16 @@ describe('SetupChecklist', () => {
 
     act(() => {
       root.render(
-        React.createElement(
-          OnboardingTourProvider,
-          { businessId: BUSINESS_ID, enabled: true },
-          React.createElement(SetupChecklist, {
+        React.createElement(OnboardingTourProvider, {
+          businessId: BUSINESS_ID,
+          enabled: true,
+          // children is a required prop on the provider — React.createElement
+          // type-checks it on the props object.
+          children: React.createElement(SetupChecklist, {
             businessId: BUSINESS_ID,
             progress: progressWith(),
           }),
-        ),
+        }),
       );
     });
     expect(takeTheTour()).toBeDefined();

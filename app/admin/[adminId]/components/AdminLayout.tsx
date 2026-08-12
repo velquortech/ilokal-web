@@ -31,7 +31,7 @@ export default function AdminLayout({
           <AdminSidebar flags={flags} />
           <SidebarInset className="flex flex-1 flex-col overflow-hidden">
             <AdminHeader />
-            <div className="flex flex-1 overflow-auto px-10 py-6">
+            <div className="flex flex-1 overflow-auto px-4 py-6 sm:px-6 lg:px-10">
               {children}
             </div>
           </SidebarInset>

@@ -16,7 +16,7 @@ import type { Mock } from 'vitest';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { getOnboardingProgress } from '../onboardingQuery';
 import { resolveOfferingVocabulary } from '@/lib/utils/offeringVocabulary';
-import type { OnboardingItemId } from '@/lib/types/onboarding';
+import type { OnboardingItem, OnboardingItemId } from '@/lib/types/onboarding';
 
 vi.mock('@/supabase/server', () => ({ createServerSupabaseClient: vi.fn() }));
 
@@ -129,10 +129,8 @@ function mockTables(fixtures: TableFixtures) {
   return { from, queries };
 }
 
-const byId = (
-  items: { id: OnboardingItemId; done: boolean }[],
-  id: OnboardingItemId,
-) => items.find((item) => item.id === id)!;
+const byId = (items: OnboardingItem[], id: OnboardingItemId) =>
+  items.find((item) => item.id === id)!;
 
 const queryFor = (queries: RecordedQuery[], table: string) =>
   queries.find((query) => query.table === table)!;

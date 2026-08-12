@@ -331,7 +331,7 @@ export default function AdminTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">
             Admin Accounts
@@ -345,7 +345,7 @@ export default function AdminTab({
             setSelectedAdmin(null);
             setIsFormOpen(true);
           }}
-          className="gap-2"
+          className="w-full gap-2 sm:w-auto"
         >
           <Plus className="h-4 w-4" />
           Create Admin

@@ -25,7 +25,9 @@ const { getCurrentUser, sendEmail, missingIds, rpc, update, state } =
       const p = Promise.resolve({ error: state.restoreError });
       return Object.assign(p, { or, select });
     });
-    const update = vi.fn(() => ({ eq }));
+    // Rest-arg so `update.mock.calls[i][0]` is readable (the zero-arg mock
+    // signature made `calls` an empty tuple).
+    const update = vi.fn((..._args: unknown[]) => ({ eq }));
     const rpc = vi.fn();
     return {
       getCurrentUser: vi.fn(),

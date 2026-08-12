@@ -54,7 +54,7 @@ export function EventTitleCell({ event }: { event: EventWithRefs }) {
   // columns fell off the right edge. `max-w` caps that; `truncate` /
   // `line-clamp-1` collapse the overflow into an ellipsis inside the cap.
   return (
-    <div className="w-[14rem] max-w-[14rem] sm:w-[18rem] sm:max-w-[18rem]">
+    <div className="w-[10rem] max-w-[10rem] sm:w-[14rem] sm:max-w-[14rem] lg:w-[18rem] lg:max-w-[18rem]">
       <div className="truncate font-medium" title={event.name}>
         {event.name}
       </div>
@@ -85,7 +85,7 @@ export function EventWhenCell({ event }: { event: EventWithRefs }) {
     // column — same reason the title cell is bounded. `whitespace-normal`
     // overrides `TableCell`'s inherited `whitespace-nowrap`, which otherwise
     // keeps the range on one line and overflows it onto the next column.
-    <div className="flex w-[11rem] max-w-[11rem] flex-col gap-1 whitespace-normal">
+    <div className="flex w-[8rem] max-w-[8rem] flex-col gap-1 whitespace-normal sm:w-[11rem] sm:max-w-[11rem]">
       <span className="text-sm">{formatEventWhen(event)}</span>
       {phase === 'live' && event.status === 'approved' && (
         <Badge

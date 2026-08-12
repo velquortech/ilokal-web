@@ -23,7 +23,8 @@ const baseInput = {
 
 function makeInsertChain(returnValue: {
   data: Coupon | null;
-  error: { message: string } | null;
+  // `code` is a Postgres error code, read by the service to map 23505 → CONFLICT.
+  error: { code?: string; message: string } | null;
 }) {
   const single = vi.fn().mockResolvedValue(returnValue);
   const select = vi.fn(() => ({ single }));

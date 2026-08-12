@@ -29,6 +29,10 @@
  * section describes the archive and the 90-day purge. The in-app wording is
  * corrected at the mobile source; until a new build ships, the shipped app
  * still shows the old sentence.
+ *
+ * Also hosts the Terms of Service (`TERMS_DOC`, rendered on /terms) in the
+ * same shape, so both hosted documents share one file and one renderer
+ * contract.
  */
 
 export type LegalSection = {
@@ -40,9 +44,9 @@ export type LegalSection = {
 };
 
 export type LegalDoc = {
-  id: 'privacy';
+  id: 'terms' | 'privacy';
   title: string;
-  lastUpdated: string;
+  lastUpdated?: string;
   intro: string;
   sections: LegalSection[];
 };
@@ -282,3 +286,121 @@ export const PRIVACY_POLICY: LegalDoc = {
     },
   ],
 };
+
+export const TERMS_DOC: LegalDoc = {
+  id: 'terms',
+  title: 'Terms of Service',
+  intro:
+    'These Terms of Service (“Terms”) govern your use of the iLokal app and its services. By downloading, accessing, or using iLokal, you agree to these Terms and to our Privacy Policy. If you don’t agree, please don’t use the app.',
+  sections: [
+    {
+      heading: 'What is iLokal',
+      paragraphs: [
+        'iLokal is a local-business discovery platform. It helps you find nearby shops and establishments, browse their profiles, menus, and products, follow them, discover local events, and claim coupons and deals to redeem in store.',
+        'The businesses you find on iLokal are independent third parties. Their listings, products, prices, events, and offers belong to them — iLokal is the marketplace that connects you, not the merchant.',
+      ],
+    },
+    {
+      heading: 'Eligibility',
+      paragraphs: [
+        'You must be at least 18 years old to create an account. If you are under 18, you may use iLokal only with the involvement and consent of a parent or legal guardian.',
+      ],
+    },
+    {
+      heading: 'Accounts',
+      paragraphs: [
+        'You can browse much of iLokal as a guest without an account. An account is required for follows, claiming coupons and deals, your coupon wallet, the updates feed, notifications, and ratings.',
+        'You can register with email and password or with a supported third-party sign-in. You are responsible for keeping your credentials safe and for everything done under your account — notify us promptly if you think someone else has accessed it.',
+      ],
+    },
+    {
+      heading: 'Coupons and deals — please read',
+      paragraphs: [
+        'Coupons and deals are offered by the businesses, not by iLokal. iLokal helps you discover, claim, and redeem them, but each offer is subject to the terms set by the business that made it — including validity period, expiry, quantity limits, and any per-user limits such as one claim per user.',
+        'Claiming an offer does not guarantee a product’s availability. Redemption is validated in store with a code, and is subject to the business honoring it. Offers have no cash value and cannot be exchanged for money.',
+        'iLokal is not responsible if a business refuses, changes, or withdraws an offer, or for the quality, safety, or legality of anything you buy. Disputes about a purchase or redemption are between you and the business.',
+      ],
+    },
+    {
+      heading: 'Ratings and reviews',
+      paragraphs: [
+        'You may submit ratings and reviews. You keep ownership of what you write, and you grant iLokal a worldwide, non-exclusive, royalty-free license to host, store, and display it in the app to operate the service.',
+        'Please be honest and respectful: your reviews should reflect your own experience and must not violate any law or third-party right. We may remove content that breaks these Terms.',
+      ],
+    },
+    {
+      heading: 'Acceptable use',
+      paragraphs: ['You agree not to:'],
+      bullets: [
+        'use iLokal for any unlawful purpose or in violation of these Terms;',
+        'submit false, misleading, defamatory, harassing, or infringing content;',
+        'abuse offers — for example, fraudulent, automated, or bulk claiming, or working around per-user limits;',
+        'reverse engineer, scrape, or bulk-extract data except as permitted by law;',
+        'interfere with, overload, or try to gain unauthorized access to the app, our systems, or other users’ accounts;',
+        'impersonate any person or business, or misrepresent your affiliation.',
+      ],
+    },
+    {
+      heading: 'Third-party businesses',
+      paragraphs: [
+        'Business listings, profiles, menus, prices, events, and offers are provided by independent businesses. iLokal does not verify, endorse, or guarantee the accuracy, availability, quality, safety, or legality of any listing or offer. Your dealings with any business are solely between you and that business.',
+      ],
+    },
+    {
+      heading: 'Location services',
+      paragraphs: [
+        'iLokal can use your device location to show nearby businesses and directions. Location is optional and controlled by your device permissions — you can decline it or revoke it anytime in your device settings.',
+      ],
+    },
+    {
+      heading: 'Notifications',
+      paragraphs: [
+        'By creating an account, you agree to receive service and transactional messages — for example, email confirmation, password resets, and in-app notifications from businesses you follow. You can manage notification preferences in the app and your device settings.',
+      ],
+    },
+    {
+      heading: 'Intellectual property',
+      paragraphs: [
+        'The iLokal app, its software, design, and branding belong to iLokal or its licensors and are protected by intellectual-property laws. We grant you a limited, personal, non-exclusive, non-transferable license to use the app for its intended purpose. No other rights are granted.',
+      ],
+    },
+    {
+      heading: 'Termination',
+      paragraphs: [
+        'You can stop using iLokal at any time. To pause your account, use Profile → Account Settings → Deactivate Account — this is reversible, and you can reactivate it by signing back in. To delete your account and have your data removed, use Delete Account.',
+        'We may suspend or terminate your access if you violate these Terms or for legal, security, or operational reasons.',
+      ],
+    },
+    {
+      heading: 'Disclaimers',
+      paragraphs: [
+        'The app is provided “as is” and “as available”, without warranties of any kind, express or implied, including merchantability, fitness for a particular purpose, and non-infringement. We do not warrant that the app will be uninterrupted, error-free, or secure, or that any listing, price, or offer is accurate or available.',
+      ],
+    },
+    {
+      heading: 'Limitation of liability',
+      paragraphs: [
+        'To the maximum extent permitted by law, iLokal will not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits, data, or goodwill, arising from your use of (or inability to use) the app or any dealings with a business. Our total liability for any claim will not exceed the amount you paid us, if any, in the 12 months before the claim.',
+      ],
+    },
+    {
+      heading: 'Governing law',
+      paragraphs: [
+        'These Terms are governed by the laws of the Republic of the Philippines. You agree to the exclusive jurisdiction of the courts of Iloilo City for any dispute, subject to any mandatory consumer-protection rights you have where you live.',
+      ],
+    },
+    {
+      heading: 'Changes to these Terms',
+      paragraphs: [
+        'We may update these Terms. When we do, we will post the updated version with a new “Last updated” date and, for material changes, provide additional notice. Continued use after the changes take effect means you accept the updated Terms.',
+      ],
+    },
+    {
+      heading: 'Contact',
+      paragraphs: [
+        'Questions about these Terms? Email us at support@ilokal.shop.',
+      ],
+    },
+  ],
+};
+

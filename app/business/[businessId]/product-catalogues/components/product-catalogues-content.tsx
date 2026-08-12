@@ -145,7 +145,7 @@ export function ProductCataloguesContent({
   const selectedStatus = searchParams.get('status') ?? '';
 
   return (
-    <div className="font-giest flex h-max flex-1 flex-col space-y-6 pb-8">
+    <div className="font-giest flex h-max min-w-0 flex-1 flex-col space-y-6 pb-8">
       <PageHeader
         title={vocabulary.catalogue}
         lede={`Manage your ${vocabulary.plural.toLowerCase()}`}

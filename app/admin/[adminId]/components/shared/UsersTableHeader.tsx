@@ -3,6 +3,8 @@ import { HeaderGroup } from '@tanstack/react-table';
 import { TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { flexRender } from '@tanstack/react-table';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { responsiveColumnClass } from '@/lib/utils/tableMeta';
 
 interface UsersTableHeaderProps<TRow> {
   headerGroups: HeaderGroup<TRow>[];
@@ -20,7 +22,13 @@ export function UsersTableHeader<TRow>({
             return (
               <TableHead
                 key={header.id}
-                className={`font-semibold ${isLastHeader ? 'text-right' : ''}`}
+                className={cn(
+                  'font-semibold',
+                  isLastHeader ? 'text-right' : '',
+                  // Keep the header and its cells in step when a column drops
+                  // off below a breakpoint (see `lib/utils/tableMeta`).
+                  responsiveColumnClass(header.column),
+                )}
                 scope="col"
                 style={{
                   width: header.getSize(),

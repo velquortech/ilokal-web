@@ -1,8 +1,8 @@
 'use client';
 
-import { Suspense, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'motion/react';
@@ -49,9 +49,19 @@ type SignInStep = 'credentials' | 'mfa';
  * is a no-op unless a verified TOTP factor exists) and the typed rate-limit
  * result so a 429 renders distinctly from bad credentials.
  */
-function SignInFormContent() {
+interface SignInFormProps {
+  /**
+   * The validated `?next=` deep link (customer-only), read server-side by the
+   * page so the form ships in the prerendered HTML. Null/undefined means the
+   * role's home.
+   */
+  initialNext?: string | null;
+  /** The proxy bounced an incomplete MFA sign-in here (`?mfa=required`). */
+  mfaRequired?: boolean;
+}
+
+function SignInFormContent({ initialNext, mfaRequired }: SignInFormProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [serverError, setServerError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -77,7 +87,7 @@ function SignInFormContent() {
    * through as navigation.
    */
   async function finishSignIn(role: User['role'], businessId: string | null) {
-    const next = safeNext(searchParams.get('next'));
+    const next = safeNext(initialNext);
     if (next && role === 'app_user') {
       router.replace(next);
       router.refresh();
@@ -275,7 +285,7 @@ function SignInFormContent() {
 
       {/* Set by the proxy's MFA gate when a half-authenticated (AAL1) session
           tried to reach a protected page. */}
-      {!serverError && searchParams.get('mfa') === 'required' && (
+      {!serverError && mfaRequired && (
         <Alert>
           <ShieldCheck className="h-4 w-4" />
           <AlertDescription>
@@ -378,37 +388,10 @@ function SignInFormContent() {
 }
 
 /**
- * Form-shaped placeholder for the Suspense boundary. `useSearchParams` opts the
- * subtree out of prerendering, so THIS is what the prerendered /sign-in
- * document ships — `fallback={null}` shipped an empty page until hydration.
+ * No Suspense needed: the page reads the query string server-side and passes
+ * it in, so nothing here opts the form out of prerendering — the fields ship
+ * in the HTML instead of appearing only after hydration.
  */
-function SignInFormFallback() {
-  return (
-    <div className="w-full max-w-sm space-y-6" aria-busy="true">
-      <span className="sr-only" role="status">
-        Loading sign-in form
-      </span>
-      <div aria-hidden className="space-y-6">
-        <div className="space-y-2">
-          <div className="bg-muted h-6 w-28 animate-pulse rounded-full" />
-          <div className="bg-muted h-8 w-48 animate-pulse rounded" />
-          <div className="bg-muted h-4 w-full animate-pulse rounded" />
-        </div>
-        <div className="space-y-4">
-          <div className="bg-muted h-10 w-full animate-pulse rounded-md" />
-          <div className="bg-muted h-10 w-full animate-pulse rounded-md" />
-          <div className="bg-muted h-10 w-full animate-pulse rounded-md" />
-        </div>
-        <div className="bg-muted mx-auto h-4 w-40 animate-pulse rounded" />
-      </div>
-    </div>
-  );
-}
-
-export default function SignInForm() {
-  return (
-    <Suspense fallback={<SignInFormFallback />}>
-      <SignInFormContent />
-    </Suspense>
-  );
+export default function SignInForm(props: SignInFormProps) {
+  return <SignInFormContent {...props} />;
 }

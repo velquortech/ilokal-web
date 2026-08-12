@@ -24,8 +24,38 @@ export type BusinessCard = {
   banner?: string | null;
   /** Square shop logo, already an absolute URL. */
   logo?: string | null;
+  /**
+   * A generated 1200×630 branded card (absolute or metadataBase-relative).
+   * Wins over banner and logo, and earns `summary_large_image` — it is
+   * already the landscape shape crawlers pillarbox a square into.
+   */
+  cardImage?: string | null;
   /** Absolute or metadataBase-relative canonical path for this page. */
   url: string;
+};
+
+/**
+ * The explicit return shape. Next's own `Twitter` type is a union that also
+ * admits a card-less `TwitterMetadata` member, so a `Pick<Metadata, 'twitter'>`
+ * annotation made `.card` unreadable. Each branch here pins `card` to a single
+ * literal, and every branch is structurally assignable to a `Metadata`
+ * `twitter` constituent — so routes can still spread the result wholesale.
+ */
+export type BusinessSocialCardResult = {
+  openGraph: NonNullable<Metadata['openGraph']>;
+  twitter:
+    | {
+        card: 'summary_large_image';
+        title: string;
+        description: string;
+        images?: string[];
+      }
+    | {
+        card: 'summary';
+        title: string;
+        description: string;
+        images?: string[];
+      };
 };
 
 export function businessSocialCard({
@@ -33,14 +63,17 @@ export function businessSocialCard({
   description,
   banner,
   logo,
+  cardImage,
   url,
-}: BusinessCard): Pick<Metadata, 'openGraph' | 'twitter'> {
-  const image = banner || logo || undefined;
-
-  // A square logo stretched into a 1200x630 card gets pillarboxed with grey
-  // bars, so only a real landscape banner earns the large card.
-  const card = banner ? 'summary_large_image' : 'summary';
+}: BusinessCard): BusinessSocialCardResult {
+  const image = cardImage || banner || logo || undefined;
   const title = `${name} · ${SITE_NAME}`;
+
+  const base = {
+    title,
+    description,
+    ...(image ? { images: [image] } : {}),
+  };
 
   return {
     openGraph: {
@@ -54,11 +87,12 @@ export function businessSocialCard({
       // `opengraph-image.png` is inherited rather than emitting an empty tag.
       ...(image ? { images: [image] } : {}),
     },
-    twitter: {
-      card,
-      title,
-      description,
-      ...(image ? { images: [image] } : {}),
-    },
+    // A square logo stretched into a 1200x630 card gets pillarboxed with grey
+    // bars, so only a landscape image earns the large card — a real banner or
+    // the generated branded card, both already 1200x630-ish.
+    twitter:
+      cardImage || banner
+        ? { ...base, card: 'summary_large_image' }
+        : { ...base, card: 'summary' },
   };
 }

@@ -40,7 +40,10 @@ vi.mock('@/lib/utils/auth', () => ({
   assertAuthorized: (...args: unknown[]) => assertAuthorized(...args),
 }));
 
-const rateLimit = vi.fn(() => ({
+// Rest-arg implementations: the mock is re-invoked with `(...args)` by the
+// factory below, so a zero-arg signature would make both the spread and
+// `mock.calls[i][j]` unreadable to TS.
+const rateLimit = vi.fn((..._args: unknown[]) => ({
   allowed: true,
   remaining: 59,
   retryAfterSec: 0,
@@ -49,7 +52,7 @@ vi.mock('@/app/api/helpers/rateLimit', () => ({
   rateLimit: (...args: unknown[]) => rateLimit(...args),
 }));
 
-const fetchImageAsDataUrl = vi.fn(async () => null);
+const fetchImageAsDataUrl = vi.fn(async (..._args: unknown[]) => null);
 vi.mock('@/lib/og/remoteImage', () => ({
   fetchImageAsDataUrl: (...args: unknown[]) => fetchImageAsDataUrl(...args),
   loadWordmarkDataUrl: async () => 'data:image/png;base64,AAAA',

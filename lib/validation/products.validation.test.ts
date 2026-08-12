@@ -45,7 +45,8 @@ describe('createProductSchema', () => {
   });
 
   it('omits is_available when not provided (default applied at service layer)', () => {
-    expect(createProductSchema.parse(base).is_available).toBeUndefined();
+    // `is_available` is not a key of the parsed type — assert its absence.
+    expect('is_available' in createProductSchema.parse(base)).toBe(false);
   });
 
   it('accepts all valid price types', () => {
@@ -82,7 +83,7 @@ describe('createProductSchema', () => {
 
   it('strips unknown fields like is_available (not in createProductSchema)', () => {
     const result = createProductSchema.parse({ ...base, is_available: false });
-    expect(result.is_available).toBeUndefined();
+    expect('is_available' in result).toBe(false);
   });
 
   it('rejects missing name', () => {

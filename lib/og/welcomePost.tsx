@@ -330,7 +330,8 @@ export const BACKDROP_CIRCLES = [
   { x: -0.04, y: 0.32, size: 0.14, tint: 'rgba(255, 255, 255, 0.03)' },
 ] as const;
 
-function Backdrop({ width, height }: { width: number; height: number }) {
+/** Shared by the welcome post and the business share card. */
+export function Backdrop({ width, height }: { width: number; height: number }) {
   return (
     <>
       {BACKDROP_CIRCLES.map((circle, index) => {

@@ -88,6 +88,17 @@ export async function GET(req: NextRequest) {
       Math.max(100, Number.isFinite(radiusRaw) ? radiusRaw : 20_000),
     );
 
+    // Optional time-window filter, same vocabulary as the list route. Filtered
+    // AFTER the RPC ranks by distance (see the when-filter note at the
+    // hydration step) — the RPC itself cannot be widened (DROP + CREATE on a
+    // cloud queue), so the param narrows the hydrated page instead.
+    const when = searchParams.get('when') ?? 'all';
+    if (when !== 'upcoming' && when !== 'past' && when !== 'all') {
+      return badRequestResponse({
+        message: 'when must be one of: upcoming, past, all',
+      });
+    }
+
     const page = Math.max(
       1,
       parseInt(searchParams.get('page') ?? '1', 10) || 1,
@@ -134,7 +145,15 @@ export async function GET(req: NextRequest) {
     //    the same reason the list route restates them: `events` carries three
     //    SELECT-capable policies and the owner one has no status filter at all.
     //    Belt and braces here, since the RPC already gated the id set.
-    const { data: rowData, error: rowsError } = await supabase
+    //
+    //    The `when` filter lands HERE, on the page the RPC ranked: a page can
+    //    therefore come back short when the nearest N events are a different
+    //    `when` (the client keeps paging while `has_more`). `total` stays the
+    //    RPC's exact radius-wide count, so a filtered view's count over-reports
+    //    the whole radius — the mobile Events tab displays its own loaded
+    //    count in nearby mode instead, so the header converges as pages load.
+    const nowIso = new Date().toISOString();
+    let hydrate = supabase
       .from('events')
       .select(MOBILE_EVENT_SELECT)
       .in(
@@ -143,6 +162,14 @@ export async function GET(req: NextRequest) {
       )
       .eq('status', 'approved')
       .is('archived_at', null);
+    if (when === 'upcoming') {
+      // Same "on right now" semantics as the list route: an event that
+      // started an hour ago is still the most upcoming thing there is.
+      hydrate = hydrate.gte('ends_at', nowIso);
+    } else if (when === 'past') {
+      hydrate = hydrate.lt('ends_at', nowIso);
+    }
+    const { data: rowData, error: rowsError } = await hydrate;
 
     if (rowsError) {
       return loggedServerError('mobile/events/nearby', rowsError);
@@ -177,8 +204,9 @@ export async function GET(req: NextRequest) {
       events,
       total,
       // Deliberately `ranked.length`, not `events.length`: pagination advances
-      // by what the RPC ranked. Measuring the dropped-row case would make a
-      // single archived event look like the end of the feed.
+      // by what the RPC ranked — both for the archived-between-reads case and
+      // for the `when` filter dropping rows. Measuring the emitted rows would
+      // make a short page look like the end of the feed.
       has_more: from + ranked.length < total,
     });
   } catch (error) {

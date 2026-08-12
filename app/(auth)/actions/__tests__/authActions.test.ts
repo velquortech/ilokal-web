@@ -49,6 +49,7 @@ describe('authActions', () => {
     );
 
     const res = await loginAction('a@b.com', 'password');
+    if (!('user' in res)) throw new Error('expected login success');
     expect(res.user.id).toBe('u1');
     expect(res.user.email).toBe('a@b.com');
   });
@@ -137,6 +138,7 @@ describe('authActions', () => {
       name: 'New',
       role: 'app_user',
     } as never);
+    if (!('user' in res)) throw new Error('expected signup success');
     expect(res.user.id).toBe('u2');
     expect(res.user.email).toBe('new@user.com');
     // The chosen role must travel via signUp metadata — the handle_new_user
@@ -192,7 +194,7 @@ describe('authActions', () => {
     );
 
     const res = await verifySessionAction();
-    expect(res).not.toBeNull();
-    expect(res?.user.id).toBe('u3');
+    if (!res || !('user' in res)) throw new Error('expected session user');
+    expect(res.user.id).toBe('u3');
   });
 });

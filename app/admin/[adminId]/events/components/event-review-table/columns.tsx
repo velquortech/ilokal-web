@@ -100,6 +100,9 @@ export function getReviewColumns(): ColumnDef<EventWithRefs>[] {
       id: 'image',
       header: 'Image',
       cell: ({ row }) => <EventImageCell event={row.original} />,
+      // A thumbnail is the first thing a reviewer loses on a phone — the
+      // title, schedule and status carry the review.
+      meta: { responsiveClassName: 'hidden sm:table-cell' },
     },
     {
       accessorKey: 'name',
@@ -110,6 +113,9 @@ export function getReviewColumns(): ColumnDef<EventWithRefs>[] {
       id: 'host',
       header: 'Host',
       cell: ({ row }) => <HostCell event={row.original} />,
+      // The reviewer already sees the venue; who is behind it can wait until
+      // there is room to breathe.
+      meta: { responsiveClassName: 'hidden lg:table-cell' },
     },
     {
       id: 'when',
@@ -120,11 +126,15 @@ export function getReviewColumns(): ColumnDef<EventWithRefs>[] {
       accessorKey: 'address',
       header: 'Where',
       cell: ({ row }) => <EventVenueCell address={row.original.address} />,
+      meta: { responsiveClassName: 'hidden md:table-cell' },
     },
     {
       id: 'links',
       header: 'Links',
       cell: ({ row }) => <LinksCell event={row.original} />,
+      // Outbound links are the least-used column on a review row; keep the
+      // phone screen for the decision itself.
+      meta: { responsiveClassName: 'hidden lg:table-cell' },
     },
     {
       accessorKey: 'status',
@@ -146,6 +156,9 @@ export function getReviewColumns(): ColumnDef<EventWithRefs>[] {
       id: 'priority',
       header: 'Order',
       cell: ({ row }) => <PriorityCell event={row.original} />,
+      // Banner ordering is a desktop admin task; on a phone the field is an
+      // accident waiting to happen.
+      meta: { responsiveClassName: 'hidden md:table-cell' },
     },
     {
       id: 'actions',

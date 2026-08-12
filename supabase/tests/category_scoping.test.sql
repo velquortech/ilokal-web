@@ -140,12 +140,17 @@ BEGIN
   -- There is no UNIQUE on `name`, so idempotency is a per-row WHERE NOT EXISTS
   -- and a careless plain INSERT duplicates silently — the defect
   -- seeds/subscription_plans.sql shipped with.
+  --
+  -- Keyed on (name, business_type_id), NOT name alone: the same shop-type name
+  -- can legitimately exist under TWO verticals (e.g. 'Rentals' under both
+  -- Services and Tourism & Leisure). A duplicate is two rows with the SAME
+  -- name in the SAME vertical — that is the re-run defect.
   SELECT count(*) INTO v_dupe FROM (
-    SELECT name FROM business_categories WHERE deleted_at IS NULL
-     GROUP BY name HAVING count(*) > 1
+    SELECT name, business_type_id FROM business_categories WHERE deleted_at IS NULL
+     GROUP BY name, business_type_id HAVING count(*) > 1
   ) d;
   ASSERT v_dupe = 0,
-    format('%s shop type name(s) are duplicated; a seed re-run inserted instead of skipping',
+    format('%s shop type name(s) are duplicated WITHIN a vertical; a seed re-run inserted instead of skipping',
            v_dupe);
 
   RAISE NOTICE 'shop-type render safety passed';

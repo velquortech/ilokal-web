@@ -85,7 +85,10 @@ export function OpenInApp({
 
   return (
     <div className="mt-8 flex flex-col gap-3">
-      <a href={openHref} className={`${BTN} bg-[#004324] text-white`}>
+      <a
+        href={openHref}
+        className={`${BTN} bg-primary text-primary-foreground`}
+      >
         Open in the iLokal app
       </a>
 
@@ -93,13 +96,13 @@ export function OpenInApp({
         <div className="flex gap-3">
           <a
             href={androidStoreUrl}
-            className={`${BTN} flex-1 border border-gray-200 text-gray-700 dark:border-gray-700 dark:text-gray-200`}
+            className={`${BTN} border-border text-muted-foreground flex-1 border`}
           >
             Google Play
           </a>
           <a
             href={iosStoreUrl}
-            className={`${BTN} flex-1 border border-gray-200 text-gray-700 dark:border-gray-700 dark:text-gray-200`}
+            className={`${BTN} border-border text-muted-foreground flex-1 border`}
           >
             App Store
           </a>
@@ -107,7 +110,7 @@ export function OpenInApp({
       ) : (
         <a
           href={platform === 'ios' ? iosStoreUrl : androidStoreUrl}
-          className={`${BTN} border border-gray-200 text-gray-700 dark:border-gray-700 dark:text-gray-200`}
+          className={`${BTN} border-border text-muted-foreground border`}
         >
           {platform === 'ios'
             ? 'Download on the App Store'
@@ -116,7 +119,7 @@ export function OpenInApp({
       )}
 
       {inAppBrowser ? (
-        <p className="mt-1 text-xs text-gray-400">
+        <p className="text-muted-foreground mt-1 text-xs">
           Already have the app? Tap the ··· menu and choose “Open in browser”.
         </p>
       ) : null}

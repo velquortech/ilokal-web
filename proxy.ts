@@ -340,6 +340,7 @@ export const config = {
     // a crawler with no cookies is unaffected.
     '/privacy',
     '/delete-account',
+    '/terms',
     // The Sentry browser tunnel — matched only so it can be rate-limited
     // before it forwards anything (SN9). Keep in lockstep with
     // `SENTRY_TUNNEL_PATH` and `tunnelRoute` in next.config.ts. Both forms,

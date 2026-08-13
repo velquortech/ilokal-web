@@ -30,9 +30,9 @@
  * corrected at the mobile source; until a new build ships, the shipped app
  * still shows the old sentence.
  *
- * Also hosts the Terms of Service (`TERMS_DOC`, rendered on /terms) in the
- * same shape, so both hosted documents share one file and one renderer
- * contract.
+ * Also hosts the Terms of Service (`TERMS_OF_SERVICE`, rendered on /terms in
+ * the (legal) group) in the same shape, so both hosted documents share one
+ * file and one renderer contract.
  */
 
 export type LegalSection = {
@@ -44,7 +44,7 @@ export type LegalSection = {
 };
 
 export type LegalDoc = {
-  id: 'terms' | 'privacy';
+  id: 'privacy' | 'terms';
   title: string;
   lastUpdated?: string;
   intro: string;
@@ -287,9 +287,32 @@ export const PRIVACY_POLICY: LegalDoc = {
   ],
 };
 
-export const TERMS_DOC: LegalDoc = {
+/**
+ * Terms of Service — the second hosted legal document.
+ *
+ * WHY IT EXISTS
+ * Play requires only the privacy policy, which is why that one shipped first.
+ * The terms are what the store listing and the app's own onboarding both point
+ * at, and until now the only copy lived inside a registration dialog behind
+ * auth (`app/business/registration/components/legal-dialog.tsx`) — invisible to
+ * the shoppers it actually binds. Wording mirrors the mobile in-app reader.
+ *
+ * ⚠️ ONE SENTENCE DIVERGES FROM THE DRAFT IT CAME FROM — "Termination".
+ * The drafted wording said deleting an account "have[s] your data removed".
+ * That is the same falsehood the privacy policy above was corrected to avoid:
+ * deletion ARCHIVES the profile and purges the personal fields after
+ * `ACCOUNT_PURGE_AFTER_DAYS`, and a hard delete could not run at all for a user
+ * who owns a shop, follows a business, or has redeemed an offer. Two hosted
+ * legal documents describing the same mechanism differently is worse for a
+ * reviewer than either being terse, so this one defers to the policy and
+ * quotes the same constant.
+ */
+export const TERMS_OF_SERVICE: LegalDoc = {
   id: 'terms',
   title: 'Terms of Service',
+  // Same date as the policy: both were reviewed together, and a terms page
+  // stamped earlier than the policy it references reads as the stale one.
+  lastUpdated: 'August 11, 2026',
   intro:
     'These Terms of Service (“Terms”) govern your use of the iLokal app and its services. By downloading, accessing, or using iLokal, you agree to these Terms and to our Privacy Policy. If you don’t agree, please don’t use the app.',
   sections: [
@@ -367,7 +390,10 @@ export const TERMS_DOC: LegalDoc = {
     {
       heading: 'Termination',
       paragraphs: [
-        'You can stop using iLokal at any time. To pause your account, use Profile → Account Settings → Deactivate Account — this is reversible, and you can reactivate it by signing back in. To delete your account and have your data removed, use Delete Account.',
+        'You can stop using iLokal at any time. To pause your account, use Profile → Account Settings → Deactivate Account — this is reversible, and you can reactivate it by signing back in.',
+        // Deliberately defers to the policy rather than restating the mechanism:
+        // see the ⚠️ note on this document.
+        `To close your account, use Profile → Account Settings → Delete Account. Your account is archived immediately and the personal details tied to it are purged after ${ACCOUNT_PURGE_AFTER_DAYS} days — our Privacy Policy explains exactly what is removed and what we are required to keep.`,
         'We may suspend or terminate your access if you violate these Terms or for legal, security, or operational reasons.',
       ],
     },
@@ -398,7 +424,9 @@ export const TERMS_DOC: LegalDoc = {
     {
       heading: 'Contact',
       paragraphs: [
-        'Questions about these Terms? Email us at support@ilokal.shop.',
+        // Shares the policy's clause helper, so a dead mailbox degrades both
+        // documents together rather than leaving one confident dead address.
+        `Questions about these Terms? Please ${CONTACT_CLAUSE}.`,
       ],
     },
   ],

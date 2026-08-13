@@ -57,6 +57,12 @@ export const ROUTES = {
   LEGAL: {
     PRIVACY: '/privacy',
     DELETE_ACCOUNT: '/delete-account',
+    /**
+     * Not required by Play, unlike the two above — but it is linked from the
+     * store listing and from the policy, so it carries the same rename cost
+     * once it is published anywhere outside this repo.
+     */
+    TERMS: '/terms',
   },
 
   // Dashboard/Protected routes by role

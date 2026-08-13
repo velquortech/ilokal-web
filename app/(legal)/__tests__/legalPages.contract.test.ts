@@ -316,9 +316,10 @@ describe('terms of service content', () => {
     // The renderer reads `doc.lastUpdated`; a terms page stamped before the
     // policy it references reads as the stale one of the pair.
     expect(TERMS_OF_SERVICE.lastUpdated).toBeTruthy();
+    expect(PRIVACY_POLICY.lastUpdated).toBeTruthy();
     expect(
-      new Date(TERMS_OF_SERVICE.lastUpdated).getTime(),
-    ).toBeGreaterThanOrEqual(new Date(PRIVACY_POLICY.lastUpdated).getTime());
+      new Date(TERMS_OF_SERVICE.lastUpdated!).getTime(),
+    ).toBeGreaterThanOrEqual(new Date(PRIVACY_POLICY.lastUpdated!).getTime());
   });
 });
 
@@ -337,7 +338,7 @@ describe('rendered document', () => {
       const match = html.match(/<time datetime="([^"]*)"/i);
       expect(match, `${doc.id}: no <time> rendered`).not.toBeNull();
 
-      const expected = new Date(doc.lastUpdated);
+      const expected = new Date(doc.lastUpdated!);
       const iso = [
         expected.getFullYear(),
         String(expected.getMonth() + 1).padStart(2, '0'),

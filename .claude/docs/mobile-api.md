@@ -344,9 +344,13 @@ protected routes gate on JWT validity, not status). **403** if archived or
 
 > **Enforcement note:** mobile sign-in uses the Supabase SDK directly and the proxy
 > does **not** status-gate `/api/protected/mobile/**` (JWT-validity only), so these
-> flags are enforced app-side (client signs out on success; re-login checks
-> `status`/`archived_at` from `GET /me`). A still-valid access token keeps working
-> until it expires — see `tech-debt.md` for the server-side gating follow-up.
+> flags are enforced app-side: the app signs the client out locally on deactivate
+> (`deactivateAccount` in `services/api/accountService.ts`, surfaced in the
+> Account Settings Danger Zone) and on delete, and a **re-login gate** in
+> `app/_layout.tsx` prompts a deactivated user to reactivate (`reactivateAccount`
+> → `POST /me/reactivate`) or sign out — no silent continuation. A still-valid
+> access token keeps working until it expires; server-side status gating remains
+> the open follow-up (see `tech-debt.md` TD-018).
 
 > **Email / password changes** are not API routes — the mobile app calls the
 > Supabase SDK directly (`supabase.auth.updateUser({ email })` with OTP/`verifyOtp`,

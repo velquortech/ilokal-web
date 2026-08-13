@@ -330,16 +330,20 @@ deactivated or archived user:
   user. So a deactivated user keeps full API access until their access token expires.
 - Mobile login uses the **Supabase SDK directly** (`signInWithPassword`), bypassing
   `/api/auth/login` and its `archived_at` / `status` 403 gate (web-only).
-- Today enforcement is **app-side**: the client signs out after a 200, and on
-  re-login reads `status`/`archived_at` from `GET /me` to block or offer reactivation.
-  A crafted client with a still-valid token can ignore that.
+- Today enforcement is **app-side**: the client signs out after a 200, the
+  mobile re-login gate (`app/_layout.tsx`, 2026-08-11) reads `status`/`archived_at`
+  from `GET /me` to prompt reactivation or sign out instead of silently
+  continuing, and the **`delete-account` edge function** (deployed 2026-08-11)
+  revokes every session on delete via `auth.admin.signOut` — validated live in
+  `e2e.local.mjs` (old JWT refused 403 after delete). A crafted client with a
+  still-valid token can still ignore deactivation, which is not revoked.
 - **Fix options:** (a) gate `getMobileUser()` (or the proxy `/api/protected` branch)
   on `app_metadata.status` — it's already synced into the JWT by the
   `sync_role_to_jwt` trigger (`20260527000000`), so it's a free check, no extra
   query — while **exempting** `me/reactivate` so a deactivated user can still
-  self-reactivate; and/or (b) revoke sessions server-side on delete via the admin
-  client (`auth.admin` — ban or sign-out). Deferred from the initial account-management
-  endpoint PR to keep that change non-cross-cutting.
+  self-reactivate; and/or (b) revoke sessions server-side on **deactivate** too
+  (the edge function already does it for delete). Deferred from the initial
+  account-management endpoint PR to keep that change non-cross-cutting.
 
 ---
 

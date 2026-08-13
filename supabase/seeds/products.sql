@@ -125,3 +125,48 @@ VALUES
   ('33333333-3333-3333-3333-333333333368', '11111111-1111-1111-1111-111111111116', 'Cocktail Pitcher',      'House cocktail pitcher (serves 4) — choose from 6 signature mixes',          580, 'fixed',      NULL,          '33333333-3333-3333-3333-333333333368/product.jpg', true,  'active',   NULL),
   ('33333333-3333-3333-3333-333333333369', '11111111-1111-1111-1111-111111111116', 'Karaoke Room',          'Private soundproofed karaoke room with full song library',                    350, 'per_hour',   NULL,          '33333333-3333-3333-3333-333333333369/product.jpg', true,  'active',   NULL)
 ON CONFLICT (id) DO NOTHING;
+
+-- Regional batch (2026-08-14): the five businesses seeded without a menu —
+-- Kalibo Heritage Bakeshop, Roxas Bay Brews, Antique Seafood Grill,
+-- Pitstop Mango Café, Bacolod Wellness Retreat. Every business must carry
+-- available products so the detail screen's Featured Products / menu render
+-- real items on the local seed (id range 33401+; the prior max was 33369).
+INSERT INTO public.products (id, business_id, name, description, price, price_type, price_unit, image_url, is_available, status, sale_price)
+VALUES
+  -- Kalibo Heritage Bakeshop — Bakery / Pastry Shop
+  ('33333333-3333-3333-3333-333333333401', '11111111-1111-1111-1111-111111111120', 'Kalibo Biscocho',     'Crunchy twice-baked bread rolls, the classic Kalibo pasalubong',       90,  'fixed',      NULL,          '33333333-3333-3333-3333-333333333401/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333402', '11111111-1111-1111-1111-111111111120', 'Bandi Peanut Brittle', 'Sticky peanut brittle squares, a Panay pasalubong favorite',          120,  'fixed',      NULL,          '33333333-3333-3333-3333-333333333402/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333403', '11111111-1111-1111-1111-111111111120', 'Baye-baye Rice Cake',  'Soft pounded rice cake with coconut and muscovado sugar',             85,   'fixed',      NULL,          '33333333-3333-3333-3333-333333333403/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333404', '11111111-1111-1111-1111-111111111120', 'Ensaymada Kalibo',     'Buttery brioche topped with grated cheese and sugar',                  65,   'fixed',      NULL,          '33333333-3333-3333-3333-333333333404/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333405', '11111111-1111-1111-1111-111111111120', 'Fresh Pandesal',       'Baked every morning — soft, slightly sweet, best eaten warm',          35,   'fixed',      NULL,          '33333333-3333-3333-3333-333333333405/product.jpg', true,  'active',   NULL),
+
+  -- Roxas Bay Brews — Bar / Pub
+  ('33333333-3333-3333-3333-333333333406', '11111111-1111-1111-1111-111111111119', 'Craft Beer Flight',    'Four 120ml pours of the rotating local lineup',                       350,  'fixed',      NULL,          '33333333-3333-3333-3333-333333333406/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333407', '11111111-1111-1111-1111-111111111119', 'Calamansi Wheat Ale',  'Bright citrus wheat ale brewed with fresh calamansi',                 160,  'fixed',      NULL,          '33333333-3333-3333-3333-333333333407/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333408', '11111111-1111-1111-1111-111111111119', 'Mango IPA',            'Juicy IPA with local mango aroma and a bitter finish',                 180,  'fixed',      NULL,          '33333333-3333-3333-3333-333333333408/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333409', '11111111-1111-1111-1111-111111111119', 'Pulutan Platter',      'Assorted bar chow: sisig, chicharon, and lumpia',                      450,  'fixed',      NULL,          '33333333-3333-3333-3333-333333333409/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333410', '11111111-1111-1111-1111-111111111119', 'Kilawin na Isda',      'Fresh-catch ceviche with vinegar, ginger, and chili',                 240,  'fixed',      NULL,          '33333333-3333-3333-3333-333333333410/product.jpg', true,  'active',   NULL),
+
+  -- Antique Seafood Grill — Restaurant
+  ('33333333-3333-3333-3333-333333333411', '11111111-1111-1111-1111-111111111118', 'Grilled Blue Marlin',  'Flame-grilled marlin steak with calamansi butter',                     480,  'fixed',      NULL,          '33333333-3333-3333-3333-333333333411/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333412', '11111111-1111-1111-1111-111111111118', 'Kilawin na Tangigue',  'Spanish mackerel ceviche, Antique-style',                              320,  'fixed',      NULL,          '33333333-3333-3333-3333-333333333412/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333413', '11111111-1111-1111-1111-111111111118', 'Baked Oysters',        'Half-dozen oven-baked with garlic-cheese topping',                     340,  'fixed',      NULL,          '33333333-3333-3333-3333-333333333413/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333414', '11111111-1111-1111-1111-111111111118', 'Sinigang na Hipon',    'Sour shrimp soup with sampalok and fresh vegetables',                  380,  'fixed',      NULL,          '33333333-3333-3333-3333-333333333414/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333415', '11111111-1111-1111-1111-111111111118', 'Grilled Squid',        'Charred whole squid stuffed with tomato-onion relish',                 300,  'fixed',      NULL,          '33333333-3333-3333-3333-333333333415/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333416', '11111111-1111-1111-1111-111111111118', 'Seafood Platter',      'Mixed grill for 2–3: marlin, squid, shrimp, and oysters',              950,  'fixed',      NULL,          '33333333-3333-3333-3333-333333333416/product.jpg', true,  'active',   NULL),
+
+  -- Pitstop Mango Café — Café
+  ('33333333-3333-3333-3333-333333333417', '11111111-1111-1111-1111-111111111117', 'Mango Iced Latte',     'Espresso over milk with sweet mango puree and ice',                    160,  'fixed',      NULL,          '33333333-3333-3333-3333-333333333417/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333418', '11111111-1111-1111-1111-111111111117', 'Mango Graham Shake',   'Blended mango, graham crumbs, and vanilla ice cream',                  135,  'fixed',      NULL,          '33333333-3333-3333-3333-333333333418/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333419', '11111111-1111-1111-1111-111111111117', 'Fresh Mango Juice',    'Pure ripe mango, cold-pressed to order',                               120,  'fixed',      NULL,          '33333333-3333-3333-3333-333333333419/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333420', '11111111-1111-1111-1111-111111111117', 'Mango Cheesecake Slice','Creamy cheesecake crowned with fresh mango',                          145,  'fixed',      NULL,          '33333333-3333-3333-3333-333333333420/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333421', '11111111-1111-1111-1111-111111111117', 'Tuna Melt Sandwich',   'Toasted sourdough with tuna, cheddar, and herbs',                      185,  'fixed',      NULL,          '33333333-3333-3333-3333-333333333421/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333422', '11111111-1111-1111-1111-111111111117', 'Caramel Macchiato',    'Espresso, steamed milk, and caramel drizzle',                          150,  'fixed',      NULL,          '33333333-3333-3333-3333-333333333422/product.jpg', true,  'active',   NULL),
+
+  -- Bacolod Wellness Retreat — Spa / Wellness Center
+  ('33333333-3333-3333-3333-333333333423', '11111111-1111-1111-1111-111111111121', 'Signature Hilot Massage','60-minute traditional hilot with warm coconut oil',                   600,  'per_hour',   NULL,          '33333333-3333-3333-3333-333333333423/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333424', '11111111-1111-1111-1111-111111111121', 'Hot Stone Massage',    '90-minute massage with heated volcanic stones',                        850,  'per_hour',   NULL,          '33333333-3333-3333-3333-333333333424/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333425', '11111111-1111-1111-1111-111111111121', 'Body Scrub & Wrap',    'Coffee-sugar scrub followed by a nourishing wrap',                     700,  'per_person', NULL,          '33333333-3333-3333-3333-333333333425/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333426', '11111111-1111-1111-1111-111111111121', 'Wellness Foot Spa',    'Soak, scrub, and reflexology for tired feet',                          400,  'per_person', NULL,          '33333333-3333-3333-3333-333333333426/product.jpg', true,  'active',   NULL),
+  ('33333333-3333-3333-3333-333333333427', '11111111-1111-1111-1111-111111111121', 'Sauna & Steam Session','60-minute access to the sauna and steam rooms',                        350,  'per_person', NULL,          '33333333-3333-3333-3333-333333333427/product.jpg', true,  'active',   NULL)
+ON CONFLICT (id) DO NOTHING;

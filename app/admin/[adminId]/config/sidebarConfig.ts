@@ -8,6 +8,7 @@ import {
   MailWarning,
   Settings,
   Sparkles,
+  Star,
 } from 'lucide-react';
 import { NavItem } from '@/components/custom/Nav';
 
@@ -53,6 +54,11 @@ export const mainNavigation: NavItem[] = [
     title: 'Welcome Posts',
     href: '/admin/welcome-posts',
     icon: Sparkles,
+  },
+  {
+    title: 'Bida of the Day',
+    href: '/admin/bida-of-the-day',
+    icon: Star,
   },
 ];
 

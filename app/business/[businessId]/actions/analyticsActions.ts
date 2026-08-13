@@ -3,7 +3,9 @@
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import * as analyticsService from '@/lib/api/analytics/businessAnalyticsService';
 import * as analyticsQuery from '@/lib/api/analytics/businessAnalyticsQuery';
+import * as bidaAnalyticsService from '@/lib/api/analytics/bidaAnalyticsService';
 import type { ApiResponse, BusinessAnalyticsDashboard } from '@/lib/types';
+import type { BidaAnalyticsPayload } from '@/lib/types/bidaAnalytics';
 import { logActionError } from '@/lib/utils/captureError';
 
 export async function getBusinessAnalyticsDashboardAction(
@@ -79,6 +81,36 @@ export async function getBusinessAnalyticsDashboardAction(
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to load analytics' },
+    };
+  }
+}
+
+/**
+ * The Bida Ngayon owner analytics — "your item's Bida Ngayon ranking this
+ * week" (see lib/api/analytics/bidaAnalyticsQuery.ts). Server action for the
+ * Insights page; the API route GET /api/web/analytics/bida exposes the same
+ * service for clients that don't go through the dashboard.
+ */
+export async function getBidaAnalyticsAction(
+  businessId: string,
+): Promise<ApiResponse<BidaAnalyticsPayload>> {
+  try {
+    const verify = await verifyBusinessOwner(businessId);
+    if (!verify.authorized) {
+      return {
+        success: false,
+        error: verify.error as { code: string; message: string },
+      };
+    }
+    return bidaAnalyticsService.getBidaAnalytics(businessId);
+  } catch (error) {
+    logActionError('getBidaAnalyticsAction', error);
+    return {
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to load Bida Ngayon analytics',
+      },
     };
   }
 }

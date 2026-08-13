@@ -415,6 +415,44 @@ upload "shop-banners"    "11111111-1111-1111-1111-111111111121/banner.jpg"   "$(
 upload "interior-images" "11111111-1111-1111-1111-111111111121/hero.jpg"     "$(lf 800 500 spa)"
 upload "interior-images" "11111111-1111-1111-1111-111111111121/gallery1.jpg" "$(lf 800 520 wellness)"
 
+# Cross-province products (401–427) — product images for the five businesses
+# above. These rows live in products.sql; their image uploads were the last
+# gap in the product-images bucket (every other product had one). Each product
+# gets an on-topic keyword like the rest of the seed (peanut brittle → peanut,
+# mangonada-style drinks → mango, etc.).
+# Pitstop Mango Café (Guimaras)
+upload "product-images" "33333333-3333-3333-3333-333333333417/product.jpg" "$(lf 400 400 mango)"
+upload "product-images" "33333333-3333-3333-3333-333333333418/product.jpg" "$(lf 400 400 smoothie)"
+upload "product-images" "33333333-3333-3333-3333-333333333419/product.jpg" "$(lf 400 400 mango)"
+upload "product-images" "33333333-3333-3333-3333-333333333420/product.jpg" "$(lf 400 400 cake)"
+upload "product-images" "33333333-3333-3333-3333-333333333421/product.jpg" "$(lf 400 400 sandwich)"
+upload "product-images" "33333333-3333-3333-3333-333333333422/product.jpg" "$(lf 400 400 coffee)"
+# Antique Seafood Grill (Antique)
+upload "product-images" "33333333-3333-3333-3333-333333333411/product.jpg" "$(lf 400 400 fish)"
+upload "product-images" "33333333-3333-3333-3333-333333333412/product.jpg" "$(lf 400 400 fish)"
+upload "product-images" "33333333-3333-3333-3333-333333333413/product.jpg" "$(lf 400 400 oyster)"
+upload "product-images" "33333333-3333-3333-3333-333333333414/product.jpg" "$(lf 400 400 shrimp)"
+upload "product-images" "33333333-3333-3333-3333-333333333415/product.jpg" "$(lf 400 400 squid)"
+upload "product-images" "33333333-3333-3333-3333-333333333416/product.jpg" "$(lf 400 400 seafood)"
+# Roxas Bay Brews (Capiz)
+upload "product-images" "33333333-3333-3333-3333-333333333406/product.jpg" "$(lf 400 400 beer)"
+upload "product-images" "33333333-3333-3333-3333-333333333407/product.jpg" "$(lf 400 400 beer)"
+upload "product-images" "33333333-3333-3333-3333-333333333408/product.jpg" "$(lf 400 400 beer)"
+upload "product-images" "33333333-3333-3333-3333-333333333409/product.jpg" "$(lf 400 400 appetizer)"
+upload "product-images" "33333333-3333-3333-3333-333333333410/product.jpg" "$(lf 400 400 fish)"
+# Kalibo Heritage Bakeshop (Aklan)
+upload "product-images" "33333333-3333-3333-3333-333333333401/product.jpg" "$(lf 400 400 biscuit)"
+upload "product-images" "33333333-3333-3333-3333-333333333402/product.jpg" "$(lf 400 400 peanut)"
+upload "product-images" "33333333-3333-3333-3333-333333333403/product.jpg" "$(lf 400 400 ricecake)"
+upload "product-images" "33333333-3333-3333-3333-333333333404/product.jpg" "$(lf 400 400 pastry)"
+upload "product-images" "33333333-3333-3333-3333-333333333405/product.jpg" "$(lf 400 400 bread)"
+# Bacolod Wellness Retreat (Negros Occidental)
+upload "product-images" "33333333-3333-3333-3333-333333333423/product.jpg" "$(lf 400 400 massage)"
+upload "product-images" "33333333-3333-3333-3333-333333333424/product.jpg" "$(lf 400 400 spa)"
+upload "product-images" "33333333-3333-3333-3333-333333333425/product.jpg" "$(lf 400 400 spa)"
+upload "product-images" "33333333-3333-3333-3333-333333333426/product.jpg" "$(lf 400 400 footspa)"
+upload "product-images" "33333333-3333-3333-3333-333333333427/product.jpg" "$(lf 400 400 sauna)"
+
 # ---------------------------------------------------------------------------
 # Filler businesses (bulk_seed.sql, f0000001-…-001..040) — logos, interiors,
 # banners. Every shop gets its OWN photo set (same <id>/logo.jpg,

@@ -51,8 +51,16 @@ run-dev:
 		exit 1; \
 	fi
 	yarn supabase start --ignore-health-check
+	@./scripts/slim-supabase.sh
 	yarn dev
 	@echo "running dev with supabase"
+
+# Stop the dev-only Supabase services (analytics, studio, pg_meta, inbucket,
+# vector) and pin memory caps on the app-facing ones — the laptop-friendly
+# state that `supabase start` alone doesn't give you. `run-dev` calls this
+# automatically; run it manually after a bare `yarn supabase start`.
+slim-supabase:
+	@./scripts/slim-supabase.sh
 
 run-start:
 	yarn supabase start --ignore-health-check
@@ -105,7 +113,7 @@ seed-storage:
 	@bash supabase/seeds/seed-storage.sh
 
 seed-db:
-	@for f in supabase/seeds/users.sql supabase/seeds/subscription_plans.sql supabase/seeds/business_categories.sql supabase/seeds/businesses.sql supabase/seeds/products.sql supabase/seeds/coupons.sql supabase/seeds/ratings.sql supabase/seeds/business_subscriptions.sql supabase/seeds/business_posts.sql supabase/seeds/events.sql supabase/seeds/events_enable.sql supabase/seeds/follows.sql supabase/seeds/bulk_seed.sql supabase/seeds/view_counts.sql supabase/seeds/real_world_gaps.sql; do \
+	@for f in supabase/seeds/users.sql supabase/seeds/subscription_plans.sql supabase/seeds/business_categories.sql supabase/seeds/businesses.sql supabase/seeds/freshness_tiers.sql supabase/seeds/products.sql supabase/seeds/bida_of_the_day.sql supabase/seeds/coupons.sql supabase/seeds/ratings.sql supabase/seeds/bida_analytics.sql supabase/seeds/business_subscriptions.sql supabase/seeds/business_posts.sql supabase/seeds/events.sql supabase/seeds/events_enable.sql supabase/seeds/follows.sql supabase/seeds/bulk_seed.sql supabase/seeds/view_counts.sql supabase/seeds/real_world_gaps.sql; do \
 		echo "  seeding $$f..."; \
 		docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < $$f; \
 	done

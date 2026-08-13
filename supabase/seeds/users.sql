@@ -210,6 +210,17 @@ VALUES
   ('77777777-7777-7777-7777-777777777716', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111116', 5, 'Amazing live band on Friday night. The cocktail pitcher was great value too.')
 ON CONFLICT (id) DO NOTHING;
 
+-- Ratings: the 2026-08-14 regional batch (the five businesses that previously
+-- had no products — their detail screens now render a full menu + rating strip)
+INSERT INTO public.business_ratings (id, user_id, business_id, rating, comment)
+VALUES
+  ('77777777-7777-7777-7777-777777777717', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111117', 4, 'Perfect pit stop — the mango graham shake is a must.'),
+  ('77777777-7777-7777-7777-777777777718', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111118', 5, 'Best kilawin in the province. The blue marlin was perfectly grilled.'),
+  ('77777777-7777-7777-7777-777777777719', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111119', 4, 'Great local brews and a lively bayside spot. The flight is the way to go.'),
+  ('77777777-7777-7777-7777-777777777720', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111120', 5, 'Biscocho is dangerously good — always stock up before heading back.'),
+  ('77777777-7777-7777-7777-777777777721', 'ffffffff-ffff-ffff-ffff-ffffffffffff', '11111111-1111-1111-1111-111111111121', 5, 'Incredible hilot massage. Left feeling brand new.')
+ON CONFLICT (id) DO NOTHING;
+
 -- ── Bulk test users (60 total: 20 per role) ───────────────────────────────────
 -- admin1-20@test.local | business_owner1-20@test.local | user1-20@test.local
 -- Password for all: sample123

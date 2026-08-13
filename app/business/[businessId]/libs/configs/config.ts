@@ -7,6 +7,7 @@ import {
   CalendarClock,
   CalendarDays,
   BadgeCheck,
+  BarChart3,
 } from 'lucide-react';
 import { NavItem } from '@/components/custom/Nav';
 import { QuickAction } from '@/components/custom/ActionButton';
@@ -16,6 +17,11 @@ export const mainNavigation: NavItem[] = [
     title: 'Home',
     href: '/business',
     icon: Home,
+  },
+  {
+    title: 'Insights',
+    href: '/business/insights',
+    icon: BarChart3,
   },
 ];
 

@@ -69,9 +69,20 @@ export function LegalDocument({ doc }: { doc: LegalDoc }) {
  * Returns an empty string rather than throwing on an unparseable date: a
  * malformed constant should cost the machine-readable attribute, not the whole
  * policy page.
+ *
+ * 🔴 Built from the LOCAL calendar fields, never `toISOString()`. A bare date
+ * string parses to local MIDNIGHT, so converting it to UTC moves it backwards
+ * anywhere east of Greenwich — in Asia/Manila (UTC+8) this rendered
+ * `datetime="2026-08-10"` beside the visible text "August 11, 2026", i.e. the
+ * machine-readable date contradicting the human one on the page whose whole
+ * job is to say when the policy last changed. The parsed value's local fields
+ * are already exactly what the string said, in every timezone.
  */
 function toIsoDate(value: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return '';
-  return parsed.toISOString().slice(0, 10);
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }

@@ -17,14 +17,28 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 
+import { LegalDocument } from '@/components/custom/legal/LegalDocument';
 import { ROUTES } from '@/config/routeConfig';
 import { isProtectedPath } from '@/lib/utils/protectedRoutes';
 import {
   ACCOUNT_PURGE_AFTER_DAYS,
   PRIVACY_CONTACT_EMAIL,
   PRIVACY_POLICY,
+  TERMS_OF_SERVICE,
 } from '@/lib/legal/content';
+
+/** Flattens a document to the prose a reader actually sees. */
+const renderedText = (doc: typeof PRIVACY_POLICY) =>
+  [
+    doc.intro,
+    ...doc.sections.flatMap((s) => [
+      ...(s.paragraphs ?? []),
+      ...(s.bullets ?? []),
+    ]),
+  ].join(' ');
 
 const ROOT = join(__dirname, '..', '..', '..');
 const read = (relative: string) => readFileSync(join(ROOT, relative), 'utf8');
@@ -46,11 +60,21 @@ describe('hosted legal URLs', () => {
     expect(ROUTES.LEGAL.DELETE_ACCOUNT).toBe('/delete-account');
   });
 
+  it('include the terms, which the store listing links', () => {
+    // Not a Play App-content field like the two above, so its own assertion
+    // rather than a third line there — but it is published in the listing and
+    // linked from the policy, so it carries the same external rename cost.
+    expect(ROUTES.LEGAL.TERMS).toBe('/terms');
+  });
+
   it('are reachable signed-out', () => {
     // A policy URL that redirects to /sign-in fails review outright, and the
     // deletion page exists specifically for people who no longer have the app.
+    // The terms bind a reader who has not signed up yet, so they must answer
+    // for that reader too.
     expect(isProtectedPath(ROUTES.LEGAL.PRIVACY)).toBe(false);
     expect(isProtectedPath(ROUTES.LEGAL.DELETE_ACCOUNT)).toBe(false);
+    expect(isProtectedPath(ROUTES.LEGAL.TERMS)).toBe(false);
   });
 
   it('are in the proxy matcher, so a live session still refreshes', () => {
@@ -60,6 +84,7 @@ describe('hosted legal URLs', () => {
     const proxy = stripComments(read('proxy.ts'));
     expect(proxy).toContain(`'${ROUTES.LEGAL.PRIVACY}'`);
     expect(proxy).toContain(`'${ROUTES.LEGAL.DELETE_ACCOUNT}'`);
+    expect(proxy).toContain(`'${ROUTES.LEGAL.TERMS}'`);
   });
 
   it('are linked from the public footer, not only from the Play Console', () => {
@@ -67,13 +92,29 @@ describe('hosted legal URLs', () => {
       read('components/customer/CustomerFooter.tsx'),
     );
     expect(footer).toContain('ROUTES.LEGAL.PRIVACY');
+    expect(footer).toContain('ROUTES.LEGAL.TERMS');
   });
 
   it('reference each other, so either entry point reaches the other', () => {
     const privacy = stripComments(read('app/(legal)/privacy/page.tsx'));
     const deletion = stripComments(read('app/(legal)/delete-account/page.tsx'));
+    const terms = stripComments(read('app/(legal)/terms/page.tsx'));
     expect(privacy).toContain('ROUTES.LEGAL.DELETE_ACCOUNT');
     expect(deletion).toContain('ROUTES.LEGAL.PRIVACY');
+    // The terms defer to the policy for what deletion actually does, so the
+    // reader has to be able to get there in one click.
+    expect(terms).toContain('ROUTES.LEGAL.PRIVACY');
+  });
+
+  it('mount the shared shell once, from the group layout', () => {
+    // `app/(legal)/layout.tsx` already renders PublicShell. A page wrapping it
+    // again nests a second header and footer inside the first — the mistake
+    // the superseded draft of this page made.
+    for (const page of ['privacy', 'delete-account', 'terms']) {
+      expect(stripComments(read(`app/(legal)/${page}/page.tsx`))).not.toContain(
+        'PublicShell',
+      );
+    }
   });
 
   it('use the route constants rather than literal paths', () => {
@@ -207,6 +248,125 @@ describe('privacy policy content', () => {
       const body =
         (section.paragraphs?.length ?? 0) + (section.bullets?.length ?? 0);
       expect(body, `section "${section.heading}" is empty`).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('terms of service content', () => {
+  const terms = renderedText(TERMS_OF_SERVICE);
+
+  it('describes deletion the same way the policy does', () => {
+    // The whole point of hosting both: a reviewer reading them together must
+    // not find two accounts of the same mechanism. The drafted wording this
+    // document came from said deletion "have[s] your data removed", which is
+    // the falsehood the policy was corrected to drop.
+    const termination = TERMS_OF_SERVICE.sections.find(
+      (section) => section.heading === 'Termination',
+    );
+    expect(termination).toBeDefined();
+
+    const text = [
+      ...(termination?.paragraphs ?? []),
+      ...(termination?.bullets ?? []),
+    ].join(' ');
+
+    expect(text).not.toMatch(/permanently removes/i);
+    expect(text).toMatch(/archived/i);
+    // Quotes the shared constant, never a second hard-coded window.
+    expect(text).toContain(String(ACCOUNT_PURGE_AFTER_DAYS));
+  });
+
+  it('states the retention window from the constant, not a literal', () => {
+    const page = read('lib/legal/content.ts');
+    // The terms build the sentence by interpolation; a literal "90 days" in
+    // the prose is how the two documents drift to different numbers.
+    expect(stripComments(page)).toContain('${ACCOUNT_PURGE_AFTER_DAYS} days');
+  });
+
+  it('does not claim sign-in is blocked, because on mobile it is not', () => {
+    // Same falsehood the policy is held to: an archived user re-authenticates
+    // successfully on mobile today.
+    expect(terms).not.toMatch(/no longer sign in/i);
+    expect(terms).not.toMatch(/cannot sign in/i);
+  });
+
+  it('binds the reader to the privacy policy it defers to', () => {
+    expect(terms).toMatch(/Privacy Policy/);
+  });
+
+  it('routes contact through the shared constant', () => {
+    if (PRIVACY_CONTACT_EMAIL === null) {
+      expect(terms).not.toMatch(/@ilokal\.(app|shop|ph)/);
+    } else {
+      expect(terms).toContain(PRIVACY_CONTACT_EMAIL);
+    }
+    // `ilokal.app` does not resolve; no document may carry it.
+    expect(terms).not.toContain('@ilokal.app');
+  });
+
+  it('has no empty section', () => {
+    for (const section of TERMS_OF_SERVICE.sections) {
+      const body =
+        (section.paragraphs?.length ?? 0) + (section.bullets?.length ?? 0);
+      expect(body, `section "${section.heading}" is empty`).toBeGreaterThan(0);
+    }
+  });
+
+  it('carries its own last-updated date, no older than the policy', () => {
+    // The renderer reads `doc.lastUpdated`; a terms page stamped before the
+    // policy it references reads as the stale one of the pair.
+    expect(TERMS_OF_SERVICE.lastUpdated).toBeTruthy();
+    expect(
+      new Date(TERMS_OF_SERVICE.lastUpdated).getTime(),
+    ).toBeGreaterThanOrEqual(new Date(PRIVACY_POLICY.lastUpdated).getTime());
+  });
+});
+
+describe('rendered document', () => {
+  // Both hosted docs, so a fix to the shared renderer is proven on each.
+  const docs = [PRIVACY_POLICY, TERMS_OF_SERVICE];
+
+  it('agrees with itself on the date, machine-readable and human', () => {
+    // 🔴 REGRESSION. `new Date('August 11, 2026')` is local midnight, so
+    // `.toISOString()` moved it back a day anywhere east of Greenwich: the
+    // page shipped `datetime="2026-08-10"` next to the words "August 11,
+    // 2026". Silent — nothing renders the attribute, and only a crawler or a
+    // reviewer reads it, which is exactly who it is there for.
+    for (const doc of docs) {
+      const html = renderToStaticMarkup(createElement(LegalDocument, { doc }));
+      const match = html.match(/<time datetime="([^"]*)"/i);
+      expect(match, `${doc.id}: no <time> rendered`).not.toBeNull();
+
+      const expected = new Date(doc.lastUpdated);
+      const iso = [
+        expected.getFullYear(),
+        String(expected.getMonth() + 1).padStart(2, '0'),
+        String(expected.getDate()).padStart(2, '0'),
+      ].join('-');
+
+      expect(
+        match?.[1],
+        `${doc.id}: datetime contradicts the visible date`,
+      ).toBe(iso);
+      // And the visible text is still the human string, unconverted.
+      expect(html).toContain(doc.lastUpdated);
+    }
+  });
+
+  it('renders every section, with no client JavaScript needed', () => {
+    // A policy has to answer for a reviewer, a crawler, or a bad connection
+    // without hydration — so it must be complete in the static markup.
+    for (const doc of docs) {
+      const html = renderToStaticMarkup(createElement(LegalDocument, { doc }));
+      for (const section of doc.sections) {
+        // Headings are rendered verbatim apart from HTML entity escaping of
+        // the few that carry an em dash or apostrophe.
+        const plain = section.heading.replace(/&/g, '&amp;');
+        expect(html, `${doc.id}: missing "${section.heading}"`).toContain(
+          plain,
+        );
+      }
+      expect(html).not.toContain('opacity:0');
     }
   });
 });

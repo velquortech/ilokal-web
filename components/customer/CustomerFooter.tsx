@@ -42,11 +42,13 @@ const FOOTER_LINKS: FooterLink[] = [
   // reader clicking this landed on the sign-in page. The public page explains
   // the flow and carries them into it.
   { href: ROUTES.PUBLIC.FOR_BUSINESS, label: 'List your business' },
-  // The hosted policy. Unflagged and last: Google Play expects the privacy
+  // The hosted legal pair. Unflagged and last: Google Play expects the privacy
   // policy to be reachable from the site itself, not only from the URL typed
   // into the Console, and a policy with no route into it is one most people
-  // never find. Deletion is reached from the policy rather than given its own
-  // footer entry, to keep this row from becoming a legal menu.
+  // never find. The terms sit beside it because that pairing is where readers
+  // look for both. Deletion still has NO entry of its own — it is reached from
+  // the policy, which is what keeps this row from becoming a legal menu.
+  { href: ROUTES.LEGAL.TERMS, label: 'Terms' },
   { href: ROUTES.LEGAL.PRIVACY, label: 'Privacy' },
 ];
 

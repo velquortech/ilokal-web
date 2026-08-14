@@ -36,7 +36,7 @@ export function createColumns(
           <button
             type="button"
             onClick={row.getToggleExpandedHandler()}
-            className="text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors"
+            className="text-muted-foreground hover:text-foreground flex items-center justify-center rounded-md p-2.5 transition-colors"
             aria-label={row.getIsExpanded() ? 'Collapse row' : 'Expand row'}
           >
             <ChevronRight
@@ -76,6 +76,10 @@ export function createColumns(
     {
       id: 'type',
       header: 'Type',
+      // Layer 1 of the mobile strategy (§6.8) — the card view below `md` shows
+      // only what a cashier reads; Type/Valid Period/Redemptions never scroll
+      // sideways.
+      meta: { responsiveClassName: 'hidden md:table-cell' },
       cell: ({ row }) => {
         const type = row.original.promotion_type ?? 'coupon';
         return (
@@ -151,6 +155,8 @@ export function createColumns(
     {
       id: 'dates',
       header: 'Valid Period',
+      // Layer 1 of the mobile strategy (§6.8) — hidden below `md`.
+      meta: { responsiveClassName: 'hidden md:table-cell' },
       cell: ({ row }) => {
         const fmt = (d: string) =>
           new Intl.DateTimeFormat('en-PH', {
@@ -171,6 +177,8 @@ export function createColumns(
     {
       id: 'redemptions',
       header: 'Redemptions',
+      // Layer 1 of the mobile strategy (§6.8) — hidden below `md`.
+      meta: { responsiveClassName: 'hidden md:table-cell' },
       cell: ({ row }) => {
         const { current_redemptions, max_redemptions_global } = row.original;
         return (

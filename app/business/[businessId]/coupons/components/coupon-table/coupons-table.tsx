@@ -2,25 +2,13 @@
 
 import * as React from 'react';
 import {
-  useReactTable,
-  getCoreRowModel,
-  getExpandedRowModel,
-  flexRender,
   SortingState,
   PaginationState,
-  ExpandedState,
   OnChangeFn,
 } from '@tanstack/react-table';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { DataTablePagination } from '@/components/custom/data-table/DataTablePagination';
+import { DataTable } from '@/components/custom/data-table/DataTable';
 import { createColumns } from './columns';
+import { MobileCouponCardList } from './mobile-coupon-card-list';
 import type { Coupon, ProductResponse } from '@/lib/types';
 import { formatOfferingPrice } from '@/lib/utils/formatOfferingPrice';
 import { Package } from 'lucide-react';
@@ -34,7 +22,12 @@ interface CouponsTableProps {
   onPaginationChange: (page: number, pageSize: number) => void;
 }
 
-function ExpandedProducts({
+/**
+ * The linked-products panel for an expanded coupon row. Shared by the desktop
+ * expanded row and the mobile card view (tap-to-expand), so the two can never
+ * drift apart.
+ */
+export function ExpandedProducts({
   scopeValues,
   products,
 }: {
@@ -91,8 +84,9 @@ export function CouponsTable({
   onPaginationChange,
 }: CouponsTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [expanded, setExpanded] = React.useState<ExpandedState>({});
 
+  // New column identities on every render make TanStack rebuild the table; the
+  // factory only depends on the products list.
   const columns = React.useMemo(() => createColumns(products), [products]);
 
   const pagination: PaginationState = {
@@ -105,88 +99,35 @@ export function CouponsTable({
     onPaginationChange(next.pageIndex + 1, next.pageSize);
   };
 
-  const table = useReactTable({
-    data: coupons,
-    columns,
-    pageCount: totalPages,
-    state: { pagination, sorting, expanded },
-    onPaginationChange: handlePaginationChange,
-    onSortingChange: setSorting,
-    onExpandedChange: setExpanded,
-    getCoreRowModel: getCoreRowModel(),
-    getExpandedRowModel: getExpandedRowModel(),
-    getRowCanExpand: (row) => (row.original.scope_values?.length ?? 0) > 0,
-    manualPagination: true,
-    manualSorting: true,
-    manualFiltering: true,
-  });
-
   return (
-    <div className="space-y-4">
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <React.Fragment key={row.id}>
-                  <TableRow data-state={row.getIsSelected() && 'selected'}>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-
-                  {row.getIsExpanded() && (
-                    <TableRow className="bg-muted/30 hover:bg-muted/30">
-                      <TableCell colSpan={columns.length} className="px-6 py-3">
-                        <div className="space-y-1.5">
-                          <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                            Linked Products
-                          </p>
-                          <ExpandedProducts
-                            scopeValues={row.original.scope_values ?? []}
-                            products={products}
-                          />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </React.Fragment>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      <DataTablePagination table={table} />
+    <div className="w-full">
+      <DataTable
+        columns={columns}
+        data={coupons}
+        pageCount={totalPages}
+        pagination={pagination}
+        onPaginationChange={handlePaginationChange}
+        sorting={sorting}
+        onSortingChange={setSorting}
+        expandable={{
+          getRowCanExpand: (row) =>
+            (row.original.scope_values?.length ?? 0) > 0,
+          renderExpanded: (row) => (
+            <div className="space-y-1.5">
+              <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                Linked Products
+              </p>
+              <ExpandedProducts
+                scopeValues={row.original.scope_values ?? []}
+                products={products}
+              />
+            </div>
+          ),
+        }}
+        renderMobile={(table) => (
+          <MobileCouponCardList table={table} products={products} />
+        )}
+      />
     </div>
   );
 }

@@ -1,15 +1,19 @@
 'use client';
 
+import * as React from 'react';
 import type { ReactNode } from 'react';
 import {
   ColumnDef,
   flexRender,
   getCoreRowModel,
+  getExpandedRowModel,
   useReactTable,
   SortingState,
   PaginationState,
   RowSelectionState,
+  ExpandedState,
   OnChangeFn,
+  Row as TanStackRow,
   Table as TanStackTable,
 } from '@tanstack/react-table';
 
@@ -59,6 +63,18 @@ interface DataTableProps<TData, TValue> {
    */
   emptyState?: ReactNode;
   /**
+   * Expandable rows. Optional — omit and the table has no expansion.
+   *
+   * Expansion state lives in the composite (lifted like sorting); the row's
+   * `expand` column calls `row.getToggleExpandedHandler()` as usual, and when
+   * a row is expanded a full-width row renders `renderExpanded` below it —
+   * the same pattern the coupons/redemptions tables hand-rolled before this.
+   */
+  expandable?: {
+    getRowCanExpand: (row: TanStackRow<TData>) => boolean;
+    renderExpanded: (row: TanStackRow<TData>) => ReactNode;
+  };
+  /**
    * Layer 2 of the mobile strategy (§6.8): a card-list renderer for touch
    * screens.
    *
@@ -82,8 +98,11 @@ export function DataTable<TData, TValue>({
   selection,
   toolbar,
   emptyState,
+  expandable,
   renderMobile,
 }: DataTableProps<TData, TValue>) {
+  const [expanded, setExpanded] = React.useState<ExpandedState>({});
+
   const table = useReactTable({
     data,
     columns,
@@ -91,15 +110,21 @@ export function DataTable<TData, TValue>({
     state: {
       pagination,
       sorting,
+      ...(expandable && { expanded }),
       ...(selection && { rowSelection: selection.state }),
     },
     onPaginationChange,
     onSortingChange,
+    ...(expandable && {
+      onExpandedChange: setExpanded,
+      getRowCanExpand: expandable.getRowCanExpand,
+    }),
     ...(selection && {
       onRowSelectionChange: selection.onChange,
       getRowId: selection.getRowId,
     }),
     getCoreRowModel: getCoreRowModel(),
+    ...(expandable && { getExpandedRowModel: getExpandedRowModel() }),
     manualPagination: true, // Crucial for server-side
     manualSorting: true, // Crucial for server-side
     manualFiltering: true, // Crucial for server-side
@@ -144,22 +169,30 @@ export function DataTable<TData, TValue>({
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() ? 'selected' : undefined}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      className={cn(responsiveColumnClass(cell.column))}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
+                <React.Fragment key={row.id}>
+                  <TableRow
+                    data-state={row.getIsSelected() ? 'selected' : undefined}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        className={cn(responsiveColumnClass(cell.column))}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                  {expandable && row.getIsExpanded() && (
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                      <TableCell colSpan={columns.length} className="px-6 py-3">
+                        {expandable.renderExpanded(row)}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
               ))
             ) : (
               <TableRow>

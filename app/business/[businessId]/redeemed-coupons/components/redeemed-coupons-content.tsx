@@ -141,11 +141,16 @@ export function RedeemedCouponsContent({
               selectedStatus={selectedStatus}
               onStatusChange={handleStatusChange}
             />
-            <SearchBar
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search by coupon code…"
-            />
+            {/* On a phone the code search is the hero control — the first
+                thing a cashier reaches for — so it leads the row below `md`
+                instead of trailing after the filter (§6.8). */}
+            <div className="order-first w-full sm:order-none sm:w-auto">
+              <SearchBar
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search by coupon code…"
+              />
+            </div>
           </div>
           <RedeemedCouponsTable
             redemptions={redemptions}

@@ -66,8 +66,10 @@ export async function createRegistrationDeal(
   deal: {
     code: string;
     description?: string;
-    discount_type: 'percentage' | 'fixed_amount';
-    discount_value: number;
+    discount_type: 'percentage' | 'fixed_amount' | 'free' | 'bogo';
+    discount_value: number | null;
+    bogo_buy?: number;
+    bogo_get?: number;
     duration_days: number;
     publish: boolean;
     image_url?: string | null;

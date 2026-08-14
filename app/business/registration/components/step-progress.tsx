@@ -35,11 +35,14 @@ export function StepProgress() {
           <div className="mt-3 flex flex-wrap gap-4 text-xs text-white/60">
             <div className="flex items-center gap-1.5">
               <Clock className="h-4 w-4" />
-              <span>Takes only 5 minutes</span>
+              <span>
+                Most owners finish in about 5–10 minutes — progress saves as you
+                go
+              </span>
             </div>
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="h-4 w-4" />
-              <span>Instant approval</span>
+              <span>Most shops are approved automatically</span>
             </div>
             <div className="flex items-center gap-1.5">
               <DollarSign className="h-4 w-4" />

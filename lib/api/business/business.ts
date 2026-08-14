@@ -5,6 +5,7 @@ import { createServerSupabaseClient } from '@/supabase/server';
 import { uploadWebP, IMAGE_PRESETS } from '@/lib/api/helpers/image';
 import { MAX_REGISTRATION_OFFERINGS } from '@/lib/validation/products';
 import { logActionError } from '@/lib/utils/captureError';
+import type { DiscountValue } from '@/lib/types';
 
 // Registration is split into two phases so no single request exceeds Vercel's
 // 4.5 MB function body limit (a one-shot multipart POST with logo + banner +
@@ -534,8 +535,12 @@ export async function createBusinessRegistrationOfferings(
 export interface RegistrationDealInput {
   code: string;
   description?: string;
-  discount_type: 'percentage' | 'fixed_amount';
-  discount_value: number;
+  discount_type: 'percentage' | 'fixed_amount' | 'free' | 'bogo';
+  discount_value: number | null;
+  /** Present only for bogo. */
+  bogo_buy?: number;
+  /** Present only for bogo. */
+  bogo_get?: number;
   duration_days: number;
   publish: boolean;
   /** Bucket-relative path, proved against the verified business id below. */
@@ -575,6 +580,21 @@ export async function createBusinessRegistrationDeal(
   if (existingError) throw existingError;
   if (existing) return { created: false };
 
+  // The flat wizard fields → the stored `DiscountValue` union (same shapes
+  // the dashboard coupon dialog writes, so both surfaces stay renderable by
+  // the one formatter).
+  const discount: DiscountValue =
+    deal.discount_type === 'bogo'
+      ? {
+          type: 'bogo',
+          buy: deal.bogo_buy ?? 1,
+          get: deal.bogo_get ?? 1,
+          value: null,
+        }
+      : deal.discount_type === 'free'
+        ? { type: 'free', value: null }
+        : { type: deal.discount_type, value: deal.discount_value ?? 0 };
+
   // Same rule as the offerings write: the client sends this back, so only a
   // path under the VERIFIED business id is stored. The bucket is public-read,
   // so a foreign path would be a real cross-shop read.
@@ -601,7 +621,7 @@ export async function createBusinessRegistrationDeal(
     status: deal.publish ? 'published' : 'draft',
     code,
     description: deal.description?.trim() || null,
-    discount: { type: deal.discount_type, value: deal.discount_value },
+    discount,
     usage_scope: 'any',
     scope_values: null,
     start_date: startDate.toISOString(),

@@ -22,7 +22,12 @@ type CouponRow = {
   status: string;
   image_url: string | null;
   code: string;
-  discount: { type: string; value: number };
+  discount: {
+    type: string;
+    value: number | null;
+    buy?: number;
+    get?: number;
+  };
   usage_scope: string;
   start_date: string;
   expiry_date: string;
@@ -99,8 +104,11 @@ const BASE_DEAL = {
 };
 
 async function write(
-  deal: Partial<Omit<typeof BASE_DEAL, 'discount_type'>> & {
-    discount_type?: 'percentage' | 'fixed_amount';
+  deal: Partial<Omit<typeof BASE_DEAL, 'discount_type' | 'discount_value'>> & {
+    discount_type?: 'percentage' | 'fixed_amount' | 'free' | 'bogo';
+    discount_value?: number | null;
+    bogo_buy?: number;
+    bogo_get?: number;
     image_url?: string | null;
   } = {},
   options?: Parameters<typeof makeSupabase>[0],
@@ -140,6 +148,47 @@ describe('RM14 — a deal is never published by accident', () => {
     expect(registrationDealSchema.safeParse(withoutPublish).success).toBe(
       false,
     );
+  });
+});
+
+describe('the deal schema accepts the Phase 2 discount arms', () => {
+  it('accepts a FREE deal with a null value', () => {
+    const result = registrationDealSchema.safeParse({
+      ...BASE_DEAL,
+      discount_type: 'free',
+      discount_value: null,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a BOGO deal with buy/get quantities', () => {
+    const result = registrationDealSchema.safeParse({
+      ...BASE_DEAL,
+      discount_type: 'bogo',
+      discount_value: null,
+      bogo_buy: 1,
+      bogo_get: 1,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a BOGO deal missing the get quantity', () => {
+    const result = registrationDealSchema.safeParse({
+      ...BASE_DEAL,
+      discount_type: 'bogo',
+      discount_value: null,
+      bogo_buy: 1,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a percentage deal without a value', () => {
+    const result = registrationDealSchema.safeParse({
+      ...BASE_DEAL,
+      discount_type: 'percentage',
+      discount_value: null,
+    });
+    expect(result.success).toBe(false);
   });
 });
 
@@ -218,6 +267,29 @@ describe('what gets written', () => {
       discount_value: 50,
     });
     expect(inserted[0].discount).toEqual({ type: 'fixed_amount', value: 50 });
+  });
+
+  it('stores a FREE deal as the free arm of the union', async () => {
+    const { inserted } = await write({
+      discount_type: 'free',
+      discount_value: null,
+    });
+    expect(inserted[0].discount).toEqual({ type: 'free', value: null });
+  });
+
+  it('stores a BOGO deal as the bogo arm with buy/get', async () => {
+    const { inserted } = await write({
+      discount_type: 'bogo',
+      discount_value: null,
+      bogo_buy: 1,
+      bogo_get: 1,
+    });
+    expect(inserted[0].discount).toEqual({
+      type: 'bogo',
+      buy: 1,
+      get: 1,
+      value: null,
+    });
   });
 
   it('scopes the deal to the whole shop', async () => {

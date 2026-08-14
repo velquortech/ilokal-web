@@ -19,8 +19,10 @@ const bodySchema = z
   .object({
     code: z.string().trim().min(1).max(50),
     description: z.string().trim().max(500).optional(),
-    discount_type: z.enum(['percentage', 'fixed_amount']),
-    discount_value: z.number().positive(),
+    discount_type: z.enum(['percentage', 'fixed_amount', 'free', 'bogo']),
+    discount_value: z.number().positive().nullable(),
+    bogo_buy: z.number().int().min(1).optional(),
+    bogo_get: z.number().int().min(1).optional(),
     duration_days: z.number().int().positive().max(MAX_DEAL_DURATION_DAYS),
     /**
      * Whether the coupon goes live. Explicit in the payload rather than
@@ -32,10 +34,44 @@ const bodySchema = z
     /** Shape-checked here; ownership is proved in the query layer. */
     image_url: z.string().max(512).nullable().optional(),
   })
-  .refine(
-    (data) => data.discount_type !== 'percentage' || data.discount_value <= 100,
-    'A percentage discount cannot be more than 100%',
-  );
+  .superRefine((data, ctx) => {
+    // Percentage/fixed need a value; free/bogo must not carry one.
+    if (
+      (data.discount_type === 'percentage' ||
+        data.discount_type === 'fixed_amount') &&
+      data.discount_value == null
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Enter how much off',
+        path: ['discount_value'],
+      });
+    }
+    if (data.discount_type === 'percentage' && data.discount_value! > 100) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'A percentage discount cannot be more than 100%',
+        path: ['discount_value'],
+      });
+    }
+    // BOGO needs both quantities.
+    if (data.discount_type === 'bogo') {
+      if (data.bogo_buy == null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Enter how many the customer buys',
+          path: ['bogo_buy'],
+        });
+      }
+      if (data.bogo_get == null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Enter how many are free',
+          path: ['bogo_get'],
+        });
+      }
+    }
+  });
 
 export async function POST(
   request: Request,

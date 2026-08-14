@@ -81,6 +81,19 @@ export function BranchCard({ branch, businessId, onSuccess }: BranchCardProps) {
       <CardContent className="flex flex-1 flex-col gap-2 p-4">
         <h3 className="leading-tight font-semibold">{branch.name}</h3>
 
+        {/* Plain-language approval state — the badge alone says "Pending
+            Review" without saying what that means for the owner. */}
+        {branch.status === 'pending_review' && (
+          <p className="text-muted-foreground text-xs">
+            Customers can see this branch once it&apos;s approved.
+          </p>
+        )}
+        {branch.status === 'rejected' && (
+          <p className="text-muted-foreground text-xs">
+            This branch isn&apos;t visible to customers.
+          </p>
+        )}
+
         {branch.address && (
           <div className="text-muted-foreground flex items-start gap-1.5 text-sm">
             <MapPin className="mt-0.5 size-3.5 shrink-0" />

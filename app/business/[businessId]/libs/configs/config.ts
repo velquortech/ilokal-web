@@ -58,7 +58,10 @@ export const storeNavigation: NavItem[] = [
     tourId: 'nav-coupons',
   },
   {
-    title: 'Redeemed Coupons',
+    // Surfaced label renamed from "Redeemed Coupons" — the table is really
+    // claims/redemptions status, and the old name made it sound like a
+    // historical log. The route stays the same.
+    title: 'Redemptions',
     href: '/business/redeemed-coupons',
     icon: BadgeCheck,
   },

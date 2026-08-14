@@ -239,6 +239,51 @@ Shareable content for social platforms.
 }
 ```
 
+### `GET /api/mobile/product-search`
+
+Full-catalog product/business-name search for the Home search bar's as-you-type
+suggestions (ilokal-mobile `hooks/useSearchSuggestions.ts`). Unlike
+`/api/mobile/popular-products`, this ranks by **relevance** across EVERY
+available product of every verified business — a long-tail product with a
+handful of views is still findable. One product per business (a mega-menu shop
+can't flood the results); name-prefix matches rank above substring hits, then
+by weekly views / rating count. Backed by the `product_search` RPC
+(`20260814170000_product_search.sql`).
+
+**Query params**
+
+| Param | Required | Description |
+|---|---|---|
+| `q` | yes | Search text (trimmed; matches product name or business name, ILIKE, LIKE metacharacters escaped) |
+| `limit` | no | Max results, clamped to 1–20 (default 10) |
+
+**Response 200** — same wire rows as `/api/mobile/popular-products`, so the
+client's `mapWireToPopularProduct` works unchanged:
+
+```json
+{
+  "products": [
+    {
+      "product_id": "uuid",
+      "product_name": "string",
+      "product_image_url": "string | null",
+      "price": 0.0,
+      "price_type": "fixed | from | per_hour | per_day | per_person | per_event",
+      "price_unit": "string | null",
+      "weekly_view_count": 0,
+      "average_rating": 0.0,
+      "rating_count": 0,
+      "business_id": "uuid",
+      "business_name": "string",
+      "business_logo_url": "string | null",
+      "business_banner_url": "string | null",
+      "distance_meters": null,
+      "is_new": false
+    }
+  ]
+}
+```
+
 ---
 
 ## Endpoints — Protected (requires `Authorization: Bearer <jwt>`)

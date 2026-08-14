@@ -27,6 +27,7 @@ export function HealthScoreCard({ health }: HealthScoreCardProps) {
           value: trendLabel(health.retention_trend),
           positive: health.retention_trend === 'up',
         }}
+        caption="How many customers came back in the last month"
       />
       <StatCard
         title="New Followers This Month"
@@ -36,12 +37,14 @@ export function HealthScoreCard({ health }: HealthScoreCardProps) {
           value: trendLabel(health.follower_growth_trend),
           positive: health.follower_growth_trend === 'up',
         }}
+        caption="People who started following your shop this month"
       />
       <StatCard
         title="Active Deals"
         value={health.active_deals}
         icon={Tag}
         description="Published & live"
+        caption="Coupons and deals customers can redeem right now"
       />
       <StatCard
         title="Avg Rating"
@@ -59,6 +62,7 @@ export function HealthScoreCard({ health }: HealthScoreCardProps) {
               }
             : undefined
         }
+        caption="Average rating from customer reviews"
       />
     </div>
   );

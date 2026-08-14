@@ -547,7 +547,7 @@ type DiscountValue =
       (CLAUDE.md workflow: rollback artifact, cloud apply precedes app deploy).
 - [x] Browser-test BOGO/FREE creation against the applied constraint — the
       Phase 1 end-to-end run created a `B1T1` row (`{type:'bogo',buy:1,get:1,
-    value:null}`) and a percentage draft successfully against the live
+  value:null}`) and a percentage draft successfully against the live
       local CHECK.
 - [ ] Verify `supabase/tests/mobile_deals_and_outbox.test.sql` still passes
       (it must — the RPC is untouched, but the coupon rows it reads now
@@ -620,6 +620,69 @@ grid is 2 columns at 390px; and `owner_events` gains `reg_step_viewed` (31)
 bento deals-feed preview (that's the Phase 1 dashboard track); TD-019
 (`safeNext` owner path — return owners to the wizard after signup) was left
 for a later pass per the sequencing rules.
+
+### 7.6 Phase 3 — implemented (dashboard home + onboarding)
+
+**Status: implemented, reviewed, browser-tested (28/28 checks), committed +
+pushed on `feat/business-dashboard-ux-revamp`, held for PR.** No new
+migration — instrumentation reuses the Phase 2 `owner_events` table.
+
+**What shipped (all §6.3 items):**
+
+1. **Checklist-first + Full-report collapse** — `page.tsx` already rendered
+   the `SetupChecklist` above both home branches; `AnalyticsDashboard.tsx`
+   now keeps the default view to **First Answer + Health Score + Smart
+   Suggestions + Coupon Performance** and moves the trend / segments /
+   retention / funnel charts (and the branch summary) behind a **"See the
+   full report" / "Show less"** toggle (`aria-expanded`, ≥44px touch
+   target). No data is dropped — it's one deliberate click away.
+2. **KPI captions** — `StatCard` gained an optional `caption` prop (plain-
+   language one-liner under the trend line, never instead of it);
+   `HealthScoreCard` passes all four: "How many customers came back in the
+   last month", "People who started following your shop this month",
+   "Coupons and deals customers can redeem right now", "Average rating from
+   customer reviews".
+3. **Empty/zero states** — `AutomationSuggestions` no longer hides when
+   empty; it renders a dashed "Add your first deal and suggestions will start
+   appearing here" hint with a **Create a deal** CTA (`businessId` prop). All
+   five zero-data surfaces now say what to do: coupon table ("Publish your
+   first deal and its redemptions will appear here"), segments ("build from
+   redemptions"), retention ("fills in as customers visit"), funnel ("Share
+   your shop link to grow your audience"), and the defensive trend empty
+   state (the RPC always returns zero-valued month rows, so the chart branch
+   is the reachable one — verified).
+4. **Gate card CTA** — the unverified "Analytics unlock once your shop is
+   verified" card in `HomePage.tsx` now ends with a **"Check verification
+   status"** button linking to `businessProfilePath` (Profile's
+   `AccountStatusCard`), instead of a dead-end Lock. `AlmosstThereSection`
+   (pre-registration) gains a "Register your shop" CTA to the wizard, and
+   `OnboardingSection` drops the same false "5 minutes" / "Instant approval"
+   claims fixed in Phase 2 (now "Most owners finish in 5–10 minutes" / "Most
+   shops are approved automatically").
+5. **Dashboard instrumentation** — `OwnerEventName` union extended with
+   `dash_full_report_open` (on expand), `dash_checklist_dismiss` (from
+   `SetupChecklist`'s Hide), and `dash_card_clicked` (verification-gate CTA,
+   with `{card: 'verification_gate'}` payload). All fire-and-forget through
+   the existing `logOwnerEvent` action.
+
+**Browser verification (local DB):** Part A on `owner2@ilokal.dev`
+(GigaGrind — verified, zero data): all four KPI captions; coupon-table and
+funnel/segments/retention zero-state guidance; charts hidden by default;
+"See the full report" → all four charts + "Show less"; checklist Hide →
+`dash_checklist_dismiss`; expand → `dash_full_report_open` (1 row each, in
+`owner_events`). Part B on `owner2@example.com` with the business
+flipped to `pending` in the LOCAL DB (restored after): gate card copy, CTA
+href → `/business/:id/profile`, click lands on Profile with AccountStatusCard,
+and `dash_card_clicked` `{"card":"verification_gate"}` rows recorded.
+
+**Deferred:** the pre-registration home (`!business` branch of `HomePage`)
+is unreachable in practice — the `[businessId]` layout gates on
+`verifyBusinessOwner`, so an owner with no business row is redirected to the
+wizard — its copy fixes landed anyway for consistency and for the archived-
+row edge. Chart-card visibility-by-scroll and time-to-checklist-dismiss
+(§6.3.6) are partially covered (`dash_checklist_dismiss` is the dismissal
+moment; scroll visibility needs an IntersectionObserver — deferred to the
+mobile/IA phase to keep this diff small).
 
 ---
 

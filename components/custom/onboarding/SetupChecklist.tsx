@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { useOnboardingTourContext } from './OnboardingTourProvider';
 import { dismissOnboardingChecklistAction } from '@/app/actions/onboardingActions';
+import { logOwnerEvent } from '@/app/business/registration/actions/ownerEvents';
 import type { OnboardingItem, OnboardingProgress } from '@/lib/types';
 
 /**
@@ -76,6 +77,10 @@ export function SetupChecklist({
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(dismissKey(businessId), '1');
     }
+    // Fire-and-forget funnel: how quickly owners wave the checklist away is a
+    // Phase 3 §6.3.6 metric. Same contract as the dismissal write below — the
+    // card is already gone, so nothing here may block or fail loudly.
+    void logOwnerEvent('dash_checklist_dismiss', {}, businessId);
     // Fire-and-forget: the card is already gone and the echo above keeps this
     // device quiet, so nothing here is worth a toast — the owner did not ask for
     // a save. But a REFUSED write (`FORBIDDEN`, `RATE_LIMITED`) resolves rather

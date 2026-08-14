@@ -25,8 +25,12 @@ export function FollowerFunnelCard({ funnel }: FollowerFunnelCardProps) {
       </CardHeader>
       <CardContent>
         {funnel.total_followers === 0 ? (
-          <div className="text-muted-foreground flex h-48 items-center justify-center text-sm">
-            No followers yet
+          <div className="text-muted-foreground flex h-48 flex-col items-center justify-center gap-1 px-6 text-center text-sm">
+            <span className="font-medium">No followers yet</span>
+            <span className="text-xs">
+              Share your shop link to grow your audience — the funnel fills in
+              from there.
+            </span>
           </div>
         ) : (
           <div className="space-y-4">

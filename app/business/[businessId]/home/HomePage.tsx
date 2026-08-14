@@ -9,11 +9,15 @@ import {
   ROUTES,
   businessShopPath,
   businessAddOfferingPath,
+  businessProfilePath,
 } from '@/config/routeConfig';
 import { useBusinessShop } from '@/providers/BusinessProvider';
 import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
 import { Card, CardContent } from '@/components/ui/card';
-import { Lock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ArrowRight, Lock } from 'lucide-react';
+import Link from 'next/link';
+import { logOwnerEvent } from '@/app/business/registration/actions/ownerEvents';
 
 import WhyRegisterCard from './components/WhyRegisterSection';
 import LockedAnalyticsCard from './components/AlmosstThereSection';
@@ -98,20 +102,42 @@ export default function BusinessHome({
 
       {/* Shop has offerings but is not verified, so the analytics page it would
           otherwise show has nothing to display. Say why rather than leaving a
-          blank column — the layout's pending banner covers the visibility side. */}
+          blank column — the layout's pending banner covers the visibility side.
+          The CTA ends the dead end: "why am I pending" lives on Profile's
+          AccountStatusCard, so the gate says where to look instead of pointing
+          at a locked icon. */}
       {business && hasOfferings === true && (
         <Card className="border-dashed">
-          <CardContent className="flex items-center gap-3 py-6">
-            <Lock className="text-muted-foreground h-5 w-5 shrink-0" />
-            <div>
-              <p className="text-sm font-medium">
-                Analytics unlock once your shop is verified
-              </p>
-              <p className="text-muted-foreground text-sm">
-                Everything else — {vocabulary.plural.toLowerCase()}, deals,
-                branches — you can keep working on now.
-              </p>
+          <CardContent className="flex flex-col items-start gap-4 py-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <Lock className="text-muted-foreground h-5 w-5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium">
+                  Analytics unlock once your shop is verified
+                </p>
+                <p className="text-muted-foreground text-sm">
+                  Everything else — {vocabulary.plural.toLowerCase()}, deals,
+                  branches — you can keep working on now.
+                </p>
+              </div>
             </div>
+            <Button
+              asChild
+              size="sm"
+              className="shrink-0"
+              onClick={() =>
+                void logOwnerEvent(
+                  'dash_card_clicked',
+                  { card: 'verification_gate' },
+                  business.id,
+                )
+              }
+            >
+              <Link href={businessProfilePath(business.id)}>
+                Check verification status
+                <ArrowRight className="ml-1.5 size-4" />
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       )}

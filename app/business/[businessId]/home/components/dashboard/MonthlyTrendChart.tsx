@@ -35,8 +35,12 @@ export function MonthlyTrendChart({ trend }: MonthlyTrendChartProps) {
       className="lg:col-span-2"
     >
       {trend.length === 0 ? (
-        <div className="text-muted-foreground flex h-full min-h-48 items-center justify-center text-sm">
-          No data yet
+        <div className="text-muted-foreground flex h-full min-h-48 flex-col items-center justify-center gap-1 px-6 text-center text-sm">
+          <span className="font-medium">No data yet</span>
+          <span className="text-xs">
+            Publish a deal and share your shop — trends appear once customers
+            start following and redeeming.
+          </span>
         </div>
       ) : (
         // Fills the card (which stretches to the taller Customer Segments

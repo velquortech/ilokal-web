@@ -133,6 +133,33 @@ describe('GET /api/mobile/businesses/nearby', () => {
     ).toHaveLength(1);
   });
 
+  it('maps the four launch vertical keys to their business types (20260815000000)', async () => {
+    const { rpc } = buildSupabaseMock({
+      rows: [feedRow()],
+      followers: [],
+      counts: [],
+    });
+
+    // One representative key per vertical — the map is a plain record, so the
+    // four entries share one code path; this pins the keys the mobile app
+    // sends (MAIN_CATEGORIES keys) against the DB business_types names.
+    for (const [key, type] of [
+      ['Entertainment', 'Entertainment & Events'],
+      ['Health', 'Health & Wellness'],
+      ['Education', 'Education & Learning'],
+      ['Home', 'Home & Property Services'],
+    ] as const) {
+      rpc.mockClear();
+      await GET(request(`lat=10.7&lng=122.5&page=1&per_page=10&category=${key}`));
+      const nearbyCall = rpc.mock.calls.find(
+        (c) => c[0] === 'nearby_businesses_filtered',
+      );
+      expect(nearbyCall).toBeDefined();
+      const args = nearbyCall![1] as { filter_business_type?: string };
+      expect(args.filter_business_type).toBe(type);
+    }
+  });
+
   it('includes category_counts (normalised to numbers) in the paged shape', async () => {
     buildSupabaseMock({
       rows: [feedRow()],

@@ -11,12 +11,18 @@ import { NextRequest } from 'next/server';
 
 // Maps the mobile category key → business_types.name in the DB (mirror of the
 // nearby + deals routes). Unknown keys yield an empty result rather than all
-// results.
+// results. The four launch verticals (20260815000000) joined the taxonomy
+// 2026-08-14; Tourism stays mapped so an older app build can't turn it into a
+// dead filter until the vertical is removed from the maps too.
 const CATEGORY_TO_BUSINESS_TYPE: Record<string, string> = {
   Food: 'Food & Beverage',
   Retail: 'Retail',
   Services: 'Services',
   Tourism: 'Tourism & Leisure',
+  Entertainment: 'Entertainment & Events',
+  Health: 'Health & Wellness',
+  Education: 'Education & Learning',
+  Home: 'Home & Property Services',
 };
 
 // The rail cap — the wire's counterpart of the client scan's FRESH_POOL_SEATS

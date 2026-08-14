@@ -150,7 +150,9 @@ describe('GET /api/mobile/businesses/nearby', () => {
       ['Home', 'Home & Property Services'],
     ] as const) {
       rpc.mockClear();
-      await GET(request(`lat=10.7&lng=122.5&page=1&per_page=10&category=${key}`));
+      await GET(
+        request(`lat=10.7&lng=122.5&page=1&per_page=10&category=${key}`),
+      );
       const nearbyCall = rpc.mock.calls.find(
         (c) => c[0] === 'nearby_businesses_filtered',
       );

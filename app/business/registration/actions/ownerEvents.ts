@@ -14,7 +14,10 @@ export type OwnerEventName =
   | 'reg_step_completed'
   | 'reg_step_error'
   | 'reg_back_nav'
-  | 'reg_submitted';
+  | 'reg_submitted'
+  | 'dash_full_report_open'
+  | 'dash_checklist_dismiss'
+  | 'dash_card_clicked';
 
 /**
  * Record one owner-funnel event (fire-and-forget by contract).

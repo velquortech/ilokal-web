@@ -59,11 +59,11 @@ export function OnboardingSection({ onStartTour }: OnboardingSectionProps) {
           <div className="text-muted-foreground flex flex-wrap gap-x-8 gap-y-3 text-sm font-semibold">
             <div className="flex items-center gap-2">
               <Clock className="text-primary h-4 w-4" />
-              <span>Takes only 5 minutes</span>
+              <span>Most owners finish in 5–10 minutes</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle2 className="text-primary h-4 w-4" />
-              <span>Instant approval</span>
+              <span>Most shops are approved automatically</span>
             </div>
             <div className="flex items-center gap-2">
               <DollarSign className="text-primary h-4 w-4" />

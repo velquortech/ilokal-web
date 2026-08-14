@@ -1,6 +1,9 @@
-import { Lock, TrendingUp, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { Lock, TrendingUp, Sparkles, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ROUTES } from '@/config/routeConfig';
 
 export default function LockedAnalyticsCard() {
   return (
@@ -25,7 +28,7 @@ export default function LockedAnalyticsCard() {
         <CardTitle className="text-lg">Real-time Insights</CardTitle>
       </CardHeader>
 
-      <CardContent className="relative z-20 space-y-3 pt-4">
+      <CardContent className="relative z-20 space-y-4 pt-4">
         <div className="space-y-1">
           <h4 className="text-primary text-sm font-bold">Almost There!</h4>
           <p className="text-muted-foreground text-sm leading-relaxed">
@@ -33,6 +36,12 @@ export default function LockedAnalyticsCard() {
             analytics.
           </p>
         </div>
+        <Button asChild size="sm" variant="outline">
+          <Link href={ROUTES.BUSINESS.registration}>
+            Register your shop
+            <ArrowRight className="ml-1.5 size-4" />
+          </Link>
+        </Button>
       </CardContent>
     </Card>
   );

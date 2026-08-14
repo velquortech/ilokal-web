@@ -123,16 +123,20 @@ jobs:
             exit 1
           fi
           # Empty output leaves jq silent rather than failing, so name it 0
-          # instead of printing "returned  rows". A reshaped result (no .rows)
-          # makes jq exit non-zero and `set -e` ends the job, which is correct.
-          actual=$(jq '.rows | length' inventory.json)
+          # instead of printing "returned  rows". `db query --output json`
+          # returns a BARE ARRAY of rows (verified against 2.101.0 on the
+          # first-ever successful deploy); accept the {rows:[...]} envelope too
+          # in case a future CLI version wraps it. Anything else (an error
+          # object, an empty string) makes jq exit non-zero and `set -e` ends
+          # the job, which is correct.
+          actual=$(jq 'if type == "object" then (.rows | length) else length end' inventory.json)
           actual=${actual:-0}
           if [ "$actual" != "$expected" ]; then
             echo "::error::Inventory returned $actual rows, expected $expected. The query did not run to completion, so a zero-missing verdict would mean nothing."
             exit 1
           fi
 
-          missing=$(jq -r '.rows[] | select(.status != "ok") | "  \(.kind)  \(.name)"' inventory.json)
+          missing=$(jq -r 'if type == "object" then .rows else . end | .[] | select(.status != "ok") | "  \(.kind)  \(.name)"' inventory.json)
           if [ -n "$missing" ]; then
             echo "::error::Objects declared by migrations are MISSING from the database. A migration was probably edited in place after it was applied, so db push skipped the change. Apply the missing statements by hand, then re-run."
             echo "$missing"

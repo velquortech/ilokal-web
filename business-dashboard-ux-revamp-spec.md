@@ -489,17 +489,17 @@ type DiscountValue =
 
 ### 7.1 Files written (this deep-dive)
 
-| File                                                                                 | Change                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| File                                                                                 | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `supabase/migrations/20260817000000_coupon_discount_bogo_free.sql`                   | **NEW.** Replaces the old `coupons_discount_structure` CHECK (20260526000008, which required a numeric `value` and only allowed percentage/fixed) with `coupons_discount_shape_check` pinning the 4-arm union. The drop is REQUIRED, not optional: a bogo/free row would still violate the old constraint. Validates existing rows in place (all legacy rows are percentage/fixed with numeric `value` ≥ 0, so no backfill). Uses `jsonb_typeof` + `CASE WHEN` guards so a missing key evaluates to NULL→false, never a cast error. Rollback: drop the new constraint + re-add the old one (both statements in the file header). **Found + fixed during browser testing** — the first draft only ADDED the new constraint and BOGO creation failed with `INTERNAL_ERROR` against the still-live old CHECK. |
-| `lib/types/coupon.ts`                                                                | `DiscountType` widened to 4 literals; `DiscountValue` is now the discriminated union (`PercentageDiscount` / `FixedAmountDiscount` / `FreeDiscount` / `BogoDiscount`). New `FlatDiscountType` = legacy `'percentage'\|'fixed_amount'` used by the old dialogs.                                                                                                                                                              |
-| `lib/types/customer.ts`                                                              | `PublicCoupon.discount` (the mobile customer type) now `DiscountValue \| null` — the API passes `discount` through raw, so the widened shape flows to customers unchanged.                                                                                                                                                                                                                                                  |
-| `lib/validation/coupons.ts`                                                          | `discountValueSchema` is now `z.discriminatedUnion('type', …)` — percentage ≤100, fixed >0, free `value:null`, bogo buy/get ≥1 ints (+ optional `max_free`). `createCouponSchema` / `updateCouponSchema` inherit it automatically.                                                                                                                                                                                          |
-| `lib/validation/__tests__/coupons-discount.test.ts`                                  | **NEW.** 13 tests: the 4 shapes accepted, bad shapes rejected (percentage >100, missing value, BOGO without `get`, `buy:0`, unknown type), plus end-to-end `createCouponSchema` with BOGO/FREE/legacy.                                                                                                                                                                                                                      |
-| `app/business/[businessId]/coupons/components/coupon-table/columns.tsx`              | `formatDiscount` renders all 4 arms (`FREE`, `Buy 1 Get 1 FREE`).                                                                                                                                                                                                                                                                                                                                                           |
-| `app/business/[businessId]/redeemed-coupons/components/redemption-table/columns.tsx` | Same 4-arm `formatDiscount` for the cashier-facing redemptions table (and dropped a dead conditional type).                                                                                                                                                                                                                                                                                                                 |
-| `app/business/[businessId]/coupons/components/add-coupon.tsx` + `update-coupon.tsx`  | Kept compiling on the legacy flat shape (`FlatDiscountType`); the update dialog narrows a FREE/BOGO row to percentage on open (they have no editable %/₱ value in the old UI). Both are replaced by the template-first dialog in this phase.                                                                                                                                                                                |
-| `lib/types/index.ts`                                                                 | Re-exports `FlatDiscountType`.                                                                                                                                                                                                                                                                                                                                                                                              |
+| `lib/types/coupon.ts`                                                                | `DiscountType` widened to 4 literals; `DiscountValue` is now the discriminated union (`PercentageDiscount` / `FixedAmountDiscount` / `FreeDiscount` / `BogoDiscount`). New `FlatDiscountType` = legacy `'percentage'\|'fixed_amount'` used by the old dialogs.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `lib/types/customer.ts`                                                              | `PublicCoupon.discount` (the mobile customer type) now `DiscountValue \| null` — the API passes `discount` through raw, so the widened shape flows to customers unchanged.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `lib/validation/coupons.ts`                                                          | `discountValueSchema` is now `z.discriminatedUnion('type', …)` — percentage ≤100, fixed >0, free `value:null`, bogo buy/get ≥1 ints (+ optional `max_free`). `createCouponSchema` / `updateCouponSchema` inherit it automatically.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `lib/validation/__tests__/coupons-discount.test.ts`                                  | **NEW.** 13 tests: the 4 shapes accepted, bad shapes rejected (percentage >100, missing value, BOGO without `get`, `buy:0`, unknown type), plus end-to-end `createCouponSchema` with BOGO/FREE/legacy.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `app/business/[businessId]/coupons/components/coupon-table/columns.tsx`              | `formatDiscount` renders all 4 arms (`FREE`, `Buy 1 Get 1 FREE`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `app/business/[businessId]/redeemed-coupons/components/redemption-table/columns.tsx` | Same 4-arm `formatDiscount` for the cashier-facing redemptions table (and dropped a dead conditional type).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `app/business/[businessId]/coupons/components/add-coupon.tsx` + `update-coupon.tsx`  | Kept compiling on the legacy flat shape (`FlatDiscountType`); the update dialog narrows a FREE/BOGO row to percentage on open (they have no editable %/₱ value in the old UI). Both are replaced by the template-first dialog in this phase.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `lib/types/index.ts`                                                                 | Re-exports `FlatDiscountType`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 ### 7.2 Mobile deals API — verified, NO route change needed
 
@@ -547,7 +547,7 @@ type DiscountValue =
       (CLAUDE.md workflow: rollback artifact, cloud apply precedes app deploy).
 - [x] Browser-test BOGO/FREE creation against the applied constraint — the
       Phase 1 end-to-end run created a `B1T1` row (`{type:'bogo',buy:1,get:1,
-      value:null}`) and a percentage draft successfully against the live
+    value:null}`) and a percentage draft successfully against the live
       local CHECK.
 - [ ] Verify `supabase/tests/mobile_deals_and_outbox.test.sql` still passes
       (it must — the RPC is untouched, but the coupon rows it reads now
@@ -556,6 +556,7 @@ type DiscountValue =
 **Migration risk note:** JSONB union widening is the low-risk path; no column
 changes, no RPC rewrite, existing rows validate in place. Two real risks,
 both now mitigated:
+
 1. **The pre-existing CHECK.** `coupons_discount_structure` (20260526000008)
    demands a numeric `value` and percentage/fixed only — a migration that only
    ADDS the new constraint silently leaves bogo/free un-creatable. The
@@ -567,6 +568,58 @@ both now mitigated:
    ≥ 0 so legacy rows can never block the ALTER). The `free` arm requires
    `jsonb_typeof(value) = 'null'` — the app stores `{type:'free', value:null}`
    (key present), which the builder guarantees.
+
+### 7.5 Phase 2 — implemented (registration wizard)
+
+**Status: implemented, reviewed, browser-tested (25/25 checks), committed +
+pushed on `feat/business-dashboard-ux-revamp`, held for PR.** Migration
+`20260818000000_owner_events.sql` applied locally only.
+
+**What shipped (all §6.2 items):**
+
+1. **Honest copy** — `step-progress.tsx` side panel now says "Most owners
+   finish in about 5–10 minutes — progress saves as you go" and "Most shops
+   are approved automatically" (replacing the false "5 minutes" / "Instant
+   approval" claims). "Zero setup fees" stays.
+2. **lat/lng hidden** — `ShopInformation.tsx` removed the editable Latitude /
+   Longitude number inputs entirely. Coordinates are set only via the map pin
+   - "Use My Location" and shown as a read-only "Pin set: x, y" line (or a
+     "No pin set yet" hint). The map stays on `md+`.
+3. **Category step mobile polish** — `ShopCategoryStep.tsx`: the type filter
+   is now a sticky bar (pinned while the grid scrolls) with an active-type
+   chip; the grid is 2-col on mobile (was 1-col), with responsive card
+   heights that no longer clip.
+4. **Deal-step preset reuse** — `Deal.tsx` now shows the SAME preset chips as
+   the Phase 1 coupon dialog (5/10/15%, ₱, FREE, Buy 1 Take 1) by importing
+   `PROMO_TEMPLATES` (pure module — no cross-bundle risk). Picking one
+   prefills the discount (+ value or buy/get); the wizard now produces
+   FREE/BOGO coupons. `registrationDealSchema`, the deal route `bodySchema`,
+   `RegistrationDealInput`, `createBusinessRegistrationDeal`, and the client
+   `createRegistrationDeal` all carry the 4-arm discount. 4 new schema tests +
+   2 new write tests.
+5. **Reg-funnel instrumentation** — new `owner_events` table (migration
+   `20260818000000_owner_events.sql`: `owner_id` NOT NULL, `business_id`
+   nullable for pre-submit events, event + jsonb payload, RLS owner-insert /
+   owner-select / admin-select) + `logOwnerEvent` server action
+   (`app/business/registration/actions/ownerEvents.ts`, fire-and-forget:
+   never throws to the caller, silent no-op without a session). Wired:
+   `reg_step_viewed` (mount + step change), `reg_step_completed`,
+   `reg_step_error` (with the offending fields), `reg_back_nav`, and
+   `reg_submitted` (with `with_deal` / `require_documents`). 3 action tests.
+   Later phases extend the `OwnerEventName` union.
+
+**Browser verification (local DB, `owner@example.com` — an owner with
+no business, so the wizard is reachable):** honest copy replaces the claims;
+no Latitude/Longitude inputs; "No pin set yet" + "Use My Location" present;
+all 6 preset chips; BOGO Buy/Get inputs; 10% off prefills value 10; category
+grid is 2 columns at 390px; and `owner_events` gains `reg_step_viewed` (31)
+
+- `reg_step_completed` (1) rows for the test owner.
+
+**Still deferred:** Phase 2's deal step reuses preset chips but not the full
+bento deals-feed preview (that's the Phase 1 dashboard track); TD-019
+(`safeNext` owner path — return owners to the wizard after signup) was left
+for a later pass per the sequencing rules.
 
 ---
 

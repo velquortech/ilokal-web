@@ -32,6 +32,7 @@ import {
   type OfferingMode,
   type OfferingVocabulary,
 } from '@/lib/types/offering';
+import { logOwnerEvent } from '../actions/ownerEvents';
 
 type ContextType = {
   step: number; // 1-based index into `steps`
@@ -215,6 +216,17 @@ export function MultiStepFormProvider({
     localStorage.setItem('ilokal-registration-step', step.toString());
   }, [step]);
 
+  // Funnel: which step is on screen. Fired on mount (with the restored step)
+  // and on every step change, so the registration funnel can see where owners
+  // start and where they stall. Fire-and-forget; never blocks the wizard.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    void logOwnerEvent('reg_step_viewed', {
+      step,
+      step_id: steps[step - 1]?.title ?? null,
+    });
+  }, [step, steps]);
+
   // Validate current step and update canProceed
   useEffect(() => {
     if (!isHydrated) return;
@@ -265,13 +277,30 @@ export function MultiStepFormProvider({
 
   const nextStep = async () => {
     const valid = await validateStep();
-    if (!valid) return;
+    if (!valid) {
+      // A stall is the most interesting row in the funnel: it marks the step
+      // where owners get stuck (and, with `formState.errors`, what field).
+      void logOwnerEvent('reg_step_error', {
+        step,
+        step_id: steps[step - 1]?.title ?? null,
+        fields: Object.keys(form.formState.errors),
+      });
+      return;
+    }
 
+    void logOwnerEvent('reg_step_completed', {
+      step,
+      step_id: steps[step - 1]?.title ?? null,
+    });
     setStep((prev) => (prev < steps.length ? prev + 1 : prev));
     setCanProceed(false);
   };
 
   const prevStep = () => {
+    void logOwnerEvent('reg_back_nav', {
+      from_step: step,
+      step_id: steps[step - 1]?.title ?? null,
+    });
     setStep((prev) => (prev > 1 ? prev - 1 : prev));
     setCanProceed(true);
   };

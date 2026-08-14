@@ -50,13 +50,7 @@ function FilePreview({
   if (!url) return null;
 
   return (
-    <Image
-      src={url}
-      alt={alt}
-      width={0}
-      height={0}
-      className={className}
-    />
+    <Image src={url} alt={alt} width={0} height={0} className={className} />
   );
 }
 

@@ -5,6 +5,7 @@ import { ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { formatDiscountValue } from '@/lib/utils/formatDiscount';
 import type { RedemptionRecord, RedemptionStatus } from '@/lib/types';
 
 function getRedemptionStatus(record: RedemptionRecord): RedemptionStatus {
@@ -14,14 +15,9 @@ function getRedemptionStatus(record: RedemptionRecord): RedemptionStatus {
   return 'active';
 }
 
-function formatDiscount(
-  discount: RedemptionRecord['coupons'] extends null
-    ? null
-    : RedemptionRecord['coupons'],
-): string {
+function formatDiscount(discount: RedemptionRecord['coupons']): string {
   if (!discount) return '—';
-  const { type, value } = discount.discount;
-  return type === 'percentage' ? `${value}% off` : `₱${value} off`;
+  return formatDiscountValue(discount.discount);
 }
 
 function formatDate(iso: string | null): string {

@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import type { Coupon, ProductResponse } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ChevronRight } from 'lucide-react';
+import { formatDiscountValue } from '@/lib/utils/formatDiscount';
 import { CouponActions } from './coupon-actions';
 
 function getCouponStatus(coupon: Coupon): 'active' | 'expired' | 'upcoming' {
@@ -17,8 +18,7 @@ function getCouponStatus(coupon: Coupon): 'active' | 'expired' | 'upcoming' {
 
 function formatDiscount(coupon: Coupon): string {
   if (!coupon.discount) return '—';
-  const { type, value } = coupon.discount;
-  return type === 'percentage' ? `${value}% off` : `₱${value} off`;
+  return formatDiscountValue(coupon.discount);
 }
 
 export function createColumns(

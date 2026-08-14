@@ -10,6 +10,7 @@ import {
   PaginationState,
   RowSelectionState,
   OnChangeFn,
+  Table as TanStackTable,
 } from '@tanstack/react-table';
 
 import {
@@ -57,6 +58,17 @@ interface DataTableProps<TData, TValue> {
    * tell someone, and only the caller knows which happened.
    */
   emptyState?: ReactNode;
+  /**
+   * Layer 2 of the mobile strategy (§6.8): a card-list renderer for touch
+   * screens.
+   *
+   * One TanStack instance, two renderers. When provided, the `<Table>` is
+   * hidden below `md` and this renders instead, from the SAME
+   * `table.getRowModel().rows` — so sorting, pagination, selection and
+   * expansion stay single-source, and the caller reuses each column's `cell`
+   * via `flexRender` instead of rebuilding row UI.
+   */
+  renderMobile?: (table: TanStackTable<TData>) => ReactNode;
 }
 
 export function DataTable<TData, TValue>({
@@ -70,6 +82,7 @@ export function DataTable<TData, TValue>({
   selection,
   toolbar,
   emptyState,
+  renderMobile,
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
     data,
@@ -92,10 +105,19 @@ export function DataTable<TData, TValue>({
     manualFiltering: true, // Crucial for server-side
   });
 
+  const hasRows = table.getRowModel().rows.length > 0;
+
   return (
     <div className="space-y-4">
       {toolbar}
-      <div className="rounded-md border">
+      <div
+        className={cn(
+          'rounded-md border',
+          // With a card-view fallback the table is desktop-only; without one
+          // it stays the single renderer on every size.
+          renderMobile && hasRows && 'hidden md:block',
+        )}
+      >
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -152,6 +174,9 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
+      {renderMobile && hasRows && (
+        <div className="md:hidden">{renderMobile(table)}</div>
+      )}
       <DataTablePagination table={table} />
     </div>
   );

@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { DataTable } from '@/components/custom/data-table/DataTable';
 import { getColumns } from './columns';
+import { MobileProductCardList } from './mobile-product-card-list';
 import {
   SortingState,
   PaginationState,
@@ -90,6 +91,7 @@ export function ProductTable({
             onDone={() => setRowSelection({})}
           />
         }
+        renderMobile={(table) => <MobileProductCardList table={table} />}
       />
     </div>
   );

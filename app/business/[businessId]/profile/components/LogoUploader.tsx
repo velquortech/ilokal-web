@@ -11,12 +11,18 @@ interface LogoUploaderProps {
   businessId: string;
   value: string | null;
   onChange: (url: string) => void;
+  /**
+   * Overlay variant for the Shop Identity hero: renders just the square
+   * picker (no caption line) so it can sit on top of the banner image.
+   */
+  compact?: boolean;
 }
 
 export function LogoUploader({
   businessId,
   value,
   onChange,
+  compact = false,
 }: LogoUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -104,9 +110,11 @@ export function LogoUploader({
         </span>
       </button>
 
-      <p className="text-muted-foreground text-xs">
-        JPG, PNG or WebP · max 2 MB
-      </p>
+      {!compact && (
+        <p className="text-muted-foreground text-xs">
+          JPG, PNG or WebP · max 2 MB
+        </p>
+      )}
 
       <input
         ref={inputRef}

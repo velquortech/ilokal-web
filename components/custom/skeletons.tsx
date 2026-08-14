@@ -196,13 +196,20 @@ export function ProfilePageSkeleton() {
   return (
     <StatusRegion className="gap-6 p-6">
       <PageHeaderSkeleton action={false} />
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="flex flex-col gap-6 lg:col-span-2">
-          <FormCardSkeleton fields={4} />
-          <FormCardSkeleton fields={3} />
+      <div className="flex flex-col gap-6">
+        {/* Shop Identity hero (banner + logo overlay) */}
+        <div className="relative h-64 w-full overflow-hidden rounded-xl">
+          <Skeleton className="h-full w-full" />
+          <Skeleton className="absolute bottom-6 left-6 size-24 rounded-2xl" />
         </div>
-        <div className="lg:col-span-1">
-          <Skeleton className="h-64 w-full rounded-xl" />
+        {/* Basic Information */}
+        <FormCardSkeleton fields={4} />
+        {/* Photo Gallery */}
+        <FormCardSkeleton fields={2} />
+        {/* Personal info + account status */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          <Skeleton className="h-56 w-full rounded-xl lg:col-span-2" />
+          <Skeleton className="h-56 w-full rounded-xl" />
         </div>
       </div>
     </StatusRegion>

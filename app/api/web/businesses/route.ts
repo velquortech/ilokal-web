@@ -36,6 +36,25 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    // Owners must pick a predefined business type. An invented "custom" type
+    // has no vertical, so the business falls back to the retail offering mode
+    // and breaks the type-scoped sorting and category scoping everywhere
+    // downstream — the same reason the registration step no longer offers the
+    // Custom option. The client schema still ACCEPTS a restored custom draft
+    // (so a cached submission can be reviewed), but this guard is the
+    // authoritative rejection: even a crafted request cannot create one.
+    const category = parsed.data.business_category as
+      | { type?: string }
+      | undefined;
+    if (category?.type === 'custom') {
+      return NextResponse.json(
+        {
+          message:
+            'Custom business categories are no longer supported. Pick a business type and category from the list.',
+        },
+        { status: 400 },
+      );
+    }
     const newBusiness = await createBusinessDraft({
       ...parsed.data,
       category_id: parsed.data.category_id ?? null,

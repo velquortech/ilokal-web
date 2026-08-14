@@ -76,6 +76,27 @@ describe('POST /api/web/businesses (JSON metadata)', () => {
     expect(businessApi.createBusinessDraft).not.toHaveBeenCalled();
   });
 
+  it('rejects a custom business category with 400 and no draft call', async () => {
+    // The registration step no longer offers Custom, and the API must not
+    // accept it from a crafted request either: an invented type has no
+    // vertical, so the business would fall back to retail offering mode and
+    // break type-scoped sorting/category scoping downstream.
+    const res = await createBusinessPOST(
+      jsonRequest({
+        ...validMeta,
+        business_category: {
+          type: 'custom',
+          name: 'My Invented Type',
+          description: 'Description required for custom',
+        },
+      }),
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(JSON.stringify(body)).toContain('no longer supported');
+    expect(businessApi.createBusinessDraft).not.toHaveBeenCalled();
+  });
+
   it('returns a generic 400 when creation fails (no raw error leak)', async () => {
     vi.mocked(businessApi.createBusinessDraft).mockRejectedValue(
       new Error('duplicate key value violates unique constraint'),

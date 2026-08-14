@@ -1,7 +1,13 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Ellipsis, FileText, XCircle } from 'lucide-react';
+import {
+  CheckCircle2,
+  Ellipsis,
+  FileText,
+  History,
+  XCircle,
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { BusinessVerificationStatus } from '@/lib/types/business';
 import { ViewDocumentsDialog } from './view-documents';
+import { ChangeHistoryDialog } from './change-history-dialog';
 import { ApproveDocumentsDialog } from './approve-documents';
 import { DisapproveDocumentsDialog } from './disapprove-documents';
 
@@ -47,6 +54,16 @@ export function BusinessActions({
               View Documents
             </DropdownMenuItem>
           </ViewDocumentsDialog>
+
+          <ChangeHistoryDialog
+            businessId={businessId}
+            businessName={businessName}
+          >
+            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+              <History />
+              Change History
+            </DropdownMenuItem>
+          </ChangeHistoryDialog>
 
           {(canApprove || canDisapprove) && <DropdownMenuSeparator />}
 

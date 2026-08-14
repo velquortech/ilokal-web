@@ -14,6 +14,7 @@ import { verifyCurrentUserIsAdmin } from '@/lib/api/admin/adminActionHelpers';
 import { businessFiltersSchema } from '@/lib/validation/business';
 import { countBusinessesByStatus } from '@/lib/api/business/businessQuery';
 import businessService from '@/lib/services/businessService';
+import { createServerSupabaseClient } from '@/supabase/server';
 import {
   BusinessActionResponse,
   AdminBusiness,
@@ -126,6 +127,79 @@ export async function getBusinessCountsAction(): Promise<
     return {
       error: 'Failed to fetch counts',
     };
+  }
+}
+
+// ============================================================================
+// AUDIT / CHANGE HISTORY
+// ============================================================================
+
+/**
+ * One audit_log row for a business, with the actor's name resolved.
+ *
+ * Only `table_name = 'businesses'` rows are shown here — the status rows
+ * (verification workflow, from 20260526000011) and the taxonomy rows
+ * (category / business-type re-classification by the owner, from
+ * 20260816000000). Reads are admin-only: the audit_log RLS policy restricts
+ * SELECT to admins, and `verifyCurrentUserIsAdmin` gates this action too.
+ */
+export interface BusinessAuditEntry {
+  id: string;
+  old_value: Record<string, unknown> | null;
+  new_value: Record<string, unknown> | null;
+  performed_at: string;
+  performed_by_name: string | null;
+}
+
+/**
+ * Fetch the change history for one business, newest first.
+ */
+export async function getBusinessAuditLogAction(
+  businessId: string,
+): Promise<
+  | { success: true; data: BusinessAuditEntry[] }
+  | { success: false; error: string }
+> {
+  try {
+    const { authorized, error } = await verifyCurrentUserIsAdmin();
+    if (!authorized) {
+      return { success: false, error: error || 'Unauthorized' };
+    }
+
+    const supabase = await createServerSupabaseClient();
+    const { data, error: apiError } = await supabase
+      .from('audit_log')
+      .select(
+        'id, old_value, new_value, performed_at, profiles!audit_log_performed_by_fkey(full_name, email)',
+      )
+      .eq('table_name', 'businesses')
+      .eq('record_id', businessId)
+      .order('performed_at', { ascending: false })
+      .limit(50);
+
+    if (apiError) {
+      return { success: false, error: apiError.message };
+    }
+
+    return {
+      success: true,
+      data: (data ?? []).map((row) => {
+        const profile = row.profiles as {
+          full_name?: string | null;
+          email?: string | null;
+        } | null;
+        return {
+          id: row.id,
+          old_value: (row.old_value ?? null) as Record<string, unknown> | null,
+          new_value: (row.new_value ?? null) as Record<string, unknown> | null,
+          performed_at: row.performed_at as string,
+          performed_by_name: profile?.full_name ?? profile?.email ?? null,
+        };
+      }),
+    };
+  } catch (err) {
+    logActionError('getBusinessAuditLogAction', err);
+    return { success: false, error: 'Failed to fetch change history' };
   }
 }
 

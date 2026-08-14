@@ -10,7 +10,7 @@ import {
   LucideIcon,
 } from 'lucide-react';
 
-const iconMap: Record<string, LucideIcon> = {
+export const iconMap: Record<string, LucideIcon> = {
   Coffee,
   Store,
   Scissors,

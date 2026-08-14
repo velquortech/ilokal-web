@@ -11,7 +11,7 @@
 #
 # What it does:
 #   1. pg_dump the LIVE database — DATA ONLY, scoped to the four schemas we
-#      replace, excluding the supabase_migrations.schema_migrations ledger.
+#      replace, excluding the migration ledgers (supabase_migrations.schema_migrations, auth.schema_migrations, storage.migrations, storage.buckets_vectors, storage.vector_indexes).
 #      The local SCHEMA comes from your own migrations (`make migrate-up`), so
 #      the snapshot stays version-agnostic and the migration ledger is never
 #      overwritten. pg_dump's own setval emission carries the live sequence
@@ -105,6 +105,10 @@ docker run --rm --network host -i "$DB_IMG" pg_dump "$LIVE_DB_URL" \
   --schema=storage \
   --schema=graphql_public \
   --exclude-table-data='supabase_migrations.schema_migrations' \
+  --exclude-table-data='auth.schema_migrations' \
+  --exclude-table-data='storage.migrations' \
+  --exclude-table-data='storage.buckets_vectors' \
+  --exclude-table-data='storage.vector_indexes' \
   > "$DUMP_FILE"
 
 # ─────────────────────────── 2. truncate local ──────────────────────────────
@@ -117,6 +121,7 @@ BEGIN
     SELECT schemaname, tablename
       FROM pg_tables
      WHERE schemaname IN ('public', 'auth', 'storage', 'graphql_public')
+       AND has_table_privilege('postgres', schemaname || '.' || tablename, 'TRUNCATE')
   LOOP
     EXECUTE format('TRUNCATE TABLE %I.%I CASCADE', r.schemaname, r.tablename);
   END LOOP;

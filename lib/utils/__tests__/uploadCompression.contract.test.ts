@@ -35,8 +35,19 @@ const IMAGE_SURFACES = [
  * canvas is a corrupt PDF — so they must stay off the list above.
  */
 const DOCUMENT_SURFACES = [
-  'app/business/registration/steps/Documents.tsx',
   'app/business/[businessId]/branches/create/steps/step-branch-documents.tsx',
+];
+
+/**
+ * Registration's documents step is BOTH: a photographed license is an image and
+ * gets the same compression as every other image surface (a phone photo is
+ * 3–6 MB against the 2 MB cap, and the step's own guidelines say "Scanned
+ * copies or photos are acceptable"), while a true PDF/DOCX must still go
+ * through untouched. So it lives on the image list for the call it makes, and
+ * a separate guard asserts the compression is image-gated.
+ */
+const MIXED_DOCUMENT_IMAGE_SURFACES = [
+  'app/business/registration/steps/Documents.tsx',
 ];
 
 describe('image uploads compress first', () => {
@@ -65,6 +76,17 @@ describe('image uploads compress first', () => {
         read(file).includes('compressImage'),
         `${file} uploads documents — running them through a canvas corrupts them`,
       ).toBe(false);
+    }
+  });
+
+  it('registration compresses photographed documents, but only images', () => {
+    for (const file of MIXED_DOCUMENT_IMAGE_SURFACES) {
+      const source = read(file);
+      // It calls the shared compressor (the image branch)…
+      expect(source).toContain('compressImage');
+      // …but gates it on the pick being an image, so a PDF/DOCX still travels
+      // as raw bytes and a canvas can never corrupt it.
+      expect(source).toContain("type.startsWith('image/')");
     }
   });
 

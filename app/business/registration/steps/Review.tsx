@@ -13,8 +13,52 @@ import { Checkbox } from '@/components/ui/checkbox';
 import Image from 'next/image';
 import { FileText, HandCoins } from 'lucide-react';
 import { Controller, useWatch } from 'react-hook-form';
+import { useEffect, useState } from 'react';
 import { BusinessProps } from '../validator/business-registration-form-schema';
 import { LegalDialog } from '../components/legal-dialog';
+
+/**
+ * Previews a File with a lifecycle-managed object URL.
+ *
+ * `URL.createObjectURL` must be revoked when the component goes away or every
+ * re-render leaks a URL (the file stays pinned in memory for the document's
+ * life). The old inline `src={URL.createObjectURL(file)}` in this step minted
+ * a fresh URL on EVERY render — toggling the terms checkbox re-created the
+ * gallery's URLs and leaked every previous one.
+ */
+function FilePreview({
+  file,
+  alt,
+  className,
+}: {
+  file: File;
+  alt: string;
+  className?: string;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) {
+      setUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  if (!url) return null;
+
+  return (
+    <Image
+      src={url}
+      alt={alt}
+      width={0}
+      height={0}
+      className={className}
+    />
+  );
+}
 
 export function ShopReview() {
   const { form, requireDocuments } = useMultiStepForm();
@@ -109,15 +153,30 @@ export function ShopReview() {
           <div>
             <Label className="mb-2">Shop Logo</Label>
             {data.shop_logo ? (
-              <Image
-                src={URL.createObjectURL(data.shop_logo)}
+              <FilePreview
+                file={data.shop_logo}
                 alt="Shop Logo"
-                width={400}
-                height={400}
-                className="rounded-lg border object-contain"
+                className="size-32 rounded-lg border object-contain"
               />
             ) : (
               <p className="text-muted-foreground">No logo uploaded</p>
+            )}
+          </div>
+
+          {/* The banner the owner will actually see on the shop page — shown
+              wide and cropped, like the hero renders it, not in a square. */}
+          <div>
+            <Label className="mb-2">Shop Banner</Label>
+            {data.shop_banner ? (
+              <div className="relative aspect-[3/1] w-full overflow-hidden rounded-lg border">
+                <FilePreview
+                  file={data.shop_banner}
+                  alt="Shop Banner"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ) : (
+              <p className="text-muted-foreground">No banner uploaded</p>
             )}
           </div>
 
@@ -126,14 +185,16 @@ export function ShopReview() {
             <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {data.interior_images && data.interior_images.length > 0 ? (
                 data.interior_images.map((file: File, idx: number) => (
-                  <Image
+                  <div
                     key={idx}
-                    src={URL.createObjectURL(file)}
-                    alt={`Interior ${idx + 1}`}
-                    width={0}
-                    height={0}
-                    className="h-full w-full rounded-lg border object-contain"
-                  />
+                    className="relative aspect-video w-full overflow-hidden rounded-lg border"
+                  >
+                    <FilePreview
+                      file={file}
+                      alt={`Interior ${idx + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
                 ))
               ) : (
                 <p className="text-muted-foreground">

@@ -118,10 +118,18 @@ DO $$
 DECLARE r RECORD;
 BEGIN
   FOR r IN
-    SELECT schemaname, tablename
-      FROM pg_tables
-     WHERE schemaname IN ('public', 'auth', 'storage', 'graphql_public')
-       AND has_table_privilege('postgres', schemaname || '.' || tablename, 'TRUNCATE')
+    SELECT t.schemaname, t.tablename
+      FROM pg_tables t
+      LEFT JOIN pg_depend d
+        ON d.classid = 'pg_class'::regclass
+       AND d.objid = format('%I.%I', t.schemaname, t.tablename)::regclass
+       AND d.refclassid = 'pg_extension'::regclass
+      LEFT JOIN pg_extension e
+        ON e.oid = d.refobjid
+       AND e.extnamespace = 'public'::regnamespace
+     WHERE t.schemaname IN ('public', 'auth', 'storage', 'graphql_public')
+       AND e.oid IS NULL  -- skip extension-owned tables (e.g. postgis spatial_ref_sys)
+       AND has_table_privilege('postgres', t.schemaname || '.' || t.tablename, 'TRUNCATE')
   LOOP
     EXECUTE format('TRUNCATE TABLE %I.%I CASCADE', r.schemaname, r.tablename);
   END LOOP;

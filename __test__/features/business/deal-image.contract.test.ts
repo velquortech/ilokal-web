@@ -24,6 +24,12 @@ const ADD_COUPON =
   'app/business/[businessId]/coupons/components/add-coupon.tsx';
 const UPDATE_COUPON =
   'app/business/[businessId]/coupons/components/update-coupon.tsx';
+// The picker and the photo wiring moved into the shared template-first dialog
+// (Phase 1) — the chain to assert is the same, one level down.
+const PROMO_FORM_DIALOG =
+  'app/business/[businessId]/coupons/components/promo-form-dialog.tsx';
+const PROMO_TEMPLATES =
+  'app/business/[businessId]/coupons/components/promo-templates.ts';
 
 describe('the column exists and the RPC projects it', () => {
   const sql = read(MIGRATION);
@@ -83,22 +89,38 @@ describe('IMG17 — it stays editable after registration', () => {
     );
   });
 
-  it.each([ADD_COUPON, UPDATE_COUPON])(
-    '%s offers the picker through the shared field',
-    (file) => {
-      const source = read(file);
-      // The shared field is what runs compressImage — a phone photo is 3-6 MB
-      // against a 2 MB cap, so a bespoke picker would reject the pictures this
-      // exists to accept.
-      expect(source).toMatch(/<ImageUploadField/);
-      expect(source).toMatch(/image_url: image_url \?\? null/);
-      expect(source).not.toMatch(/createImageBitmap|toBlob\(/);
-    },
-  );
+  it('the shared dialog offers the picker through the shared field', () => {
+    const source = read(PROMO_FORM_DIALOG);
+    // The shared field is what runs compressImage — a phone photo is 3-6 MB
+    // against a 2 MB cap, so a bespoke picker would reject the pictures this
+    // exists to accept.
+    expect(source).toMatch(/<ImageUploadField/);
+    expect(source).not.toMatch(/createImageBitmap|toBlob\(/);
+  });
+
+  it('create writes the uploaded image via the shared request builder', () => {
+    // The `?? null` lives in the builder: no upload → explicit null on create
+    // (the row is new, there is no existing photo to preserve).
+    expect(read(PROMO_TEMPLATES)).toMatch(
+      /image_url: opts\.imageUrl \?\? null/,
+    );
+    expect(read(ADD_COUPON)).toMatch(/buildPromoRequest/);
+  });
+
+  it('edit preserves the photo unless a new one was picked', () => {
+    // The service treats `undefined` as "not sent" and null as "remove the
+    // photo" — sending null on every save used to wipe a deal's image the
+    // moment an owner edited anything else.
+    expect(read(UPDATE_COUPON)).toMatch(
+      /if \(!\(image instanceof File\)\) delete request\.image_url/,
+    );
+  });
 
   it('shows the existing photo when editing', () => {
     // Without a defaultValue the owner sees an empty picker and cannot tell
     // whether the deal already has a photo.
-    expect(read(UPDATE_COUPON)).toMatch(/defaultValue=\{coupon\.image_url/);
+    expect(read(PROMO_FORM_DIALOG)).toMatch(
+      /defaultValue=\{initial\?\.image_url \?\? null\}/,
+    );
   });
 });

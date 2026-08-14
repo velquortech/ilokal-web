@@ -547,7 +547,7 @@ type DiscountValue =
       (CLAUDE.md workflow: rollback artifact, cloud apply precedes app deploy).
 - [x] Browser-test BOGO/FREE creation against the applied constraint — the
       Phase 1 end-to-end run created a `B1T1` row (`{type:'bogo',buy:1,get:1,
-  value:null}`) and a percentage draft successfully against the live
+value:null}`) and a percentage draft successfully against the live
       local CHECK.
 - [ ] Verify `supabase/tests/mobile_deals_and_outbox.test.sql` still passes
       (it must — the RPC is untouched, but the coupon rows it reads now
@@ -684,6 +684,82 @@ row edge. Chart-card visibility-by-scroll and time-to-checklist-dismiss
 moment; scroll visibility needs an IntersectionObserver — deferred to the
 mobile/IA phase to keep this diff small).
 
+### 7.7 Phase 4 — implemented (store nav pages)
+
+> **Roadmap renumber:** this is the spec's Phase-5 row ("Store nav pages")
+> delivered as the user's **Phase 4** — the spec's Phase-4 row ("IA /
+> navigation + mobile") is deferred. Scope = My Shop toolbar, Catalogues
+> status pills + mobile card view, Redemptions counter helper, Branches
+> shared fields. The full data-table mobile strategy for coupons/redemptions
+> (§6.8 Layer 1+2 on the hand-rolled tables, unify onto `DataTable`) stays
+> deferred.
+
+**Status: implemented, reviewed, browser-tested (26/26 checks), committed +
+pushed on `feat/business-dashboard-ux-revamp`, held for PR.** No new
+migration; no data-model change.
+
+**What shipped:**
+
+1. **My Shop toolbar** — new `ShopOwnerToolbar` (client) on the
+   customer-preview page: a bordered strip with the honest lede ("This is
+   your shop page — what customers see…") and three links — **Edit
+   profile** → `businessProfilePath`, **Add {offering}** →
+   `businessAddOfferingPath` (the `?add=1` marker opens the add dialog
+   directly; label follows the offering vocabulary), **Manage gallery** →
+   `businessShopGalleryPath`. The page stays a pure preview; the toolbar is
+   the only owner affordance.
+2. **Catalogues status pills + tooltips** — the status cell is now a
+   `Tooltip`-wrapped pill (focusable, `cursor-help`) explaining the
+   vocabulary: "Active = Visible to customers and on the app", "Unlisted =
+   Hidden from customers. Kept in your catalogue.", "Disabled = …" — from
+   the existing `PRODUCT_STATUS_OPTIONS` descriptions (single source).
+3. **DataTable mobile strategy (§6.8), Layer 1 + 2 for catalogues** — the
+   shared `DataTable` gained an optional `renderMobile(table)` prop: when
+   provided, the `<Table>` hides below `md` and a card list renders from the
+   SAME TanStack rows (sorting/pagination/selection stay single-source);
+   Section + Category columns declare `meta.responsiveClassName` as a safety
+   net. New `MobileProductCardList` reuses each column's `cell` via
+   `flexRender` — image (tappable → `ViewProduct`) + name/description
+   (tappable → `ViewProduct`) header, price + status-pill row, actions kebab
+   footer. Touch targets bumped to ≥44px on mobile: pager prev/next and
+   page-size trigger (`h-11 md:h-8`), product kebab (`h-11 w-11 md:h-8
+md:w-8`); desktop stays compact. Verified: at 375px no horizontal scroll,
+   cards render; at md+ the table returns and the card list hides.
+4. **Redemptions counter helper + rename** — sidebar and page title now say
+   **"Redemptions"** (route `/redeemed-coupons` unchanged; the old name made
+   the claims table read like a historical log). New prominent Alert above
+   the table: **"How to redeem at the counter"** — 1) ask for the code, 2)
+   search it (the `Search by coupon code…` input), 3) apply the discount and
+   the coupon is marked claimed. Search-bar input stays the counter's hero
+   control on the page header toolbar.
+5. **Branches shared fields + approval language** — the branch-creation
+   location step now matches registration (Phase 2): raw lat/lng number
+   inputs removed; coordinates are read-only and set only via the shared
+   `LocationPicker` map + "Use My Location" (`useGeolocation`), shown as
+   "Pin set: x, y" / "No pin set yet…" (the map/address components were
+   already DRY-shared). Branch cards and the branch-detail header explain
+   approval state in plain language: pending → "Customers can see this
+   branch once it's approved."; rejected → "This branch isn't visible to
+   customers." (the 6-step wizard already reuses the StepProgress visual
+   language).
+
+**Browser verification (local DB, Gugma — `gugmasalon@showcase.ilokal.dev`):**
+toolbar lede + all three links' hrefs (Edit profile, Add Service →
+`product-catalogues?add=1`, Manage gallery); at 375px the catalogue renders
+cards (product name, Active pill, kebab) with the table `display:none` and no
+horizontal scroll (scrollWidth=375), and at 1280px the table returns while
+the card list hides; Redemptions title + counter-helper steps + search
+placeholder + sidebar label (old name gone); a branch flipped to
+`pending_review` in the LOCAL DB (restored after) shows the approval note on
+its card; the branch wizard's location step has no lat/lng inputs, the
+read-only pin line, Use My Location, and the street-address field.
+
+**Deferred (kept small on purpose):** coupons + redemptions mobile card
+views and their port onto the shared `DataTable` (§6.8 — the two hand-rolled
+TanStack tables stay as-is this phase); apply-sale inline price preview;
+"guided add" flow beyond the existing `?add=1` deep link; branch wizard
+copy-map entries.
+
 ---
 
 ## 8. Filipino (Tagalog) copy variant
@@ -812,14 +888,14 @@ Proposed (spec-level):
 > Interview decision: each phase's section is reviewed/approved before
 > implementation. Phase order is a proposal; Phase 1 is fixed by interview.
 
-| Phase | Scope                            | Key deliverables                                                                                                                                                                                                                                                            | Approx risk   |
-| ----- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| **1** | Coupons & Deals flow             | Template-first creation (presets + code suggestions), BOGO/FREE data model + mobile render, duplicate, edit/status coherence, dialog restructure, Phase-1 instrumentation                                                                                                   | High (schema) |
-| **2** | Registration wizard              | Honest copy, lat/lng hidden, category-step mobile polish, deal-step preset reuse, reg funnel instrumentation                                                                                                                                                                | Low–Med       |
-| **3** | Dashboard home + onboarding      | Reordered home, KPI captions, empty/zero states, checklist polish, tour browser pass (TD-020), dashboard instrumentation                                                                                                                                                    | Low           |
-| **4** | IA / navigation + mobile         | Sidebar label review, Profile/Settings placement, mobile notifications + branch selector, Help entry only when route exists                                                                                                                                                 | Low           |
-| **5** | Store nav pages                  | Shop toolbar, catalogue status tooltips + guided add, redemptions rename + counter help, branches shared map/address components, **data-table mobile strategy (§6.8): column hiding + card-view fallback + 44px touch targets, unify coupons/redemptions onto `DataTable`** | Med           |
-| **6** | Account pages + Filipino variant | Profile status banner, settings polish, insights primer, copy map (en+fil) seeded from the §8.1 inventory (first 30) + Filipino rollout                                                                                                                                     | Med           |
+| Phase | Scope                                                   | Key deliverables                                                                                                                                                                                                                                                                                       | Approx risk   |
+| ----- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
+| **1** | Coupons & Deals flow                                    | Template-first creation (presets + code suggestions), BOGO/FREE data model + mobile render, duplicate, edit/status coherence, dialog restructure, Phase-1 instrumentation                                                                                                                              | High (schema) |
+| **2** | Registration wizard                                     | Honest copy, lat/lng hidden, category-step mobile polish, deal-step preset reuse, reg funnel instrumentation                                                                                                                                                                                           | Low–Med       |
+| **3** | Dashboard home + onboarding                             | Reordered home, KPI captions, empty/zero states, checklist polish, tour browser pass (TD-020), dashboard instrumentation                                                                                                                                                                               | Low           |
+| **4** | Store nav pages — delivered                             | Shop toolbar, catalogue status tooltips + **mobile card view (§6.8 Layer 1+2 on catalogues)**, redemptions rename + counter help, branches shared map/address fields + approval language. _(Delivered as the user's Phase 4; the spec's original Phase-4 row "IA / navigation + mobile" is deferred.)_ | Med           |
+| **5** | Coupons/redemptions mobile (deferred remainder of §6.8) | Card-view fallbacks for the coupons + redemptions tables and their port onto the shared `DataTable`, guided-add flow, apply-sale inline preview, IA/nav pass (sidebar labels, Profile/Settings placement, mobile notifications)                                                                        | Med           |
+| **6** | Account pages + Filipino variant                        | Profile status banner, settings polish, insights primer, copy map (en+fil) seeded from the §8.1 inventory (first 30) + Filipino rollout                                                                                                                                                                | Med           |
 
 Cross-cutting in every phase: light-first dark pass, a11y (axe + keyboard),
 mobile verification, `logActionError` in any new action, CHANGELOG update.

@@ -3,7 +3,8 @@
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PageHeader } from '@/components/custom/PageHeader';
-import { Building2 } from 'lucide-react';
+import { Building2, Info } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { SearchBar } from '@/components/custom/Searchbar';
 import { Card, CardContent } from '@/components/ui/card';
 import { RedemptionStats } from './redemption-stats';
@@ -99,7 +100,7 @@ export function RedeemedCouponsContent({
       {/* Branch goes in the eyebrow: which branch you are looking at is the
           context people lose most often on this page. */}
       <PageHeader
-        title="Redeemed Coupons"
+        title="Redemptions"
         eyebrow={
           <span className="inline-flex items-center gap-1.5">
             <Building2 className="size-3" />
@@ -110,6 +111,28 @@ export function RedeemedCouponsContent({
       />
 
       <RedemptionStats stats={stats} />
+
+      {/* The counter helper: this page is a tool a cashier stands behind, and
+          the empty state gave them nothing to do. The three steps tell them
+          what the table is for without making them guess. */}
+      <Alert>
+        <Info />
+        <AlertTitle>How to redeem at the counter</AlertTitle>
+        <AlertDescription className="space-y-1">
+          <p>
+            <strong>1.</strong> Ask for the customer&apos;s coupon code —
+            they&apos;ll show it from the app.
+          </p>
+          <p>
+            <strong>2.</strong> Search the code above to check what it&apos;s
+            worth and whether it&apos;s still valid.
+          </p>
+          <p>
+            <strong>3.</strong> Apply the discount, then the coupon is marked
+            claimed here.
+          </p>
+        </AlertDescription>
+      </Alert>
 
       <Card>
         <CardContent className="space-y-2">

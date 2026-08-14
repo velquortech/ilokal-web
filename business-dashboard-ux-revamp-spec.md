@@ -760,6 +760,55 @@ TanStack tables stay as-is this phase); apply-sale inline price preview;
 "guided add" flow beyond the existing `?add=1` deep link; branch wizard
 copy-map entries.
 
+### 7.8 Phase 5 — implemented (§6.8 data-table mobile strategy: coupons + redemptions)
+
+**Status: implemented, reviewed, browser-tested (24/24 checks), committed +
+pushed on `feat/business-dashboard-ux-revamp`, held for PR.** No new
+migration; no data-model change.
+
+**What shipped — the two hand-rolled TanStack tables are gone:**
+
+1. **`DataTable` gained expandable rows** — an optional
+   `expandable: { getRowCanExpand, renderExpanded }` prop wires
+   `getExpandedRowModel` + `onExpandedChange` and renders the expanded panel
+   full-width below the row (the pattern coupons/redemptions previously
+   hand-rolled). Expansion state lives in the composite, so it is shared
+   between the desktop table and the mobile card list (single source).
+2. **Coupons ported onto `DataTable`** — `CouponsTable` now renders through
+   the composite with `expandable` (Linked Products panel) and
+   `renderMobile`. Layer 1 (§6.8 table): `Type`, `Valid Period` and
+   `Redemptions` columns declare `hidden md:table-cell`. Layer 2:
+   `MobileCouponCardList` reuses each column's cell via `flexRender` —
+   chevron + mono code header, `Draft`/visibility + `Active`/availability
+   chips, discount + usage scope, expiry line, tap-to-expand Linked
+   Products, kebab footer (`CouponActions`).
+3. **Redemptions ported onto `DataTable`** — `RedeemedCouponsTable` renders
+   through the composite with `expandable` (Coupon Details panel) and
+   `renderMobile`. Layer 1: `Branch` and `Expires` hidden below `md`.
+   Layer 2: `MobileRedemptionCardList` — avatar + name + email, mono code,
+   discount, status badge, redeemed-on line, tap-to-expand Coupon Details.
+   The code search is now the **hero control on mobile** (leads the toolbar
+   below `md` via `order-first`).
+4. **Touch targets** — expand chevrons in both tables gained a `p-2.5`
+   hit area (≥44px), and the coupon kebab is `h-11 w-11 md:h-8 md:w-8`.
+   Catalogues already had its card view from Phase 4 — all three pages now
+   share one composite, one expansion model, one pager.
+
+**Browser verification (local DB, Gugma):** at 375px both pages render
+cards (mono codes incl. the Phase-1 `B1T1` BOGO "Buy 1 Get 1 FREE", chips,
+status badges, kebabs) with the desktop table `display:none` and
+scrollWidth=375; tap-to-expand reveals Linked Products (`Classic Manicure`)
+and Coupon Details; the redemptions search input leads the toolbar; at
+1280px the tables return with the Layer-1 headers (Type / Valid Period /
+Redemptions; Branch / Expires). Test fixtures seeded locally: 3
+`user_redemptions` rows (claimed/active/expired) and `B1T1` linked to one
+product (`usage_scope='specific_products'`).
+
+**Remaining §6.8 notes:** the redemptions table has no bulk selection; the
+coupons `select` column is inert on mobile cards (no bulk toolbar exists) —
+selection stays single-source where it is used. Card-mode axe/keyboard pass
+and the coupons/redemptions Filipino copy stay in the account-phases batch.
+
 ---
 
 ## 8. Filipino (Tagalog) copy variant
@@ -888,14 +937,13 @@ Proposed (spec-level):
 > Interview decision: each phase's section is reviewed/approved before
 > implementation. Phase order is a proposal; Phase 1 is fixed by interview.
 
-| Phase | Scope                                                   | Key deliverables                                                                                                                                                                                                                                                                                       | Approx risk   |
-| ----- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
-| **1** | Coupons & Deals flow                                    | Template-first creation (presets + code suggestions), BOGO/FREE data model + mobile render, duplicate, edit/status coherence, dialog restructure, Phase-1 instrumentation                                                                                                                              | High (schema) |
-| **2** | Registration wizard                                     | Honest copy, lat/lng hidden, category-step mobile polish, deal-step preset reuse, reg funnel instrumentation                                                                                                                                                                                           | Low–Med       |
-| **3** | Dashboard home + onboarding                             | Reordered home, KPI captions, empty/zero states, checklist polish, tour browser pass (TD-020), dashboard instrumentation                                                                                                                                                                               | Low           |
-| **4** | Store nav pages — delivered                             | Shop toolbar, catalogue status tooltips + **mobile card view (§6.8 Layer 1+2 on catalogues)**, redemptions rename + counter help, branches shared map/address fields + approval language. _(Delivered as the user's Phase 4; the spec's original Phase-4 row "IA / navigation + mobile" is deferred.)_ | Med           |
-| **5** | Coupons/redemptions mobile (deferred remainder of §6.8) | Card-view fallbacks for the coupons + redemptions tables and their port onto the shared `DataTable`, guided-add flow, apply-sale inline preview, IA/nav pass (sidebar labels, Profile/Settings placement, mobile notifications)                                                                        | Med           |
-| **6** | Account pages + Filipino variant                        | Profile status banner, settings polish, insights primer, copy map (en+fil) seeded from the §8.1 inventory (first 30) + Filipino rollout                                                                                                                                                                | Med           |
+| Phase | Scope                            | Key deliverables                                                                                                                                                                                                                                                                                       | Approx risk   |
+| ----- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- | --- | ----- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --- |
+| **1** | Coupons & Deals flow             | Template-first creation (presets + code suggestions), BOGO/FREE data model + mobile render, duplicate, edit/status coherence, dialog restructure, Phase-1 instrumentation                                                                                                                              | High (schema) |
+| **2** | Registration wizard              | Honest copy, lat/lng hidden, category-step mobile polish, deal-step preset reuse, reg funnel instrumentation                                                                                                                                                                                           | Low–Med       |
+| **3** | Dashboard home + onboarding      | Reordered home, KPI captions, empty/zero states, checklist polish, tour browser pass (TD-020), dashboard instrumentation                                                                                                                                                                               | Low           |
+| **4** | Store nav pages — delivered      | Shop toolbar, catalogue status tooltips + **mobile card view (§6.8 Layer 1+2 on catalogues)**, redemptions rename + counter help, branches shared map/address fields + approval language. _(Delivered as the user's Phase 4; the spec's original Phase-4 row "IA / navigation + mobile" is deferred.)_ | Med           |     | **5** | Coupons/redemptions mobile — delivered | Card-view fallbacks for the coupons + redemptions tables and their port onto the shared `DataTable` (§6.8 Layer 1+2, all three pages unified). Remaining: guided-add flow, apply-sale inline preview, IA/nav pass (sidebar labels, Profile/Settings placement, mobile notifications) | Med |
+| **6** | Account pages + Filipino variant | Profile status banner, settings polish, insights primer, copy map (en+fil) seeded from the §8.1 inventory (first 30) + Filipino rollout                                                                                                                                                                | Med           |
 
 Cross-cutting in every phase: light-first dark pass, a11y (axe + keyboard),
 mobile verification, `logActionError` in any new action, CHANGELOG update.

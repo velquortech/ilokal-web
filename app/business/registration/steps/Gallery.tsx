@@ -36,10 +36,10 @@ export function ShopGallery() {
           Banner Guidelines:
         </p>
         <ul className="text-foreground list-inside list-disc space-y-1 text-sm">
-          <li>Use a square or circular logo for best results</li>
-          <li>Minimum dimensions: 500x500 pixels</li>
-          <li>High contrast colors work best</li>
-          <li>Avoid text-heavy logos if possible</li>
+          <li>Use a wide landscape photo — banners are shown full-width</li>
+          <li>Minimum dimensions: 1200x400 pixels (or wider)</li>
+          <li>Keep important content away from the top and bottom edges</li>
+          <li>Avoid small text — it gets cropped on narrow screens</li>
         </ul>
       </div>
 
@@ -223,16 +223,27 @@ function ShopBanner() {
             >
               {preview ? (
                 <div className="flex flex-col items-center gap-4">
-                  <div className="relative">
-                    <div className="bg-card h-48 w-48 overflow-hidden rounded-lg border-2">
+                  {/* The banner is a WIDE cover image, not a square: preview it
+                      at the hero's own aspect ratio with object-cover so what
+                      the owner sees is the crop shoppers get (the shop page
+                      renders banner_url full-width h-40/h-80 object-cover). A
+                      square object-contain box — the old preview — shrank the
+                      image to a strip and hid exactly the cropping that
+                      matters. */}
+                  <div className="relative w-full">
+                    <div className="bg-card relative aspect-[3/1] w-full overflow-hidden rounded-lg border-2">
                       <Image
                         src={preview}
                         alt="Banner preview"
-                        className="h-full w-full object-contain"
-                        height={0}
-                        width={0}
+                        fill
+                        priority
+                        sizes="(max-width: 768px) 100vw, 60vw"
+                        className="object-cover"
                       />
                     </div>
+                    <p className="text-muted-foreground mt-1.5 text-center text-xs">
+                      Banners are cropped to fill the top of your shop page.
+                    </p>
 
                     <Button
                       variant="destructive"
@@ -267,7 +278,7 @@ function ShopBanner() {
                   <div>
                     <p className="mb-1 font-medium">Upload your banner</p>
                     <p className="text-muted-foreground text-sm">
-                      PNG, JPG or SVG (max. 2MB)
+                      PNG, JPG or SVG (max. 2MB) — wide landscape works best
                     </p>
                   </div>
 
@@ -346,11 +357,14 @@ function InteriorImageItem({
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="relative">
+        {/* object-cover, not contain: the shop gallery crops every interior to
+            a cover (masonry / aspect-video grid), so a letterboxed preview
+            hides the crop the owner is approving. */}
         <div className="bg-card border-border aspect-video h-64 overflow-hidden rounded-lg border-2">
           <Image
             src={preview}
             alt={`Interior ${index + 1}`}
-            className="h-full w-full object-contain"
+            className="h-full w-full object-cover"
             width={0}
             height={0}
           />

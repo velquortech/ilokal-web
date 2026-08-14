@@ -14,9 +14,14 @@ import {
   LucideIcon,
   HandCoins,
 } from 'lucide-react';
-import { MouseEvent, useRef } from 'react';
+import { MouseEvent, useRef, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { MAX_FILE_SIZE } from '../validator/business-registration-form-schema';
+import {
+  compressImage,
+  describeCompression,
+  COMPRESSION_PRESETS,
+} from '@/lib/utils/compressImage';
 
 export function ShopDocuments() {
   return (
@@ -64,6 +69,10 @@ function DocumentFileUpload(props: {
   const { form, cacheFile, clearFileCache } = useMultiStepForm();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fieldFile = form.watch(props.fieldName);
+  // A document is usually photographed with a phone (3–6 MB against a 2 MB
+  // cap), so a busy state is as necessary here as on the gallery step —
+  // without it the control looks frozen during the resize.
+  const [busy, setBusy] = useState(false);
 
   return (
     <Controller
@@ -137,11 +146,37 @@ function DocumentFileUpload(props: {
               type="file"
               accept=".pdf,.doc,.docx,image/*"
               className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
+              onChange={async (e) => {
+                const picked = e.target.files?.[0];
+                if (!picked) return;
 
-                if (file.size > MAX_FILE_SIZE) {
+                // Photographed documents get the same compression as the
+                // gallery images — a phone photo of a license is 3–6 MB against
+                // the 2 MB transport cap, and rejecting it raw is the one case
+                // this step's own guidelines tell owners to do ("Scanned copies
+                // or photos are acceptable"). PDFs/DOCX can't be re-encoded
+                // client-side, so they keep the plain size check.
+                let file = picked;
+                if (picked.type.startsWith('image/')) {
+                  setBusy(true);
+                  const result = await compressImage(picked, {
+                    maxBytes: MAX_FILE_SIZE,
+                    maxDimension: COMPRESSION_PRESETS.interior,
+                  });
+                  setBusy(false);
+                  file = result.file;
+
+                  if (file.size > MAX_FILE_SIZE) {
+                    form.setError(props.fieldName, {
+                      type: 'manual',
+                      message:
+                        describeCompression(result, '2 MB') ??
+                        'File must be 2MB or less',
+                    });
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                    return;
+                  }
+                } else if (file.size > MAX_FILE_SIZE) {
                   form.setError(props.fieldName, {
                     type: 'manual',
                     message: 'File must be 2MB or less',
@@ -161,6 +196,15 @@ function DocumentFileUpload(props: {
               }}
             />
 
+            {busy && (
+              <p
+                className="text-muted-foreground text-xs"
+                role="status"
+                aria-live="polite"
+              >
+                Resizing your photo…
+              </p>
+            )}
             {fieldState.error && <FieldError errors={[fieldState.error]} />}
           </div>
         </Field>

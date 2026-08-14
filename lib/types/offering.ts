@@ -247,6 +247,14 @@ export function offeringModeForVerticalName(
       return 'services';
     case 'Tourism & Leisure':
       return 'both';
+    case 'Entertainment & Events':
+      return 'both';
+    case 'Health & Wellness':
+      return 'services';
+    case 'Education & Learning':
+      return 'services';
+    case 'Home & Property Services':
+      return 'services';
     default:
       return 'products';
   }

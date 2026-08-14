@@ -1,23 +1,14 @@
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { Settings, Check, List, LucideIcon } from 'lucide-react';
+import { Check, List, LucideIcon } from 'lucide-react';
 import Image from 'next/image';
 import { useState } from 'react';
 import { useMultiStepForm } from '../provider/registration-form-provider';
@@ -40,50 +31,45 @@ export function ShopCategoryStep() {
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
-      {/* SELECT (unchanged UI, just wired) */}
+      {/* BUSINESS TYPE FILTER — heads the list; each option is a type, and the
+          grid below shows that type's categories. Deliberately no "Custom"
+          option: an owner-invented type has no vertical, so it falls back to
+          the retail offering mode and breaks the type-scoped sorting and
+          category scoping everywhere downstream. */}
       <Select
         onValueChange={(value) => {
           setSelected(value);
 
-          // reset form value depending on mode
-          if (value === 'Custom') {
-            form.setValue(
-              'business_category',
-              {
-                type: 'custom',
-                name: '',
-                description: '',
-              },
-              { shouldValidate: true },
-            );
-          } else {
-            form.setValue(
-              'business_category',
-              {
-                type: 'predefined',
-                name: '',
-                description: '',
-              },
-              { shouldValidate: true },
-            );
-          }
+          // Picking a filter never picks a category — it resets the selection
+          // so the owner chooses from the filtered grid.
+          form.setValue(
+            'business_category',
+            {
+              type: 'predefined',
+              name: '',
+              description: '',
+            },
+            { shouldValidate: true },
+          );
         }}
         defaultValue="All"
       >
         <SelectTrigger className="flex h-16! w-full items-center truncate overflow-hidden text-start ring-0 focus-visible:ring-0 focus-visible:ring-offset-0">
-          <SelectValue placeholder="Filter by business type" />
+          <SelectValue placeholder="Select business type" />
         </SelectTrigger>
 
         <SelectContent position="popper">
           <SelectGroup className="space-y-2">
+            <SelectLabel>Business Type</SelectLabel>
+
             <SelectItem value="All">
               <div className="bg-primary/10 text-primary! rounded p-2.5">
                 <List />
               </div>
               <div className="ml-4 flex flex-col">
-                <p className="font-medium">All Business Categories</p>
+                <p className="font-medium">All Business Types</p>
                 <p className="text-muted-foreground/50 min-w-0 flex-1 truncate overflow-hidden text-sm">
-                  Show all available business categories
+                  Show every business type's categories
                 </p>
               </div>
             </SelectItem>
@@ -101,119 +87,52 @@ export function ShopCategoryStep() {
                 </div>
               </SelectItem>
             ))}
-
-            <SelectItem value="Custom">
-              <div className="bg-primary/10 text-primary! rounded p-2.5">
-                <Settings />
-              </div>
-              <div className="ml-4 flex flex-col">
-                <p className="font-medium">Custom</p>
-                <p className="text-muted-foreground/50 min-w-0 flex-1 truncate overflow-hidden text-sm">
-                  Create custom category
-                </p>
-              </div>
-            </SelectItem>
           </SelectGroup>
         </SelectContent>
       </Select>
 
-      {/* MAIN FIELD */}
+      {/* CATEGORY GRID — the categories of the type selected above */}
       <Controller
         name="business_category"
         control={form.control}
         render={({ fieldState }) => (
           <Field data-invalid={fieldState.invalid}>
-            {/* PREDEFINED */}
-            {selected !== 'Custom' ? (
-              <div className="mt-4 text-sm">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {items?.map((item, idx) => {
-                    const isSelected =
-                      category?.type === 'predefined' &&
-                      category.name === item.name;
+            <div className="mt-4 text-sm">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {items?.map((item, idx) => {
+                  const isSelected =
+                    category?.type === 'predefined' &&
+                    category.name === item.name;
 
-                    return (
-                      <CategoryCard
-                        {...item}
-                        key={idx}
-                        isSelected={isSelected}
-                        hasSelected={
-                          category?.type === 'predefined' && !!category?.name
-                        }
-                        onSelect={() => {
-                          form.setValue(
-                            'business_category',
-                            {
-                              id: isSelected ? undefined : item.id,
-                              type: 'predefined',
-                              name: isSelected ? '' : item.name,
-                              description: item.description,
-                            },
-                            { shouldValidate: true },
-                          );
-                        }}
-                        type={businessTypes.find((x) =>
-                          x.items.find((t) => t.name === item.name),
-                        )}
-                      />
-                    );
-                  })}
-                </div>
+                  return (
+                    <CategoryCard
+                      {...item}
+                      key={idx}
+                      isSelected={isSelected}
+                      hasSelected={
+                        category?.type === 'predefined' && !!category?.name
+                      }
+                      onSelect={() => {
+                        form.setValue(
+                          'business_category',
+                          {
+                            id: isSelected ? undefined : item.id,
+                            type: 'predefined',
+                            name: isSelected ? '' : item.name,
+                            description: item.description,
+                          },
+                          { shouldValidate: true },
+                        );
+                      }}
+                      type={businessTypes.find((x) =>
+                        x.items.find((t) => t.name === item.name),
+                      )}
+                    />
+                  );
+                })}
               </div>
-            ) : (
-              /* CUSTOM */
-              <Card className="mt-10 max-h-96">
-                <CardHeader>
-                  <CardTitle>Create Custom Category</CardTitle>
-                  <CardDescription>
-                    Please fillout the form to continue
-                  </CardDescription>
-                </CardHeader>
+            </div>
 
-                <CardContent className="space-y-2">
-                  {/* NAME */}
-                  <Controller
-                    name="business_category.name"
-                    control={form.control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <Label>Category Name</Label>
-                        <Input
-                          {...field}
-                          placeholder="Enter name..."
-                          aria-invalid={fieldState.invalid}
-                        />
-                        {fieldState.error && (
-                          <FieldError errors={[fieldState.error]} />
-                        )}
-                      </Field>
-                    )}
-                  />
-
-                  {/* DESCRIPTION */}
-                  <Controller
-                    name="business_category.description"
-                    control={form.control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <Label className="mt-4">Description</Label>
-                        <Textarea
-                          {...field}
-                          rows={4}
-                          placeholder="Enter description..."
-                          aria-invalid={fieldState.invalid}
-                        />
-                        {fieldState.error && (
-                          <FieldError errors={[fieldState.error]} />
-                        )}
-                      </Field>
-                    )}
-                  />
-                </CardContent>
-              </Card>
-            )}
-
-            {/* ERROR (predefined mode) */}
             {fieldState.error && <FieldError errors={[fieldState.error]} />}
           </Field>
         )}

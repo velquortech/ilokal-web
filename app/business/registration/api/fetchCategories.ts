@@ -1,10 +1,24 @@
-import { Coffee, Store, Scissors, Plane, LucideIcon } from 'lucide-react';
+import {
+  Coffee,
+  Store,
+  Scissors,
+  Plane,
+  Clapperboard,
+  HeartPulse,
+  GraduationCap,
+  Hammer,
+  LucideIcon,
+} from 'lucide-react';
 
 const iconMap: Record<string, LucideIcon> = {
   Coffee,
   Store,
   Scissors,
   Plane,
+  Clapperboard,
+  HeartPulse,
+  GraduationCap,
+  Hammer,
 };
 
 export type BusinessCategory = {

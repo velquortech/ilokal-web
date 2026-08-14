@@ -144,6 +144,17 @@ describe('RM3 — kind follows the vertical, not the column default', () => {
     expect(offeringModeForVerticalName('Tourism & Leisure')).toBe('both');
     expect(offeringModeForVerticalName('Retail')).toBe('products');
     expect(offeringModeForVerticalName('Food & Beverage')).toBe('products');
+    // Launch verticals beyond Tourism (20260815000000) — mirrored in the DB
+    // trigger's CASE; a mismatch here silently types every new vertical's
+    // offerings as products.
+    expect(offeringModeForVerticalName('Entertainment & Events')).toBe('both');
+    expect(offeringModeForVerticalName('Health & Wellness')).toBe('services');
+    expect(offeringModeForVerticalName('Education & Learning')).toBe(
+      'services',
+    );
+    expect(offeringModeForVerticalName('Home & Property Services')).toBe(
+      'services',
+    );
   });
 
   it('falls back to products for a vertical the trigger would not match', () => {

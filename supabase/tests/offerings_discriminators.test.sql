@@ -112,10 +112,17 @@ BEGIN
 
   -- ─────────────────── categories scoping is opt-in ────────────────────────
 
-  -- Existing categories stay global (NULL) so today's picker is unchanged.
-  SELECT count(*) INTO v_bad_mode FROM categories WHERE business_type_id IS NOT NULL;
+  -- Scoping is opt-in per row: only categories deliberately pinned to a
+  -- vertical carry a business_type_id (20260801064656/20260805120000 pin most;
+  -- 20260815000000 pins one per new vertical). The rows that were meant to
+  -- stay GLOBAL must still be NULL — a pinned Health & Beauty would vanish
+  -- from every shop that is not a salon.
+  SELECT count(*) INTO v_bad_mode
+    FROM categories
+   WHERE slug IN ('health-beauty', 'gift-sets-bundles', 'other')
+     AND business_type_id IS NOT NULL;
   ASSERT v_bad_mode = 0,
-    format('categories were unexpectedly scoped by the migration: %s', v_bad_mode);
+    format('deliberately-global categories were scoped: %s', v_bad_mode);
 
   -- ─────────────────── phase 2: offering_profile seed ─────────────────────
 
@@ -126,7 +133,9 @@ BEGIN
     FROM business_types bt,
          LATERAL (VALUES ('products'), ('services'), ('both')) AS m(mode),
          LATERAL (VALUES ('singular'), ('plural'), ('catalogue')) AS n(noun)
-   WHERE bt.name IN ('Food & Beverage', 'Retail', 'Services', 'Tourism & Leisure')
+   WHERE bt.name IN ('Food & Beverage', 'Retail', 'Services', 'Tourism & Leisure',
+                     'Entertainment & Events', 'Health & Wellness',
+                     'Education & Learning', 'Home & Property Services')
      AND coalesce(bt.offering_profile -> m.mode ->> n.noun, '') = '';
   ASSERT v_bad_mode = 0,
     format('seeded offering_profile entries missing a noun: %s', v_bad_mode);

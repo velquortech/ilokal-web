@@ -4,6 +4,10 @@ DECLARE
     retail_id UUID;
     services_id UUID;
     tourism_id UUID;
+    entertainment_id UUID;
+    health_id UUID;
+    education_id UUID;
+    home_id UUID;
 BEGIN
     -- 1. Insert Business Types and capture IDs (idempotent)
     INSERT INTO business_types (name, description, icon)
@@ -25,6 +29,26 @@ BEGIN
     VALUES ('Tourism & Leisure', 'Businesses that cater to tourists and leisure activities, such as accommodations, tours, cultural experiences, and entertainment venues.', 'Plane')
     ON CONFLICT (name) DO NOTHING;
     SELECT id INTO tourism_id FROM business_types WHERE name = 'Tourism & Leisure';
+
+    INSERT INTO business_types (name, description, icon)
+    VALUES ('Entertainment & Events', 'Venues and businesses that host entertainment, recreation, and events — karaoke, arcades, billiards, function halls, and cinemas.', 'Clapperboard')
+    ON CONFLICT (name) DO NOTHING;
+    SELECT id INTO entertainment_id FROM business_types WHERE name = 'Entertainment & Events';
+
+    INSERT INTO business_types (name, description, icon)
+    VALUES ('Health & Wellness', 'Clinics, labs, and wellness providers offering consultations, treatments, and care.', 'HeartPulse')
+    ON CONFLICT (name) DO NOTHING;
+    SELECT id INTO health_id FROM business_types WHERE name = 'Health & Wellness';
+
+    INSERT INTO business_types (name, description, icon)
+    VALUES ('Education & Learning', 'Schools, tutors, and training centers offering classes and instruction.', 'GraduationCap')
+    ON CONFLICT (name) DO NOTHING;
+    SELECT id INTO education_id FROM business_types WHERE name = 'Education & Learning';
+
+    INSERT INTO business_types (name, description, icon)
+    VALUES ('Home & Property Services', 'Contractors and tradespeople providing repairs, installation, and property services.', 'Hammer')
+    ON CONFLICT (name) DO NOTHING;
+    SELECT id INTO home_id FROM business_types WHERE name = 'Home & Property Services';
 
     -- 1a. Scope the offering categories to their vertical (see
     -- 20260801064656). Repeated here because the migration matches ZERO rows
@@ -66,6 +90,16 @@ BEGIN
      WHERE slug IN (
        'rooms-stays', 'tours-day-trips', 'workshops-experiences',
        'vehicle-rental', 'event-spaces', 'tickets-entry');
+
+    -- New verticals (20260815000000) — one scoped offering category each.
+    UPDATE categories SET business_type_id = COALESCE(business_type_id, entertainment_id)
+     WHERE slug IN ('entertainment-events');
+    UPDATE categories SET business_type_id = COALESCE(business_type_id, health_id)
+     WHERE slug IN ('health-medical');
+    UPDATE categories SET business_type_id = COALESCE(business_type_id, education_id)
+     WHERE slug IN ('classes-training');
+    UPDATE categories SET business_type_id = COALESCE(business_type_id, home_id)
+     WHERE slug IN ('home-services');
 
     -- 'gift-sets-bundles' and 'other' stay global for the same reason as
     -- Health & Beauty: they belong in every vertical's picker.
@@ -132,6 +166,63 @@ BEGIN
         'fixed', 'from', 'per_day', 'per_person', 'per_event', 'on_request'),
       'default_booking_mode', 'request'
     )) WHERE id = tourism_id;
+
+    -- Launch verticals beyond Tourism (20260815000000). Mirror of the
+    -- migration's profiles; the migration matches ZERO rows on a fresh
+    -- database (types are created above, seeds run after migrations).
+    UPDATE business_types SET offering_profile = COALESCE(offering_profile, jsonb_build_object(
+      'products', jsonb_build_object(
+        'singular', 'Item', 'plural', 'Items', 'catalogue', 'Shop'),
+      'services', jsonb_build_object(
+        'singular', 'Package', 'plural', 'Packages', 'catalogue', 'Packages'),
+      'both', jsonb_build_object(
+        'singular', 'Offering', 'plural', 'Offerings', 'catalogue', 'Offerings'),
+      'icon', 'Clapperboard',
+      'fields', jsonb_build_array('duration_minutes', 'capacity', 'service_location'),
+      'allowed_price_types', jsonb_build_array(
+        'fixed', 'from', 'per_hour', 'per_person', 'per_event', 'on_request'),
+      'default_booking_mode', 'request'
+    )) WHERE id = entertainment_id;
+
+    UPDATE business_types SET offering_profile = COALESCE(offering_profile, jsonb_build_object(
+      'products', jsonb_build_object(
+        'singular', 'Item', 'plural', 'Items', 'catalogue', 'Shop'),
+      'services', jsonb_build_object(
+        'singular', 'Service', 'plural', 'Services', 'catalogue', 'Services'),
+      'both', jsonb_build_object(
+        'singular', 'Offering', 'plural', 'Offerings', 'catalogue', 'Offerings'),
+      'icon', 'HeartPulse',
+      'fields', jsonb_build_array('duration_minutes', 'lead_time_minutes', 'service_location'),
+      'allowed_price_types', jsonb_build_array(
+        'fixed', 'from', 'per_hour', 'per_person', 'on_request'),
+      'default_booking_mode', 'timeslot'
+    )) WHERE id = health_id;
+
+    UPDATE business_types SET offering_profile = COALESCE(offering_profile, jsonb_build_object(
+      'products', jsonb_build_object(
+        'singular', 'Item', 'plural', 'Items', 'catalogue', 'Shop'),
+      'services', jsonb_build_object(
+        'singular', 'Class', 'plural', 'Classes', 'catalogue', 'Classes'),
+      'both', jsonb_build_object(
+        'singular', 'Offering', 'plural', 'Offerings', 'catalogue', 'Offerings'),
+      'icon', 'GraduationCap',
+      'fields', jsonb_build_array('duration_minutes', 'lead_time_minutes', 'service_location'),
+      'allowed_price_types', jsonb_build_array('fixed', 'from', 'per_person', 'on_request'),
+      'default_booking_mode', 'request'
+    )) WHERE id = education_id;
+
+    UPDATE business_types SET offering_profile = COALESCE(offering_profile, jsonb_build_object(
+      'products', jsonb_build_object(
+        'singular', 'Item', 'plural', 'Items', 'catalogue', 'Shop'),
+      'services', jsonb_build_object(
+        'singular', 'Service', 'plural', 'Services', 'catalogue', 'Service Menu'),
+      'both', jsonb_build_object(
+        'singular', 'Offering', 'plural', 'Offerings', 'catalogue', 'Offerings'),
+      'icon', 'Hammer',
+      'fields', jsonb_build_array('duration_minutes', 'lead_time_minutes', 'service_location'),
+      'allowed_price_types', jsonb_build_array('fixed', 'from', 'per_hour', 'on_request'),
+      'default_booking_mode', 'inquiry'
+    )) WHERE id = home_id;
 
     -- 2. Insert Categories for Food & Beverage (skip if already seeded)
     IF NOT EXISTS (SELECT 1 FROM business_categories WHERE business_type_id = food_id) THEN
@@ -347,7 +438,7 @@ BEGIN
       (services_id, 'Auto Repair / Mechanic',
        'Vehicle repair and maintenance.',
        'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?q=80&w=1600&h=1200&fit=crop&auto=format'),
-      (services_id, 'Tutorial / Review Center',
+      (education_id, 'Tutorial / Review Center',
        'Academic tutoring and review classes.',
        'https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?q=80&w=1600&h=1200&fit=crop&auto=format'),
       (services_id, 'Event / Party Planner',
@@ -410,7 +501,7 @@ BEGIN
     INSERT INTO business_categories (business_type_id, name, description, image_url)
     SELECT v.business_type_id, v.name, v.description, v.image_url
     FROM (VALUES
-      (services_id, 'Medical / Dental Clinic',
+      (health_id, 'Medical / Dental Clinic',
        'General practice, dental, and specialist consultations.',
        'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?q=80&w=1600&h=1200&fit=crop&auto=format'),
       (services_id, 'Pet Grooming',
@@ -419,6 +510,92 @@ BEGIN
       (retail_id, 'Fruit / Vegetable Stand',
        'Fresh fruits, vegetables, and market produce.',
        'https://images.unsplash.com/photo-1610348725531-843dff563e2c?q=80&w=1600&h=1200&fit=crop&auto=format')
+    ) AS v(business_type_id, name, description, image_url)
+    WHERE NOT EXISTS (
+      SELECT 1 FROM business_categories existing
+       WHERE existing.name = v.name
+         AND existing.business_type_id = v.business_type_id
+    );
+
+    -- 11. The four launch verticals beyond Tourism (20260815000000):
+    -- Entertainment & Events, Health & Wellness, Education & Learning,
+    -- Home & Property Services. Composite guard (name + vertical), matching
+    -- block 8 — the migration creates the rows on existing databases; on a
+    -- fresh one (where the migration matched zero rows because the types did
+    -- not exist yet) this block is what puts them there. Same image rules as
+    -- block 3a/6/7: non-NULL, images.unsplash.com only, `h=1200` for the 4:3
+    -- crop. 'Tutorial / Review Center' and 'Medical / Dental Clinic' are the
+    -- moved categories and live under their new verticals here too.
+    INSERT INTO business_categories (business_type_id, name, description, image_url)
+    SELECT v.business_type_id, v.name, v.description, v.image_url
+    FROM (VALUES
+      -- Entertainment & Events
+      (entertainment_id, 'Karaoke / Videoke Bar',
+       'Karaoke, videoke, and singing rooms for groups.',
+       'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      (entertainment_id, 'Game Center / Arcade',
+       'Arcade games, consoles, and gaming lounges.',
+       'https://images.unsplash.com/photo-1511882150382-421056c89033?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      (entertainment_id, 'Event Venue / Function Hall',
+       'Venues for weddings, parties, and corporate events.',
+       'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      (entertainment_id, 'Cinema / Theater',
+       'Movie theaters and performance stages.',
+       'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      (entertainment_id, 'Billiards / Recreation Hall',
+       'Billiards, darts, and recreation halls.',
+       'https://images.unsplash.com/photo-1529257414772-1960b7bea4eb?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      -- Health & Wellness
+      (health_id, 'Veterinary Clinic',
+       'Pet health checkups, vaccinations, and treatments.',
+       'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      (health_id, 'Dental Clinic / Orthodontist',
+       'Dental consultations, cleaning, and orthodontics.',
+       'https://images.unsplash.com/photo-1606811841689-23dfddce3e95?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      (health_id, 'Physical Therapy / Rehabilitation',
+       'Rehab, physiotherapy, and mobility care.',
+       'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      (health_id, 'Mental Health / Counseling',
+       'Counseling, therapy, and mental wellness.',
+       'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      (health_id, 'Wellness / Holistic Therapy',
+       'Holistic and alternative wellness treatments.',
+       'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      (health_id, 'Diagnostic / Medical Laboratory',
+       'Lab tests, diagnostics, and medical imaging.',
+       'https://images.unsplash.com/photo-1579154204601-01588f351e67?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      -- Education & Learning
+      (education_id, 'Music / Arts School',
+       'Music, arts, and creative classes.',
+       'https://images.unsplash.com/photo-1507838153414-b4b713384a76?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      (education_id, 'Driving School',
+       'Driver education and practical training.',
+       'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      (education_id, 'Language / Enrichment Classes',
+       'Language and enrichment programs.',
+       'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      (education_id, 'Computer / IT Training',
+       'Computer literacy and IT skills training.',
+       'https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      (education_id, 'Daycare / Preschool',
+       'Child care and early education.',
+       'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      -- Home & Property Services
+      (home_id, 'General Contractor / Renovation',
+       'Construction, renovation, and fit-out services.',
+       'https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      (home_id, 'Plumbing / Electrical Services',
+       'Plumbing, electrical, and utility work.',
+       'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      (home_id, 'Aircon Repair / Installation',
+       'Aircon cleaning, repair, and installation.',
+       'https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      (home_id, 'Landscaping / Lawn Care',
+       'Gardens, lawns, and outdoor maintenance.',
+       'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      (home_id, 'Security / CCTV Installation',
+       'CCTV, alarms, and security systems.',
+       'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=1600&h=1200&fit=crop&auto=format')
     ) AS v(business_type_id, name, description, image_url)
     WHERE NOT EXISTS (
       SELECT 1 FROM business_categories existing

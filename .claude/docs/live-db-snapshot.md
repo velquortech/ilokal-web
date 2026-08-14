@@ -15,7 +15,8 @@ SUPABASE_DB_URL='postgresql://postgres:PASS@db.<ref>.supabase.co:5432/postgres' 
 
 1. **Dumps the live DB, data-only**, scoped to the four schemas it replaces
    (`public` / `auth` / `storage` / `graphql_public`) and excluding
-   `supabase_migrations.schema_migrations`. The local *schema* comes from your
+   `supabase_migrations.schema_migrations`, `auth.schema_migrations` and `storage.migrations`. The
+   local *schema* comes from your
    own migrations (`make migrate-up`), so the snapshot stays version-agnostic
    and the migration ledger is never overwritten. pg_dump's own setval
    emission carries the live sequence values.

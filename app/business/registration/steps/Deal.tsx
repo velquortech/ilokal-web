@@ -18,6 +18,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FieldError } from '@/components/ui/field';
 import { BadgePercent, X } from 'lucide-react';
 import { ImageUploadField } from '@/components/custom/upload/image-upload';
+import { cn } from '@/lib/utils';
+import { PROMO_TEMPLATES } from '@/app/business/[businessId]/coupons/components/promo-templates';
 import { MAX_FILE_SIZE } from '../validator/business-registration-form-schema';
 
 /** Windows an owner actually thinks in. Days, because the DB stores a date. */
@@ -40,6 +42,8 @@ const emptyDeal = () => ({
   description: '',
   discount_type: 'percentage' as const,
   discount_value: null as unknown as number,
+  bogo_buy: undefined,
+  bogo_get: undefined,
   duration_days: 30,
   // 🔴 Draft. See registrationDealSchema — publishing makes the coupon
   // immediately redeemable by a stranger.
@@ -136,29 +140,66 @@ export function ShopDeal() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="deal-type">Discount</Label>
-            <Select
-              value={deal.discount_type}
-              onValueChange={(value) =>
-                setValue(
-                  'deal.discount_type',
-                  value as 'percentage' | 'fixed_amount',
-                  { shouldValidate: true },
-                )
-              }
-            >
-              <SelectTrigger id="deal-type" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="percentage">Percentage off</SelectItem>
-                <SelectItem value="fixed_amount">Peso amount off</SelectItem>
-              </SelectContent>
-            </Select>
+        {/* PRESET CHIPS — the same vocabulary as the dashboard coupon dialog
+            (Phase 1), so the wizard teaches owners what they'll see later.
+            Picking one fills the discount fields below; the code stays
+            manual because a launch code is the owner's own marketing choice. */}
+        <div className="space-y-2">
+          <Label>Discount</Label>
+          <div className="flex flex-wrap gap-2">
+            {PROMO_TEMPLATES.filter((tpl) => tpl.id !== 'custom').map((tpl) => {
+              // Exact match, like the dashboard dialog: "10% off" only
+              // lights up when the value is 10, not every percentage chip.
+              const selected =
+                tpl.discount_type === 'percentage' ||
+                tpl.discount_type === 'fixed_amount'
+                  ? deal.discount_type === tpl.discount_type &&
+                    deal.discount_value === tpl.discount_value
+                  : deal.discount_type === tpl.discount_type;
+              return (
+                <button
+                  key={tpl.id}
+                  type="button"
+                  title={tpl.description}
+                  onClick={() => {
+                    setValue(
+                      'deal.discount_type',
+                      tpl.discount_type ?? 'percentage',
+                      { shouldValidate: true },
+                    );
+                    // Same prefill as the dashboard dialog: a preset sets
+                    // its value (5/10/15 or buy 1 get 1) and clears the
+                    // fields the other arms don't use.
+                    if (tpl.discount_type === 'bogo') {
+                      setValue('deal.discount_value', null);
+                      setValue('deal.bogo_buy', 1);
+                      setValue('deal.bogo_get', 1);
+                    } else if (tpl.discount_type === 'free') {
+                      setValue('deal.discount_value', null);
+                      setValue('deal.bogo_buy', undefined);
+                      setValue('deal.bogo_get', undefined);
+                    } else if (tpl.discount_type) {
+                      setValue('deal.discount_value', tpl.discount_value);
+                      setValue('deal.bogo_buy', undefined);
+                      setValue('deal.bogo_get', undefined);
+                    }
+                  }}
+                  className={cn(
+                    'border-border hover:border-muted-foreground/50 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+                    selected && 'border-primary bg-primary/5 text-primary',
+                  )}
+                >
+                  {tpl.label}
+                </button>
+              );
+            })}
           </div>
+        </div>
 
+        {/* TYPE-SPECIFIC FIELDS — percentage/fixed take a value, BOGO takes
+            buy/get quantities, FREE takes neither. */}
+        {(deal.discount_type === 'percentage' ||
+          deal.discount_type === 'fixed_amount') && (
           <div className="space-y-2">
             <Label htmlFor="deal-value">
               {deal.discount_type === 'percentage'
@@ -180,7 +221,46 @@ export function ShopDeal() {
               <FieldError>{dealErrors.discount_value.message}</FieldError>
             )}
           </div>
-        </div>
+        )}
+
+        {deal.discount_type === 'bogo' && (
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="deal-buy">Buy</Label>
+              <Input
+                id="deal-buy"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                placeholder="1"
+                {...register('deal.bogo_buy', {
+                  setValueAs: (v) =>
+                    v === '' || v == null ? undefined : Number(v),
+                })}
+              />
+              {dealErrors?.bogo_buy?.message && (
+                <FieldError>{dealErrors.bogo_buy.message}</FieldError>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="deal-get">Get (free)</Label>
+              <Input
+                id="deal-get"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                placeholder="1"
+                {...register('deal.bogo_get', {
+                  setValueAs: (v) =>
+                    v === '' || v == null ? undefined : Number(v),
+                })}
+              />
+              {dealErrors?.bogo_get?.message && (
+                <FieldError>{dealErrors.bogo_get.message}</FieldError>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="deal-description">Description (optional)</Label>

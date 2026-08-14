@@ -18,6 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { AxiosError } from 'axios';
 import { cn } from '@/lib/utils';
+import { logOwnerEvent } from '../actions/ownerEvents';
 
 const BUSINESS_ID_KEY = 'ilokal-registration-business-id';
 
@@ -222,6 +223,10 @@ export function ShopRegistrationContent() {
         description: deal.description,
         discount_type: deal.discount_type,
         discount_value: deal.discount_value,
+        // BOGO quantities ride alongside the type; the server builds the
+        // stored union from them (percentage/fixed/free ignore these).
+        bogo_buy: deal.bogo_buy,
+        bogo_get: deal.bogo_get,
         duration_days: deal.duration_days,
         // The owner's explicit choice, passed through untouched — defaulting
         // it anywhere in this chain is how a draft becomes a live discount.
@@ -279,11 +284,27 @@ export function ShopRegistrationContent() {
         await performSubmission(data);
       }
 
+      // Grab the id before the markers reset below wipes the ref (and the
+      // localStorage copy) — the funnel row still wants to attribute the
+      // submission to the business it created.
+      const submittedBusinessId = businessIdRef.current ?? undefined;
+
       clearFormCache();
       resetResumeMarkers();
       if (typeof window !== 'undefined') {
         localStorage.removeItem('ilokal-registration-step');
       }
+
+      // The funnel's final row: the submission succeeded. The deal's
+      // presence/absence is the kind of signal the funnel exists to answer.
+      void logOwnerEvent(
+        'reg_submitted',
+        {
+          with_deal: !!data.deal,
+          require_documents: requireDocuments,
+        },
+        submittedBusinessId,
+      );
 
       setShowSuccessDialog(true);
     } catch (error: unknown) {

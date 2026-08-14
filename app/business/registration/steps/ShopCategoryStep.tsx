@@ -18,7 +18,7 @@ import { Controller } from 'react-hook-form';
 
 export function ShopCategoryStep() {
   const { form, businessTypes } = useMultiStepForm();
-  const [selected, setSelected] = useState<string>();
+  const [selected, setSelected] = useState<string>('All');
   const category = form.watch('business_category');
 
   const items =
@@ -29,67 +29,82 @@ export function ShopCategoryStep() {
           [] as (typeof businessTypes)[number]['items'],
         );
 
+  // The type whose filter is active — shown in the step header so a long
+  // scroll through the grid never loses what the owner is looking at.
+  const activeType =
+    selected !== 'All' ? businessTypes.find((b) => b.name === selected) : null;
+
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
-      {/* BUSINESS TYPE FILTER — heads the list; each option is a type, and the
-          grid below shows that type's categories. Deliberately no "Custom"
+      {/* STICKY FILTER BAR — the type filter stays pinned while the grid
+          scrolls, and the active-type chip rides along so the owner always
+          knows which vertical they're browsing. Deliberately no "Custom"
           option: an owner-invented type has no vertical, so it falls back to
           the retail offering mode and breaks the type-scoped sorting and
           category scoping everywhere downstream. */}
-      <Select
-        onValueChange={(value) => {
-          setSelected(value);
+      <div className="bg-background sticky top-0 z-10 space-y-2 pb-2">
+        {activeType && (
+          <div className="bg-primary/10 text-primary inline-flex items-center gap-2 self-start rounded-full px-3 py-1 text-xs font-medium">
+            <activeType.icon className="size-3.5" />
+            {activeType.name}
+          </div>
+        )}
 
-          // Picking a filter never picks a category — it resets the selection
-          // so the owner chooses from the filtered grid.
-          form.setValue(
-            'business_category',
-            {
-              type: 'predefined',
-              name: '',
-              description: '',
-            },
-            { shouldValidate: true },
-          );
-        }}
-        defaultValue="All"
-      >
-        <SelectTrigger className="flex h-16! w-full items-center truncate overflow-hidden text-start ring-0 focus-visible:ring-0 focus-visible:ring-offset-0">
-          <SelectValue placeholder="Select business type" />
-        </SelectTrigger>
+        <Select
+          onValueChange={(value) => {
+            setSelected(value);
 
-        <SelectContent position="popper">
-          <SelectGroup className="space-y-2">
-            <SelectLabel>Business Type</SelectLabel>
+            // Picking a filter never picks a category — it resets the
+            // selection so the owner chooses from the filtered grid.
+            form.setValue(
+              'business_category',
+              {
+                type: 'predefined',
+                name: '',
+                description: '',
+              },
+              { shouldValidate: true },
+            );
+          }}
+          value={selected}
+        >
+          <SelectTrigger className="flex h-16! w-full items-center truncate overflow-hidden text-start ring-0 focus-visible:ring-0 focus-visible:ring-offset-0">
+            <SelectValue placeholder="Select business type" />
+          </SelectTrigger>
 
-            <SelectItem value="All">
-              <div className="bg-primary/10 text-primary! rounded p-2.5">
-                <List />
-              </div>
-              <div className="ml-4 flex flex-col">
-                <p className="font-medium">All Business Types</p>
-                <p className="text-muted-foreground/50 min-w-0 flex-1 truncate overflow-hidden text-sm">
-                  Show every business type's categories
-                </p>
-              </div>
-            </SelectItem>
+          <SelectContent position="popper">
+            <SelectGroup className="space-y-2">
+              <SelectLabel>Business Type</SelectLabel>
 
-            {businessTypes.map((b) => (
-              <SelectItem value={b.name} key={b.name}>
+              <SelectItem value="All">
                 <div className="bg-primary/10 text-primary! rounded p-2.5">
-                  <b.icon />
+                  <List />
                 </div>
                 <div className="ml-4 flex flex-col">
-                  <p className="font-medium">{b.name}</p>
+                  <p className="font-medium">All Business Types</p>
                   <p className="text-muted-foreground/50 min-w-0 flex-1 truncate overflow-hidden text-sm">
-                    {b.description}
+                    Show every business type's categories
                   </p>
                 </div>
               </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
+
+              {businessTypes.map((b) => (
+                <SelectItem value={b.name} key={b.name}>
+                  <div className="bg-primary/10 text-primary! rounded p-2.5">
+                    <b.icon />
+                  </div>
+                  <div className="ml-4 flex flex-col">
+                    <p className="font-medium">{b.name}</p>
+                    <p className="text-muted-foreground/50 min-w-0 flex-1 truncate overflow-hidden text-sm">
+                      {b.description}
+                    </p>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </div>
 
       {/* CATEGORY GRID — the categories of the type selected above */}
       <Controller
@@ -98,7 +113,7 @@ export function ShopCategoryStep() {
         render={({ fieldState }) => (
           <Field data-invalid={fieldState.invalid}>
             <div className="mt-4 text-sm">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
                 {items?.map((item, idx) => {
                   const isSelected =
                     category?.type === 'predefined' &&
@@ -170,7 +185,7 @@ function CategoryCard(item: {
           <Check className="text-primary m-auto size-3" />
         </div>
       )}
-      <div className="bg-muted border-border z-10 h-36 w-full overflow-hidden rounded-md border sm:h-52">
+      <div className="bg-muted border-border z-10 h-28 w-full overflow-hidden rounded-md border sm:h-52">
         <Image
           alt={item.name}
           src={item.imageURL}
@@ -184,8 +199,10 @@ function CategoryCard(item: {
           )}
         />
       </div>
-      <div className="mt-2 h-20 p-2 pb-0">
-        <p className="text-foreground font-medium">{item.name}</p>
+      <div className="mt-2 min-h-16 p-2 pb-0">
+        <p className="text-foreground text-sm font-medium sm:text-base">
+          {item.name}
+        </p>
         <p className="text-muted-foreground mt-1 text-xs">{item.description}</p>
       </div>
       {item.type && (

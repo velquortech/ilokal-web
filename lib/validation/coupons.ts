@@ -6,13 +6,51 @@
 import { z } from 'zod';
 
 // ===== Discount Schema =====
+// The stored shape on `coupons.discount` (JSONB). Discriminated on `type` so a
+// percentage cannot slip in without a 0..100 value and a BOGO cannot ship
+// without buy/get quantities. Kept in sync with `DiscountValue` in
+// lib/types/coupon.ts and the `coupons_discount_shape_check` constraint
+// (20260817000000) — widen all three together.
 
-export const discountTypeSchema = z.enum(['percentage', 'fixed_amount']);
+export const discountTypeSchema = z.enum([
+  'percentage',
+  'fixed_amount',
+  'free',
+  'bogo',
+]);
 
-export const discountValueSchema = z.object({
-  type: discountTypeSchema,
-  value: z.number().min(0),
+const percentageDiscountSchema = z.object({
+  type: z.literal('percentage'),
+  value: z
+    .number()
+    .positive('Discount must be more than zero')
+    .max(100, 'A percentage discount cannot be more than 100%'),
 });
+
+const fixedAmountDiscountSchema = z.object({
+  type: z.literal('fixed_amount'),
+  value: z.number().positive('Discount must be more than zero'),
+});
+
+const freeDiscountSchema = z.object({
+  type: z.literal('free'),
+  value: z.null(),
+});
+
+const bogoDiscountSchema = z.object({
+  type: z.literal('bogo'),
+  buy: z.number().int().min(1, 'Buy quantity must be at least 1'),
+  get: z.number().int().min(1, 'Get quantity must be at least 1'),
+  max_free: z.number().int().min(1).optional(),
+  value: z.null(),
+});
+
+export const discountValueSchema = z.discriminatedUnion('type', [
+  percentageDiscountSchema,
+  fixedAmountDiscountSchema,
+  freeDiscountSchema,
+  bogoDiscountSchema,
+]);
 
 // ===== Coupon Schemas =====
 

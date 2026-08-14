@@ -123,6 +123,7 @@ export type {
   FeaturedDeal,
   DiscountValue,
   DiscountType,
+  FlatDiscountType,
   PromotionType,
   CouponStatus,
   UsageScope,

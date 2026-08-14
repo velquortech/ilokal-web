@@ -7,6 +7,7 @@
 import type { PriceType } from './product';
 import type { BookingMode } from './offering';
 import type { OperatingHours, SocialLinks } from './settings';
+import type { DiscountValue } from './coupon';
 
 export interface DirectoryBusiness {
   id: string;
@@ -66,7 +67,8 @@ export interface PublicCoupon {
   id: string;
   code: string;
   description: string | null;
-  discount: { type: 'percentage' | 'fixed_amount'; value: number } | null;
+  /** Passed through from `coupons.discount` raw — the full union incl. FREE/BOGO. */
+  discount: DiscountValue | null;
   promotion_type: 'coupon' | 'deal';
   start_date: string;
   expiry_date: string;

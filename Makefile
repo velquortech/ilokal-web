@@ -55,6 +55,28 @@ run-dev:
 	yarn dev
 	@echo "running dev with supabase"
 
+# Run the app against the CLOUD project — no Docker, no local Supabase.
+#
+# Sources the git-ignored .env.cloud (cloud credentials) into the shell so its
+# values override .env's local ones (Next.js precedence: process env > .env.*),
+# then starts the dev server. Leaves .env and any running local stack alone.
+#
+# .env.cloud carries the full app-runtime set; refresh it with:
+#   npx vercel env pull --environment=production > .env.cloud
+#   (then re-add SUPABASE_DB_URL / SEED_DEV_PASSWORD if they were stripped)
+#
+# For local dev against the Docker stack, use `make run-dev` instead.
+dev-cloud:
+	@if [ ! -f .env.cloud ]; then \
+		echo "Missing .env.cloud — create it from .env.example and fill in the CLOUD values (or: npx vercel env pull)." >&2; \
+		exit 1; \
+	fi
+	@set -a; . ./.env.cloud; set +a; \
+	case "$$NEXT_PUBLIC_SUPABASE_URL" in \
+		*127.0.0.1*|*localhost*) echo "Refusing: NEXT_PUBLIC_SUPABASE_URL ($$NEXT_PUBLIC_SUPABASE_URL) looks local. Use \`make run-dev\` for the local stack." >&2; exit 1;; \
+	esac; \
+	yarn dev
+
 # Stop the dev-only Supabase services (analytics, studio, pg_meta, inbucket,
 # vector) and pin memory caps on the app-facing ones — the laptop-friendly
 # state that `supabase start` alone doesn't give you. `run-dev` calls this
@@ -211,4 +233,4 @@ review:
 	yarn test:run
 	@echo "Review complete: lint, build, and tests passed"
 
-.PHONY: all init-log setup-supabase clean report-backlog migrate-new migrate-up migrate-diff migrate-reset stop-db run-dev test test-run test-ui test-coverage review seed-storage seed-db seed pull-live seed-cloud migrate-cloud deploy-cloud
+.PHONY: all init-log setup-supabase clean report-backlog migrate-new migrate-up migrate-diff migrate-reset stop-db run-dev dev-cloud slim-supabase run-start start-app build-app test test-run test-ui test-coverage review seed-storage seed-db seed pull-live seed-cloud migrate-cloud deploy-cloud

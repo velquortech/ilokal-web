@@ -858,6 +858,52 @@ while open → appears on collapse with shop name + badge; at 375px identity
 shows, bell/branch/theme are 44px, no horizontal scroll (scrollWidth=375),
 bell popover + branch dropdown open, sheet shows the same labels.
 
+### 7.10 Account pages + copy map — implemented (§6.5 + §8)
+
+**Status: implemented, reviewed, browser-tested (13/13 checks), committed +
+pushed on `feat/business-dashboard-ux-revamp`, held for PR.** No new
+migration; no data-model change. The final roadmap row — the only remaining
+item is the Filipino ROLLOUT, which stays gated on the §8.3 native-speaker
+review.
+
+**What shipped:**
+
+1. **Profile — pending top banner** (§6.5): the verification state is now a
+   top banner on the Profile page (the same `ShopPendingBanner` the
+   dashboard uses, so the copy agrees everywhere) instead of living only in
+   the buried Account Status card. Pending is the one question every pending
+   owner asks first — it now answers it above the fold.
+2. **Insights — Bida Ngayon primer** (§6.5): the page explains what the
+   board IS ("Bida Ngayon is this week's trending board on iLokal…") in a
+   lead Alert, and the header gained a **Back to dashboard** link to the
+   main analytics (Home). Empty states already existed (no items / no
+   views) — verified unchanged.
+3. **Settings — Danger Zone** (§6.5): already unmistakably destructive
+   (`border-destructive/30`, `bg-destructive/5`, `variant="destructive"`
+   throughout) — verified rendering red in dark mode rather than gray.
+4. **Copy map — first 30** (§8.1): `lib/copy/owner.ts` is the typed
+   `Record<Locale, OwnerCopy>` with all 30 strings (en + fil), keyed by
+   surface, verbatim from the §8.1 inventory — plus `LocaleProvider` /
+   `useOwnerCopy()` (default `en`, deliberately NO i18n framework per
+   §8.1). A contract test pins the map to reality: both locales share
+   exactly the same keys, no empty strings, DB-stored values untranslated,
+   and the `en` strings are asserted against the LIVE sources (stepMeta,
+   PendingBanner) so a UI copy change fails the test instead of silently
+   desyncing the map.
+
+   **Rollout stays gated** (§8.3): the `fil` strings are proposals pending
+   native-speaker review. Wiring surfaces to `useOwnerCopy()` is the next
+   cross-cutting phase — the map is the artifact this phase was asked to
+   deliver, and the wizard wiring alone would half-translate (only 5 of 7
+   steps are in the first 30), so nothing switches locales at runtime yet.
+
+**Verification:** typecheck clean · 2,881 tests pass (7 new copy-map
+contract tests) · lint + prettier clean · 13/13 browser checks on the
+local DB (Gugma): profile shows the pending banner only while pending
+(flipped → verified → restored in local DB; banner sits above the form);
+insights explainer + Back to dashboard returns to Home; Danger Zone tab in
+dark mode renders destructive tokens (red text/border, not gray).
+
 ---
 
 ## 8. Filipino (Tagalog) copy variant
@@ -986,14 +1032,14 @@ Proposed (spec-level):
 > Interview decision: each phase's section is reviewed/approved before
 > implementation. Phase order is a proposal; Phase 1 is fixed by interview.
 
-| Phase | Scope                            | Key deliverables                                                                                                                                                                                                                                                                                          | Approx risk   |
-| ----- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | --- | ----- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
-| **1** | Coupons & Deals flow             | Template-first creation (presets + code suggestions), BOGO/FREE data model + mobile render, duplicate, edit/status coherence, dialog restructure, Phase-1 instrumentation                                                                                                                                 | High (schema) |
-| **2** | Registration wizard              | Honest copy, lat/lng hidden, category-step mobile polish, deal-step preset reuse, reg funnel instrumentation                                                                                                                                                                                              | Low–Med       |
-| **3** | Dashboard home + onboarding      | Reordered home, KPI captions, empty/zero states, checklist polish, tour browser pass (TD-020), dashboard instrumentation                                                                                                                                                                                  | Low           |
-| **4** | Store nav pages — delivered      | Shop toolbar, catalogue status tooltips + **mobile card view (§6.8 Layer 1+2 on catalogues)**, redemptions rename + counter help, branches shared map/address fields + approval language. _(Delivered as the user's Phase 4; the spec's original Phase-4 row "IA / navigation + mobile" is deferred.)_    | Med           |     | **5** | Coupons/redemptions mobile — delivered | Card-view fallbacks for the coupons + redemptions tables and their port onto the shared `DataTable` (§6.8 Layer 1+2, all three pages unified). Remaining: guided-add flow, apply-sale inline preview _(IA/nav pass shipped as the user's Phase 6 — §7.9)_ | Med |
-| **6** | IA / nav pass — delivered        | Sidebar labels vocabulary-driven (`shopLabel`/`dealsLabel` nouns), shop identity + verification badge in header + account menu, mobile notifications + 44px header targets, branch selector icon trigger on mobile, Help & Support stays hidden (route 404s). _(Delivered as the user's Phase 6 — §7.9.)_ | Low           |
-| **7** | Account pages + Filipino variant | Profile status banner, settings polish, insights primer, copy map (en+fil) seeded from the §8.1 inventory (first 30) + Filipino rollout                                                                                                                                                                   | Med           |
+| Phase | Scope                                | Key deliverables                                                                                                                                                                                                                                                                                                            | Approx risk   |
+| ----- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | --- | ----- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
+| **1** | Coupons & Deals flow                 | Template-first creation (presets + code suggestions), BOGO/FREE data model + mobile render, duplicate, edit/status coherence, dialog restructure, Phase-1 instrumentation                                                                                                                                                   | High (schema) |
+| **2** | Registration wizard                  | Honest copy, lat/lng hidden, category-step mobile polish, deal-step preset reuse, reg funnel instrumentation                                                                                                                                                                                                                | Low–Med       |
+| **3** | Dashboard home + onboarding          | Reordered home, KPI captions, empty/zero states, checklist polish, tour browser pass (TD-020), dashboard instrumentation                                                                                                                                                                                                    | Low           |
+| **4** | Store nav pages — delivered          | Shop toolbar, catalogue status tooltips + **mobile card view (§6.8 Layer 1+2 on catalogues)**, redemptions rename + counter help, branches shared map/address fields + approval language. _(Delivered as the user's Phase 4; the spec's original Phase-4 row "IA / navigation + mobile" is deferred.)_                      | Med           |     | **5** | Coupons/redemptions mobile — delivered | Card-view fallbacks for the coupons + redemptions tables and their port onto the shared `DataTable` (§6.8 Layer 1+2, all three pages unified). Remaining: guided-add flow, apply-sale inline preview _(IA/nav pass shipped as the user's Phase 6 — §7.9)_ | Med |
+| **6** | IA / nav pass — delivered            | Sidebar labels vocabulary-driven (`shopLabel`/`dealsLabel` nouns), shop identity + verification badge in header + account menu, mobile notifications + 44px header targets, branch selector icon trigger on mobile, Help & Support stays hidden (route 404s). _(Delivered as the user's Phase 6 — §7.9.)_                   | Low           |
+| **7** | Account pages + copy map — delivered | Profile pending top banner, Settings Danger Zone verified destructive (dark), Insights Bida Ngayon primer + dashboard link, `lib/copy/owner.ts` first-30 map (en+fil) + `LocaleProvider` + contract test. **Remaining: Filipino rollout (gated on §8.3 native-speaker review — wire surfaces to `useOwnerCopy()`)** — §7.10 | Low–Med       |
 
 Cross-cutting in every phase: light-first dark pass, a11y (axe + keyboard),
 mobile verification, `logActionError` in any new action, CHANGELOG update.

@@ -16,6 +16,7 @@ import {
 } from './components/BusinessInfoForm';
 import { AccountStatusCard } from './components/AccountStatusCard';
 import { PageHeader } from '@/components/custom/PageHeader';
+import { ShopPendingBanner } from '../home/components/PendingBanner';
 
 type Params = Promise<{ businessId: string }>;
 
@@ -103,6 +104,12 @@ export default async function ProfilePage({ params }: { params: Params }) {
         title="Profile"
         lede="Manage your personal and business information."
       />
+
+      {/* §6.5: the verification state is the one question every pending owner
+          asks first — promote it to a top banner instead of burying it in the
+          Account Status card at the bottom. Same banner as the dashboard, so
+          the copy agrees everywhere. */}
+      {business.status === 'pending' && <ShopPendingBanner />}
 
       {/* The shop's identity (banner + logo hero, then the editable business
           details) comes first — this IS the business profile page. The

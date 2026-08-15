@@ -1,37 +1,72 @@
 // @vitest-environment happy-dom
 
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+/**
+ * BusinessVerificationBadge — the four status arms and the mobile label
+ * behavior. Rendered with react-dom/client + happy-dom (the repo's component
+ * test pattern — see UserMenu.test.tsx); `@testing-library/react` is declared
+ * but its `@testing-library/dom` peer is not installed on a clean CI install,
+ * so RTL's `render` fails there.
+ */
+
+import * as React from 'react';
+import { act } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { BusinessVerificationBadge } from '../BusinessVerificationBadge';
+
+let container: HTMLDivElement;
+let root: Root;
+
+beforeEach(() => {
+  container = document.createElement('div');
+  document.body.appendChild(container);
+  root = createRoot(container);
+});
+
+afterEach(() => {
+  act(() => root.unmount());
+  container.remove();
+});
+
+function renderBadge(props: {
+  status?: string | null;
+  hideLabelOnMobile?: boolean;
+}) {
+  act(() => {
+    root.render(
+      <BusinessVerificationBadge
+        status={props.status}
+        hideLabelOnMobile={props.hideLabelOnMobile}
+      />,
+    );
+  });
+  return container;
+}
 
 describe('BusinessVerificationBadge', () => {
   it('renders nothing for an unknown or missing status', () => {
-    const { container } = render(<BusinessVerificationBadge status={null} />);
+    renderBadge({ status: null });
     expect(container.innerHTML).toBe('');
-    const { container: c2 } = render(
-      <BusinessVerificationBadge status="weird" />,
-    );
-    expect(c2.innerHTML).toBe('');
+    renderBadge({ status: 'weird' });
+    expect(container.innerHTML).toBe('');
   });
 
   it('labels every known status', () => {
-    const { rerender } = render(
-      <BusinessVerificationBadge status="verified" />,
-    );
-    expect(screen.getByText('Verified')).toBeTruthy();
-    rerender(<BusinessVerificationBadge status="pending" />);
-    expect(screen.getByText('Pending review')).toBeTruthy();
-    rerender(<BusinessVerificationBadge status="rejected" />);
-    expect(screen.getByText('Rejected')).toBeTruthy();
-    rerender(<BusinessVerificationBadge status="suspended" />);
-    expect(screen.getByText('Suspended')).toBeTruthy();
+    renderBadge({ status: 'verified' });
+    expect(container.textContent).toContain('Verified');
+    renderBadge({ status: 'pending' });
+    expect(container.textContent).toContain('Pending review');
+    renderBadge({ status: 'rejected' });
+    expect(container.textContent).toContain('Rejected');
+    renderBadge({ status: 'suspended' });
+    expect(container.textContent).toContain('Suspended');
   });
 
   it('keeps the label as a title even when hidden on mobile', () => {
-    render(<BusinessVerificationBadge status="verified" hideLabelOnMobile />);
-    // The visible text is hidden below `sm`, but the title must stay so the
-    // icon-only header badge is still discoverable (and the header keeps a
-    // data-tour / tooltip-free affordance).
-    expect(screen.getByTitle('Verified')).toBeTruthy();
+    renderBadge({ status: 'verified', hideLabelOnMobile: true });
+    const span = container.querySelector('span')!;
+    expect(span.getAttribute('title')).toBe('Verified');
+    // The label text itself is hidden below `sm` — the title carries it.
+    expect(span.querySelector('.hidden')).toBeTruthy();
   });
 });

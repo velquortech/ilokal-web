@@ -125,7 +125,7 @@ export function CustomerHeader({
                 size="sm"
                 className={cn(
                   'text-muted-foreground',
-                  pathname === href && 'text-foreground bg-accent',
+                  pathname === href && 'text-accent-foreground bg-accent',
                 )}
               >
                 <Link href={href}>
@@ -157,7 +157,7 @@ export function CustomerHeader({
                 className={cn(
                   'text-muted-foreground hidden sm:inline-flex',
                   pathname.startsWith(ROUTES.CUSTOMER.WALLET) &&
-                    'text-foreground bg-accent',
+                    'text-accent-foreground bg-accent',
                 )}
               >
                 <Link href={ROUTES.CUSTOMER.WALLET}>
@@ -249,7 +249,7 @@ export function CustomerHeader({
             size="sm"
             className={cn(
               'text-muted-foreground shrink-0',
-              pathname === href && 'text-foreground bg-accent',
+              pathname === href && 'text-accent-foreground bg-accent',
             )}
           >
             <Link href={href}>
@@ -266,7 +266,7 @@ export function CustomerHeader({
             className={cn(
               'text-muted-foreground shrink-0',
               pathname.startsWith(ROUTES.CUSTOMER.WALLET) &&
-                'text-foreground bg-accent',
+                'text-accent-foreground bg-accent',
             )}
           >
             <Link href={ROUTES.CUSTOMER.WALLET}>

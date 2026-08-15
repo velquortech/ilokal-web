@@ -18,6 +18,7 @@ import {
 import { Fragment } from 'react/jsx-runtime';
 import { SIDEBAR_SECTIONS } from '../libs/configs/config';
 import { UserMenu } from './UserMenu';
+import { BrandMark } from '@/components/custom/BrandLogo';
 import { GlobalSearch } from '@/components/custom/GlobalSearch';
 import { useBusinessShop } from '@/providers/BusinessProvider';
 import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
@@ -118,7 +119,21 @@ export function BusinessSidebar({
           `<Progress />` (no `value`) and a button that went nowhere. There is
           no billing to upgrade to, so it advertised a product that does not
           exist and pushed the real nav up. Removed rather than restyled. */}
-      <SidebarFooter className="mt-auto border-t">
+      <SidebarFooter className="mt-auto space-y-1 border-t">
+        {/* Platform branding — the one constant across every dashboard page.
+            Sits BELOW the account menu so it never competes with the shop's
+            own identity in the sidebar header above (the sidebar is
+            persistent chrome, so this one strip brands every route). In icon
+            mode only the mark survives, centered under the account square. */}
+        <div className="flex items-center gap-2 px-4 py-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+          <BrandMark
+            size={20}
+            className="group-data-[collapsible=icon]:size-6"
+          />
+          <span className="text-muted-foreground truncate text-xs group-data-[collapsible=icon]:hidden">
+            Powered by iLokal
+          </span>
+        </div>
         <SidebarMenu>
           <SidebarMenuItem>
             <UserMenu />

@@ -2,7 +2,11 @@
 
 import { useRef, useState } from 'react';
 import { ThemeToggle } from '@/components/custom/ThemeTogge';
-import { useMultiStepForm } from '../provider/registration-form-provider';
+import { BrandLogo } from '@/components/custom/BrandLogo';
+import {
+  getStepFieldGroups,
+  useMultiStepForm,
+} from '../provider/registration-form-provider';
 import { BusinessProps } from '../validator/business-registration-form-schema';
 import { StepProgress } from './step-progress';
 import { RegistrationNav } from './register-nav';
@@ -19,6 +23,7 @@ import { AlertCircle } from 'lucide-react';
 import { AxiosError } from 'axios';
 import { cn } from '@/lib/utils';
 import { logOwnerEvent } from '../actions/ownerEvents';
+import type { FieldErrors } from 'react-hook-form';
 
 const BUSINESS_ID_KEY = 'ilokal-registration-business-id';
 
@@ -237,6 +242,32 @@ export function ShopRegistrationContent() {
     }
   };
 
+  /**
+   * Full-form validation failed at the moment of Submit.
+   *
+   * The submit button only gates on the review step's field (the terms
+   * checkbox), so a cached form restored straight onto the review step — or a
+   * field edited on an earlier step — can still fail `fullSchema` here. RHF's
+   * `errors` is nested; map each top-level field to the step that owns it so
+   * the alert says WHERE to go back instead of a raw dotted path.
+   */
+  const handleInvalidSubmit = (errors: FieldErrors<BusinessProps>) => {
+    const groups = getStepFieldGroups(requireDocuments);
+    const titles = [
+      ...new Set(
+        Object.keys(errors).map((key) => {
+          const idx = groups.findIndex((group) =>
+            group.some((path) => path.split('.')[0] === key),
+          );
+          return idx >= 0 ? (steps[idx]?.title ?? `Step ${idx + 1}`) : key;
+        }),
+      ),
+    ];
+    setSubmitError(
+      `Some fields still need attention (${titles.join(', ')}). Go back and fix them before submitting.`,
+    );
+  };
+
   const handleSubmitForm = async (data: BusinessProps) => {
     if (submittingRef.current) return;
 
@@ -333,7 +364,7 @@ export function ShopRegistrationContent() {
       */}
       <form
         className="flex min-w-0 flex-1 flex-col pt-5"
-        onSubmit={form.handleSubmit(handleSubmitForm)}
+        onSubmit={form.handleSubmit(handleSubmitForm, handleInvalidSubmit)}
       >
         <div className="flex flex-1 flex-col px-4 pb-5 sm:px-6 lg:px-10">
           <div className="mb-4 flex items-center justify-between md:hidden">
@@ -354,9 +385,22 @@ export function ShopRegistrationContent() {
           </div>
 
           <header className="inline-flex items-center justify-between pb-5">
-            <div>
-              <p className="text-xl font-semibold">{title}</p>
-              <p className="text-muted-foreground text-sm">{description}</p>
+            {/* Brand lockup leads the wizard — the owner may have arrived
+                straight from the marketing site, and the mark is the anchor
+                that says this form is iLokal's. The wordmark hides below sm
+                so the mark + step title never crowd on a phone. */}
+            <div className="flex min-w-0 items-center gap-3">
+              <BrandLogo
+                markSize={26}
+                className="shrink-0"
+                wordmarkClassName="hidden text-lg sm:inline-flex"
+              />
+              <div className="min-w-0">
+                <p className="truncate text-xl font-semibold">{title}</p>
+                <p className="text-muted-foreground truncate text-sm">
+                  {description}
+                </p>
+              </div>
             </div>
             <ThemeToggle />
           </header>

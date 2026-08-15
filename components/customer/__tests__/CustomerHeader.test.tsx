@@ -241,6 +241,20 @@ describe('CustomerHeader — anonymous conversion CTAs', () => {
     expect(listBusiness.length).toBe(1);
   });
 
+  it('keeps Log In reachable from the mobile menu overlay', () => {
+    render(null);
+    // The desktop actions row (which carries Log In) collapses below 1180px,
+    // so the overlay must offer the same sign-in door — otherwise a phone
+    // visitor can sign up but never get back into an existing account.
+    expect(anchors(ROUTES.AUTH.SIGN_IN).length).toBe(1);
+    act(() => {
+      container.querySelector<HTMLButtonElement>('.hamb')!.click();
+    });
+    const signIn = anchors(ROUTES.AUTH.SIGN_IN);
+    expect(signIn.length).toBe(2);
+    expect(signIn.some((a) => a.textContent?.includes('Log In'))).toBe(true);
+  });
+
   it('collapses the whole row rather than hiding CTAs one by one', () => {
     render(null);
     // The landing nav drops .navlinks/.navactions and shows .hamb below

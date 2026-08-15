@@ -138,9 +138,11 @@ export function DataTable<TData, TValue>({
       <div
         className={cn(
           'rounded-md border',
-          // With a card-view fallback the table is desktop-only; without one
-          // it stays the single renderer on every size.
-          renderMobile && hasRows && 'hidden md:block',
+          // With a card-view fallback the table is desktop-only — also when it
+          // is EMPTY: the empty state then renders in the mobile slot below, so
+          // a phone never sees a full header row it has to scroll sideways
+          // past just to reach "No results".
+          renderMobile && 'hidden md:block',
         )}
       >
         <Table>
@@ -207,8 +209,16 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      {renderMobile && hasRows && (
-        <div className="md:hidden">{renderMobile(table)}</div>
+      {renderMobile && (
+        <div className="md:hidden">
+          {hasRows ? (
+            renderMobile(table)
+          ) : (
+            <div className="text-muted-foreground flex min-h-32 items-center justify-center text-sm">
+              {emptyState ?? 'No results.'}
+            </div>
+          )}
+        </div>
       )}
       <DataTablePagination table={table} />
     </div>

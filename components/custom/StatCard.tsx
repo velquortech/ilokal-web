@@ -37,9 +37,10 @@ export function StatCard({
   caption,
   icon: Icon,
   trend,
+  className,
 }: StatCardProps) {
   return (
-    <Card className="gap-0 py-5">
+    <Card className={cn('gap-0 py-5', className)}>
       <CardHeader className="relative flex flex-row justify-between space-y-0">
         <CardTitle className="text-muted-foreground text-sm font-medium">
           {title}

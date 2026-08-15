@@ -291,7 +291,7 @@ function Location() {
               <Field data-invalid={fieldState.invalid}>
                 <div className="space-y-2">
                   <Label htmlFor="zipCode">ZIP Code</Label>
-                  <Input id="zipCode" placeholder="10001" {...field} />
+                  <Input id="zipCode" placeholder="5000" {...field} />
                 </div>
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </Field>

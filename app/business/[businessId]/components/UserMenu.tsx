@@ -1,19 +1,10 @@
 'use client';
 
-import Link from 'next/link';
 import { useRef } from 'react';
-import {
-  UserIcon,
-  Settings,
-  LogOut,
-  Loader2,
-  ChevronsUpDown,
-  Compass,
-} from 'lucide-react';
+import { LogOut, Loader2, ChevronsUpDown, Compass } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -26,7 +17,7 @@ import { BusinessVerificationBadge } from './BusinessVerificationBadge';
 import { useAuth } from '@/hooks/useAuth';
 import { useUser } from '@/providers/UserContext';
 import { useBusinessShop } from '@/providers/BusinessProvider';
-import { businessPath, ROUTES } from '@/config/routeConfig';
+import { ROUTES } from '@/config/routeConfig';
 import { initialsFromName } from '@/lib/utils/initials';
 import { useOnboardingTourContext } from '@/components/custom/onboarding/OnboardingTourProvider';
 
@@ -89,9 +80,6 @@ export function UserMenu() {
   const isMobile = useIsMobile();
   const { business } = useBusinessShop();
   const { enabled: tourEnabled, startTour } = useOnboardingTourContext();
-  const bid = business?.id;
-  const bPath = (...segs: string[]) =>
-    bid ? businessPath(bid, ...segs) : `/business/${segs.join('/')}`;
 
   // The tour is started from `onCloseAutoFocus`, not from the item's `onSelect`.
   // Radix restores focus to the trigger when the menu UNMOUNTS — after its exit
@@ -147,39 +135,16 @@ export function UserMenu() {
             />
           </div>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link href={bPath('profile')}>
-              <UserIcon className="mr-2 h-4 w-4" />
-              Profile
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href={bPath('settings')}>
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
-            </Link>
-          </DropdownMenuItem>
-
-          {/* Subscription and Help & Support are hidden for the meantime.
-              Neither route EXISTS — there is no `subscription/` or `help/`
-              segment under `app/business/[businessId]/`, so both were links to
-              a 404 sitting in the account menu. Same class as the handler-less
-              "See All" and the `ProCard` that advertised billing this app does
-              not have. Restore each one the day its page does.
-
-          <DropdownMenuItem asChild>
-            <Link href={bPath('subscription')}>
-              <FileText className="mr-2 h-4 w-4" />
-              Subscription
-            </Link>
-          </DropdownMenuItem> */}
-        </DropdownMenuGroup>
+        {/* Profile and Settings no longer live here — they moved to the
+            sidebar's Manage group (§6.7.2 option a); the dropdown is purely
+            the account control now (identity, tour, sign-out). Subscription
+            and Help & Support stay absent: neither route exists, so both were
+            links to a 404 — restore each one the day its page does. */}
         {/* Absent, not disabled, when the kill switch is off — a menu entry
-            that opens nothing is worse than one that isn't there. The separator
-            travels WITH it: with Help & Support gone this group can be empty,
-            and two separators in a row read as a missing item. */}
+            that opens nothing is worse than one that isn't there. The tour's
+            separator travels WITH it, so two separators never sit in a row
+            (with the tour off, the identity card is followed straight by the
+            sign-out divider). */}
         {tourEnabled && (
           <>
             <DropdownMenuSeparator />

@@ -12,6 +12,12 @@ interface StatCardProps {
   title: string;
   value: string | number;
   description?: ReactNode;
+  /**
+   * A one-line plain-language explanation of what the number means, aimed at
+   * a shopkeeper rather than an analyst ("How many customers came back in the
+   * last month"). Rendered under the trend line, never instead of it.
+   */
+  caption?: ReactNode;
   icon: LucideIcon;
   iconClassName?: string;
   trend?: {
@@ -28,6 +34,7 @@ export function StatCard({
   title,
   value,
   description,
+  caption,
   icon: Icon,
   trend,
 }: StatCardProps) {
@@ -54,6 +61,11 @@ export function StatCard({
           </p>
         ) : (
           (description ?? null)
+        )}
+        {caption && (
+          <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed">
+            {caption}
+          </p>
         )}
       </CardContent>
     </Card>

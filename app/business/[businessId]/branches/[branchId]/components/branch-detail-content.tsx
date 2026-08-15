@@ -101,6 +101,16 @@ export function BranchDetailContent({
             <p className="text-muted-foreground text-sm">
               Branch details and management
             </p>
+            {branch.status === 'pending_review' && (
+              <p className="text-muted-foreground text-xs">
+                Customers can see this branch once it&apos;s approved.
+              </p>
+            )}
+            {branch.status === 'rejected' && (
+              <p className="text-muted-foreground text-xs">
+                This branch isn&apos;t visible to customers.
+              </p>
+            )}
           </div>
         </div>
 

@@ -175,20 +175,20 @@ async function openMenu() {
   );
 }
 
-describe('UserMenu (business) entries that go nowhere', () => {
+describe('UserMenu (business) entries that do not live in the menu', () => {
   /**
-   * Neither `subscription/` nor `help/` exists under
-   * `app/business/[businessId]/`, so both entries were links to a 404 sitting
-   * in the account menu.
+   * Profile and Settings moved to the sidebar's Manage group (§6.7.2 option
+   * a) — the dropdown is purely the account control now. Neither
+   * `subscription/` nor `help/` exists under `app/business/[businessId]/`,
+   * so those entries were links to a 404 and stay absent.
    */
-  it('does not offer Subscription or Help & Support', async () => {
+  it('does not offer Profile, Settings, Subscription, or Help & Support', async () => {
     const labels = await openMenu();
 
+    expect(labels.some((l) => /Profile/.test(l))).toBe(false);
+    expect(labels.some((l) => /Settings/.test(l))).toBe(false);
     expect(labels.some((l) => /Subscription/.test(l))).toBe(false);
     expect(labels.some((l) => /Help/.test(l))).toBe(false);
-    // The entries that DO have pages are untouched.
-    expect(labels.some((l) => /Profile/.test(l))).toBe(true);
-    expect(labels.some((l) => /Settings/.test(l))).toBe(true);
   });
 
   it('leaves no doubled separator where they used to be', async () => {

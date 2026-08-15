@@ -23,8 +23,11 @@ export function CouponPerformanceTable({
       description="Sorted by redemptions"
     >
       {coupons.length === 0 ? (
-        <div className="text-muted-foreground flex h-24 items-center justify-center text-sm">
-          No coupons published yet
+        <div className="text-muted-foreground flex h-24 flex-col items-center justify-center gap-1 px-6 text-center text-sm">
+          <span className="font-medium">No coupons published yet</span>
+          <span className="text-xs">
+            Publish your first deal and its redemptions will appear here.
+          </span>
         </div>
       ) : (
         <Table>

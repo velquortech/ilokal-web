@@ -34,6 +34,8 @@ export const DEFAULT_OFFERING_NOUNS: Required<OfferingNouns> = {
   singular: 'Product',
   plural: 'Products',
   catalogue: 'Product Catalogue',
+  shopLabel: 'My Shop',
+  dealsLabel: 'Coupons & Deals',
 };
 
 function isNonEmptyString(value: unknown): value is string {
@@ -52,6 +54,9 @@ function readNouns(value: unknown): OfferingNouns {
   if (isNonEmptyString(raw.singular)) nouns.singular = raw.singular.trim();
   if (isNonEmptyString(raw.plural)) nouns.plural = raw.plural.trim();
   if (isNonEmptyString(raw.catalogue)) nouns.catalogue = raw.catalogue.trim();
+  if (isNonEmptyString(raw.shopLabel)) nouns.shopLabel = raw.shopLabel.trim();
+  if (isNonEmptyString(raw.dealsLabel))
+    nouns.dealsLabel = raw.dealsLabel.trim();
   return nouns;
 }
 
@@ -69,11 +74,13 @@ function deriveVocabulary(
     >
   >,
 ): OfferingVocabulary {
-  const { singular, plural, catalogue } = nouns;
+  const { singular, plural, catalogue, shopLabel, dealsLabel } = nouns;
   return {
     singular,
     plural,
     catalogue,
+    shopLabel,
+    dealsLabel,
     addLabel: `Add ${singular}`,
     updateLabel: `Update ${singular}`,
     saveLabel: `Save ${singular}`,
@@ -153,6 +160,8 @@ export function resolveOfferingVocabulary(
       singular: nouns.singular ?? DEFAULT_OFFERING_NOUNS.singular,
       plural: nouns.plural ?? DEFAULT_OFFERING_NOUNS.plural,
       catalogue: nouns.catalogue ?? DEFAULT_OFFERING_NOUNS.catalogue,
+      shopLabel: nouns.shopLabel ?? DEFAULT_OFFERING_NOUNS.shopLabel,
+      dealsLabel: nouns.dealsLabel ?? DEFAULT_OFFERING_NOUNS.dealsLabel,
     },
     icon,
     {

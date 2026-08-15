@@ -6,6 +6,7 @@ import { ShopBanner } from './components/shop-banner';
 import { ShopGallery } from './components/shop-gallery';
 import { ShopItems } from './components/shop-items';
 import { ShopLegitimacy } from './components/shop-legitimacy';
+import { ShopOwnerToolbar } from './components/shop-owner-toolbar';
 import { PageHeader } from '@/components/custom/PageHeader';
 import type { Branch, ProductResponse } from '@/lib/types';
 
@@ -46,6 +47,9 @@ export default async function ShopPage({
         title="Your shop page"
         lede="What customers see when they open your shop on iLokal."
       />
+      <div className="mb-6">
+        <ShopOwnerToolbar businessId={businessId} />
+      </div>
       <ShopBanner business={business} branch={branch} />
       <div className="mt-8 flex flex-1 flex-col space-y-20">
         <ShopGallery business={business} branch={branch} />

@@ -160,6 +160,20 @@ export const stepOfferingsSchema = z.object({
  */
 export const MAX_DEAL_DURATION_DAYS = 365;
 
+/**
+ * The discount arms the launch-deal step can produce. Mirrors the stored
+ * `DiscountValue` union (lib/types/coupon.ts) but as flat form fields:
+ * `discount_value` for percentage/fixed, `bogo_buy`/`bogo_get` for bogo,
+ * nothing for free. The wizard's request builder converts this flat shape to
+ * the union, the same way the Phase 1 coupon dialog does.
+ */
+export const registrationDealDiscountTypeSchema = z.enum([
+  'percentage',
+  'fixed_amount',
+  'free',
+  'bogo',
+]);
+
 export const registrationDealSchema = z
   .object({
     /**
@@ -175,10 +189,16 @@ export const registrationDealSchema = z
       .min(1, 'Enter a code customers will type or show')
       .max(50),
     description: z.string().trim().max(500).optional(),
-    discount_type: z.enum(['percentage', 'fixed_amount']),
+    discount_type: registrationDealDiscountTypeSchema,
+    /** Null for free/bogo — those arms carry no numeric value. */
     discount_value: z
       .number({ error: 'Enter how much off' })
-      .positive('Discount must be more than zero'),
+      .positive('Discount must be more than zero')
+      .nullable(),
+    /** Present only for bogo: how many the customer buys. */
+    bogo_buy: z.number().int().min(1).optional(),
+    /** Present only for bogo: how many identical items are free. */
+    bogo_get: z.number().int().min(1).optional(),
     // No `.default()` here, for the same reason `on_request` has none: a
     // default splits zod's input and output types, and `useForm<BusinessProps>`
     // refuses the mismatch. The step always sets it.
@@ -196,13 +216,42 @@ export const registrationDealSchema = z
     publish: z.boolean(),
   })
   .superRefine((val, ctx) => {
+    // Percentage/fixed need a value; free/bogo must NOT carry one.
+    if (
+      (val.discount_type === 'percentage' ||
+        val.discount_type === 'fixed_amount') &&
+      val.discount_value == null
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Enter how much off',
+        path: ['discount_value'],
+      });
+    }
     // A percentage over 100 is a coupon that pays the customer to shop.
-    if (val.discount_type === 'percentage' && val.discount_value > 100) {
+    if (val.discount_type === 'percentage' && val.discount_value! > 100) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'A percentage discount cannot be more than 100%',
         path: ['discount_value'],
       });
+    }
+    // BOGO needs both quantities.
+    if (val.discount_type === 'bogo') {
+      if (val.bogo_buy == null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Enter how many the customer buys',
+          path: ['bogo_buy'],
+        });
+      }
+      if (val.bogo_get == null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Enter how many are free',
+          path: ['bogo_get'],
+        });
+      }
     }
   });
 

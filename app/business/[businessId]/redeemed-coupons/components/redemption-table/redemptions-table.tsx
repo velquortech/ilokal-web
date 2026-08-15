@@ -2,24 +2,13 @@
 
 import * as React from 'react';
 import {
-  useReactTable,
-  getCoreRowModel,
-  getExpandedRowModel,
-  flexRender,
+  SortingState,
   PaginationState,
-  ExpandedState,
   OnChangeFn,
 } from '@tanstack/react-table';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { DataTablePagination } from '@/components/custom/data-table/DataTablePagination';
+import { DataTable } from '@/components/custom/data-table/DataTable';
 import { redemptionColumns, formatDate } from './columns';
+import { MobileRedemptionCardList } from './mobile-redemption-card-list';
 import type { RedemptionRecord } from '@/lib/types';
 
 interface RedeemedCouponsTableProps {
@@ -30,7 +19,12 @@ interface RedeemedCouponsTableProps {
   onPaginationChange: (page: number, pageSize: number) => void;
 }
 
-function ExpandedCouponDetail({ record }: { record: RedemptionRecord }) {
+/**
+ * The coupon-details panel for an expanded redemption row. Shared by the
+ * desktop expanded row and the mobile card view (tap-to-expand), so the two
+ * can never drift apart.
+ */
+export function ExpandedCouponDetail({ record }: { record: RedemptionRecord }) {
   const coupon = record.coupons;
   if (!coupon) return null;
 
@@ -69,7 +63,7 @@ export function RedeemedCouponsTable({
   totalPages,
   onPaginationChange,
 }: RedeemedCouponsTableProps) {
-  const [expanded, setExpanded] = React.useState<ExpandedState>({});
+  const [sorting, setSorting] = React.useState<SortingState>([]);
 
   const pagination: PaginationState = {
     pageIndex: page - 1,
@@ -81,87 +75,29 @@ export function RedeemedCouponsTable({
     onPaginationChange(next.pageIndex + 1, next.pageSize);
   };
 
-  const table = useReactTable({
-    data: redemptions,
-    columns: redemptionColumns,
-    pageCount: totalPages,
-    state: { pagination, expanded },
-    onPaginationChange: handlePaginationChange,
-    onExpandedChange: setExpanded,
-    getCoreRowModel: getCoreRowModel(),
-    getExpandedRowModel: getExpandedRowModel(),
-    getRowCanExpand: (row) => row.original.coupons !== null,
-    manualPagination: true,
-    manualSorting: true,
-    manualFiltering: true,
-  });
-
   return (
-    <div className="space-y-4">
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <React.Fragment key={row.id}>
-                  <TableRow data-state={row.getIsSelected() && 'selected'}>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-
-                  {row.getIsExpanded() && (
-                    <TableRow className="bg-muted/30 hover:bg-muted/30">
-                      <TableCell
-                        colSpan={redemptionColumns.length}
-                        className="px-6 py-3"
-                      >
-                        <div className="space-y-1.5">
-                          <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                            Coupon Details
-                          </p>
-                          <ExpandedCouponDetail record={row.original} />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </React.Fragment>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={redemptionColumns.length}
-                  className="h-24 text-center"
-                >
-                  No redemptions found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      <DataTablePagination table={table} />
+    <div className="w-full">
+      <DataTable
+        columns={redemptionColumns}
+        data={redemptions}
+        pageCount={totalPages}
+        pagination={pagination}
+        onPaginationChange={handlePaginationChange}
+        sorting={sorting}
+        onSortingChange={setSorting}
+        expandable={{
+          getRowCanExpand: (row) => row.original.coupons !== null,
+          renderExpanded: (row) => (
+            <div className="space-y-1.5">
+              <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                Coupon Details
+              </p>
+              <ExpandedCouponDetail record={row.original} />
+            </div>
+          ),
+        }}
+        renderMobile={(table) => <MobileRedemptionCardList table={table} />}
+      />
     </div>
   );
 }

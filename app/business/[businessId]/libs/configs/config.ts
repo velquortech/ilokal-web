@@ -8,6 +8,8 @@ import {
   CalendarDays,
   BadgeCheck,
   BarChart3,
+  Settings,
+  UserRound,
 } from 'lucide-react';
 import { NavItem } from '@/components/custom/Nav';
 import { QuickAction } from '@/components/custom/ActionButton';
@@ -33,7 +35,11 @@ export const storeNavigation: NavItem[] = [
     tourId: 'nav-shop',
   },
   {
-    title: 'Product Catalogues',
+    // The fallback label — the sidebar swaps in the vocabulary's catalogue
+    // noun ("Menu", "Service Menu", "Our Fleet") once the business resolves.
+    // Singular to match DEFAULT_OFFERING_NOUNS.catalogue, so the fallback
+    // never disagrees with the resolved label.
+    title: 'Product Catalogue',
     href: '/business/product-catalogues',
     icon: ShoppingBasket,
     tourId: 'nav-catalogue',
@@ -58,7 +64,10 @@ export const storeNavigation: NavItem[] = [
     tourId: 'nav-coupons',
   },
   {
-    title: 'Redeemed Coupons',
+    // Surfaced label renamed from "Redeemed Coupons" — the table is really
+    // claims/redemptions status, and the old name made it sound like a
+    // historical log. The route stays the same.
+    title: 'Redemptions',
     href: '/business/redeemed-coupons',
     icon: BadgeCheck,
   },
@@ -172,6 +181,27 @@ export const storeNavigation: NavItem[] = [
 //   },
 // ];
 
+/**
+ * Account management — the "Manage" group (spec §6.7.2 option a). Profile and
+ * Settings were only reachable via the avatar dropdown; surfacing them in the
+ * sidebar makes the account pages part of the nav the owner reads all day.
+ * The dropdown keeps its own entries (quick access), and the header's shop
+ * identity + verification badge (option b) stays — the two solve different
+ * problems: findability here, orientation there.
+ */
+export const manageNavigation: NavItem[] = [
+  {
+    title: 'Profile',
+    href: '/business/profile',
+    icon: UserRound,
+  },
+  {
+    title: 'Settings',
+    href: '/business/settings',
+    icon: Settings,
+  },
+];
+
 export const branchManagerNavigation: NavItem[] = [
   // {
   //   title: 'Branch Overview',
@@ -210,6 +240,10 @@ export const SIDEBAR_SECTIONS: {
   {
     items: storeNavigation,
     header: 'Store Management',
+  },
+  {
+    items: manageNavigation,
+    header: 'Manage',
   },
   // {
   //   items: marketingNavigation,

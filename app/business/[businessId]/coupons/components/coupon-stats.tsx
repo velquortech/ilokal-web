@@ -13,9 +13,17 @@ export function CouponStats({ stats }: CouponStatsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      {items.map((item) => (
-        <StatCard {...item} key={item.title} />
+    // 2-up on phones with the odd card spanning both columns (no orphan), 3-up
+    // on desktop.
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      {items.map((item, idx) => (
+        <StatCard
+          {...item}
+          key={item.title}
+          className={
+            idx === items.length - 1 ? 'col-span-2 sm:col-span-1' : undefined
+          }
+        />
       ))}
     </div>
   );

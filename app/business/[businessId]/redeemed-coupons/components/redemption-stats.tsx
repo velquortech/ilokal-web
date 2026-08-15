@@ -15,7 +15,8 @@ export function RedemptionStats({ stats }: RedemptionStatsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    // 2-up on phones (native stat row), 4-up on desktop.
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {items.map((item) => (
         <StatCard {...item} key={item.title} />
       ))}

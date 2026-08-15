@@ -9,6 +9,7 @@ import {
 import { DataTable } from '@/components/custom/data-table/DataTable';
 import { redemptionColumns, formatDate } from './columns';
 import { MobileRedemptionCardList } from './mobile-redemption-card-list';
+import { TicketCheck } from 'lucide-react';
 import type { RedemptionRecord } from '@/lib/types';
 
 interface RedeemedCouponsTableProps {
@@ -97,6 +98,18 @@ export function RedeemedCouponsTable({
           ),
         }}
         renderMobile={(table) => <MobileRedemptionCardList table={table} />}
+        emptyState={
+          /* §6.6: an empty table is a product surface, not a "No results."
+              row — the counter helper above already says how to redeem; this
+              says the table is simply waiting for the first claim. */
+          <div className="flex flex-col items-center gap-1.5 px-4 py-10">
+            <TicketCheck className="text-muted-foreground size-8" />
+            <p className="font-medium">No redemptions yet</p>
+            <p className="text-muted-foreground text-sm">
+              Coupons customers claim at the counter will appear here.
+            </p>
+          </div>
+        }
       />
     </div>
   );

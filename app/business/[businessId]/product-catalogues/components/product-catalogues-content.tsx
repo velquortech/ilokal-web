@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/custom/PageHeader';
-import { Plus } from 'lucide-react';
+import { PackageOpen, Plus } from 'lucide-react';
 import { Catalogues } from './catalogues';
 import { SearchBar } from '@/components/custom/Searchbar';
 import { FilterProducts } from './filter-products';
@@ -171,15 +171,22 @@ export function ProductCataloguesContent({
 
       <Card>
         <CardContent className="space-y-2">
+          {/* Mobile-first toolbar: search is the primary control, so it leads
+              the card on a phone (full width, own line) while the section
+              strip and the action buttons share the row below. On `sm+`
+              everything returns to one row — strip flexes, actions and search
+              sit at the end. Same `order-first` pattern as Redemptions (§6.8). */}
           <div className="flex w-full flex-wrap items-center justify-between gap-2">
-            <Catalogues
-              sections={sections}
-              uncategorisedCount={uncategorisedCount}
-              countsFailed={countsFailed}
-              selectedSection={selectedSection}
-              onSectionChange={handleSectionChange}
-            />
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="order-2 min-w-0 flex-1 sm:order-none">
+              <Catalogues
+                sections={sections}
+                uncategorisedCount={uncategorisedCount}
+                countsFailed={countsFailed}
+                selectedSection={selectedSection}
+                onSectionChange={handleSectionChange}
+              />
+            </div>
+            <div className="order-3 flex flex-wrap items-center gap-2 sm:order-none">
               {/* Sections are the owner's own grouping. The platform
                   taxonomy in `categories` stays admin-curated — see
                   .claude/CATALOGUES.md for why they are two tables. */}
@@ -194,6 +201,8 @@ export function ProductCataloguesContent({
                 selectedStatus={selectedStatus}
                 onStatusChange={handleStatusChange}
               />
+            </div>
+            <div className="order-first w-full sm:order-none sm:w-auto">
               <SearchBar
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
@@ -208,6 +217,23 @@ export function ProductCataloguesContent({
             totalPages={metadata.total_pages}
             total={metadata.total}
             onPaginationChange={handlePaginationChange}
+            emptyState={
+              /* §6.6: an empty table is a product surface, not a "No
+                  results." row — say why it is empty and what to do. */
+              <div className="flex flex-col items-center gap-1.5 px-4 py-10">
+                <PackageOpen className="text-muted-foreground size-8" />
+                <p className="font-medium">
+                  {metadata.total === 0
+                    ? `No ${vocabulary.plural.toLowerCase()} yet`
+                    : 'No matches found'}
+                </p>
+                <p className="text-muted-foreground text-sm">
+                  {metadata.total === 0
+                    ? `Add your first ${vocabulary.singular.toLowerCase()} and it will appear here.`
+                    : 'Try adjusting your search or filters.'}
+                </p>
+              </div>
+            }
           />
         </CardContent>
       </Card>

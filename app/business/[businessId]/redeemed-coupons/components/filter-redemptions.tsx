@@ -31,7 +31,7 @@ export function FilterRedemptions({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-9 gap-2">
+        <Button variant="outline" size="sm" className="h-11 gap-2 md:h-9">
           <Settings2 className="h-4 w-4" />
           Filter
           {selectedStatus && (

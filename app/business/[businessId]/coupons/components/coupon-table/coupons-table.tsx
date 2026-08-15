@@ -11,7 +11,7 @@ import { createColumns } from './columns';
 import { MobileCouponCardList } from './mobile-coupon-card-list';
 import type { Coupon, ProductResponse } from '@/lib/types';
 import { formatOfferingPrice } from '@/lib/utils/formatOfferingPrice';
-import { Package } from 'lucide-react';
+import { Package, Tag } from 'lucide-react';
 
 interface CouponsTableProps {
   coupons: Coupon[];
@@ -127,6 +127,17 @@ export function CouponsTable({
         renderMobile={(table) => (
           <MobileCouponCardList table={table} products={products} />
         )}
+        emptyState={
+          /* §6.6: an empty table is a product surface, not a "No results."
+              row — say why it is empty and what to do. */
+          <div className="flex flex-col items-center gap-1.5 px-4 py-10">
+            <Tag className="text-muted-foreground size-8" />
+            <p className="font-medium">No coupons yet</p>
+            <p className="text-muted-foreground text-sm">
+              Create your first coupon or deal and it will appear here.
+            </p>
+          </div>
+        }
       />
     </div>
   );

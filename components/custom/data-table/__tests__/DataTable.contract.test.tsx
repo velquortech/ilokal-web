@@ -23,7 +23,7 @@ import {
   afterEach,
   vi,
 } from 'vitest';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef, Table } from '@tanstack/react-table';
 import { DataTable } from '@/components/custom/data-table/DataTable';
 
 beforeAll(() => {
@@ -74,6 +74,7 @@ function render(
   columns: ColumnDef<Row>[],
   data: Row[],
   emptyState?: React.ReactNode,
+  renderMobile?: (table: Table<Row>) => React.ReactNode,
 ) {
   act(() => {
     root.render(
@@ -86,6 +87,7 @@ function render(
         sorting={[]}
         onSortingChange={vi.fn()}
         emptyState={emptyState}
+        renderMobile={renderMobile}
       />,
     );
   });
@@ -129,5 +131,58 @@ describe('the empty row', () => {
     const html = render(PLAIN_COLUMNS, DATA, <p>Nothing here</p>);
     expect(html).toContain('Alpha');
     expect(html).not.toContain('Nothing here');
+  });
+});
+
+describe('with a mobile card renderer (§6.8 Layer 2)', () => {
+  const CARDS = (table: Table<Row>) => (
+    <ul data-testid="mobile-cards">
+      {table.getRowModel().rows.map((row) => (
+        <li key={row.id} data-testid="mobile-card">
+          {row.original.name}
+        </li>
+      ))}
+    </ul>
+  );
+
+  // The `md:hidden` wrapper owns the whole mobile slot — it renders either
+  // the caller's card list (rows) or the empty state (no rows). The cards
+  // `ul` only exists in the former case, so assert on the wrapper's text.
+  const mobileWrapper = () => container.querySelector('[class*="md:hidden"]');
+
+  const tableWrapper = () =>
+    // The wrapper div that owns the `hidden md:block` switch — the direct
+    // parent of the `table-container` the base Table component renders.
+    container.querySelector('[data-slot="table-container"]')?.parentElement;
+
+  it('renders the cards from the same row model when there are rows', () => {
+    const html = render(PLAIN_COLUMNS, DATA, undefined, CARDS);
+    expect(container.querySelector('[data-testid="mobile-cards"]')).not.toBe(
+      null,
+    );
+    expect(html).toContain('Alpha');
+  });
+
+  it('keeps the table markup but marks it desktop-only', () => {
+    render(PLAIN_COLUMNS, DATA, undefined, CARDS);
+    // The regression this fixes: an empty table used to render its full header
+    // row into the mobile layout, so a phone scrolled sideways past ten
+    // columns just to reach "No results." The wrapper must carry the switch
+    // whether or not there are rows.
+    expect(tableWrapper()?.className).toContain('hidden md:block');
+    expect(mobileWrapper()?.className).toContain('md:hidden');
+  });
+
+  it('renders the empty state in the mobile slot instead of the header row', () => {
+    const html = render(PLAIN_COLUMNS, [], <p>No products yet</p>, CARDS);
+    expect(mobileWrapper()?.textContent).toContain('No products yet');
+    expect(html).not.toContain('No results.');
+    // The desktop wrapper is still switched off on phones even when empty.
+    expect(tableWrapper()?.className).toContain('hidden md:block');
+  });
+
+  it('defaults the mobile empty state to the same generic copy', () => {
+    render(PLAIN_COLUMNS, [], undefined, CARDS);
+    expect(mobileWrapper()?.textContent).toContain('No results.');
   });
 });

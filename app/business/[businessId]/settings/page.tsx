@@ -44,15 +44,22 @@ export default async function SettingsPage({ params }: { params: Params }) {
 
   const factors: MFAFactor[] = mfaResult.success ? (mfaResult.data ?? []) : [];
 
+  // The shell (BusinessLayout) already pads the content column horizontally
+  // (`px-4 sm:px-6 lg:px-10`) and vertically (`py-6`); a page-level `p-6` would
+  // double the inset and make this page sit visibly off-grid from every other
+  // dashboard page.
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
+    <div className="flex min-w-0 flex-1 flex-col gap-6 pb-8">
       <PageHeader
         title="Settings"
         lede="Manage your account security, notifications, and business preferences."
       />
 
       <Tabs defaultValue="security" className="flex flex-col gap-0">
-        <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0">
+        {/* `overflow-x-auto` keeps the four tabs reachable on a phone —
+            "Business Preferences" alone is wider than a 375px viewport, and
+            Radix's list does not scroll on its own. */}
+        <TabsList className="w-full max-w-full justify-start overflow-x-auto rounded-none border-b bg-transparent p-0">
           <TabsTrigger
             value="security"
             className="data-[state=active]:border-primary rounded-none border-b-2 border-transparent px-4 pt-2 pb-3 font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none"

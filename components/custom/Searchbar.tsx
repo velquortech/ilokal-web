@@ -21,7 +21,9 @@ const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(
         <Input
           type="search"
           placeholder="Search here..."
-          className={cn('pl-10', className)}
+          // §6.8: a 44px touch target on phones (native feels big enough to
+          // land on), back to the compact desktop height on `md+`.
+          className={cn('h-11 pl-10 md:h-9', className)}
           ref={ref}
           onChange={handleChange}
           {...props}

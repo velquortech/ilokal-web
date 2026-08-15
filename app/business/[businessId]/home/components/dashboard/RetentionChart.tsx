@@ -46,8 +46,11 @@ export function RetentionChart({ retention }: RetentionChartProps) {
       className="lg:col-span-2"
     >
       {!hasData ? (
-        <div className="text-muted-foreground flex h-48 items-center justify-center text-sm">
-          No retention data yet
+        <div className="text-muted-foreground flex h-48 flex-col items-center justify-center gap-1 px-6 text-center text-sm">
+          <span className="font-medium">No retention data yet</span>
+          <span className="text-xs">
+            This fills in as customers visit and come back month by month.
+          </span>
         </div>
       ) : (
         <ChartContainer config={chartConfig} className="h-48 w-full">

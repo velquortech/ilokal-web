@@ -41,16 +41,20 @@ export function BranchSelector({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         {/* `data-tour` sits on the trigger that already exists rather than a
-            wrapper: the tour measures this element, and below `md` it is
-            `hidden`, so its zero-size box makes the step skip itself. */}
+            wrapper: the tour measures this element. Below `md` the trigger is
+            an icon-only 44px target (the branch NAME is the desktop part), so
+            the mobile header keeps branch switching instead of hiding it. */}
         <Button
           variant="outline"
-          className="hidden h-9 gap-2 md:flex"
+          className="flex h-11 w-11 items-center justify-center gap-2 px-0 md:h-9 md:w-auto md:px-4"
           data-tour="branch-switcher"
+          aria-label="Select branch"
         >
-          <Building2 className="h-4 w-4" />
-          <span className="max-w-30 truncate">{currentBranch.name}</span>
-          <ChevronDown className="text-muted-foreground h-4 w-4" />
+          <Building2 className="h-4 w-4 shrink-0" />
+          <span className="hidden max-w-30 truncate md:inline">
+            {currentBranch.name}
+          </span>
+          <ChevronDown className="text-muted-foreground hidden h-4 w-4 md:inline" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72">

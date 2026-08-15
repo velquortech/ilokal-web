@@ -4,12 +4,55 @@
  */
 
 // ===== Discount Type =====
-export type DiscountType = 'percentage' | 'fixed_amount';
+// The stored shape on `coupons.discount` (JSONB). A discriminated union: the
+// `type` literal pins the rest of the shape, so a free promo cannot carry a
+// stray value and a BOGO must carry buy/get quantities. Kept in sync with
+// `discountValueSchema` (lib/validation/coupons.ts) and the
+// `coupons_discount_shape_check` constraint (20260817000000) — widen all three
+// together.
+export type DiscountType = 'percentage' | 'fixed_amount' | 'free' | 'bogo';
 
-export type DiscountValue = {
-  type: DiscountType;
-  value: number; // percentage: 0-100, fixed_amount: in cents
+export type PercentageDiscount = {
+  type: 'percentage';
+  value: number; // 0-100
 };
+
+export type FixedAmountDiscount = {
+  type: 'fixed_amount';
+  value: number; // in pesos (₱)
+};
+
+export type FreeDiscount = {
+  type: 'free';
+  /** Always null — present so every arm carries the same key. */
+  value: null;
+};
+
+export type BogoDiscount = {
+  type: 'bogo';
+  /** How many the customer must buy to qualify. */
+  buy: number;
+  /** How many identical items are free. */
+  get: number;
+  /** Optional cap on free items per redemption. */
+  max_free?: number;
+  /** Always null — present so every arm carries the same key. */
+  value: null;
+};
+
+export type DiscountValue =
+  | PercentageDiscount
+  | FixedAmountDiscount
+  | FreeDiscount
+  | BogoDiscount;
+
+/**
+ * The flat form shape used by the LEGACY add/edit coupon dialogs, which only
+ * offer percentage / fixed-₱ until the template-first redesign (Phase 1 of the
+ * dashboard UX revamp) replaces them. New code should build `DiscountValue`
+ * directly instead of widening this.
+ */
+export type FlatDiscountType = 'percentage' | 'fixed_amount';
 
 // ===== Promotion Type =====
 export type PromotionType = 'coupon' | 'deal';

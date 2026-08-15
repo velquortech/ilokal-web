@@ -298,11 +298,13 @@ function Location() {
             )}
           />
 
-          {/* COORDINATES */}
+          {/* COORDINATES — read-only by design. Owners should never type
+              coordinates; the map pin + "Use My Location" are the only ways
+              to set them, and the values below just confirm what got set. */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-medium">Exact Coordinates</h3>
+                <h3 className="text-sm font-medium">Exact Location</h3>
                 <p className="text-muted-foreground text-xs">
                   Click the map or use your device location
                 </p>
@@ -325,69 +327,15 @@ function Location() {
 
             {geoError && <p className="text-destructive text-sm">{geoError}</p>}
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {/* LATITUDE */}
-              <Controller
-                name="location.latitude"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <div className="space-y-2">
-                      <Label htmlFor="latitude">Latitude</Label>
-                      <Input
-                        id="latitude"
-                        type="number"
-                        step="any"
-                        placeholder="e.g. 10.7312"
-                        value={field.value ?? ''}
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.value === ''
-                              ? undefined
-                              : parseFloat(e.target.value),
-                          )
-                        }
-                        onBlur={field.onBlur}
-                      />
-                    </div>
-                    {fieldState.error && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-
-              {/* LONGITUDE */}
-              <Controller
-                name="location.longitude"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <div className="space-y-2">
-                      <Label htmlFor="longitude">Longitude</Label>
-                      <Input
-                        id="longitude"
-                        type="number"
-                        step="any"
-                        placeholder="e.g. 122.5649"
-                        value={field.value ?? ''}
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.value === ''
-                              ? undefined
-                              : parseFloat(e.target.value),
-                          )
-                        }
-                        onBlur={field.onBlur}
-                      />
-                    </div>
-                    {fieldState.error && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-            </div>
+            {latitude != null && longitude != null ? (
+              <p className="bg-muted text-muted-foreground rounded-md px-3 py-2 text-sm">
+                Pin set: {latitude.toFixed(4)}, {longitude.toFixed(4)}
+              </p>
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                No pin set yet — tap the map or use your location.
+              </p>
+            )}
 
             {geometryError && (
               <p className="text-destructive text-sm">

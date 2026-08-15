@@ -1,10 +1,15 @@
+import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Lightbulb, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Lightbulb, AlertTriangle, CheckCircle, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { businessCouponsPath } from '@/config/routeConfig';
 import type { AutomationSuggestion } from '@/lib/types';
 
 interface AutomationSuggestionsProps {
   suggestions: AutomationSuggestion[];
+  /** Needed for the empty-state CTA (\"Add your first deal\"). */
+  businessId: string;
 }
 
 const SEVERITY_CONFIG = {
@@ -27,8 +32,30 @@ const SEVERITY_CONFIG = {
 
 export function AutomationSuggestions({
   suggestions,
+  businessId,
 }: AutomationSuggestionsProps) {
-  if (suggestions.length === 0) return null;
+  // An empty suggestions list is a first-day shop, not a broken one — say what
+  // to do instead of leaving the card as dead space.
+  if (suggestions.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Smart Suggestions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed p-4">
+            <p className="text-muted-foreground flex items-center gap-2 text-sm">
+              <Sparkles className="text-muted-foreground size-4 shrink-0" />
+              Add your first deal and suggestions will start appearing here.
+            </p>
+            <Button asChild size="sm" variant="outline">
+              <Link href={businessCouponsPath(businessId)}>Create a deal</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>

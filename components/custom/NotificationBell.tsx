@@ -253,7 +253,7 @@ export function NotificationBell() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative h-9 w-9"
+          className="relative h-11 w-11 md:h-9 md:w-9"
           aria-label="Notifications"
         >
           <Bell className="h-5 w-5" />

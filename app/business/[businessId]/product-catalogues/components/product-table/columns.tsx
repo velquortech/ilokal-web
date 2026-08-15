@@ -5,6 +5,12 @@ import { ColumnDef } from '@tanstack/react-table';
 import Image from 'next/image';
 import { ImageOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { calculatePercentage } from '@/lib/product-helper';
 import { formatOfferingPricePair } from '@/lib/utils/formatOfferingPrice';
@@ -93,6 +99,9 @@ export function getColumns(
       // taxonomy customers filter by on /explore — see .claude/CATALOGUES.md.
       accessorKey: 'section',
       header: 'Section',
+      // Layer 1 of the mobile strategy (§6.8): the card view below `md` shows
+      // only the essentials, so Section/Category never need to scroll sideways.
+      meta: { responsiveClassName: 'hidden md:table-cell' },
       cell: ({ row }) =>
         row.original.section?.name ? (
           <Badge variant="outline">{row.original.section.name}</Badge>
@@ -103,6 +112,8 @@ export function getColumns(
     {
       accessorKey: 'category',
       header: 'Category',
+      // Layer 1 of the mobile strategy (§6.8) — hidden below `md`.
+      meta: { responsiveClassName: 'hidden md:table-cell' },
       cell: ({ row }) => (
         <Badge variant="secondary">{row.original.category?.name ?? '—'}</Badge>
       ),
@@ -130,25 +141,42 @@ export function getColumns(
     {
       accessorKey: 'status',
       header: 'Status',
-      cell: ({ row }) => (
-        <div
-          className={cn(
-            'inline-flex h-max items-center rounded-sm px-2 py-0.5 text-xs capitalize',
-            // Green stays reserved for success (the repo's standing rule), so
-            // only `active` gets it. `unlisted` was red, which reads as a
-            // fault — it is a deliberate hidden state, so it takes amber.
-            row.original.status === 'active' &&
-              'bg-green-600/10 text-green-700',
-            row.original.status === 'unlisted' &&
-              'bg-amber-500/15 text-amber-700 dark:text-amber-400',
-            row.original.status === 'disabled' &&
-              'bg-muted text-muted-foreground',
-          )}
-        >
-          {PRODUCT_STATUS_OPTIONS.find((o) => o.value === row.original.status)
-            ?.label ?? row.original.status}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const option = PRODUCT_STATUS_OPTIONS.find(
+          (o) => o.value === row.original.status,
+        );
+        return (
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  tabIndex={0}
+                  className={cn(
+                    'inline-flex h-max w-max cursor-help items-center rounded-sm px-2 py-0.5 text-xs capitalize',
+                    // Green stays reserved for success (the repo's standing
+                    // rule), so only `active` gets it. `unlisted` was red,
+                    // which reads as a fault — it is a deliberate hidden
+                    // state, so it takes amber.
+                    row.original.status === 'active' &&
+                      'bg-green-600/10 text-green-700',
+                    row.original.status === 'unlisted' &&
+                      'bg-amber-500/15 text-amber-700 dark:text-amber-400',
+                    row.original.status === 'disabled' &&
+                      'bg-muted text-muted-foreground',
+                  )}
+                >
+                  {option?.label ?? row.original.status}
+                </div>
+              </TooltipTrigger>
+              {option && (
+                <TooltipContent>
+                  <p className="max-w-52">{option.description}</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
+        );
+      },
     },
     {
       id: 'actions',

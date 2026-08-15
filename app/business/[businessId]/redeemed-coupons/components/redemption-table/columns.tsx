@@ -5,6 +5,7 @@ import { ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { formatDiscountValue } from '@/lib/utils/formatDiscount';
 import type { RedemptionRecord, RedemptionStatus } from '@/lib/types';
 
 function getRedemptionStatus(record: RedemptionRecord): RedemptionStatus {
@@ -14,14 +15,9 @@ function getRedemptionStatus(record: RedemptionRecord): RedemptionStatus {
   return 'active';
 }
 
-function formatDiscount(
-  discount: RedemptionRecord['coupons'] extends null
-    ? null
-    : RedemptionRecord['coupons'],
-): string {
+function formatDiscount(discount: RedemptionRecord['coupons']): string {
   if (!discount) return '—';
-  const { type, value } = discount.discount;
-  return type === 'percentage' ? `${value}% off` : `₱${value} off`;
+  return formatDiscountValue(discount.discount);
 }
 
 function formatDate(iso: string | null): string {
@@ -55,7 +51,7 @@ export const redemptionColumns: ColumnDef<RedemptionRecord>[] = [
         <button
           type="button"
           onClick={row.getToggleExpandedHandler()}
-          className="text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors"
+          className="text-muted-foreground hover:text-foreground flex items-center justify-center rounded-md p-2.5 transition-colors"
           aria-label={row.getIsExpanded() ? 'Collapse row' : 'Expand row'}
         >
           <ChevronRight
@@ -120,6 +116,9 @@ export const redemptionColumns: ColumnDef<RedemptionRecord>[] = [
   {
     id: 'branch',
     header: 'Branch',
+    // Layer 1 of the mobile strategy (§6.8) — the card view below `md` shows
+    // only what a cashier reads; Branch/Expires never scroll sideways.
+    meta: { responsiveClassName: 'hidden md:table-cell' },
     cell: ({ row }) => {
       const branch = row.original.branches;
       return (
@@ -139,6 +138,8 @@ export const redemptionColumns: ColumnDef<RedemptionRecord>[] = [
   {
     id: 'expires_at',
     header: 'Expires',
+    // Layer 1 of the mobile strategy (§6.8) — hidden below `md`.
+    meta: { responsiveClassName: 'hidden md:table-cell' },
     cell: ({ row }) => (
       <span className="text-muted-foreground text-sm">
         {formatDate(row.original.expires_at)}

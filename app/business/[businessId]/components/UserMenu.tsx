@@ -22,6 +22,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { SidebarMenuButton } from '@/components/ui/sidebar';
+import { BusinessVerificationBadge } from './BusinessVerificationBadge';
 import { useAuth } from '@/hooks/useAuth';
 import { useUser } from '@/providers/UserContext';
 import { useBusinessShop } from '@/providers/BusinessProvider';
@@ -137,6 +138,13 @@ export function UserMenu() {
           <div className="grid flex-1 text-left text-sm leading-tight">
             <span className="truncate font-medium">{user?.full_name}</span>
             <span className="truncate text-xs">{user?.email}</span>
+            {/* The shop's verification state rides with the account — this menu
+                is the account place, and the badge is the same one the header
+                prints, so the two agree. */}
+            <BusinessVerificationBadge
+              status={business?.status}
+              className="mt-1"
+            />
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

@@ -1,11 +1,15 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
+import { cn } from '@/lib/utils';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import { BranchSelector } from './BranchSelector';
 import { ThemeToggle } from '@/components/custom/ThemeTogge';
 import { NotificationBell } from '@/components/custom/NotificationBell';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { BusinessVerificationBadge } from './BusinessVerificationBadge';
+import { initialsFromName } from '@/lib/utils/initials';
 import type { Branch as BranchSelectorItem } from '../libs/configs/config';
 // import { useAIContext } from './AIChatSheet'; // TODO: re-enable with AI assistant
 import { useBusinessShop } from '@/providers/BusinessProvider';
@@ -28,6 +32,8 @@ export function BusinessHeader({ branches = [] }: BusinessHeaderProps) {
   const searchParams = useSearchParams();
   // const { setIsAIChatOpen } = useAIContext(); // TODO: re-enable with AI assistant
   const { business, setSelectedBranchId } = useBusinessShop();
+  // Hydration-safe for this purpose: seeded from the `sidebar_state` cookie
+  // on the server, so the first client render agrees with the server.
   const { state } = useSidebar();
 
   const branchParam = searchParams.get('branch');
@@ -68,24 +74,49 @@ export function BusinessHeader({ branches = [] }: BusinessHeaderProps) {
     <header className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky top-0 z-40 w-full border-b backdrop-blur">
       <div className="flex h-16 items-center gap-4 px-4">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <SidebarTrigger className="h-9 w-9" />
-          {/* The sidebar now opens by default (seeded from the `sidebar_state`
-              cookie), but an owner who collapsed it would otherwise have their
-              own shop name nowhere on the screen they use all day. Shown only
-              while collapsed — the sidebar header prints it when open, and
-              twice is just chrome. */}
-          {business?.shop_name && state === 'collapsed' && (
-            <span className="font-display hidden truncate text-base leading-none font-bold tracking-tight sm:inline">
-              {business.shop_name}
-            </span>
+          <SidebarTrigger className="h-11 w-11 md:h-9 md:w-9" />
+          {/* Shop identity: printed by the sidebar header when it is OPEN on
+              desktop, so this block appears only when the sidebar is collapsed
+              (hydration-safe — the state is seeded from the sidebar cookie on
+              the server) OR on mobile, where the sheet is closed by default
+              and the owner would otherwise never see their own shop name.
+              The verification badge is the account-menu anchor — the account
+              place lives under the avatar, which is now clearly the shop's. */}
+          {business?.shop_name && (
+            <div
+              data-testid="header-shop-identity"
+              className={cn(
+                'flex min-w-0 items-center gap-2',
+                // Mobile: always visible (the sheet is closed by default).
+                // Desktop: only while the sidebar is collapsed. One md:
+                // display utility is present at a time, so no cascade fights.
+                state === 'collapsed' ? 'md:flex' : 'md:hidden',
+              )}
+            >
+              <Avatar className="h-7 w-7 shrink-0 rounded-lg">
+                {business.logo_url && (
+                  <AvatarImage
+                    src={business.logo_url}
+                    alt={business.shop_name}
+                  />
+                )}
+                <AvatarFallback className="rounded-lg text-xs">
+                  {initialsFromName(business.shop_name)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="font-display min-w-0 truncate text-base leading-none font-bold tracking-tight">
+                {business.shop_name}
+              </span>
+              <BusinessVerificationBadge
+                status={business.status}
+                hideLabelOnMobile
+              />
+            </div>
           )}
         </div>
 
         <div className="flex items-center">
-          <div
-            className="hidden items-center gap-2 sm:flex"
-            data-tour="notifications"
-          >
+          <div className="flex items-center gap-2" data-tour="notifications">
             {/* TODO: re-enable once the AI assistant is functional */}
             {/* <button
               onClick={() => setIsAIChatOpen((prev) => !prev)}

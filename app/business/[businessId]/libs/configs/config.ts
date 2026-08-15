@@ -33,7 +33,11 @@ export const storeNavigation: NavItem[] = [
     tourId: 'nav-shop',
   },
   {
-    title: 'Product Catalogues',
+    // The fallback label — the sidebar swaps in the vocabulary's catalogue
+    // noun ("Menu", "Service Menu", "Our Fleet") once the business resolves.
+    // Singular to match DEFAULT_OFFERING_NOUNS.catalogue, so the fallback
+    // never disagrees with the resolved label.
+    title: 'Product Catalogue',
     href: '/business/product-catalogues',
     icon: ShoppingBasket,
     tourId: 'nav-catalogue',

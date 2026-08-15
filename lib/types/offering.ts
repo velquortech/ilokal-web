@@ -143,6 +143,19 @@ export type OfferingNouns = {
   plural?: string;
   /** Page/nav heading: "Service Menu", "Menu", "Our Fleet" */
   catalogue?: string;
+  /**
+   * Sidebar entry for the owner's storefront. Universal default "My Shop" —
+   * only a vertical that genuinely renames the storefront (e.g. "My Fleet")
+   * should define it. Part of the nav pass so the one label that varies per
+   * vertical can be data-driven like `catalogue`.
+   */
+  shopLabel?: string;
+  /**
+   * Sidebar entry for promos. Universal default "Coupons & Deals" — kept in
+   * the vocabulary for the same reason as `shopLabel`: nav copy that could
+   * vary per vertical should not be hardcoded in the nav config.
+   */
+  dealsLabel?: string;
 };
 
 /**
@@ -173,6 +186,10 @@ export type OfferingVocabulary = {
   singular: string;
   plural: string;
   catalogue: string;
+  /** Sidebar entry for the owner's storefront ("My Shop"). */
+  shopLabel: string;
+  /** Sidebar entry for promos ("Coupons & Deals"). */
+  dealsLabel: string;
   /** "Add Service" */
   addLabel: string;
   /** "Update Service" */

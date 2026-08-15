@@ -69,12 +69,18 @@ export function BusinessSidebar({
       .filter((item) => !item.flag || flags[item.flag] === true)
       .map((item) => ({
         ...item,
-        // The catalogue entry is the one nav label that changes per vertical
-        // ("Menu", "Service Menu", "Our Fleet"); the config value is the
-        // fallback when no profile resolves.
+        // Three nav labels are vocabulary-driven: the catalogue entry changes
+        // per vertical ("Menu", "Service Menu", "Our Fleet"), and the
+        // storefront + promos entries resolve through the same nouns so a
+        // vertical can rename them ("My Fleet") without touching the nav
+        // config. The config value is the fallback when no profile resolves.
         title: item.href?.endsWith('/product-catalogues')
           ? vocabulary.catalogue
-          : item.title,
+          : item.href?.endsWith('/shop')
+            ? vocabulary.shopLabel
+            : item.href?.endsWith('/coupons')
+              ? vocabulary.dealsLabel
+              : item.title,
         href: item.href ? injectId(item.href) : item.href,
       })),
   }));

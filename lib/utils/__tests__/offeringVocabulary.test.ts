@@ -16,6 +16,8 @@ const SALON_PROFILE = {
     singular: 'Service',
     plural: 'Services',
     catalogue: 'Service Menu',
+    shopLabel: 'My Salon',
+    dealsLabel: 'Promos',
   },
   both: {
     singular: 'Offering',
@@ -29,6 +31,8 @@ describe('resolveOfferingVocabulary — mode selection', () => {
   it('reads the services nouns for a services business', () => {
     const v = resolveOfferingVocabulary(SALON_PROFILE, 'services');
     expect(v.catalogue).toBe('Service Menu');
+    expect(v.shopLabel).toBe('My Salon');
+    expect(v.dealsLabel).toBe('Promos');
     expect(v.addLabel).toBe('Add Service');
     expect(v.updateLabel).toBe('Update Service');
     expect(v.saveLabel).toBe('Save Service');
@@ -63,10 +67,14 @@ describe('resolveOfferingVocabulary — mode selection', () => {
         singular: 'Vehicle',
         plural: 'Fleet',
         catalogue: 'Our Fleet',
+        shopLabel: 'My Fleet',
       },
     };
     const v = resolveOfferingVocabulary(fleet, 'services');
     expect(v.catalogue).toBe('Our Fleet');
+    expect(v.shopLabel).toBe('My Fleet');
+    // Not defined → universal default, never undefined.
+    expect(v.dealsLabel).toBe('Coupons & Deals');
     expect(v.addLabel).toBe('Add Vehicle');
     expect(v.totalLabel).toBe('Total Fleet');
   });
@@ -169,6 +177,8 @@ describe('resolveOfferingVocabulary — fallback contract', () => {
       'singular',
       'plural',
       'catalogue',
+      'shopLabel',
+      'dealsLabel',
       'addLabel',
       'updateLabel',
       'saveLabel',
@@ -276,6 +286,8 @@ describe('DEFAULT_OFFERING_VOCABULARY', () => {
       singular: 'Product',
       plural: 'Products',
       catalogue: 'Product Catalogue',
+      shopLabel: 'My Shop',
+      dealsLabel: 'Coupons & Deals',
       addLabel: 'Add Product',
       totalLabel: 'Total Products',
     });

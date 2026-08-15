@@ -837,9 +837,11 @@ mobile"), delivered as Phase 6:**
    **Both §6.7.2 options now ship**: a **Manage** sidebar group (option a,
    `manageNavigation` — Profile + Settings as a visible nav section under
    the Store Management group) makes the account pages part of the nav the
-   owner reads all day, while the dropdown keeps its own entries for quick
-   access and the header identity (option b) keeps the account menu
-   unmistakably the account place.
+   owner reads all day, and the header identity (option b) keeps the account
+   menu unmistakably the account place. The dropdown no longer duplicates
+   the nav entries — Profile/Settings have a single home in the Manage
+   group, and the account menu is purely the account control (identity +
+   verification, tour, sign-out).
 3. **Mobile notifications** — the `NotificationBell` wrapper lost
    `hidden sm:flex`; the bell (44px touch target) now sits in the mobile
    header. Branch switching is no longer mobile-hidden either: the

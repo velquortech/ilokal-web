@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import type {
+  Category,
   ProductResponse,
   ProductSectionWithCount,
   ProductStatus,
@@ -31,15 +32,18 @@ import { ApplySale } from '../apply-sale';
 import { updateProductStatusAction } from '@/app/business/[businessId]/actions/productActions';
 
 /**
- * Row actions. Takes the product plus the shop's sections, so "Update" can
- * offer a section picker — the table is where an owner actually assigns them.
+ * Row actions. Takes the product plus the shop's sections and categories, so
+ * "Update" can offer both pickers — the table is where an owner actually
+ * assigns them.
  */
 export function ProductActions({
   product,
   sections,
+  categories,
 }: {
   product: ProductResponse;
   sections?: ProductSectionWithCount[];
+  categories?: Category[];
 }) {
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
@@ -96,7 +100,11 @@ export function ProductActions({
               View Card
             </DropdownMenuItem>
           </ViewProduct>
-          <UpdateProductDialog product={product} sections={sections}>
+          <UpdateProductDialog
+            product={product}
+            sections={sections}
+            categories={categories}
+          >
             <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
               <Pencil />
               Edit Product

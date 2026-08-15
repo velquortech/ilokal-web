@@ -220,6 +220,13 @@ export type OfferingVocabulary = {
    * because it can't tell "field omitted" from "explicitly 'product'".
    */
   defaultKind: OfferingKind;
+  /**
+   * The kinds this business may add. One entry for a single-mode shop
+   * (products-only or services-only); both for a 'both' shop, which is where
+   * the form must ASK rather than guess (see `defaultKindForMode`). Drives the
+   * kind toggle and, through it, which categories the picker offers.
+   */
+  allowedKinds: OfferingKind[];
 };
 
 /** Whether a business in this mode lists services at all. */

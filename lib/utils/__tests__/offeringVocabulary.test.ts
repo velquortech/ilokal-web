@@ -114,6 +114,7 @@ describe('resolveOfferingVocabulary — fallback contract', () => {
     expect(resolveOfferingVocabulary(blank, 'services')).toEqual({
       ...DEFAULT_OFFERING_VOCABULARY,
       defaultKind: 'service',
+      allowedKinds: ['service'],
     });
   });
 
@@ -122,6 +123,7 @@ describe('resolveOfferingVocabulary — fallback contract', () => {
     expect(resolveOfferingVocabulary(wrong, 'services')).toEqual({
       ...DEFAULT_OFFERING_VOCABULARY,
       defaultKind: 'service',
+      allowedKinds: ['service'],
     });
   });
 
@@ -230,6 +232,22 @@ describe('resolveOfferingVocabulary — field policy (phase 3)', () => {
     expect(resolveOfferingVocabulary(RENTAL_PROFILE, 'both').defaultKind).toBe(
       'product',
     );
+  });
+
+  it('derives allowedKinds from the MODE — the picker kind axis', () => {
+    // One kind for a single-mode shop (no toggle rendered, nothing to pick);
+    // both for 'both', which is exactly the case that needs the toggle.
+    expect(
+      resolveOfferingVocabulary(RENTAL_PROFILE, 'products').allowedKinds,
+    ).toEqual(['product']);
+    expect(
+      resolveOfferingVocabulary(RENTAL_PROFILE, 'services').allowedKinds,
+    ).toEqual(['service']);
+    expect(
+      resolveOfferingVocabulary(RENTAL_PROFILE, 'both').allowedKinds,
+    ).toEqual(['product', 'service']);
+    // Retail default: products only.
+    expect(DEFAULT_OFFERING_VOCABULARY.allowedKinds).toEqual(['product']);
   });
 
   it('drops unrecognized field names rather than rendering unknown inputs', () => {

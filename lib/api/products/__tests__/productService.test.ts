@@ -3,14 +3,23 @@ import type { Mock } from 'vitest';
 import * as q from '@/lib/api/products/productQuery';
 import * as svc from '@/lib/api/products/productService';
 import { createServerSupabaseClient } from '@/supabase/server';
+import { getBusinessTypeId } from '@/lib/api/offerings/offeringQuery';
 
 vi.mock('@/lib/api/products/productQuery');
+vi.mock('@/lib/api/offerings/offeringQuery', () => ({
+  getBusinessTypeId: vi.fn(),
+}));
 vi.mock('@/supabase/server', () => ({
   createServerSupabaseClient: vi.fn(),
 }));
 
 describe('productService', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default: the shop has no vertical, so scope checks pass — individual
+    // tests pin a vertical where the behavior is what is under test.
+    vi.mocked(getBusinessTypeId).mockResolvedValue(null);
+  });
 
   // ===== Category Service =====
 
@@ -375,6 +384,111 @@ describe('productService', () => {
       expect(res.success).toBe(false);
       expect(res.error?.code).toBe('INTERNAL_ERROR');
     });
+
+    it('rejects a category pinned to a different vertical', async () => {
+      vi.mocked(q.getCategoryById).mockResolvedValueOnce({
+        id: 'c-pastry',
+        name: 'Bakery & Pastries',
+        business_type_id: 'type-food',
+      } as unknown as Awaited<ReturnType<typeof q.getCategoryById>>);
+      vi.mocked(getBusinessTypeId).mockResolvedValueOnce('type-services');
+
+      const res = await svc.createProduct('b1', {
+        category_id: 'c-pastry',
+        name: 'Haircut',
+        price: 10,
+        kind: 'service',
+      } as unknown as Parameters<typeof svc.createProduct>[1]);
+
+      expect(res.success).toBe(false);
+      expect(res.error?.code).toBe('VALIDATION_ERROR');
+      expect(q.getCategoryById).toHaveBeenCalledWith('c-pastry');
+    });
+
+    it('rejects a kind-scoped category that does not match the offering', async () => {
+      // Same vertical, wrong kind: a 'both' shop adding a service must not
+      // attach a product-only category even via the API.
+      vi.mocked(q.getCategoryById).mockResolvedValueOnce({
+        id: 'c-pastry',
+        name: 'Bakery & Pastries',
+        kind: 'product',
+      } as unknown as Awaited<ReturnType<typeof q.getCategoryById>>);
+
+      const res = await svc.createProduct('b1', {
+        category_id: 'c-pastry',
+        name: 'Event Space',
+        price: 10,
+        kind: 'service',
+      } as unknown as Parameters<typeof svc.createProduct>[1]);
+
+      expect(res.success).toBe(false);
+      expect(res.error?.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('accepts a global / either-kind category in a scoped shop', async () => {
+      // NULL business_type_id and NULL kind are the fail-open rows — they
+      // appear in every picker and must pass the write path too.
+      vi.mocked(q.getCategoryById).mockResolvedValueOnce({
+        id: 'c-other',
+        name: 'Other',
+      } as unknown as Awaited<ReturnType<typeof q.getCategoryById>>);
+      vi.mocked(getBusinessTypeId).mockResolvedValueOnce('type-services');
+      const insertSpy = vi.fn(() => ({
+        select: vi.fn(() => ({
+          single: vi.fn(async () => ({
+            data: { id: 'p1', name: 'Haircut' },
+            error: null,
+          })),
+        })),
+      }));
+      const supabaseClient = {
+        from: vi.fn(() => ({ insert: insertSpy })),
+      } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
+      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+        supabaseClient,
+      );
+
+      const res = await svc.createProduct('b1', {
+        category_id: 'c-other',
+        name: 'Haircut',
+        price: 10,
+        kind: 'service',
+      } as unknown as Parameters<typeof svc.createProduct>[1]);
+
+      expect(res.success).toBe(true);
+    });
+
+    it('accepts any category when the shop has no vertical', async () => {
+      // A shop with no business_type_id gets the UNscoped picker, so the
+      // write path must fail open the same way (getBusinessTypeId → null).
+      vi.mocked(q.getCategoryById).mockResolvedValueOnce({
+        id: 'c-x',
+        name: 'Anything',
+        business_type_id: 'type-food',
+      } as unknown as Awaited<ReturnType<typeof q.getCategoryById>>);
+      const insertSpy = vi.fn(() => ({
+        select: vi.fn(() => ({
+          single: vi.fn(async () => ({
+            data: { id: 'p1', name: 'X' },
+            error: null,
+          })),
+        })),
+      }));
+      const supabaseClient = {
+        from: vi.fn(() => ({ insert: insertSpy })),
+      } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
+      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+        supabaseClient,
+      );
+
+      const res = await svc.createProduct('b1', {
+        category_id: 'c-x',
+        name: 'X',
+        price: 10,
+      } as unknown as Parameters<typeof svc.createProduct>[1]);
+
+      expect(res.success).toBe(true);
+    });
   });
 
   describe('updateProduct()', () => {
@@ -428,6 +542,73 @@ describe('productService', () => {
       expect(res.error?.code).toBe('NOT_FOUND');
       // No client was queued for this test, so reaching the write at all would
       // have thrown rather than returned a clean NOT_FOUND.
+    });
+
+    it('skips scope validation when the category is unchanged', async () => {
+      // A row with a pre-scoping (out-of-scope) category must stay editable —
+      // re-selecting its own category is not a change, so no validation runs.
+      const dbRes = {
+        product: { id: 'p1', business_id: 'b1', category_id: 'c-old' },
+      };
+      vi.mocked(q.getProductById).mockResolvedValueOnce(
+        dbRes as unknown as Awaited<ReturnType<typeof q.getProductById>>,
+      );
+      const updatedProduct = {
+        id: 'p1',
+        name: 'Updated',
+        business_id: 'b1',
+        category_id: 'c-old',
+      };
+      const supabaseClient = {
+        from: vi.fn(() => ({
+          update: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              is: vi.fn(() => ({
+                select: vi.fn(() => ({
+                  single: vi.fn(async () => ({
+                    data: updatedProduct,
+                    error: null,
+                  })),
+                })),
+              })),
+            })),
+          })),
+        })),
+      } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
+      (createServerSupabaseClient as unknown as Mock).mockResolvedValueOnce(
+        supabaseClient,
+      );
+
+      const res = await svc.updateProduct('p1', 'b1', {
+        name: 'Updated',
+        category_id: 'c-old',
+      } as unknown as Parameters<typeof svc.updateProduct>[2]);
+
+      expect(res.success).toBe(true);
+      // No scope read at all: the category never changed.
+      expect(q.getCategoryById).not.toHaveBeenCalled();
+    });
+
+    it('validates scope when the category changes', async () => {
+      const dbRes = {
+        product: { id: 'p1', business_id: 'b1', category_id: 'c-old' },
+      };
+      vi.mocked(q.getProductById).mockResolvedValueOnce(
+        dbRes as unknown as Awaited<ReturnType<typeof q.getProductById>>,
+      );
+      vi.mocked(q.getCategoryById).mockResolvedValueOnce({
+        id: 'c-new',
+        name: 'Bakery & Pastries',
+        business_type_id: 'type-food',
+      } as unknown as Awaited<ReturnType<typeof q.getCategoryById>>);
+      vi.mocked(getBusinessTypeId).mockResolvedValueOnce('type-services');
+
+      const res = await svc.updateProduct('p1', 'b1', {
+        category_id: 'c-new',
+      } as unknown as Parameters<typeof svc.updateProduct>[2]);
+
+      expect(res.success).toBe(false);
+      expect(res.error?.code).toBe('VALIDATION_ERROR');
     });
 
     it('succeeds when product is authorized and update works', async () => {

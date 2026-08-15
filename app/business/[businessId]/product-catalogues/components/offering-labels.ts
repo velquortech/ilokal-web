@@ -1,11 +1,20 @@
 import type { PriceType } from '@/lib/types';
-import type { BookingMode, ServiceLocation } from '@/lib/types/offering';
+import type {
+  BookingMode,
+  OfferingKind,
+  ServiceLocation,
+} from '@/lib/types/offering';
 
 /**
  * Owner-facing copy for the offering enums. Shared by the add and update
  * dialogs — both need to render the same pickers, and a divergent copy is how
  * "Price on request" ends up worded two different ways.
  */
+
+export const OFFERING_KIND_LABELS: Record<OfferingKind, string> = {
+  product: 'Product',
+  service: 'Service',
+};
 
 export const PRICE_TYPE_LABELS: Record<PriceType, string> = {
   fixed: 'Fixed price',

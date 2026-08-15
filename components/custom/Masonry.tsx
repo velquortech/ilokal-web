@@ -34,9 +34,15 @@ export function Masonry({ images }: MasonryProps) {
           const isReversed = groupIndex % 2 === 1;
 
           return (
+            // 🔴 The desktop positions used to apply at EVERY width. Below `md`
+            // the grid is `grid-cols-2`, so `col-start-3` / `col-start-4` had no
+            // explicit track — CSS Grid then created an implicit third column
+            // and the tiles spilled sideways off a phone. Every position is
+            // now `md:`-scoped, so a phone gets a plain 2×2 auto-flow and the
+            // offset mosaic only exists where the 4-column grid does.
             <div
               key={groupIndex}
-              className="grid auto-rows-[250px] grid-cols-2 gap-6 md:grid-cols-4"
+              className="grid auto-rows-[200px] grid-cols-2 gap-3 md:auto-rows-[250px] md:grid-cols-4 md:gap-6"
             >
               {group.map((img, i) => {
                 const globalIndex = groupIndex * 4 + i;
@@ -47,24 +53,24 @@ export function Masonry({ images }: MasonryProps) {
 
                 if (!isReversed) {
                   if (i === 0) {
-                    position = 'col-span-2 row-span-2';
+                    position = 'md:col-span-2 md:row-span-2';
                     sizeHint = '(max-width: 768px) 100vw, 50vw';
                   }
-                  if (i === 1) position = 'col-start-3 row-start-1';
-                  if (i === 2) position = 'col-start-4 row-start-1';
+                  if (i === 1) position = 'md:col-start-3 md:row-start-1';
+                  if (i === 2) position = 'md:col-start-4 md:row-start-1';
                   if (i === 3) {
-                    position = 'col-start-3 col-span-2 row-start-2';
+                    position = 'md:col-start-3 md:col-span-2 md:row-start-2';
                     sizeHint = '(max-width: 768px) 100vw, 50vw';
                   }
                 } else {
                   if (i === 0) {
-                    position = 'col-start-1 col-span-2 row-start-2';
+                    position = 'md:col-start-1 md:col-span-2 md:row-start-2';
                     sizeHint = '(max-width: 768px) 100vw, 50vw';
                   }
-                  if (i === 1) position = 'col-start-1 row-start-1';
-                  if (i === 2) position = 'col-start-2 row-start-1';
+                  if (i === 1) position = 'md:col-start-1 md:row-start-1';
+                  if (i === 2) position = 'md:col-start-2 md:row-start-1';
                   if (i === 3) {
-                    position = 'col-start-3 col-span-2 row-span-2';
+                    position = 'md:col-start-3 md:col-span-2 md:row-span-2';
                     sizeHint = '(max-width: 768px) 100vw, 50vw';
                   }
                 }

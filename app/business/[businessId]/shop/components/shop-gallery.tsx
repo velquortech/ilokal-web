@@ -58,7 +58,10 @@ export function ShopGallery({ business, branch }: ShopGalleryProps) {
 
   return (
     <div className="space-y-4">
-      <div className="inline-flex w-full items-center justify-between">
+      {/* `flex-wrap`: a long label (branch name gallery) and the manage
+          button used to sit on one unbreakable line and squeeze on a phone;
+          below ~360px they wrap instead. */}
+      <div className="flex w-full flex-wrap items-center justify-between gap-2">
         <span className="font-medium">{label}</span>
         {manageHref && (
           <Button size="sm" asChild>
@@ -76,8 +79,9 @@ export function ShopGallery({ business, branch }: ShopGalleryProps) {
       {hasImages ? (
         <Masonry images={images} />
       ) : hasAnyImages ? (
-        // 1–3 images: simple row grid
-        <div className="grid grid-cols-3 gap-3">
+        // 1–3 images: simple row grid — 2-up on a phone (3-up thumbs at ~105px
+        // wide are too small to see), 3-up from `sm`.
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {rawImages.map((src, i) => (
             <div
               key={i}

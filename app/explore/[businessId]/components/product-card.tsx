@@ -26,11 +26,15 @@ export function ProductCard({
   return (
     <div className="bg-card flex gap-3 rounded-xl border p-3">
       <div className="bg-muted relative size-20 shrink-0 overflow-hidden rounded-lg">
+        {/* `unoptimized` — same reason as every other product thumbnail:
+            write-time WebP and no Supabase transform endpoint, so Next's
+            optimizer would leave this blank. */}
         {product.image_url && (
           <Image
             src={product.image_url}
             alt={product.name}
             fill
+            unoptimized
             sizes="80px"
             className="object-cover"
           />

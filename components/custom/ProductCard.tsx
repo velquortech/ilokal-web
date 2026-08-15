@@ -1,3 +1,6 @@
+'use client';
+
+import * as React from 'react';
 import Image from 'next/image';
 import { ImageOff } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,21 +11,25 @@ import type { ProductResponse } from '@/lib/types';
 
 export function ProductCard(product: ProductResponse) {
   const { base, sale } = formatOfferingPricePair(product);
+  const [imgError, setImgError] = React.useState(false);
 
   return (
-    <Card
-      key={product.id}
-      className="group gap-2 overflow-hidden p-3 transition hover:shadow-lg"
-    >
+    <Card className="group gap-2 overflow-hidden p-3 transition hover:shadow-lg">
       {/* IMAGE */}
       <div className="border-border relative aspect-square min-h-48 w-full overflow-hidden rounded-md border">
-        {product.image_url ? (
+        {/* `unoptimized` matches every other dashboard thumbnail — these are
+            write-time WebP and the free Supabase plan has no transform
+            endpoint, so routing them through Next's optimizer left the card
+            blank. `onError` covers a URL that resolved but no longer exists. */}
+        {product.image_url && !imgError ? (
           <Image
             src={product.image_url}
             alt={product.name}
             fill
+            unoptimized
             className="object-cover transition-transform duration-300 group-hover:scale-105"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+            onError={() => setImgError(true)}
           />
         ) : (
           <div className="bg-muted text-muted-foreground flex h-full w-full items-center justify-center">

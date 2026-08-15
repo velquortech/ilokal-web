@@ -809,6 +809,55 @@ coupons `select` column is inert on mobile cards (no bulk toolbar exists) —
 selection stays single-source where it is used. Card-mode axe/keyboard pass
 and the coupons/redemptions Filipino copy stay in the account-phases batch.
 
+### 7.9 IA / navigation pass — implemented (§6.7)
+
+**Status: implemented, reviewed, browser-tested (28/28 checks), committed +
+pushed on `feat/business-dashboard-ux-revamp`, held for PR.** No new
+migration; no data-model change.
+
+**What shipped — the spec's deferred Phase-4 row ("IA / navigation +
+mobile"), delivered as Phase 6:**
+
+1. **Vocabulary-driven nav labels** — `OfferingNouns` gained `shopLabel` +
+   `dealsLabel` (defaults "My Shop" / "Coupons & Deals") with the same
+   fallback contract as `catalogue`; the sidebar now resolves all three
+   entries through the vocabulary (a vertical can rename its storefront —
+   "My Fleet" — without touching the nav config). The nav fallback label
+   "Product Catalogues" → "Product Catalogue" so the fallback never
+   disagrees with the resolved label. Both new labels are universal today;
+   the mechanism is what ships (§6.7.1 "where sensible").
+2. **Profile/Settings surfacing — account-place design (§6.7.2 option b)** —
+   the header now prints a compact shop identity (avatar + name +
+   verification badge) whenever the sidebar is collapsed or on mobile (where
+   the sheet is closed by default and the owner otherwise never sees their
+   own shop name); the account menu shows the same badge under the email, so
+   the avatar dropdown is unmistakably the _account_ place. New shared
+   `BusinessVerificationBadge` (verified/pending/rejected/suspended arms;
+   icon-only below `sm` in the header, `title` kept for discoverability).
+   Profile/Settings stay in the dropdown (option b — the sidebar Manage
+   group, option a, is noted as the heavier alternative).
+3. **Mobile notifications** — the `NotificationBell` wrapper lost
+   `hidden sm:flex`; the bell (44px touch target) now sits in the mobile
+   header. Branch switching is no longer mobile-hidden either: the
+   `BranchSelector` trigger becomes an icon-only 44px button below `md`
+   (name + chevron are the desktop part; the `w-72` dropdown fits 375px).
+   Header controls (trigger, bell, branch, theme) all use 44px mobile
+   touch targets, compact `md:` sizes.
+4. **Help & Support stays hidden** (§6.7.4) — no `help/` route exists, so
+   the entry remains absent (verified 404s); same for Subscription. Flag-
+   gated items (Bookings/Events) keep the existing `flags` filter (§6.7.5,
+   verified unchanged — Bookings absent while the flag is off).
+
+**Verification:** typecheck clean · 2,874 tests pass (3 new
+`BusinessVerificationBadge` unit tests + vocabulary tests for the new
+nouns) · lint + prettier clean · 28/28 browser checks on the local DB
+(Gugma, verified): desktop sidebar labels ("My Shop", "Service Menu",
+"Coupons & Deals", no generic "Product Catalogue"); account menu with
+Profile/Settings + Verified badge and no Help/Subscription; identity hidden
+while open → appears on collapse with shop name + badge; at 375px identity
+shows, bell/branch/theme are 44px, no horizontal scroll (scrollWidth=375),
+bell popover + branch dropdown open, sheet shows the same labels.
+
 ---
 
 ## 8. Filipino (Tagalog) copy variant
@@ -937,13 +986,14 @@ Proposed (spec-level):
 > Interview decision: each phase's section is reviewed/approved before
 > implementation. Phase order is a proposal; Phase 1 is fixed by interview.
 
-| Phase | Scope                            | Key deliverables                                                                                                                                                                                                                                                                                       | Approx risk   |
-| ----- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- | --- | ----- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --- |
-| **1** | Coupons & Deals flow             | Template-first creation (presets + code suggestions), BOGO/FREE data model + mobile render, duplicate, edit/status coherence, dialog restructure, Phase-1 instrumentation                                                                                                                              | High (schema) |
-| **2** | Registration wizard              | Honest copy, lat/lng hidden, category-step mobile polish, deal-step preset reuse, reg funnel instrumentation                                                                                                                                                                                           | Low–Med       |
-| **3** | Dashboard home + onboarding      | Reordered home, KPI captions, empty/zero states, checklist polish, tour browser pass (TD-020), dashboard instrumentation                                                                                                                                                                               | Low           |
-| **4** | Store nav pages — delivered      | Shop toolbar, catalogue status tooltips + **mobile card view (§6.8 Layer 1+2 on catalogues)**, redemptions rename + counter help, branches shared map/address fields + approval language. _(Delivered as the user's Phase 4; the spec's original Phase-4 row "IA / navigation + mobile" is deferred.)_ | Med           |     | **5** | Coupons/redemptions mobile — delivered | Card-view fallbacks for the coupons + redemptions tables and their port onto the shared `DataTable` (§6.8 Layer 1+2, all three pages unified). Remaining: guided-add flow, apply-sale inline preview, IA/nav pass (sidebar labels, Profile/Settings placement, mobile notifications) | Med |
-| **6** | Account pages + Filipino variant | Profile status banner, settings polish, insights primer, copy map (en+fil) seeded from the §8.1 inventory (first 30) + Filipino rollout                                                                                                                                                                | Med           |
+| Phase | Scope                            | Key deliverables                                                                                                                                                                                                                                                                                          | Approx risk   |
+| ----- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | --- | ----- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
+| **1** | Coupons & Deals flow             | Template-first creation (presets + code suggestions), BOGO/FREE data model + mobile render, duplicate, edit/status coherence, dialog restructure, Phase-1 instrumentation                                                                                                                                 | High (schema) |
+| **2** | Registration wizard              | Honest copy, lat/lng hidden, category-step mobile polish, deal-step preset reuse, reg funnel instrumentation                                                                                                                                                                                              | Low–Med       |
+| **3** | Dashboard home + onboarding      | Reordered home, KPI captions, empty/zero states, checklist polish, tour browser pass (TD-020), dashboard instrumentation                                                                                                                                                                                  | Low           |
+| **4** | Store nav pages — delivered      | Shop toolbar, catalogue status tooltips + **mobile card view (§6.8 Layer 1+2 on catalogues)**, redemptions rename + counter help, branches shared map/address fields + approval language. _(Delivered as the user's Phase 4; the spec's original Phase-4 row "IA / navigation + mobile" is deferred.)_    | Med           |     | **5** | Coupons/redemptions mobile — delivered | Card-view fallbacks for the coupons + redemptions tables and their port onto the shared `DataTable` (§6.8 Layer 1+2, all three pages unified). Remaining: guided-add flow, apply-sale inline preview _(IA/nav pass shipped as the user's Phase 6 — §7.9)_ | Med |
+| **6** | IA / nav pass — delivered        | Sidebar labels vocabulary-driven (`shopLabel`/`dealsLabel` nouns), shop identity + verification badge in header + account menu, mobile notifications + 44px header targets, branch selector icon trigger on mobile, Help & Support stays hidden (route 404s). _(Delivered as the user's Phase 6 — §7.9.)_ | Low           |
+| **7** | Account pages + Filipino variant | Profile status banner, settings polish, insights primer, copy map (en+fil) seeded from the §8.1 inventory (first 30) + Filipino rollout                                                                                                                                                                   | Med           |
 
 Cross-cutting in every phase: light-first dark pass, a11y (axe + keyboard),
 mobile verification, `logActionError` in any new action, CHANGELOG update.

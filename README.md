@@ -43,7 +43,7 @@ Instead of the local Docker stack, you can run the app straight against the **ho
 npx vercel env pull --environment=production > .env.cloud
 ```
 
-> If you overwrite the file this way, re-add three keys afterwards: `SUPABASE_SERVICE_ROLE_KEY` (Vercel returns it as `[SENSITIVE]` — grab the real value from **Project Settings → API** in the Supabase dashboard), `SUPABASE_DB_URL` (cloud Postgres connection string, percent-encoded), and `SEED_DEV_PASSWORD` (used by cloud seeding). Check the header comments in `.env.cloud` for where each comes from.
+> If you overwrite the file this way, re-add three keys afterwards: `SUPABASE_SERVICE_ROLE_KEY` (Vercel returns it as `[SENSITIVE]` — grab the real value from **Project Settings → API** in the Supabase dashboard, or fetch it with the CLI: `npx supabase projects api-keys --project-ref <ref>`), `SUPABASE_DB_URL` (cloud Postgres connection string, percent-encoded), and `SEED_DEV_PASSWORD` (used by cloud seeding). Check the header comments in `.env.cloud` for where each comes from.
 
 Then start the app:
 

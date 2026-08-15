@@ -33,6 +33,37 @@ Make sure the following are installed on your machine:
 
 ---
 
+## ☁️ Running against the CLOUD database (no Docker)
+
+Instead of the local Docker stack, you can run the app straight against the **hosted Supabase project** — useful when the local stack is down or you want to see real data. **No Docker required.**
+
+**Prerequisite:** a `.env.cloud` file with the cloud credentials. It is git-ignored; the quickest way to (re)create it from the project's Vercel config is:
+
+```bash
+npx vercel env pull --environment=production > .env.cloud
+```
+
+> If you overwrite the file this way, re-add three keys afterwards: `SUPABASE_SERVICE_ROLE_KEY` (Vercel returns it as `[SENSITIVE]` — grab the real value from **Project Settings → API** in the Supabase dashboard), `SUPABASE_DB_URL` (cloud Postgres connection string, percent-encoded), and `SEED_DEV_PASSWORD` (used by cloud seeding). Check the header comments in `.env.cloud` for where each comes from.
+
+Then start the app:
+
+```bash
+make dev-cloud
+```
+
+That sources `.env.cloud` into the shell (so its values override `.env`'s local ones) and runs `next dev` — it never touches `.env`, Docker, or the local stack. It refuses to run if `NEXT_PUBLIC_SUPABASE_URL` still points at `localhost`/`127.0.0.1`.
+
+**Manual equivalent:**
+
+```bash
+set -a; . ./.env.cloud; set +a
+make run-start  # or: yarn dev
+```
+
+**Switch back to local:** `make run-dev` (starts the Docker stack and writes `.env`).
+
+---
+
 ## 🔧 Cleaning and Stopping
 
 - Clean all configurations and stop running containers:

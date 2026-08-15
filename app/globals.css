@@ -138,8 +138,12 @@ html {
   --secondary-foreground: oklch(0.218 0 90);
   --muted: oklch(0.962 0.008 95);
   --muted-foreground: oklch(0.52 0.015 30);
-  --accent: oklch(0.927 0.132 98.148);
-  --accent-foreground: oklch(0.218 0 90);
+  /* `--accent` is the interactive-hover colour (ghost/outline buttons,
+     dropdown + select items, active header nav). It used to be Jasmine —
+     every hover read as yellow. Retinted to the brand red (same value as
+     `--primary`) so hover feedback is the brand colour, with white text. */
+  --accent: oklch(0.552 0.226 28.828);
+  --accent-foreground: oklch(0.985 0.005 95.098);
   /* Deliberately NOT the brand red: the brand red is `--primary` now, so the
      stock destructive would make Delete read as a brand CTA. Deepened to a
      maroon that still says "danger" but never says "primary action". */
@@ -159,8 +163,10 @@ html {
   --sidebar-foreground: oklch(0.218 0 90);
   --sidebar-primary: oklch(0.552 0.226 28.828);
   --sidebar-primary-foreground: oklch(0.985 0.005 95.098);
-  --sidebar-accent: oklch(0.975 0.045 98.909);
-  --sidebar-accent-foreground: oklch(0.218 0 90);
+  /* The nav's hover + active states — same red as `--accent`, so the active
+     page reads as a solid ember pill instead of a cornsilk wash. */
+  --sidebar-accent: oklch(0.552 0.226 28.828);
+  --sidebar-accent-foreground: oklch(0.985 0.005 95.098);
   --sidebar-border: oklch(0.905 0.008 60);
   --sidebar-ring: oklch(0.552 0.226 28.828);
 }
@@ -187,8 +193,10 @@ html {
   --secondary-foreground: oklch(0.97 0.008 95);
   --muted: oklch(0.305 0.008 60);
   --muted-foreground: oklch(0.72 0.014 80);
-  --accent: oklch(0.34 0.028 90);
-  --accent-foreground: oklch(0.97 0.008 95);
+  /* Same retint as light mode: hover/active feedback is the lifted dark-mode
+     red (matches `--primary`), white text on it. */
+  --accent: oklch(0.58 0.215 28.8);
+  --accent-foreground: oklch(0.985 0.005 95.098);
   /* Hue-shifted toward crimson rather than just darkened, so it stays
      distinguishable from the lifted dark-mode primary. */
   --destructive: oklch(0.545 0.17 12);
@@ -204,8 +212,8 @@ html {
   --sidebar-foreground: oklch(0.97 0.008 95);
   --sidebar-primary: oklch(0.58 0.215 28.8);
   --sidebar-primary-foreground: oklch(0.985 0.005 95.098);
-  --sidebar-accent: oklch(0.34 0.028 90);
-  --sidebar-accent-foreground: oklch(0.97 0.008 95);
+  --sidebar-accent: oklch(0.58 0.215 28.8);
+  --sidebar-accent-foreground: oklch(0.985 0.005 95.098);
   --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: oklch(0.58 0.215 28.8);
 }

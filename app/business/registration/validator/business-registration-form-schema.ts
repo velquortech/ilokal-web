@@ -28,27 +28,63 @@ export const step1Schema = z.object({
   business_category: businessCategorySchema,
 });
 
+/**
+ * The shop's address block, shared by the wizard and the API route so a
+ * crafted request can't smuggle a junk address past a client that already
+ * checks.
+ *
+ * - Province/city/barangay come from the ph-locations dataset via selects,
+ *   so they only need a presence check (trimmed — a select value never has
+ *   padding, but a restored cache or crafted payload might).
+ * - Street address: a real address, not a single character. The length cap
+ *   keeps a paste-bomb out of the `businesses.location` JSONB and the branch
+ *   row that registration mirrors it into.
+ * - ZIP: Philippine postal codes are exactly four digits (e.g. Iloilo City
+ *   is 5000). Accepting anything else is how 'abc' or '123456' lands in a
+ *   verified shop's address.
+ * - Latitude/longitude are range-checked and OPTIONAL: the map pin is the
+ *   only way they're set, and a shop may legitimately register before
+ *   dropping one. `geometry` (the pin proof) is what the map writes.
+ */
+export const locationSchema = z.object({
+  province: z.string().trim().min(1, 'Province is required'),
+  city: z.string().trim().min(1, 'City is required'),
+  barangay: z.string().trim().min(1, 'Barangay is required'),
+  street_address: z
+    .string()
+    .trim()
+    .min(5, 'Enter your full street address')
+    .max(255, 'Street address must be 255 characters or less'),
+  zip_code: z
+    .string()
+    .trim()
+    .regex(/^\d{4}$/, 'ZIP code must be exactly 4 digits'),
+  latitude: z
+    .number({ error: 'Must be a number' })
+    .min(-90, 'Invalid latitude')
+    .max(90, 'Invalid latitude')
+    .optional(),
+  longitude: z
+    .number({ error: 'Must be a number' })
+    .min(-180, 'Invalid longitude')
+    .max(180, 'Invalid longitude')
+    .optional(),
+  geometry: z.string().min(1, 'Set your location coordinates to continue'),
+});
+
 export const step2Schema = z.object({
-  shop_name: z.string().min(1, 'Required'),
-  description: z.string().min(1, 'Required'),
-  location: z.object({
-    province: z.string().min(1),
-    city: z.string().min(1),
-    barangay: z.string().min(1),
-    street_address: z.string().min(1),
-    zip_code: z.string().min(1),
-    latitude: z
-      .number({ error: 'Must be a number' })
-      .min(-90, 'Invalid latitude')
-      .max(90, 'Invalid latitude')
-      .optional(),
-    longitude: z
-      .number({ error: 'Must be a number' })
-      .min(-180, 'Invalid longitude')
-      .max(180, 'Invalid longitude')
-      .optional(),
-    geometry: z.string().min(1, 'Set your location coordinates to continue'),
-  }),
+  shop_name: z
+    .string()
+    .trim()
+    .min(1, 'Shop name is required')
+    .max(255, 'Shop name must be 255 characters or less'),
+  description: z
+    .string()
+    .trim()
+    .min(1, 'Description is required')
+    // Matches the character counter the Shop Information step shows.
+    .max(500, 'Description must be 500 characters or less'),
+  location: locationSchema,
 });
 
 const fileSchema = z.custom<File>((val) => val instanceof File);

@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import { BranchSelector } from './BranchSelector';
+import { BrandMark } from '@/components/custom/BrandLogo';
 import { ThemeToggle } from '@/components/custom/ThemeTogge';
 import { NotificationBell } from '@/components/custom/NotificationBell';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -116,6 +117,19 @@ export function BusinessHeader({ branches = [] }: BusinessHeaderProps) {
         </div>
 
         <div className="flex items-center">
+          {/* Platform mark — the brand constant when the sidebar's footer is
+              off-screen: on mobile (the sidebar sheet is closed by default)
+              and on desktop while the sidebar is collapsed. Redundant with
+              the sidebar footer while it is open, so hidden then — same
+              md:/collapsed rule as the shop identity block above. */}
+          <div
+            className={cn(
+              'mr-2 flex shrink-0 items-center',
+              state === 'collapsed' ? 'md:flex' : 'md:hidden',
+            )}
+          >
+            <BrandMark size={20} />
+          </div>
           <div className="flex items-center gap-2" data-tour="notifications">
             {/* TODO: re-enable once the AI assistant is functional */}
             {/* <button

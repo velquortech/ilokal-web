@@ -4,13 +4,26 @@ import {
   getMyBusinesses,
   createBusinessDraft,
 } from '@/lib/api/business/business';
+import { locationSchema } from '@/app/business/registration/validator/business-registration-form-schema';
 
+/**
+ * The authoritative gate for the registration payload — the client schema is
+ * convenience, this is enforcement. `location` reuses the wizard's schema so
+ * the two cannot drift apart: a crafted request that slips a junk address
+ * past a stale client still fails here, and every field the branch mirror
+ * reads (`geometry`, the address parts) is guaranteed to exist.
+ */
 const createBusinessSchema = z.object({
-  shop_name: z.string().min(1),
-  description: z.string().min(1),
-  business_category: z.record(z.string(), z.unknown()),
+  shop_name: z.string().trim().min(1).max(255),
+  description: z.string().trim().min(1).max(500),
+  business_category: z.object({
+    id: z.guid().optional().nullable(),
+    type: z.enum(['predefined', 'custom']),
+    name: z.string().trim().min(1),
+    description: z.string().optional().nullable(),
+  }),
   category_id: z.guid().nullable().optional(),
-  location: z.record(z.string(), z.unknown()),
+  location: locationSchema,
 });
 
 // GET: /api/businesses
@@ -32,7 +45,14 @@ export async function POST(request: Request) {
     const parsed = createBusinessSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { message: 'Invalid registration payload' },
+        {
+          message: 'Invalid registration payload',
+          // Field-level detail so the client (and a support agent reading the
+          // response) can see exactly which field failed and why.
+          errors: parsed.error.issues.map(
+            (issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`,
+          ),
+        },
         { status: 400 },
       );
     }

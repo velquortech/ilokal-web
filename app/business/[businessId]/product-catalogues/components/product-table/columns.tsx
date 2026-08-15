@@ -86,8 +86,11 @@ export function getColumns(
       accessorKey: 'name',
       header: 'Name',
       cell: ({ row }) => (
-        <div>
-          <div className="font-medium">{row.original.name}</div>
+        // The shared table forces `whitespace-nowrap`, so one long name used
+        // to stretch the whole table to the full name width. Cap the column at
+        // a menu-typical width; both lines ellipsize at the same right edge.
+        <div className="max-w-64">
+          <div className="truncate font-medium">{row.original.name}</div>
           <p className="text-muted-foreground line-clamp-1 text-xs">
             {row.original.description}
           </p>
@@ -120,14 +123,18 @@ export function getColumns(
     },
     {
       accessorKey: 'price',
-      header: 'Price',
+      // Numbers read as a column when they share a right edge, so the header
+      // and both price forms right-align on desktop. The mobile card view
+      // reuses this same cell below `md` where the price sits left of the
+      // status chip — alignment stays left there (`text-left md:text-right`).
+      header: () => <div className="text-right">Price</div>,
       cell: ({ row }) => {
         const { price, sale_price } = row.original;
         const { base, sale } = formatOfferingPricePair(row.original);
         // `sale` is null for quote-based rows, which have nothing to discount.
         if (sale && price != null && sale_price != null) {
           return (
-            <div className="flex flex-col gap-0.5">
+            <div className="flex flex-col items-start gap-0.5 md:items-end">
               <span className="text-primary font-semibold">{sale}</span>
               <span className="text-muted-foreground text-xs line-through">
                 {base} (-{calculatePercentage(price, sale_price)}%)
@@ -135,7 +142,7 @@ export function getColumns(
             </div>
           );
         }
-        return <span>{base}</span>;
+        return <div className="text-left md:text-right">{base}</div>;
       },
     },
     {

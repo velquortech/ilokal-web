@@ -98,8 +98,12 @@ export default async function ProfilePage({ params }: { params: Params }) {
     }
   }
 
+  // The shell (BusinessLayout) already pads the content column horizontally
+  // (`px-4 sm:px-6 lg:px-10`) and vertically (`py-6`); a page-level `p-6` would
+  // double the inset and make this page sit visibly off-grid from every other
+  // dashboard page. `pb-8` only adds the extra bottom air the table pages use.
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
+    <div className="flex min-w-0 flex-1 flex-col gap-6 pb-8">
       <PageHeader
         title="Profile"
         lede="Manage your personal and business information."

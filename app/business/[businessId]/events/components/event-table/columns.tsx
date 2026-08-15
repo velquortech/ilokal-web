@@ -42,11 +42,15 @@ export function getColumns(
     {
       accessorKey: 'address',
       header: 'Where',
+      // Layer 1 (§6.8): not what a phone owner reaches for — dropped below md
+      // so the event list doesn't demand a sideways scroll.
+      meta: { responsiveClassName: 'hidden md:table-cell' },
       cell: ({ row }) => <EventVenueCell address={row.original.address} />,
     },
     {
       id: 'promotes',
       header: 'Promotes',
+      meta: { responsiveClassName: 'hidden md:table-cell' },
       cell: ({ row }) =>
         row.original.product ? (
           <Badge variant="secondary">{row.original.product.name}</Badge>

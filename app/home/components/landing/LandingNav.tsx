@@ -217,6 +217,19 @@ export function LandingNav({
                 List Your Business
               </Link>
             )}
+            {/* The desktop actions row (which carries Log In) is hidden below
+                1180px, and the overlay never carried the link — a phone
+                visitor could sign up but had no way back into an existing
+                account. Secondary outline button under the primary CTA, same
+                destination as the desktop row's Log In. */}
+            <Link
+              href={ROUTES.AUTH.SIGN_IN}
+              style={s(
+                'display:block;margin-top:12px;text-align:center;color:var(--text);font-size:15px;font-weight:600;padding:13px;border-radius:12px;border:1px solid var(--border);',
+              )}
+            >
+              Log In
+            </Link>
           </div>
         </div>
       )}

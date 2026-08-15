@@ -22,6 +22,8 @@ interface ProductTableProps {
   totalPages: number;
   total: number;
   onPaginationChange: (page: number, pageSize: number) => void;
+  /** Rendered when the table is empty — see DataTable's `emptyState`. */
+  emptyState?: React.ReactNode;
 }
 
 export function ProductTable({
@@ -31,6 +33,7 @@ export function ProductTable({
   pageSize,
   totalPages,
   onPaginationChange,
+  emptyState,
 }: ProductTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
@@ -92,6 +95,7 @@ export function ProductTable({
           />
         }
         renderMobile={(table) => <MobileProductCardList table={table} />}
+        emptyState={emptyState}
       />
     </div>
   );

@@ -224,7 +224,7 @@ export function ManageSections({
         }}
       >
         <SheetTrigger asChild>
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="h-11 gap-2 md:h-9">
             <FolderOpen className="size-4" />
             Sections
           </Button>

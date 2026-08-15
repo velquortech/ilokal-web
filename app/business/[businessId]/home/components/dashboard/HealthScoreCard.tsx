@@ -14,7 +14,9 @@ function trendLabel(trend: 'up' | 'down' | 'flat'): string {
 
 export function HealthScoreCard({ health }: HealthScoreCardProps) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    // 2-up on phones: four full-width stat cards stacked is a wall of scroll
+    // before the real content; a native stat row is two cards across.
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       <StatCard
         title="Retention Rate"
         value={

@@ -114,6 +114,48 @@ describe('both tables are the shared table', () => {
   });
 });
 
+describe('Layer 1 keeps the decision on a phone (meta.responsiveClassName)', () => {
+  // The secondary columns hide below a breakpoint; name/when/status/actions
+  // always stay. A column added without the meta regresses the queue back to
+  // a sideways scroll — this pins the keep/hide split per table.
+  const count = (relative: string, needle: string) =>
+    read(relative).split(needle).length - 1;
+
+  it.each([
+    `${OWNER_DIR}/event-table/columns.tsx`,
+    `${ADMIN_DIR}/event-review-table/columns.tsx`,
+  ])('%s hides its secondary columns, never the decision', (relative) => {
+    expect(count(relative, 'responsiveClassName')).toBeGreaterThanOrEqual(2);
+    // The four columns an owner/reviewer actually reaches for carry no meta.
+    for (const keep of [
+      "accessorKey: 'name'",
+      "id: 'when'",
+      "accessorKey: 'status'",
+      "id: 'actions'",
+    ]) {
+      expect(count(relative, keep)).toBe(1);
+    }
+  });
+
+  it('the owner list hides exactly Where and Promotes below md', () => {
+    const owner = `${OWNER_DIR}/event-table/columns.tsx`;
+    const source = read(owner);
+    expect(count(owner, 'responsiveClassName')).toBe(2);
+    expect(source).toContain(
+      "meta: { responsiveClassName: 'hidden md:table-cell' }",
+    );
+  });
+
+  it('the admin queue hides every secondary column (image, host, where, links, order)', () => {
+    const admin = `${ADMIN_DIR}/event-review-table/columns.tsx`;
+    const source = read(admin);
+    expect(count(admin, 'responsiveClassName')).toBe(5);
+    expect(source).toContain('hidden sm:table-cell'); // image
+    expect(count(admin, 'hidden md:table-cell')).toBe(2); // address, priority
+    expect(count(admin, 'hidden lg:table-cell')).toBe(2); // host, links
+  });
+});
+
 describe('the admin can author, but cannot silently take a shop event down', () => {
   const actions = read(`${ADMIN_DIR}/event-review-table/review-actions.tsx`);
 

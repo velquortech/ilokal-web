@@ -10,6 +10,7 @@ import { CalendarDays } from 'lucide-react';
 import { DataTable } from '@/components/custom/data-table/DataTable';
 import type { EventWithRefs } from '@/lib/types';
 import { getColumns } from './columns';
+import { MobileEventCardList } from './mobile-event-card-list';
 import type { OfferingOption } from '../event-dialog';
 
 interface EventsTableProps {
@@ -79,6 +80,7 @@ export function EventsTable({
             }
           />
         }
+        renderMobile={(table) => <MobileEventCardList table={table} />}
       />
     </div>
   );

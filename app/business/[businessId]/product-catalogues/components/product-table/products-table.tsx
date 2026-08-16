@@ -10,13 +10,19 @@ import {
   RowSelectionState,
   OnChangeFn,
 } from '@tanstack/react-table';
-import type { ProductResponse, ProductSectionWithCount } from '@/lib/types';
+import type {
+  Category,
+  ProductResponse,
+  ProductSectionWithCount,
+} from '@/lib/types';
 import { BulkStatusActions } from './bulk-status-actions';
 
 interface ProductTableProps {
   products: ProductResponse[];
   /** Passed through to the row actions so "Update" can offer a section. */
   sections?: ProductSectionWithCount[];
+  /** Passed through so "Update" can offer a category (vertical-scoped). */
+  categories?: Category[];
   page: number;
   pageSize: number;
   totalPages: number;
@@ -29,6 +35,7 @@ interface ProductTableProps {
 export function ProductTable({
   products,
   sections,
+  categories,
   page,
   pageSize,
   totalPages,
@@ -39,8 +46,11 @@ export function ProductTable({
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
 
   // New column identities on every render make TanStack rebuild the table; the
-  // factory only depends on the sections list.
-  const columns = React.useMemo(() => getColumns(sections), [sections]);
+  // factory only depends on the sections and categories lists.
+  const columns = React.useMemo(
+    () => getColumns(sections, categories),
+    [sections, categories],
+  );
 
   const pagination: PaginationState = {
     pageIndex: page - 1,

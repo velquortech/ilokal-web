@@ -14,7 +14,11 @@ import {
 import { cn } from '@/lib/utils';
 import { calculatePercentage } from '@/lib/product-helper';
 import { formatOfferingPricePair } from '@/lib/utils/formatOfferingPrice';
-import type { ProductResponse, ProductSectionWithCount } from '@/lib/types';
+import type {
+  Category,
+  ProductResponse,
+  ProductSectionWithCount,
+} from '@/lib/types';
 import { PRODUCT_STATUS_OPTIONS } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ViewProduct } from '../view-product';
@@ -48,11 +52,12 @@ function ProductImageCell({ product }: { product: ProductResponse }) {
 
 /**
  * A factory rather than a constant: the row actions need the shop's sections
- * so "Update" can offer a section picker, and TanStack has no other channel
- * for passing them to a cell.
+ * and categories so "Update" can offer both pickers, and TanStack has no
+ * other channel for passing them to a cell.
  */
 export function getColumns(
   sections?: ProductSectionWithCount[],
+  categories?: Category[],
 ): ColumnDef<ProductResponse>[] {
   return [
     {
@@ -189,7 +194,11 @@ export function getColumns(
       id: 'actions',
       header: () => <div className="text-center">Actions</div>,
       cell: ({ row: { original: product } }) => (
-        <ProductActions product={product} sections={sections} />
+        <ProductActions
+          product={product}
+          sections={sections}
+          categories={categories}
+        />
       ),
     },
   ];

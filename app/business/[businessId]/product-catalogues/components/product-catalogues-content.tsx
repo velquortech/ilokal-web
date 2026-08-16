@@ -212,6 +212,7 @@ export function ProductCataloguesContent({
           <ProductTable
             products={products}
             sections={sections}
+            categories={categories}
             page={metadata.page}
             pageSize={metadata.per_page}
             totalPages={metadata.total_pages}

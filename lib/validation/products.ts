@@ -216,6 +216,12 @@ export const createCategorySchema = z.object({
   name: z.string().min(1, 'Category name is required').max(255),
   slug: z.string().min(1, 'Category slug is required').max(255),
   description: z.string().optional(),
+  // NULL = either kind (the fail-open default). `nullable().optional()` lets
+  // an admin both clear a kind back to "either" (null) and omit it entirely.
+  kind: z.enum(['product', 'service']).nullable().optional(),
+  // NULL = global (offered in every vertical's picker). A guid guard keeps a
+  // forged non-guid value from reaching PostgREST as a filter/insert value.
+  business_type_id: z.string().guid().nullable().optional(),
 });
 
 export const updateCategorySchema = createCategorySchema.partial();

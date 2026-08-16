@@ -89,6 +89,18 @@ export type Category = {
   description: string | null;
   created_at: string;
   updated_at: string;
+  /**
+   * Vertical this category is pinned to; NULL = global (offered to every
+   * shop). Read off the row so a picker can scope "this vertical OR global"
+   * and the write path can re-check the same rule server-side.
+   */
+  business_type_id?: string | null;
+  /**
+   * Kind this category is offered for; NULL = either (the fail-open default).
+   * Mirrors `products.kind` — lets the picker hide product categories while a
+   * 'both' business is adding a service, and the write path re-check it.
+   */
+  kind?: OfferingKind | null;
 };
 
 export type Product = {
@@ -176,6 +188,18 @@ export type CreateCategoryRequest = {
   name: string;
   slug: string;
   description?: string;
+  /**
+   * Offering kind this category is offered for; NULL = either (the
+   * fail-open default). Mirrors `products.kind` so the picker can scope by
+   * what is being added, not just by vertical.
+   */
+  kind?: OfferingKind | null;
+  /**
+   * Vertical this category is pinned to; NULL = global (offered to every
+   * shop). Mirrors `categories.business_type_id` so the admin UI can pin a
+   * new category instead of leaving it visible everywhere.
+   */
+  business_type_id?: string | null;
 };
 
 export type UpdateCategoryRequest = Partial<CreateCategoryRequest>;

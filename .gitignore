@@ -80,3 +80,8 @@ claude.md
 # are never the file to commit. Static cuts only.
 assets/fonts/*-Variable.ttf
 .claude/SENTRY_TRIAGE.md
+
+# Local dev artifacts (screenshots / Freebuff desktop state)
+.freebuff/
+events-mobile-375.png
+theme-public-1280.png

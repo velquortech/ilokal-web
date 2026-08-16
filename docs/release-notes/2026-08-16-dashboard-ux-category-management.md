@@ -1,8 +1,8 @@
 # Release — Business Dashboard Revamp & Category Management (2026-08-16)
 
 > Window: 2026-08-14 → 2026-08-16 · 28 commits, 128 files, +7,700/−1,841
-> Landed via PRs **#51, #52, #53 (merged to main)** and **#54 (pending merge —
-> category picker scoping + the admin Categories page; NOT yet on main)**.
+> Landed via PRs **#51, #52, #53, #54 — all merged to main** (#54: category
+> picker scoping + the admin Categories page).
 
 ## What's new — by surface
 
@@ -110,17 +110,12 @@
 > Categories now match reality: a service shop is never offered product
 > categories, and a wrong pick can be fixed after the fact.
 
-### Play Store "What's new" — live on main today
-
-> • Buy 1 Take 1 and FREE promo types, with preset-based creation and duplication
-> • Revamped owner dashboard: setup checklist, clearer KPIs, mobile-friendly tables
-> • Improved registration flow with stricter location validation
-> • Fixed shop photo thumbnails and added Log In to the mobile menu
-
-### Coming soon (PR #54, not yet on main)
+### Play Store "What's new"
 
 > • New admin Categories page with product/service and business-type scoping
+> • Buy 1 Take 1 and FREE promo types, with preset-based creation and duplication
+> • Revamped owner dashboard: setup checklist, clearer KPIs, mobile-friendly tables
 > • Kind-scoped category pickers — a "both" business adding a service never sees
->   product categories, and the Update dialog can change a category after the fact
->
-> When #54 merges, fold these into the live list above.
+>   product categories, and a wrong pick can be fixed after the fact
+> • Improved registration flow with stricter location validation
+> • Fixed shop photo thumbnails and added Log In to the mobile menu

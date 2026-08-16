@@ -27,7 +27,11 @@ import {
 import { ImageUploadField } from '@/components/custom/upload/image-upload';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { ProductResponse, ProductSectionWithCount } from '@/lib/types';
+import type {
+  Category,
+  ProductResponse,
+  ProductSectionWithCount,
+} from '@/lib/types';
 import { PRODUCT_STATUS_OPTIONS } from '@/lib/types';
 import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
 import { cn } from '@/lib/utils';
@@ -43,6 +47,12 @@ interface UpdateProductDialogProps {
   product: ProductResponse;
   /** The shop's own groupings. Absent until the shop has made one. */
   sections?: ProductSectionWithCount[];
+  /**
+   * The platform taxonomy, already scoped to this shop's vertical by the
+   * page. Optional for the same reason as `sections`: nothing renders until
+   * there is a list to render.
+   */
+  categories?: Category[];
   children: React.ReactNode;
 }
 
@@ -51,6 +61,9 @@ interface UpdateProductDialogProps {
  * sentinel. Mapped back to NULL on submit — Uncategorised is a real state.
  */
 const NO_SECTION = '__none__';
+
+/** Same sentinel trick for Category — "no category" is a real, valid state. */
+const NO_CATEGORY = '__none__';
 
 type ProductFormValues = {
   name: string;
@@ -61,12 +74,15 @@ type ProductFormValues = {
   status: 'active' | 'unlisted' | 'disabled';
   booking_mode: BookingMode;
   section_id: string;
+  /** NO_CATEGORY when unset — mapped back to NULL on submit. */
+  category_id: string;
   image_url: File | string | null;
 };
 
 export function UpdateProductDialog({
   product,
   sections,
+  categories,
   children,
 }: UpdateProductDialogProps) {
   const router = useRouter();
@@ -87,9 +103,40 @@ export function UpdateProductDialog({
       image_url: product.image_url,
       booking_mode: product.booking_mode,
       section_id: product.section_id ?? NO_SECTION,
+      category_id: product.category_id ?? NO_CATEGORY,
     }),
     [product],
   );
+
+  // Kind-scoped options, mirroring the add dialog: a category marked for one
+  // kind (NULL = either) is only offered for a row of that kind. The row's
+  // kind is fixed — the update form does not change it — so the scope is the
+  // stored value, never a picker.
+  const categoryOptions = React.useMemo(() => {
+    const scoped = (categories ?? []).filter(
+      (cat) => !cat.kind || cat.kind === product.kind,
+    );
+    // The row's current category may sit outside the list (vertical or kind
+    // changed since it was assigned); keep it selectable so the Select is
+    // never blank and the owner can always save the row unchanged.
+    if (
+      product.category_id &&
+      !scoped.some((cat) => cat.id === product.category_id)
+    ) {
+      return [
+        ...scoped,
+        {
+          id: product.category_id,
+          name: product.category?.name ?? 'Current category',
+          slug: 'current',
+          description: null,
+          created_at: '',
+          updated_at: '',
+        } as Category,
+      ];
+    }
+    return scoped;
+  }, [categories, product]);
 
   const {
     register,
@@ -149,6 +196,9 @@ export function UpdateProductDialog({
         // Always sent, so an owner can move an offering back to
         // Uncategorised — omitting it would make that impossible.
         section_id: data.section_id === NO_SECTION ? null : data.section_id,
+        // Always sent, so an owner can move an offering back to "no category"
+        // — omitting it would make that impossible, the same rule as Section.
+        category_id: data.category_id === NO_CATEGORY ? null : data.category_id,
         image_url,
       });
 
@@ -253,6 +303,34 @@ export function UpdateProductDialog({
                 />
               </Field>
             )}
+
+            {/* The platform taxonomy — the mobile menu's filter chips, not
+                the shop's own Section. Options are scoped by vertical (the
+                page) and by the row's kind, with an explicit "No category"
+                state: NULL is a real, honest value (the add form made the
+                field optional on purpose). */}
+            <Field>
+              <FieldLabel>Category</FieldLabel>
+              <Controller
+                control={control}
+                name="category_id"
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="No category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_CATEGORY}>No category</SelectItem>
+                      {categoryOptions.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
 
             <Field>
               <FieldLabel>Price Type</FieldLabel>

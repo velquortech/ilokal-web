@@ -33,10 +33,12 @@ import type { Category, PriceType, ProductSectionWithCount } from '@/lib/types';
 import type {
   BookingMode,
   OfferingAttributeField,
+  OfferingKind,
   ServiceLocation,
 } from '@/lib/types/offering';
 import {
   BOOKING_MODE_LABELS,
+  OFFERING_KIND_LABELS,
   PRICE_TYPE_LABELS,
   SERVICE_LOCATION_LABELS,
 } from './offering-labels';
@@ -77,6 +79,12 @@ type ProductFormValues = {
   price_unit: string;
   category_id: string | undefined;
   section_id: string;
+  /**
+   * What this item is — 'product' | 'service'. Seeded from the vertical's
+   * default, and a 'both' shop picks per item via the toggle (see
+   * `vocabulary.allowedKinds`). Drives which categories the picker offers.
+   */
+  kind: OfferingKind;
   image: File | null;
   is_available: boolean;
   // Service/rental attributes — only the ones the vertical's profile asks for
@@ -163,6 +171,7 @@ export function AddProductDialog({
       price_unit: '',
       category_id: undefined,
       section_id: '',
+      kind: vocabulary.defaultKind,
       image: null,
       is_available: true,
       duration_minutes: null,
@@ -175,7 +184,7 @@ export function AddProductDialog({
       service_location: 'at_business',
       booking_mode: vocabulary.defaultBookingMode,
     }),
-    [priceTypeOptions, vocabulary.defaultBookingMode],
+    [priceTypeOptions, vocabulary.defaultBookingMode, vocabulary.defaultKind],
   );
 
   const {
@@ -184,6 +193,7 @@ export function AddProductDialog({
     control,
     reset,
     watch,
+    setValue,
     setFocus,
     formState: { errors },
   } = useForm<ProductFormValues>({
@@ -192,6 +202,14 @@ export function AddProductDialog({
 
   const watchedPriceType = watch('price_type');
   const isQuoteBased = watchedPriceType === 'on_request';
+  const watchedKind = watch('kind');
+  // Kind-scoped category options: the platform taxonomy carries a `kind`
+  // (NULL = either), so a 'both' shop adding a service never sees product
+  // categories — the same mismatch the vertical scoping killed, one level
+  // down. Undefined `kind` on an old payload is treated as "either" (fail-open).
+  const categoryOptions = categories.filter(
+    (cat) => !cat.kind || cat.kind === watchedKind,
+  );
 
   const onSubmit = async (data: ProductFormValues, addAnother: boolean) => {
     setIsSubmitting(true);
@@ -237,8 +255,10 @@ export function AddProductDialog({
         branch_id: selectedBranchId ?? null,
         // Sent EXPLICITLY: the DB defaults `kind` to 'product' and cannot tell
         // an omitted field from a deliberate one, so a services business would
-        // otherwise keep minting products (the phase-1 decay).
-        kind: vocabulary.defaultKind,
+        // otherwise keep minting products (the phase-1 decay). For single-mode
+        // shops `data.kind` IS the vertical's default; a 'both' shop has the
+        // toggle, so the item carries the kind the owner actually picked.
+        kind: data.kind,
         // From the form (seeded with the vertical's default), not straight
         // from the profile — see BOOKING_MODE_LABELS.
         booking_mode: data.booking_mode,
@@ -277,6 +297,7 @@ export function AddProductDialog({
           ...emptyForm,
           category_id: data.category_id,
           section_id: data.section_id,
+          kind: data.kind,
           price_type: data.price_type,
           booking_mode: data.booking_mode,
         });
@@ -368,6 +389,44 @@ export function AddProductDialog({
               />
             </Field>
 
+            {/* Kind — only a 'both' shop is asked, because only it can mean
+                either. Single-mode shops have one answer and no toggle; the
+                form already sends their `defaultKind`. The answer drives which
+                categories are offered (below) and what the row is created as. */}
+            {vocabulary.allowedKinds.length > 1 && (
+              <Field>
+                <FieldLabel>What is this?</FieldLabel>
+                <Controller
+                  control={control}
+                  name="kind"
+                  render={({ field }) => (
+                    <Select
+                      onValueChange={(next) => {
+                        field.onChange(next);
+                        // A category picked under the old kind may not exist
+                        // in the new list — dropping it is honest (the row is
+                        // created fresh), and leaving it would blank the
+                        // trigger with a value no item can show.
+                        setValue('category_id', undefined);
+                      }}
+                      value={field.value}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vocabulary.allowedKinds.map((k) => (
+                          <SelectItem key={k} value={k}>
+                            {OFFERING_KIND_LABELS[k]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </Field>
+            )}
+
             {/* Category — the PLATFORM taxonomy customers filter by, not the
                 shop's own grouping (that is Section, below).
 
@@ -377,7 +436,11 @@ export function AddProductDialog({
                 item. A shop that sells one thing (a water refilling station
                 sees all 20 Retail options) then picks whatever clears the
                 form, and a WRONG category actively misleads the explore
-                filter, while NULL is honestly queryable as uncategorised. */}
+                filter, while NULL is honestly queryable as uncategorised.
+
+                The options are scoped twice: by vertical (the server already
+                sends "this vertical OR global") and by the kind picked above
+                (a service is never offered "Bakery & Pastries"). */}
             <Field>
               <FieldLabel>Category (Optional)</FieldLabel>
               <Controller
@@ -389,7 +452,7 @@ export function AddProductDialog({
                       <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map((cat) => (
+                      {categoryOptions.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>
                           {cat.name}
                         </SelectItem>

@@ -1,5 +1,108 @@
 # Changelog
 
+## 2026-08-16 — Admin category management: a UI, and kind on create (admin-category-kind)
+
+> **No migration.** Closes the follow-up left by the category-dropdown work:
+> `categories.kind` existed, but the only way to set it was SQL. Now the admin
+> dashboard has a Categories page whose create/edit dialogs carry a
+> Product / Service / Either selector, and the write path persists it.
+
+- **🔴 There was no admin path to add a category at all.**
+  `app/admin/[adminId]/actions/categoryActions.ts` had zero callers — seeding
+  was the only way in — and every action gated on `profile?.role ===
+  'super_admin'`, a role the CHECK does not allow (`admin | business_owner |
+  app_user | user`), so even a future UI would have been refused. The gate is
+  now the real `admin` role, and the new `Categories` page
+  (`/admin/<id>/categories`, sidebar entry under the main nav) calls the
+  actions for create / edit / delete.
+- **New categories were stuck at NULL kind.** `createCategory` ignored kind;
+  the schema and request type now accept `product | service | null` (null =
+  either, still the fail-open default), the insert persists it, and
+  `updateCategory` writes it too — including an explicit null that clears a
+  scoped kind back to "either" (the `!== undefined` spread, not truthy, so a
+  clear is a real write).
+- **The form helps, not hinders.** Slug auto-derives from the name while the
+  field is untouched (tracked by a touched flag, so it follows the full name,
+  not just the first keystroke) and an existing category's stored slug is
+  never re-derived from a renamed display name — URLs and the mobile filter
+  depend on slug stability. Delete is refused server-side for categories still
+  attached to offerings; the dialog surfaces the reason.
+- **Vertical pinning too — the dialog gained a Business Type selector**
+  (Global or any vertical, fed from `businessService.getBusinessTypes()`),
+  so a new category can be pinned the same way the seeds do it. The write
+  path persists `business_type_id` with the same `!== undefined` clear rule
+  (an explicit "Global" is a real null write), and the table shows the
+  vertical (or Global) per row. Radix Select rejects an empty-string item
+  value, which the render test caught — the Global sentinel is `'global'`,
+  not `''`.
+- **Coverage:** +2 service unit tests (kind + business type on insert with
+  null defaults; write + null-clear on update) and +4 render tests
+  (rows + scope badges, Add dialog fields + Global default, create submits a
+  derived slug with NULL scope, edit prefills and never re-derives the stored
+  slug). Live-verified end-to-end against the local stack: created a category
+  as kind=Service (row landed `kind=service`), edited it to Either (row
+  landed NULL), deleted it. Typecheck, lint, and the product-service + admin
+  suites green.
+
+## 2026-08-16 — The Add Product category dropdown: scope it, edit it, kind it (fix/category-dropdown-mismatch)
+
+> **ONE migration (`20260816120000_categories_kind.sql`) — additive column
+> (`categories.kind`, NULL = either) + slug-based backfill + index. No table,
+> policy or RLS change; every existing row keeps today's behavior.** Fixes the
+> category-dropdown mismatch in three layers: the server now enforces the same
+> scope the picker shows, the category is editable after creation (it was
+> add-only before), and a 'both' business adding a service is no longer offered
+> product categories.
+
+- **🔴 The category was set-and-forgotten.** The Add dialog offered
+  "Category (Optional)" but the Update dialog had no Category field at all —
+  pick wrong at add time and it was stuck forever, while the mobile menu's
+  category filter (`business_product_categories`) kept showing chips the owner
+  could neither see nor fix in the dashboard.
+- **The server never re-checked the picker's scope.** `createProductService`
+  verified the category merely EXISTS — a salon could attach "Meals & Rice
+  Dishes" through `/api/web/products` or a forged action call. Now
+  `resolveCategoryInScope` enforces both axes on create (and on update, when
+  the category actually CHANGES): vertical ("this vertical OR global", matching
+  `getCategoriesPaginated`) and kind (a kind-scoped category must match the
+  offering's kind; NULL passes). A shop with no vertical stays fail-open, the
+  same as its picker. A row that already carries a pre-scoping out-of-scope
+  category stays editable — re-selecting its own value is not a change, so an
+  unrelated edit can't be blocked by legacy data.
+- **`categories.kind` — the picker's second axis.** Vertical scoping
+  (20260727000000) stopped a salon seeing "Pastries", but a 'both' business
+  (Entertainment & Events today, Tourism when its flow ships) still saw its
+  vertical's product categories while adding a service. The new column mirrors
+  `products.kind`: 'product' / 'service' / NULL = either. Backfilled by slug —
+  goods (F&B, Retail, Gift Sets) → product; services (Services, Health,
+  Education, Home, Tourism) → service; `health-beauty`, `other` and
+  `entertainment-events` stay NULL as genuinely two-kind catch-alls.
+- **The add form now ASKS a 'both' shop which kind** — the "form is expected to
+  ask" gap `defaultKindForMode` documented. A "What is this?" select renders
+  only when `allowedKinds.length > 1` (mode 'both'), seeds the new row's
+  `kind`, carries across "Save and add another", and drives the category
+  options (filtered client-side by kind; switching kind drops an out-of-scope
+  pick). Single-mode shops see no toggle and behave byte-identically.
+- **Update gets a Category picker** with the same vertical-scoped, kind-filtered
+  list, an explicit "No category" state (NULL is a real value), and the row's
+  current category kept selectable even if it sits outside today's scope — the
+  same never-blank pattern Section already used. Prop chain:
+  `product-catalogues-content` → `ProductTable` → `getColumns` → `ProductActions`
+  → `UpdateProductDialog`.
+- **Tests (+11):** `productService` — vertical mismatch, kind mismatch, global/
+  either-kind acceptance, no-vertical fail-open, unchanged-category skips
+  validation, changed-category validates. `offeringVocabulary` — `allowedKinds`
+  per mode and in the default. `Category` carries `business_type_id`/`kind`
+  (optional, so older payloads stay valid); `OfferingVocabulary.allowedKinds`
+  resolved from the mode like `defaultKind`.
+- Verified: `tsc --noEmit` clean (0 errors), targeted suites green (196 tests),
+  lint clean.
+- **Not done:** the admin categories UI doesn't expose `kind` yet — an admin
+  creating a category gets NULL (either) until `createCategory` learns to take
+  it, which is a small follow-up rather than a gap. Tourism categories are
+  kind='service' even though the vertical is disabled; revisit when its booking
+  flow ships.
+
 ## 2026-08-11 — Play Store blockers: hosted policy, a deletion URL, and a delete that could never have worked (feat/play-store-legal-pages)
 
 > **ONE new migration (`20260811120000_purge_archived_profiles.sql`) — applied

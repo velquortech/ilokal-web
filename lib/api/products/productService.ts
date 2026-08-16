@@ -8,6 +8,7 @@ import type {
   Product,
   Category,
   ApiResponse,
+  ApiError,
   CreateProductRequest,
   UpdateProductRequest,
   ApplySaleRequest,
@@ -15,8 +16,10 @@ import type {
   UpdateCategoryRequest,
   ProductStatus,
 } from '@/lib/types';
+import type { OfferingKind } from '@/lib/types/offering';
 import * as productQuery from './productQuery';
 import { sectionBelongsToBusiness } from '@/lib/api/sections/sectionQuery';
+import { getBusinessTypeId } from '@/lib/api/offerings/offeringQuery';
 
 // ===== Category Service =====
 
@@ -47,6 +50,11 @@ export async function createCategory(
         name: input.name,
         slug: input.slug,
         description: input.description || null,
+        // NULL = either kind, the fail-open default — an admin who does not
+        // pick stays on today's behavior (offered for products AND services).
+        kind: input.kind ?? null,
+        // NULL = global, offered in every vertical's picker.
+        business_type_id: input.business_type_id ?? null,
       })
       .select()
       .single();
@@ -121,6 +129,12 @@ export async function updateCategory(
         ...(input.slug && { slug: input.slug }),
         ...(input.description !== undefined && {
           description: input.description,
+        }),
+        // `!== undefined` — not truthy — so an explicit null ("global"/
+        // "either") clears a pinned value back to the fail-open default.
+        ...(input.kind !== undefined && { kind: input.kind }),
+        ...(input.business_type_id !== undefined && {
+          business_type_id: input.business_type_id,
         }),
         updated_at: new Date().toISOString(),
       })
@@ -219,6 +233,57 @@ export async function deleteCategory(id: string): Promise<ApiResponse<null>> {
 // ===== Product Service =====
 
 /**
+ * A category an owner may attach: it exists, and it is in scope for this shop.
+ *
+ * Two axes, mirroring the picker exactly ("this vertical OR global, this kind
+ * OR either"):
+ *   - vertical: a pinned category must belong to the shop's vertical. A shop
+ *     with NO vertical (never picked a category, or a failed read) accepts
+ *     anything — the picker is unscoped then too, and fail-open matches it.
+ *   - kind: a kind-scoped category must match the offering's kind. NULL means
+ *     either, so it always passes.
+ *
+ * The client picker already applies both filters; this is the server re-check
+ * so the same rule cannot be bypassed through the API route or a forged action
+ * call — the section-ownership check below is the same shape.
+ */
+async function resolveCategoryInScope(
+  category_id: string,
+  business_id: string,
+  kind: OfferingKind,
+): Promise<{ category: Category } | { error: ApiError }> {
+  const category = await productQuery.getCategoryById(category_id);
+  if (!category) {
+    return { error: { code: 'NOT_FOUND', message: 'Category not found' } };
+  }
+
+  const businessTypeId = await getBusinessTypeId(business_id);
+  if (
+    businessTypeId &&
+    category.business_type_id &&
+    category.business_type_id !== businessTypeId
+  ) {
+    return {
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'This category does not match your business type',
+      },
+    };
+  }
+
+  if (category.kind && category.kind !== kind) {
+    return {
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'This category does not match the type of offering',
+      },
+    };
+  }
+
+  return { category };
+}
+
+/**
  * Create a new product (business owner only)
  */
 export async function createProduct(
@@ -262,17 +327,19 @@ export async function createProduct(
 
     const supabase = await createServerSupabaseClient();
 
-    // Verify category exists if provided
+    // Verify the category exists AND is in scope for this shop (vertical +
+    // kind) — existence alone let a salon attach "Meals & Rice Dishes" via
+    // the API, which is the mismatch the picker's scoping exists to prevent.
     if (input.category_id) {
-      const category = await productQuery.getCategoryById(input.category_id);
-      if (!category) {
-        return {
-          success: false,
-          error: {
-            code: 'NOT_FOUND',
-            message: 'Category not found',
-          },
-        };
+      const category = await resolveCategoryInScope(
+        input.category_id,
+        business_id,
+        // The DB defaults omitted `kind` to 'product', so an untyped write
+        // must be validated as the product it will become.
+        input.kind ?? 'product',
+      );
+      if ('error' in category) {
+        return { success: false, error: category.error };
       }
     }
 
@@ -455,17 +522,25 @@ export async function updateProduct(
       };
     }
 
-    // Validate category if changing
-    if (input.category_id) {
-      const category = await productQuery.getCategoryById(input.category_id);
-      if (!category) {
-        return {
-          success: false,
-          error: {
-            code: 'NOT_FOUND',
-            message: 'Category not found',
-          },
-        };
+    // Validate category ONLY when it changes. A row that already carries an
+    // out-of-scope category (assigned before scoping, or via the old API
+    // bypass) must stay editable — blocking an unrelated edit because of
+    // pre-existing data would lock the owner out of their own catalogue.
+    // Re-selecting the stored value is not a change; picking a different one
+    // is checked against the same vertical + kind rule as create.
+    if (
+      input.category_id !== undefined &&
+      input.category_id !== result.product.category_id
+    ) {
+      if (input.category_id) {
+        const category = await resolveCategoryInScope(
+          input.category_id,
+          business_id,
+          input.kind ?? result.product.kind,
+        );
+        if ('error' in category) {
+          return { success: false, error: category.error };
+        }
       }
     }
 

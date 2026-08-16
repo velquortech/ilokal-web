@@ -22,6 +22,7 @@ import {
   defaultKindForMode,
   type BookingMode,
   type OfferingAttributeField,
+  type OfferingKind,
   type OfferingMode,
   type OfferingNouns,
   type OfferingProfile,
@@ -70,7 +71,11 @@ function deriveVocabulary(
   policy?: Partial<
     Pick<
       OfferingVocabulary,
-      'fields' | 'allowedPriceTypes' | 'defaultBookingMode' | 'defaultKind'
+      | 'fields'
+      | 'allowedPriceTypes'
+      | 'defaultBookingMode'
+      | 'defaultKind'
+      | 'allowedKinds'
     >
   >,
 ): OfferingVocabulary {
@@ -93,6 +98,9 @@ function deriveVocabulary(
     allowedPriceTypes: policy?.allowedPriceTypes ?? [...PRICE_TYPES],
     defaultBookingMode: policy?.defaultBookingMode ?? 'none',
     defaultKind: policy?.defaultKind ?? 'product',
+    // A products-only business has nothing to toggle between; the picker
+    // needs no kind axis until a 'both' shop is editing.
+    allowedKinds: policy?.allowedKinds ?? (['product'] as OfferingKind[]),
     ...(icon ? { icon } : {}),
   };
 }
@@ -174,6 +182,14 @@ export function resolveOfferingVocabulary(
       // services. Without this the form would keep writing kind='product' and
       // the phase-1 backfill would decay on every new row.
       defaultKind: defaultKindForMode(key === 'both' ? 'both' : key),
+      // Same axis as defaultKind: single-mode shops offer one kind, 'both'
+      // offers both so the form can ask which one this item is.
+      allowedKinds:
+        key === 'both'
+          ? (['product', 'service'] as OfferingKind[])
+          : key === 'services'
+            ? (['service'] as OfferingKind[])
+            : (['product'] as OfferingKind[]),
     },
   );
 }

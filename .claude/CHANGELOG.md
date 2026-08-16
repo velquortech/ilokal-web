@@ -1,5 +1,49 @@
 # Changelog
 
+## 2026-08-16 — Admin category management: a UI, and kind on create (admin-category-kind)
+
+> **No migration.** Closes the follow-up left by the category-dropdown work:
+> `categories.kind` existed, but the only way to set it was SQL. Now the admin
+> dashboard has a Categories page whose create/edit dialogs carry a
+> Product / Service / Either selector, and the write path persists it.
+
+- **🔴 There was no admin path to add a category at all.**
+  `app/admin/[adminId]/actions/categoryActions.ts` had zero callers — seeding
+  was the only way in — and every action gated on `profile?.role ===
+  'super_admin'`, a role the CHECK does not allow (`admin | business_owner |
+  app_user | user`), so even a future UI would have been refused. The gate is
+  now the real `admin` role, and the new `Categories` page
+  (`/admin/<id>/categories`, sidebar entry under the main nav) calls the
+  actions for create / edit / delete.
+- **New categories were stuck at NULL kind.** `createCategory` ignored kind;
+  the schema and request type now accept `product | service | null` (null =
+  either, still the fail-open default), the insert persists it, and
+  `updateCategory` writes it too — including an explicit null that clears a
+  scoped kind back to "either" (the `!== undefined` spread, not truthy, so a
+  clear is a real write).
+- **The form helps, not hinders.** Slug auto-derives from the name while the
+  field is untouched (tracked by a touched flag, so it follows the full name,
+  not just the first keystroke) and an existing category's stored slug is
+  never re-derived from a renamed display name — URLs and the mobile filter
+  depend on slug stability. Delete is refused server-side for categories still
+  attached to offerings; the dialog surfaces the reason.
+- **Vertical pinning too — the dialog gained a Business Type selector**
+  (Global or any vertical, fed from `businessService.getBusinessTypes()`),
+  so a new category can be pinned the same way the seeds do it. The write
+  path persists `business_type_id` with the same `!== undefined` clear rule
+  (an explicit "Global" is a real null write), and the table shows the
+  vertical (or Global) per row. Radix Select rejects an empty-string item
+  value, which the render test caught — the Global sentinel is `'global'`,
+  not `''`.
+- **Coverage:** +2 service unit tests (kind + business type on insert with
+  null defaults; write + null-clear on update) and +4 render tests
+  (rows + scope badges, Add dialog fields + Global default, create submits a
+  derived slug with NULL scope, edit prefills and never re-derives the stored
+  slug). Live-verified end-to-end against the local stack: created a category
+  as kind=Service (row landed `kind=service`), edited it to Either (row
+  landed NULL), deleted it. Typecheck, lint, and the product-service + admin
+  suites green.
+
 ## 2026-08-16 — The Add Product category dropdown: scope it, edit it, kind it (fix/category-dropdown-mismatch)
 
 > **ONE migration (`20260816120000_categories_kind.sql`) — additive column

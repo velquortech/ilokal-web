@@ -9,6 +9,7 @@ import {
   Settings,
   Sparkles,
   Star,
+  Tags,
 } from 'lucide-react';
 import { NavItem } from '@/components/custom/Nav';
 
@@ -59,6 +60,11 @@ export const mainNavigation: NavItem[] = [
     title: 'Bida of the Day',
     href: '/admin/bida-of-the-day',
     icon: Star,
+  },
+  {
+    title: 'Categories',
+    href: '/admin/categories',
+    icon: Tags,
   },
 ];
 

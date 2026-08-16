@@ -188,6 +188,18 @@ export type CreateCategoryRequest = {
   name: string;
   slug: string;
   description?: string;
+  /**
+   * Offering kind this category is offered for; NULL = either (the
+   * fail-open default). Mirrors `products.kind` so the picker can scope by
+   * what is being added, not just by vertical.
+   */
+  kind?: OfferingKind | null;
+  /**
+   * Vertical this category is pinned to; NULL = global (offered to every
+   * shop). Mirrors `categories.business_type_id` so the admin UI can pin a
+   * new category instead of leaving it visible everywhere.
+   */
+  business_type_id?: string | null;
 };
 
 export type UpdateCategoryRequest = Partial<CreateCategoryRequest>;

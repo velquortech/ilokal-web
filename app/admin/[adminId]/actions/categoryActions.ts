@@ -50,12 +50,12 @@ export async function createCategoryAction(
       .eq('id', user.id)
       .single();
 
-    if (profile?.role !== 'super_admin') {
+    if (profile?.role !== 'admin') {
       return {
         success: false,
         error: {
           code: 'AUTHORIZATION_ERROR',
-          message: 'Only super admins can create categories',
+          message: 'Only admins can create categories',
         },
       };
     }
@@ -116,12 +116,12 @@ export async function updateCategoryAction(
       .eq('id', user.id)
       .single();
 
-    if (profile?.role !== 'super_admin') {
+    if (profile?.role !== 'admin') {
       return {
         success: false,
         error: {
           code: 'AUTHORIZATION_ERROR',
-          message: 'Only super admins can update categories',
+          message: 'Only admins can update categories',
         },
       };
     }
@@ -181,13 +181,13 @@ export async function deleteCategoryAction(
       .eq('id', user.id)
       .single();
 
-    const isAdmin = profile?.role === 'super_admin';
+    const isAdmin = profile?.role === 'admin';
     if (!isAdmin) {
       return {
         success: false,
         error: {
           code: 'AUTHORIZATION_ERROR',
-          message: 'Only super admins can delete categories',
+          message: 'Only admins can delete categories',
         },
       };
     }

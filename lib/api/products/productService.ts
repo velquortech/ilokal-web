@@ -50,6 +50,11 @@ export async function createCategory(
         name: input.name,
         slug: input.slug,
         description: input.description || null,
+        // NULL = either kind, the fail-open default — an admin who does not
+        // pick stays on today's behavior (offered for products AND services).
+        kind: input.kind ?? null,
+        // NULL = global, offered in every vertical's picker.
+        business_type_id: input.business_type_id ?? null,
       })
       .select()
       .single();
@@ -124,6 +129,12 @@ export async function updateCategory(
         ...(input.slug && { slug: input.slug }),
         ...(input.description !== undefined && {
           description: input.description,
+        }),
+        // `!== undefined` — not truthy — so an explicit null ("global"/
+        // "either") clears a pinned value back to the fail-open default.
+        ...(input.kind !== undefined && { kind: input.kind }),
+        ...(input.business_type_id !== undefined && {
+          business_type_id: input.business_type_id,
         }),
         updated_at: new Date().toISOString(),
       })

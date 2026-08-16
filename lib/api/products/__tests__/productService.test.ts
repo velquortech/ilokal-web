@@ -81,6 +81,45 @@ describe('productService', () => {
       expect(res.success).toBe(false);
       expect(res.error?.code).toBe('INTERNAL_ERROR');
     });
+
+    it('persists kind on the insert, defaulting to null (either)', async () => {
+      vi.mocked(q.getCategoryBySlug).mockResolvedValue(null);
+
+      const insertSpy = vi.fn(() => ({
+        select: vi.fn(() => ({
+          single: vi.fn(async () => ({
+            data: { id: 'cat-1', name: 'Tours', slug: 'tours' },
+            error: null,
+          })),
+        })),
+      }));
+      const supabaseClient = {
+        from: vi.fn(() => ({ insert: insertSpy })),
+      } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
+      (createServerSupabaseClient as unknown as Mock).mockResolvedValue(
+        supabaseClient,
+      );
+
+      await svc.createCategory({
+        name: 'Tours',
+        slug: 'tours',
+        kind: 'service',
+        business_type_id: 'type-1',
+      });
+      expect(insertSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          kind: 'service',
+          business_type_id: 'type-1',
+        }),
+      );
+
+      // Omitted scope stays on today's behavior — NULL kind AND NULL vertical,
+      // offered for both kinds in every picker.
+      await svc.createCategory({ name: 'Catch-all', slug: 'catch-all' });
+      expect(insertSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ kind: null, business_type_id: null }),
+      );
+    });
   });
 
   describe('updateCategory()', () => {
@@ -142,6 +181,49 @@ describe('productService', () => {
       const res = await svc.updateCategory('cat-1', { name: 'Updated Food' });
       expect(res.success).toBe(true);
       expect(res.data?.name).toBe('Updated Food');
+    });
+
+    it('writes kind and business type when provided, and null clears them', async () => {
+      vi.mocked(q.getCategoryById).mockResolvedValue({
+        id: 'cat-1',
+        slug: 'tours',
+        name: 'Tours',
+      } as unknown as Awaited<ReturnType<typeof q.getCategoryById>>);
+
+      const updateSpy = vi.fn(() => ({
+        eq: vi.fn(() => ({
+          select: vi.fn(() => ({
+            single: vi.fn(async () => ({
+              data: { id: 'cat-1', slug: 'tours', name: 'Tours' },
+              error: null,
+            })),
+          })),
+        })),
+      }));
+      const supabaseClient = {
+        from: vi.fn(() => ({ update: updateSpy })),
+      } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>;
+      (createServerSupabaseClient as unknown as Mock).mockResolvedValue(
+        supabaseClient,
+      );
+
+      await svc.updateCategory('cat-1', {
+        kind: 'product',
+        business_type_id: 'type-1',
+      });
+      expect(updateSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          kind: 'product',
+          business_type_id: 'type-1',
+        }),
+      );
+
+      // Explicit null is "either"/"global" — a real write, not an omitted
+      // field.
+      await svc.updateCategory('cat-1', { kind: null, business_type_id: null });
+      expect(updateSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ kind: null, business_type_id: null }),
+      );
     });
   });
 

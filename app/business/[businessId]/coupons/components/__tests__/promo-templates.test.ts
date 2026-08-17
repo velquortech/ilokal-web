@@ -172,6 +172,32 @@ describe('promoDefaults', () => {
     expect(new Date(d.expiry_date) > new Date(d.start_date)).toBe(true);
   });
 
+  it('reads and writes dates as Manila, never the device zone', () => {
+    // 2026-08-14T00:00Z is 08:00 in Manila — the prefill must show 08:00
+    // wherever this test machine sits, and saving it must land back on the
+    // same instant. Device-local getters used to show 19:00 (previous day)
+    // west of UTC.
+    const coupon = {
+      promotion_type: 'coupon',
+      status: 'draft',
+      code: 'MANILA',
+      discount: null,
+      usage_scope: 'any',
+      start_date: '2026-08-14T00:00:00.000Z',
+      expiry_date: '2026-09-14T00:00:00.000Z',
+    } as unknown as Coupon;
+
+    const d = promoDefaults(coupon);
+    expect(d.start_date).toBe('2026-08-14T08:00');
+    expect(d.expiry_date).toBe('2026-09-14T08:00');
+
+    const req = buildPromoRequest(
+      values({ start_date: d.start_date, expiry_date: d.expiry_date }),
+    );
+    expect(req.start_date).toBe('2026-08-14T00:00:00.000Z');
+    expect(req.expiry_date).toBe('2026-09-14T00:00:00.000Z');
+  });
+
   it('prefills a BOGO coupon for edit', () => {
     const coupon = {
       promotion_type: 'deal',

@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { ApiResponse } from '@/lib/types';
 import { featuredDealFiltersSchema } from '@/lib/validation/coupons';
 import * as couponQuery from '@/lib/api/coupons/couponQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function GET(req: NextRequest) {
   try {
@@ -70,7 +71,7 @@ export async function GET(req: NextRequest) {
       },
     );
   } catch (error) {
-    console.error('[GET /api/featured-deals]', error);
+    console.error('[GET /api/featured-deals]', formatErrorForLog(error));
     return NextResponse.json(
       {
         success: false,

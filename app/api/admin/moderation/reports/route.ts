@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse } from '@/lib/types';
 import * as moderationService from '@/lib/api/admin/moderationService';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +17,10 @@ export async function GET(request: NextRequest) {
     const result = await moderationService.getReports(page, per_page);
     return NextResponse.json(result, { status: result.success ? 200 : 500 });
   } catch (error) {
-    console.error('[GET /api/admin/moderation/reports]', error);
+    console.error(
+      '[GET /api/admin/moderation/reports]',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       {
         success: false,

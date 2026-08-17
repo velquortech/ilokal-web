@@ -10,6 +10,7 @@
 
 import { createServerSupabaseClient } from '@/supabase/server';
 import type { ProductSection, ProductSectionWithCount } from '@/lib/types';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 /** Rows the counts RPC returns; a NULL id is the Uncategorised bucket. */
 type CountRow = { section_id: string | null; product_count: number };
@@ -69,7 +70,10 @@ export async function getSectionsWithCounts(
     ]);
 
     if (sectionsRes.error) {
-      console.error('[getSectionsWithCounts sections]', sectionsRes.error);
+      console.error(
+        '[getSectionsWithCounts sections]',
+        formatErrorForLog(sectionsRes.error),
+      );
       return { ...EMPTY, error: 'LOAD_FAILED' };
     }
 
@@ -77,7 +81,10 @@ export async function getSectionsWithCounts(
     // unknown rather than letting placeholder zeroes speak.
     const countsFailed = !!countsRes.error;
     if (countsRes.error) {
-      console.error('[getSectionsWithCounts counts]', countsRes.error);
+      console.error(
+        '[getSectionsWithCounts counts]',
+        formatErrorForLog(countsRes.error),
+      );
     }
 
     const counts = new Map<string | null, number>();
@@ -98,7 +105,7 @@ export async function getSectionsWithCounts(
       ...(countsFailed && { counts_failed: true }),
     };
   } catch (err) {
-    console.error('[getSectionsWithCounts]', err);
+    console.error('[getSectionsWithCounts]', formatErrorForLog(err));
     return { ...EMPTY, error: 'LOAD_FAILED' };
   }
 }
@@ -125,12 +132,12 @@ export async function getSectionsForDisplay(
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('[getSectionsForDisplay]', error);
+      console.error('[getSectionsForDisplay]', formatErrorForLog(error));
       return [];
     }
     return (data ?? []) as Pick<ProductSection, 'id' | 'name' | 'position'>[];
   } catch (err) {
-    console.error('[getSectionsForDisplay]', err);
+    console.error('[getSectionsForDisplay]', formatErrorForLog(err));
     return [];
   }
 }
@@ -158,12 +165,12 @@ export async function sectionBelongsToBusiness(
       .maybeSingle();
 
     if (error) {
-      console.error('[sectionBelongsToBusiness]', error);
+      console.error('[sectionBelongsToBusiness]', formatErrorForLog(error));
       return false;
     }
     return !!data;
   } catch (err) {
-    console.error('[sectionBelongsToBusiness]', err);
+    console.error('[sectionBelongsToBusiness]', formatErrorForLog(err));
     return false;
   }
 }

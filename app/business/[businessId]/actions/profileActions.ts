@@ -5,6 +5,7 @@ import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import { createServerSupabaseClient } from '@/supabase/server';
 import type { ApiResponse, ApiError, BusinessProfileData } from '@/lib/types';
 import { logActionError } from '@/lib/utils/captureError';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import {
   updateBusinessProfileSchema,
   type UpdateBusinessProfileInput,
@@ -200,7 +201,7 @@ export async function updateBusinessProfileAction(
         if (galleryError) {
           console.error(
             '[updateBusinessProfileAction:galleryCleanup]',
-            galleryError,
+            formatErrorForLog(galleryError),
           );
         }
       }

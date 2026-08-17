@@ -8,6 +8,7 @@ import type { ApiResponse, StripePaymentConfirm } from '@/lib/types';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import * as paymentService from '@/lib/api/payments/paymentService';
 import * as paymentQuery from '@/lib/api/payments/paymentQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function POST(
   req: NextRequest,
@@ -62,7 +63,7 @@ export async function POST(
       { status: 200 },
     );
   } catch (err) {
-    console.error('[POST /api/payments/:id/confirm]', err);
+    console.error('[POST /api/payments/:id/confirm]', formatErrorForLog(err));
     return NextResponse.json(
       {
         success: false,

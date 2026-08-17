@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { ApiResponse, ProductResponse } from '@/lib/types';
 import * as productQuery from '@/lib/api/products/productQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function GET(
   req: NextRequest,
@@ -54,7 +55,7 @@ export async function GET(
       },
     );
   } catch (error) {
-    console.error('[GET /api/products/:id]', error);
+    console.error('[GET /api/products/:id]', formatErrorForLog(error));
     return NextResponse.json(
       {
         success: false,

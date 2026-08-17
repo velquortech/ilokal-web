@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createBusinessRegistrationDeal } from '@/lib/api/business/business';
 import { rateLimit, clientIp } from '@/app/api/helpers/rateLimit';
 import { MAX_DEAL_DURATION_DAYS } from '@/app/business/registration/validator/business-registration-form-schema';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 /**
  * POST /api/web/businesses/[id]/deal — the optional launch deal.
@@ -118,7 +119,10 @@ export async function POST(
         { status: 404 },
       );
     }
-    console.error('[POST /api/web/businesses/[id]/deal]', error);
+    console.error(
+      '[POST /api/web/businesses/[id]/deal]',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       { message: 'Failed to save your deal' },
       { status: 400 },

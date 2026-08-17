@@ -25,6 +25,7 @@ import {
 import { AuthNudgeDialog } from '@/components/customer/AuthNudgeDialog';
 import { redeemCouponAction } from '@/app/customer/actions/customerActions';
 import { ROUTES } from '@/config/routeConfig';
+import { BUSINESS_TIME_ZONE } from '@/lib/utils/operatingHours';
 import type { PublicBranch, PublicCoupon } from '@/lib/types';
 
 function formatDiscount(discount: PublicCoupon['discount']): string {
@@ -36,6 +37,10 @@ function formatDiscount(discount: PublicCoupon['discount']): string {
 
 function formatEnds(iso: string): string {
   return new Date(iso).toLocaleDateString('en-PH', {
+    // Pinned, like the deal cards: the server renders in UTC, so a coupon
+    // expiring on a Manila evening would otherwise read as ending the day
+    // before.
+    timeZone: BUSINESS_TIME_ZONE,
     month: 'short',
     day: 'numeric',
   });

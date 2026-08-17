@@ -8,6 +8,7 @@ import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse, StripeCheckoutSession } from '@/lib/types';
 import { checkoutRequestSchema } from '@/lib/validation/payments';
 import * as paymentService from '@/lib/api/payments/paymentService';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function POST(req: NextRequest) {
   try {
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
       { status: 201 },
     );
   } catch (err) {
-    console.error('[POST /api/payments/checkout]', err);
+    console.error('[POST /api/payments/checkout]', formatErrorForLog(err));
     return NextResponse.json(
       {
         success: false,

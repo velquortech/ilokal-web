@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type {
   ApiResponse,
   Coupon,
@@ -434,5 +436,22 @@ describe('deleteCouponAction', () => {
       const res = await deleteCouponAction(COUPON_ID);
       expect(res.success).toBe(true);
     }
+  });
+});
+
+// ===== revalidate path =====
+
+describe('coupon writes revalidate the right path', () => {
+  // Source-scan: the actions used to revalidate a literal '/business/coupons'
+  // that does not exist — the route is /business/[businessId]/coupons — so a
+  // created coupon could leave the page stale. Every other action family
+  // revalidates through the routeConfig helper; coupons must too.
+  it('revalidates the business-scoped coupons path, never a literal', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/business/[businessId]/actions/couponActions.ts'),
+      'utf8',
+    );
+    expect(source).toContain('businessCouponsPath(verify.business!.id)');
+    expect(source).not.toContain("revalidatePath('/business/coupons')");
   });
 });

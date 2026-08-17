@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { uuidSchema, suspendBusinessSchema } from '@/lib/validation/business';
 import { suspendBusiness } from '@/lib/api/business/businessService';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 // Use centralized assertAuthorized for admin checks
 
@@ -64,7 +65,10 @@ export async function POST(
       { status: 200 },
     );
   } catch (error) {
-    console.error('[API] POST /api/admin/businesses/[id]/suspend:', error);
+    console.error(
+      '[API] POST /api/admin/businesses/[id]/suspend:',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       {
         error: 'Failed to suspend business',

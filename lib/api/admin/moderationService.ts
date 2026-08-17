@@ -1,6 +1,7 @@
 import type { ApiResponse } from '@/lib/types';
 import type { ModerationReport, FlaggedContent } from '@/lib/types';
 import * as q from './moderationQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function getFlaggedContent(
   page = 1,
@@ -10,7 +11,10 @@ export async function getFlaggedContent(
     const data = await q.fetchFlaggedContent(page, per_page);
     return { success: true, data };
   } catch (error) {
-    console.error('[moderationService.getFlaggedContent]', error);
+    console.error(
+      '[moderationService.getFlaggedContent]',
+      formatErrorForLog(error),
+    );
     return {
       success: false,
       error: {
@@ -29,7 +33,7 @@ export async function getReports(
     const data = await q.fetchReports(page, per_page);
     return { success: true, data };
   } catch (error) {
-    console.error('[moderationService.getReports]', error);
+    console.error('[moderationService.getReports]', formatErrorForLog(error));
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch reports' },
@@ -49,7 +53,7 @@ export async function createReport(
       };
     return { success: true, data };
   } catch (error) {
-    console.error('[moderationService.createReport]', error);
+    console.error('[moderationService.createReport]', formatErrorForLog(error));
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to create report' },
@@ -74,7 +78,10 @@ export async function actionOnReport(
       };
     return { success: true };
   } catch (error) {
-    console.error('[moderationService.actionOnReport]', error);
+    console.error(
+      '[moderationService.actionOnReport]',
+      formatErrorForLog(error),
+    );
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to update report' },
@@ -97,7 +104,7 @@ export async function suspend(
       };
     return { success: true };
   } catch (error) {
-    console.error('[moderationService.suspend]', error);
+    console.error('[moderationService.suspend]', formatErrorForLog(error));
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to suspend entity' },
@@ -119,7 +126,7 @@ export async function warn(
       };
     return { success: true };
   } catch (error) {
-    console.error('[moderationService.warn]', error);
+    console.error('[moderationService.warn]', formatErrorForLog(error));
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to send warning' },

@@ -17,6 +17,7 @@ import {
 import { useUser } from '@/providers/UserContext';
 import { ADMIN_CONFIG } from '@/app/admin/[adminId]/config/adminConfig';
 import { PaginatedResponse } from '@/lib/services';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 interface AdminTabProps {
   data: PaginatedResponse<AdminUser> | null;
@@ -164,7 +165,7 @@ export default function AdminTab({
   const handleCreateAdminError = useCallback((err: string) => {
     const errorMsg = extractErrorMessage(err);
     toast.error(`Failed to create admin: ${errorMsg}`);
-    console.error('Error creating admin:', err);
+    console.error('Error creating admin:', formatErrorForLog(err));
   }, []);
 
   const handleUpdateAdminSuccess = useCallback(
@@ -188,7 +189,7 @@ export default function AdminTab({
   const handleUpdateAdminError = useCallback((err: string) => {
     const errorMsg = extractErrorMessage(err);
     toast.error(`Failed to update admin: ${errorMsg}`);
-    console.error('Error updating admin:', err);
+    console.error('Error updating admin:', formatErrorForLog(err));
   }, []);
 
   const handleDeleteAdminSuccess = useCallback(
@@ -214,7 +215,7 @@ export default function AdminTab({
   const handleDeleteAdminError = useCallback((err: string) => {
     const errorMsg = extractErrorMessage(err);
     toast.error(`Failed to delete admin: ${errorMsg}`);
-    console.error('Error deleting admin:', err);
+    console.error('Error deleting admin:', formatErrorForLog(err));
   }, []);
 
   // Mutations
@@ -276,7 +277,7 @@ export default function AdminTab({
       }
     } catch (err) {
       // Error is already handled by mutation callbacks
-      console.error('Error in handleCreateAdmin:', err);
+      console.error('Error in handleCreateAdmin:', formatErrorForLog(err));
     }
   };
 

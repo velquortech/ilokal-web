@@ -4,6 +4,7 @@ import { cache } from 'react';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { isDynamicUsageError } from '@/lib/utils/dynamicUsage';
 import { logActionError } from '@/lib/utils/captureError';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 // Platform flags stored in app_settings (see .claude/REGISTRATION_GATING.md).
 // Fallbacks are the pre-flag legacy behavior: documents required, no
@@ -109,7 +110,11 @@ async function readRegistrationSettingsFromTable(
     .in('key', ['require_business_documents', 'auto_verify_businesses']);
 
   if (error || !data) {
-    if (error) console.error('[getRegistrationSettings fallback]', error);
+    if (error)
+      console.error(
+        '[getRegistrationSettings fallback]',
+        formatErrorForLog(error),
+      );
     return FALLBACKS;
   }
 
@@ -136,13 +141,13 @@ async function readRegistrationSettingsFromTable(
  *
  * Fails CLOSED: an unreadable flag hides the feature rather than exposing a
  * half-configured flow. Hiding UI is never the security boundary — the DB
- * enforces each flag itself (`request_booking()` checks `enable_bookings`;
- * the events triggers gate publication independently).
+ * enforces each flag itself (the events triggers gate publication
+ * independently).
  *
  * Not exported: `'use server'` makes every export a callable endpoint, and a
  * client-suppliable key would let anyone probe arbitrary settings rows.
  */
-type PublicFlag = 'enable_events' | 'enable_bookings';
+type PublicFlag = 'enable_events';
 
 async function readFlag(key: PublicFlag): Promise<boolean> {
   try {
@@ -157,7 +162,7 @@ async function readFlag(key: PublicFlag): Promise<boolean> {
     // Next can mark the route dynamic, which is what it is.
     if (isDynamicUsageError(err)) throw err;
 
-    console.error(`[readFlag ${key}]`, err);
+    console.error(`[readFlag ${key}]`, formatErrorForLog(err));
     return false;
   }
 }
@@ -165,11 +170,6 @@ async function readFlag(key: PublicFlag): Promise<boolean> {
 // NOT React.cache()-wrapped: this module is `'use server'`, where every export
 // must be a plain async function — wrapping it collapses the inferred type at
 // call sites. The duplicate read per request is one tiny indexed lookup.
-
-/** Phase-4 booking kill switch (`enable_bookings`, default false). */
-export async function getBookingsEnabled(): Promise<boolean> {
-  return readFlag('enable_bookings');
-}
 
 /** Events kill switch (`enable_events`, default false). */
 export async function getEventsEnabled(): Promise<boolean> {

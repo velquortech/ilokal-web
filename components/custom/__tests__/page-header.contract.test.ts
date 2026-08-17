@@ -21,11 +21,9 @@ const read = (rel: string) => readFileSync(path.join(repoRoot, rel), 'utf8');
 const PAGES = [
   'app/customer/wallet/page.tsx',
   'app/customer/following/page.tsx',
-  'app/customer/bookings/components/customer-bookings-content.tsx',
   'app/business/[businessId]/settings/page.tsx',
   'app/business/[businessId]/profile/page.tsx',
   'app/business/[businessId]/shop/page.tsx',
-  'app/business/[businessId]/bookings/components/bookings-content.tsx',
   'app/business/[businessId]/coupons/components/coupons-content.tsx',
   'app/business/[businessId]/branches/components/branches-content.tsx',
   'app/business/[businessId]/product-catalogues/components/product-catalogues-content.tsx',

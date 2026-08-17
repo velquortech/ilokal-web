@@ -1,7 +1,7 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SafeImage } from '@/components/custom/SafeImage';
 import { brandToneFor } from '@/lib/utils/brandTone';
 import { eventPath } from '@/config/routeConfig';
 import { eventPhase, formatEventWhen } from '@/lib/utils/eventSchedule';
@@ -35,11 +35,12 @@ export function EventCard({ event }: { event: EventWithRefs }) {
       >
         <div className="relative aspect-[16/9] w-full overflow-hidden">
           {event.image_url ? (
-            <Image
+            // SafeImage: unoptimized storage WebP + broken-image fallback (a
+            // deleted photo shows the placeholder instead of the broken glyph).
+            <SafeImage
               src={event.image_url}
               alt=""
               fill
-              unoptimized
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
               className={cn(
                 'object-cover transition-transform duration-300',

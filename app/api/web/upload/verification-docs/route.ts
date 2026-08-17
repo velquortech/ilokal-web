@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB for documents
 const ALLOWED_TYPES = [
@@ -150,7 +151,10 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
   } catch (error) {
-    console.error('[POST /api/web/upload/verification-docs]', error);
+    console.error(
+      '[POST /api/web/upload/verification-docs]',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       { success: false, error: 'Upload failed' },
       { status: 500 },

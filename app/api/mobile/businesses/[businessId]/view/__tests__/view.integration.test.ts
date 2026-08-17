@@ -174,9 +174,14 @@ describe('POST /api/mobile/businesses/[businessId]/view', () => {
     const res = await POST(makeRequest(), makeParams());
 
     expect(res.status).toBe(500);
+    // `loggedServerError` flattens DB-shaped errors via describeDbError, so
+    // the log line carries code + message (details/hint map to undefined).
     expect(consoleError).toHaveBeenCalledWith(
       '[mobile/businesses/[businessId]/view]',
-      'relation "view_events" does not exist',
+      expect.objectContaining({
+        code: '42P01',
+        message: 'relation "view_events" does not exist',
+      }),
     );
   });
 

@@ -17,6 +17,7 @@ import {
 import { useUser } from '@/providers/UserContext';
 import { ADMIN_CONFIG } from '@/app/admin/[adminId]/config/adminConfig';
 import { PaginatedResponse } from '@/lib/services';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 interface BusinessOwnerTabProps {
   data: PaginatedResponse<AdminUser> | null;
@@ -171,7 +172,7 @@ export default function BusinessOwnerTab({
   const handleCreateBusinessOwnerError = useCallback((err: string) => {
     const errorMsg = extractErrorMessage(err);
     toast.error(`Failed to create business owner: ${errorMsg}`);
-    console.error('Error creating business owner:', err);
+    console.error('Error creating business owner:', formatErrorForLog(err));
   }, []);
 
   const handleUpdateBusinessOwnerSuccess = useCallback(
@@ -191,7 +192,7 @@ export default function BusinessOwnerTab({
   const handleUpdateBusinessOwnerError = useCallback((err: string) => {
     const errorMsg = extractErrorMessage(err);
     toast.error(`Failed to update business owner: ${errorMsg}`);
-    console.error('Error updating business owner:', err);
+    console.error('Error updating business owner:', formatErrorForLog(err));
   }, []);
 
   const handleDeleteBusinessOwnerSuccess = useCallback(
@@ -222,7 +223,7 @@ export default function BusinessOwnerTab({
   const handleDeleteBusinessOwnerError = useCallback((err: string) => {
     const errorMsg = extractErrorMessage(err);
     toast.error(`Failed to delete business owner: ${errorMsg}`);
-    console.error('Error deleting business owner:', err);
+    console.error('Error deleting business owner:', formatErrorForLog(err));
   }, []);
 
   // Mutations
@@ -288,7 +289,10 @@ export default function BusinessOwnerTab({
       }
     } catch (err) {
       // Error is already handled by mutation callbacks
-      console.error('Error in handleCreateBusinessOwner:', err);
+      console.error(
+        'Error in handleCreateBusinessOwner:',
+        formatErrorForLog(err),
+      );
     }
   };
 

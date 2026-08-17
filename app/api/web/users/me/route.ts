@@ -46,6 +46,7 @@ import {
 } from '@/lib/api/users/userService';
 import type { User } from '@/lib/types';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 /**
  * GET /api/users/me
@@ -92,7 +93,7 @@ export async function GET(): Promise<NextResponse> {
       { status: 200 },
     );
   } catch (error) {
-    console.error('[API] GET /api/users/me - Error:', error);
+    console.error('[API] GET /api/users/me - Error:', formatErrorForLog(error));
     return NextResponse.json<ApiResponse>(
       {
         success: false,
@@ -147,7 +148,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       { status: 200 },
     );
   } catch (error) {
-    console.error('[API] PUT /api/users/me - Error:', error);
+    console.error('[API] PUT /api/users/me - Error:', formatErrorForLog(error));
     return NextResponse.json<ApiResponse>(
       {
         success: false,

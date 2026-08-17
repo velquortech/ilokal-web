@@ -86,9 +86,12 @@ export function EventsContent({
       }
     }, 400);
     return () => clearTimeout(timeout);
-    // Intentionally keyed on the input alone: including `updateParams` would
-    // re-arm the timer on every navigation and re-push the search mid-typing.
-  }, [searchInput]);
+    // Keyed on the URL too. `lastPushedSearch` is what makes the re-arm safe:
+    // a navigation this component caused is ignored by the sync effect, so the
+    // timer can only push text the owner actually typed. Keyed on the input
+    // alone, a status filter clicked during the 400 ms window is wiped when
+    // the search push rebuilds from a pre-click closure.
+  }, [searchInput, searchParams, updateParams]);
 
   const handleStatusChange = React.useCallback(
     (status: string) => {

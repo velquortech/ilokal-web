@@ -29,3 +29,32 @@ export function describeDbError(error: unknown): {
     hint: e?.hint ?? undefined,
   };
 }
+
+/**
+ * True for the PostgREST/Postgres error objects the app logs: plain objects
+ * (NOT `Error` instances) carrying the SQLSTATE `code` and/or a `message`.
+ * `PostgrestError` instances match because `in` sees their prototype fields
+ * even though they are non-enumerable.
+ */
+export function isDbErrorShape(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    !(error instanceof Error) &&
+    ('code' in error || 'message' in error)
+  );
+}
+
+/**
+ * Format an error for a console log line: flatten DB-shaped errors (which
+ * would otherwise render `{}`) with `describeDbError`, and pass everything
+ * else through untouched — a real `Error` keeps its stack, a redirect digest
+ * keeps its shape.
+ *
+ * The single idiom for raw `console.error('[ctx]', error)` call sites, so the
+ * flattening stays consistent whether the call is in an `if (error)` branch
+ * (definitely a PostgrestError) or a `catch` (unknown).
+ */
+export function formatErrorForLog(error: unknown): unknown {
+  return isDbErrorShape(error) ? describeDbError(error) : error;
+}

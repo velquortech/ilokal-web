@@ -28,21 +28,15 @@ const TOGGLES: {
       'When on, shops can propose events, this queue accepts them, and approved events appear on Explore. While off every events route 404s and no nav entry advertises it.',
   },
   {
-    key: 'enable_bookings',
-    label: 'Bookings',
-    description:
-      'When on, customers can request a booking for an offering and owners get a booking inbox. The database refuses new bookings independently while this is off.',
-  },
-  {
     key: 'enable_onboarding_tour',
     label: 'Onboarding tour',
     description:
-      'The guided tour a shop owner is offered when they first reach their dashboard, plus the "Replay tour" entry in their menu. Unlike the two above this is ON until switched off — it is a presentational overlay, not a dark-shipped feature. Turn it off if the spotlight misbehaves.',
+      'The guided tour a shop owner is offered when they first reach their dashboard, plus the "Replay tour" entry in their menu. Unlike the feature above this is ON until switched off — it is a presentational overlay, not a dark-shipped feature. Turn it off if the spotlight misbehaves.',
   },
 ];
 
 /**
- * The two dark-shipped features.
+ * The dark-shipped feature.
  *
  * These switches control what people can REACH, not what the database allows —
  * each feature enforces its own flag server-side as well, so flipping a switch

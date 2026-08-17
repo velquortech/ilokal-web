@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/supabase/server';
 import type { Profile } from '@/lib/types/user';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 type AssertOpts = {
   roles?: string[];
@@ -94,7 +95,7 @@ export async function assertAuthorized(
       profile,
     };
   } catch (err) {
-    console.error('[assertAuthorized] Error:', err);
+    console.error('[assertAuthorized] Error:', formatErrorForLog(err));
     return {
       authorized: false,
       error: NextResponse.json(

@@ -44,7 +44,7 @@ export interface OnboardingProgress {
   /**
    * A read failed. The card must say so rather than render unchecked boxes —
    * an unchecked box caused by an outage tells the owner to redo finished
-   * work. Same rule as `EventStats.failed` / `getBookingStats`.
+   * work. Same rule as `EventStats.failed`.
    */
   failed: boolean;
   /**

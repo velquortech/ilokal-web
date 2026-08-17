@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/supabase/server';
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import type { ApiResponse } from '@/lib/types';
 import { NextRequest, NextResponse } from 'next/server';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 // GET /api/admin/subscriptions/plans/[planId] - Get plan details (admin only)
 // PUT /api/admin/subscriptions/plans/[planId] - Update plan (admin only)
@@ -67,7 +68,7 @@ export async function GET(
   } catch (error) {
     console.error(
       '[GET /api/admin/subscriptions/plans/[id]] unexpected error:',
-      error,
+      formatErrorForLog(error),
     );
     return NextResponse.json(
       {
@@ -131,7 +132,7 @@ export async function PUT(
   } catch (error) {
     console.error(
       '[PUT /api/admin/subscriptions/plans/[id]] unexpected error:',
-      error,
+      formatErrorForLog(error),
     );
     return NextResponse.json(
       {
@@ -210,7 +211,7 @@ export async function DELETE(
   } catch (error) {
     console.error(
       '[DELETE /api/admin/subscriptions/plans/[id]] unexpected error:',
-      error,
+      formatErrorForLog(error),
     );
     return NextResponse.json(
       {

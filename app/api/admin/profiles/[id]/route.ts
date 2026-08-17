@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 // GET - fetchSingleProfile
 export async function GET(
@@ -29,7 +30,7 @@ export async function GET(
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Profile fetch error:', error);
+    console.error('Profile fetch error:', formatErrorForLog(error));
     return NextResponse.json(
       { message: 'Internal server error' },
       { status: 500 },

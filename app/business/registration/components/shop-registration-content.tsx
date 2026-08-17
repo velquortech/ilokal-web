@@ -24,6 +24,7 @@ import { AxiosError } from 'axios';
 import { cn } from '@/lib/utils';
 import { logOwnerEvent } from '../actions/ownerEvents';
 import type { FieldErrors } from 'react-hook-form';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 const BUSINESS_ID_KEY = 'ilokal-registration-business-id';
 
@@ -180,7 +181,10 @@ export function ShopRegistrationContent() {
         if (path) imagePaths.set(item.uid, path);
         uploadedRef.current.add(key);
       } catch (error: unknown) {
-        console.error('[registration] offering photo upload failed', error);
+        console.error(
+          '[registration] offering photo upload failed',
+          formatErrorForLog(error),
+        );
       }
     }
 
@@ -219,7 +223,10 @@ export function ShopRegistrationContent() {
           dealImagePath = await uploadOfferingImage(bid, dealImage, 0);
           uploadedRef.current.add(dealImageKey);
         } catch (error: unknown) {
-          console.error('[registration] deal photo upload failed', error);
+          console.error(
+            '[registration] deal photo upload failed',
+            formatErrorForLog(error),
+          );
         }
       }
 

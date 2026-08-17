@@ -38,6 +38,7 @@ import { createServerSupabaseClient } from '@/supabase/server';
 import { signupSchema } from '@/lib/validation/auth';
 import { checkAuthRateLimit } from '@/app/api/helpers/auth-rate-limit';
 import type { User } from '@/lib/types';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 type ApiResponse<T = unknown> = {
   success: boolean;
@@ -208,7 +209,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { status: 201 },
     );
   } catch (error) {
-    console.error('[API] POST /api/auth/signup - Error:', error);
+    console.error(
+      '[API] POST /api/auth/signup - Error:',
+      formatErrorForLog(error),
+    );
     return NextResponse.json<ApiResponse>(
       {
         success: false,

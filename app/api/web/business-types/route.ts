@@ -1,6 +1,7 @@
 import { businessService } from '@/lib/api/business-categories/businessCategoriesService';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { NextResponse } from 'next/server';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 // GET all business types with their categories (public)
 export async function GET() {
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
     }
     return NextResponse.json(data, { status: 201 });
   } catch (err) {
-    console.error('[POST /api/web/business-types]', err);
+    console.error('[POST /api/web/business-types]', formatErrorForLog(err));
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 }

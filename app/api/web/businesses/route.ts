@@ -5,6 +5,7 @@ import {
   createBusinessDraft,
 } from '@/lib/api/business/business';
 import { locationSchema } from '@/app/business/registration/validator/business-registration-form-schema';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 /**
  * The authoritative gate for the registration payload — the client schema is
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(newBusiness, { status: 201 });
   } catch (error) {
-    console.error('[POST /api/web/businesses]', error);
+    console.error('[POST /api/web/businesses]', formatErrorForLog(error));
     return NextResponse.json(
       { message: 'Failed to create business' },
       { status: 400 },

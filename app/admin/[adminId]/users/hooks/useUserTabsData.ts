@@ -7,6 +7,7 @@ import { AdminUser, AdminTabFilterState } from '@/lib/types/admin';
 import { UserRole } from '@/lib/types/user';
 import { PaginatedResponse } from '@/lib/services';
 import { ADMIN_CONFIG } from '@/app/admin/[adminId]/config/adminConfig';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 interface UseUserTabsDataReturn {
   adminData: PaginatedResponse<AdminUser> | null;
@@ -68,7 +69,10 @@ export function useUserTabsData(
         );
         return result;
       } catch (error) {
-        console.error(`Failed to fetch ${role} data:`, error);
+        console.error(
+          `Failed to fetch ${role} data:`,
+          formatErrorForLog(error),
+        );
         // Detect authentication errors and surface a specific message
         const status =
           typeof error === 'object' && error !== null && 'status' in error

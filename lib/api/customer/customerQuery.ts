@@ -14,7 +14,10 @@ import { cache } from 'react';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { getProductsPaginated } from '@/lib/api/products/productQuery';
-import { describeDbError } from '@/lib/utils/describeDbError';
+import {
+  describeDbError,
+  formatErrorForLog,
+} from '@/lib/utils/describeDbError';
 import type {
   CustomerCategory,
   DirectoryBusiness,
@@ -121,7 +124,7 @@ export async function getBusinessDirectory(
       .range(offset, offset + perPage - 1);
 
     if (error) {
-      console.error('[getBusinessDirectory]', error);
+      console.error('[getBusinessDirectory]', describeDbError(error));
       return { error: 'Failed to load businesses' };
     }
 
@@ -152,7 +155,7 @@ export async function getBusinessDirectory(
       },
     };
   } catch (err) {
-    console.error('[getBusinessDirectory]', err);
+    console.error('[getBusinessDirectory]', formatErrorForLog(err));
     return { error: 'Failed to load businesses' };
   }
 }
@@ -166,12 +169,12 @@ export async function getCustomerCategories(): Promise<CustomerCategory[]> {
       .is('deleted_at', null)
       .order('name', { ascending: true });
     if (error) {
-      console.error('[getCustomerCategories]', error);
+      console.error('[getCustomerCategories]', describeDbError(error));
       return [];
     }
     return (data ?? []) as CustomerCategory[];
   } catch (err) {
-    console.error('[getCustomerCategories]', err);
+    console.error('[getCustomerCategories]', formatErrorForLog(err));
     return [];
   }
 }
@@ -207,7 +210,7 @@ export const getPublicBusinessProfile = cache(
         .maybeSingle();
 
       if (error) {
-        console.error('[getPublicBusinessProfile]', error);
+        console.error('[getPublicBusinessProfile]', describeDbError(error));
         return { error: 'LOAD_FAILED' };
       }
       if (!data) return { error: 'NOT_FOUND' };
@@ -311,7 +314,7 @@ export const getPublicBusinessProfile = cache(
 
       return { business };
     } catch (err) {
-      console.error('[getPublicBusinessProfile]', err);
+      console.error('[getPublicBusinessProfile]', formatErrorForLog(err));
       return { error: 'LOAD_FAILED' };
     }
   },
@@ -340,12 +343,12 @@ export async function getPublicCoupons(
       .order('expiry_date', { ascending: true });
 
     if (error) {
-      console.error('[getPublicCoupons]', error);
+      console.error('[getPublicCoupons]', describeDbError(error));
       return { error: 'Failed to load deals' };
     }
     return { coupons: (data ?? []) as unknown as PublicCoupon[] };
   } catch (err) {
-    console.error('[getPublicCoupons]', err);
+    console.error('[getPublicCoupons]', formatErrorForLog(err));
     return { error: 'Failed to load deals' };
   }
 }
@@ -405,7 +408,7 @@ export async function getWalletRedemptions(
       .range(offset, offset + WALLET_PER_PAGE - 1);
 
     if (error) {
-      console.error('[getWalletRedemptions]', error);
+      console.error('[getWalletRedemptions]', describeDbError(error));
       return { error: 'Failed to load redemptions' };
     }
 
@@ -464,7 +467,7 @@ export async function getWalletRedemptions(
       },
     };
   } catch (err) {
-    console.error('[getWalletRedemptions]', err);
+    console.error('[getWalletRedemptions]', formatErrorForLog(err));
     return { error: 'Failed to load redemptions' };
   }
 }
@@ -492,7 +495,7 @@ export async function getFollowedBusinesses(
       .range(0, FOLLOWED_LIST_LIMIT - 1);
 
     if (error) {
-      console.error('[getFollowedBusinesses]', error);
+      console.error('[getFollowedBusinesses]', describeDbError(error));
       return { error: 'Failed to load followed shops' };
     }
 
@@ -524,7 +527,7 @@ export async function getFollowedBusinesses(
 
     return { followed, total: count ?? followed.length };
   } catch (err) {
-    console.error('[getFollowedBusinesses]', err);
+    console.error('[getFollowedBusinesses]', formatErrorForLog(err));
     return { error: 'Failed to load followed shops' };
   }
 }
@@ -554,12 +557,12 @@ export async function isFollowingBusiness(
       .eq('user_id', userId)
       .eq('business_id', businessId);
     if (error) {
-      console.error('[isFollowingBusiness]', error);
+      console.error('[isFollowingBusiness]', describeDbError(error));
       return false;
     }
     return (count ?? 0) > 0;
   } catch (err) {
-    console.error('[isFollowingBusiness]', err);
+    console.error('[isFollowingBusiness]', formatErrorForLog(err));
     return false;
   }
 }
@@ -616,7 +619,7 @@ export async function getUpdatesFeed(
       .eq('user_id', userId);
 
     if (followsError) {
-      console.error('[getUpdatesFeed]', followsError);
+      console.error('[getUpdatesFeed]', describeDbError(followsError));
       return { error: 'Failed to load updates' };
     }
 
@@ -661,7 +664,7 @@ export async function getUpdatesFeed(
 
     const sourceError = postsRes.error || couponsRes.error || productsRes.error;
     if (sourceError) {
-      console.error('[getUpdatesFeed]', sourceError);
+      console.error('[getUpdatesFeed]', describeDbError(sourceError));
       return { error: 'Failed to load updates' };
     }
 
@@ -742,7 +745,7 @@ export async function getUpdatesFeed(
       has_more: offset + perPage < merged.length,
     };
   } catch (err) {
-    console.error('[getUpdatesFeed]', err);
+    console.error('[getUpdatesFeed]', formatErrorForLog(err));
     return { error: 'Failed to load updates' };
   }
 }
@@ -840,7 +843,7 @@ export async function getDealsFeed(
     });
 
     if (error) {
-      console.error('[getDealsFeed]', error);
+      console.error('[getDealsFeed]', describeDbError(error));
       return { error: 'Failed to load deals' };
     }
 
@@ -863,7 +866,7 @@ export async function getDealsFeed(
       explore_per_page: payload.explore_per_page ?? perPage,
     };
   } catch (err) {
-    console.error('[getDealsFeed]', err);
+    console.error('[getDealsFeed]', formatErrorForLog(err));
     return { error: 'Failed to load deals' };
   }
 }

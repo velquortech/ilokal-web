@@ -3,6 +3,7 @@
 import React, { ReactNode } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 interface AdminErrorBoundaryProps {
   children: ReactNode;
@@ -28,7 +29,11 @@ export class AdminErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Admin component error:', error, errorInfo);
+    console.error(
+      'Admin component error:',
+      formatErrorForLog(error),
+      errorInfo,
+    );
   }
 
   resetError = () => {

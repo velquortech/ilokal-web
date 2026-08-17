@@ -1,5 +1,6 @@
 import http from './client';
 import { PaginatedInvoicesResponse } from '@/lib/types/payment';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 const invoiceService = {
   async list(page = 1, limit = 20, filters?: Record<string, string>) {
@@ -31,7 +32,10 @@ const invoiceService = {
           ...(filters || {}),
         } as Record<string, unknown>);
       } catch (err) {
-        console.error('[invoiceService.list] server fast-path error', err);
+        console.error(
+          '[invoiceService.list] server fast-path error',
+          formatErrorForLog(err),
+        );
         return await http.get<PaginatedInvoicesResponse>(url);
       }
     }
@@ -45,7 +49,10 @@ const invoiceService = {
         const pq = await import('@/lib/api/payments/paymentQuery');
         return await pq.getInvoiceById(id);
       } catch (err) {
-        console.error('[invoiceService.get] server fast-path error', err);
+        console.error(
+          '[invoiceService.get] server fast-path error',
+          formatErrorForLog(err),
+        );
         return await http.get(`/billing/invoices/${id}`);
       }
     }
@@ -61,7 +68,7 @@ const invoiceService = {
       } catch (err) {
         console.error(
           '[invoiceService.sendInvoice] server fast-path error',
-          err,
+          formatErrorForLog(err),
         );
         return await http.post(`/billing/invoices/${id}/send`);
       }

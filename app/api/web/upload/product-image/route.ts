@@ -1,3 +1,4 @@
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    console.error('[upload/product-image]', error);
+    console.error('[upload/product-image]', formatErrorForLog(error));
     return NextResponse.json(
       {
         success: false,

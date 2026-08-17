@@ -59,13 +59,12 @@ const VERIFICATION_COPY: Record<
  *
  * A failed read reports `failed: true` and the card says "couldn't load". Six
  * unchecked boxes and an outage look identical otherwise, and an unchecked box
- * tells the owner to redo work they already did — the `getBookingStats` /
- * `getEventStats` lesson.
+ * tells the owner to redo work they already did — the `getEventStats` lesson.
  *
  * NOT flag-filtered: every item here is part of being *sellable* (profile,
  * branch, hours, offering, promo), and none of them lives behind a kill
- * switch. Growth surfaces that DO — events, bookings — are deliberately absent
- * rather than conditionally present; a checklist that names a route which 404s
+ * switch. Growth surfaces that DO — events — are deliberately absent rather
+ * than conditionally present; a checklist that names a route which 404s
  * is the failure ON7 exists to prevent. Adding one later means taking the same
  * `flags` record `BusinessSidebar` filters on, not a second source.
  */

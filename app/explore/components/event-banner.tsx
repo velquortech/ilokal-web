@@ -1,11 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { brandToneFor } from '@/lib/utils/brandTone';
+import { SafeImage } from '@/components/custom/SafeImage';
 import { eventPath, ROUTES } from '@/config/routeConfig';
 import {
   compareForBanner,
@@ -205,7 +205,6 @@ function Slide({
   position: number;
   total: number;
 }) {
-  const [imgError, setImgError] = React.useState(false);
   const live = eventPhase(event, now ?? undefined) === 'live';
 
   return (
@@ -220,16 +219,16 @@ function Slide({
         href={eventPath(event.id)}
         className="group focus-visible:ring-ring relative block aspect-4/3 w-full overflow-hidden focus-visible:ring-2 focus-visible:outline-hidden sm:aspect-[21/9]"
       >
-        {event.image_url && !imgError ? (
-          <Image
+        {event.image_url ? (
+          // SafeImage: unoptimized storage WebP + broken-image fallback (a
+          // deleted photo shows the placeholder rather than the broken glyph).
+          <SafeImage
             src={event.image_url}
             alt=""
             fill
-            unoptimized
             priority={position === 1}
             sizes="(max-width: 1152px) 100vw, 1152px"
             className="object-cover transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transform-none motion-reduce:transition-none"
-            onError={() => setImgError(true)}
           />
         ) : (
           // No photo: the id-derived brand tone, so a shop that is Jasmine in

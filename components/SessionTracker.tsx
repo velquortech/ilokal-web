@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { verifySessionAction } from '@/app/(auth)/actions';
 import { useSessionMonitorContext } from '@/providers/SessionMonitorProvider';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 /**
  * SessionTracker Component
@@ -32,7 +33,10 @@ export function SessionTracker() {
           // Session initialization complete
         }
       } catch (error) {
-        console.error('[SessionTracker] Session initialization error:', error);
+        console.error(
+          '[SessionTracker] Session initialization error:',
+          formatErrorForLog(error),
+        );
       }
     }
 

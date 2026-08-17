@@ -1,40 +1,34 @@
 'use client';
 
-import * as React from 'react';
-import Image from 'next/image';
-import { ImageOff } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { calculatePercentage } from '@/lib/product-helper';
 import { formatOfferingPricePair } from '@/lib/utils/formatOfferingPrice';
+import { SafeImage } from './SafeImage';
+import { BrokenImage } from './BrokenImage';
 import type { ProductResponse } from '@/lib/types';
 
 export function ProductCard(product: ProductResponse) {
   const { base, sale } = formatOfferingPricePair(product);
-  const [imgError, setImgError] = React.useState(false);
 
   return (
     <Card className="group gap-2 overflow-hidden p-3 transition hover:shadow-lg">
       {/* IMAGE */}
       <div className="border-border relative aspect-square min-h-48 w-full overflow-hidden rounded-md border">
-        {/* `unoptimized` matches every other dashboard thumbnail — these are
-            write-time WebP and the free Supabase plan has no transform
-            endpoint, so routing them through Next's optimizer left the card
-            blank. `onError` covers a URL that resolved but no longer exists. */}
-        {product.image_url && !imgError ? (
-          <Image
+        {/* SafeImage owns both rules: `unoptimized` (these are write-time WebP
+            and the free Supabase plan has no transform endpoint, so routing
+            them through Next's optimizer left the card blank) and the
+            broken-image fallback (a URL that resolved but no longer exists). */}
+        {product.image_url ? (
+          <SafeImage
             src={product.image_url}
             alt={product.name}
             fill
-            unoptimized
             className="object-cover transition-transform duration-300 group-hover:scale-105"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-            onError={() => setImgError(true)}
           />
         ) : (
-          <div className="bg-muted text-muted-foreground flex h-full w-full items-center justify-center">
-            <ImageOff className="size-10" />
-          </div>
+          <BrokenImage iconClassName="size-10" />
         )}
         {product.sale_price != null && (
           <span className="bg-primary text-primary-foreground absolute top-2 left-2 rounded-md px-1.5 py-0.5 text-xs font-semibold">

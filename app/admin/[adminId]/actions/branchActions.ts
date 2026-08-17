@@ -5,6 +5,7 @@ import { verifyCurrentUserIsAdmin } from '@/lib/api/admin/adminActionHelpers';
 import { createServerSupabaseClient } from '@/supabase/server';
 import type { ApiResponse, Branch } from '@/lib/types';
 import { logActionError } from '@/lib/utils/captureError';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function getPendingBranchesAction(): Promise<
   ApiResponse<{ branches: (Branch & { business_name: string })[] }>
@@ -28,7 +29,10 @@ export async function getPendingBranchesAction(): Promise<
       .order('created_at', { ascending: false });
 
     if (dbError) {
-      console.error('[admin/branchActions] DB error:', dbError);
+      console.error(
+        '[admin/branchActions] DB error:',
+        formatErrorForLog(dbError),
+      );
       return {
         success: false,
         error: { code: 'INTERNAL_ERROR', message: 'Operation failed' },
@@ -79,14 +83,20 @@ export async function approveBranchAction(
       .eq('id', branchId);
 
     if (dbError) {
-      console.error('[admin/branchActions] DB error:', dbError);
+      console.error(
+        '[admin/branchActions] DB error:',
+        formatErrorForLog(dbError),
+      );
       return {
         success: false,
         error: { code: 'INTERNAL_ERROR', message: 'Operation failed' },
       };
     }
 
-    revalidatePath('/admin/branches');
+    // The route is /admin/[adminId]/branches — a literal '/admin/branches'
+    // revalidates nothing. The layout revalidate is the admin convention
+    // (same as userActions / settingsActions).
+    revalidatePath('/admin', 'layout');
     return { success: true, data: null };
   } catch (error) {
     logActionError('approveBranchAction', error);
@@ -122,14 +132,20 @@ export async function rejectBranchAction(
       .eq('id', branchId);
 
     if (dbError) {
-      console.error('[admin/branchActions] DB error:', dbError);
+      console.error(
+        '[admin/branchActions] DB error:',
+        formatErrorForLog(dbError),
+      );
       return {
         success: false,
         error: { code: 'INTERNAL_ERROR', message: 'Operation failed' },
       };
     }
 
-    revalidatePath('/admin/branches');
+    // The route is /admin/[adminId]/branches — a literal '/admin/branches'
+    // revalidates nothing. The layout revalidate is the admin convention
+    // (same as userActions / settingsActions).
+    revalidatePath('/admin', 'layout');
     return { success: true, data: null };
   } catch (error) {
     logActionError('rejectBranchAction', error);
@@ -162,7 +178,10 @@ export async function getBranchDocumentsAction(
       .eq('branch_id', branchId);
 
     if (dbError) {
-      console.error('[admin/branchActions] DB error:', dbError);
+      console.error(
+        '[admin/branchActions] DB error:',
+        formatErrorForLog(dbError),
+      );
       return {
         success: false,
         error: { code: 'INTERNAL_ERROR', message: 'Operation failed' },

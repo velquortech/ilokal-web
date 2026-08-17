@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { captureServerError } from '@/lib/utils/captureError';
+import { describeDbError, isDbErrorShape } from '@/lib/utils/describeDbError';
 
 export function generalErrorResponse<T>(data?: T): Response {
   return new NextResponse(
@@ -36,10 +37,19 @@ export function loggedServerError(
       ? (error as { message?: unknown }).message
       : undefined;
 
-  // Unchanged behaviour: only a real string message is logged, and the log line
-  // keeps the `[context] message` shape people grep for.
-  if (typeof message === 'string' && message)
+  // PostgrestError carries its fields non-enumerably, so logging the object
+  // raw would render `{}`; flatten DB-shaped errors (non-Error objects
+  // carrying code/message) with describeDbError — the SAME shape logActionError
+  // produces for Server Actions, so the two funnels read alike and the line
+  // surfaces code, message, details and hint. Everything else keeps the legacy
+  // `[context] message` shape people grep for: only a real string message is
+  // logged, and an error without one logs nothing (unchanged behaviour).
+  const dbError = isDbErrorShape(error) ? describeDbError(error) : undefined;
+  if (dbError) {
+    console.error(`[${context}]`, dbError);
+  } else if (typeof message === 'string' && message) {
     console.error(`[${context}]`, message);
+  }
 
   captureServerError(context, error, undefined, userId);
   return generalErrorResponse();

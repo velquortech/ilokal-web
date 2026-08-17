@@ -119,10 +119,23 @@ describe('wiring survives (the check cannot be silently removed)', () => {
 
   it('keeps the CI job gated on the live secret so a missing credential is a visible SKIP, not a green pass', () => {
     // Without this gate, the job runs, finds no .env.cloud, prints SKIP and
-    // exits 0 — a green check that never exercised the script. The `if:` on
-    // the job makes the no-secret state show as skipped, not passed.
+    // exits 0 — a green check that never exercised the script.
+    //
+    // Job-level `if` cannot read the `secrets` or `env` contexts (GitHub's
+    // parser rejects both), so the workflow must surface the secret's
+    // presence through a probe job output and gate on `needs` — the only
+    // supported way to skip a job on a secret. Pin all three pieces: the
+    // probe job output, the `needs` wiring, and the gate expression. Also
+    // reject the two historically-tried-but-invalid direct forms so a future
+    // edit can't "simplify" back into a workflow that fails to parse.
+    expect(workflow).toMatch(/Pull-live-credentials:/);
     expect(workflow).toMatch(
-      /if: \${{ (env\.SUPABASE_DB_URL|secrets\.SUPABASE_DB_URL) != '' }}/,
+      /has_credentials: \$\{\{ steps\.check\.outputs\.has_credentials \}\}/,
     );
+    expect(workflow).toMatch(/needs: \[Setup, Pull-live-credentials\]/);
+    expect(workflow).toMatch(
+      /if: \$\{\{ needs\.Pull-live-credentials\.outputs\.has_credentials == 'true' \}\}/,
+    );
+    expect(workflow).not.toMatch(/if: \$\{\{ (env\.|secrets\.)SUPABASE_DB_URL/);
   });
 });

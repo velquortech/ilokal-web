@@ -1,6 +1,6 @@
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import { resolvePublicAvatarUrl } from '@/lib/api/customer/customerQuery';
-import { getBookingsEnabled, getEventsEnabled } from '@/lib/api/appSettings';
+import { getEventsEnabled } from '@/lib/api/appSettings';
 import { CustomerHeader } from '@/components/customer/CustomerHeader';
 import { CustomerFooter } from '@/components/customer/CustomerFooter';
 
@@ -19,9 +19,8 @@ export async function PublicShell({ children }: { children: React.ReactNode }) {
 
   // Real registrations store raw in-bucket avatar paths — resolve before
   // handing to next/image.
-  const [avatarUrl, bookingsEnabled, eventsEnabled] = await Promise.all([
+  const [avatarUrl, eventsEnabled] = await Promise.all([
     user ? resolvePublicAvatarUrl(user.avatar_url) : null,
-    getBookingsEnabled(),
     getEventsEnabled(),
   ]);
 
@@ -39,7 +38,6 @@ export async function PublicShell({ children }: { children: React.ReactNode }) {
             : null
         }
         flags={{
-          enable_bookings: bookingsEnabled,
           enable_events: eventsEnabled,
         }}
       />

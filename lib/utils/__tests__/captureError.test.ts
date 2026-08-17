@@ -153,6 +153,48 @@ describe('logActionError', () => {
     expect(spy).toHaveBeenCalledWith('[createProductAction]', error);
   });
 
+  it('flattens a PostgREST error instead of logging {}', () => {
+    // PostgrestError carries its fields NON-enumerably, so console.error(err)
+    // renders `{}`. Build one faithfully and assert the log line carries the
+    // readable fields — the exact defect that surfaced as `[readPublicFlags] {}`.
+    delete process.env.SENTRY_DSN;
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const error = Object.create(null);
+    Object.defineProperties(error, {
+      code: { value: 'PGRST301', enumerable: false },
+      message: {
+        value: 'Empty JWT is sent in Authorization header',
+        enumerable: false,
+      },
+      details: { value: null, enumerable: false },
+      hint: { value: null, enumerable: false },
+    });
+
+    logActionError('readPublicFlags', error);
+
+    // describeDbError maps null details/hint to undefined (which toEqual
+    // ignores), so the readable fields are exactly these two.
+    expect(spy).toHaveBeenCalledWith('[readPublicFlags]', {
+      code: 'PGRST301',
+      message: 'Empty JWT is sent in Authorization header',
+    });
+  });
+
+  it('reports the ORIGINAL error, not the flattened copy', async () => {
+    // Sentry's fingerprinting groups on the raw object's `code`; the console
+    // flattening must never replace what gets captured.
+    process.env.SENTRY_DSN = 'https://key@o0.ingest.sentry.io/0';
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const error = { code: '23503', message: 'violates foreign key constraint' };
+
+    logActionError('createProductAction', error);
+    await flush();
+
+    expect(captureException).toHaveBeenCalledTimes(1);
+    const [reported] = captureException.mock.calls[0] as [unknown];
+    expect(reported).toBe(error);
+  });
+
   it('reports as well as logs', async () => {
     process.env.SENTRY_DSN = 'https://key@o0.ingest.sentry.io/0';
     vi.spyOn(console, 'error').mockImplementation(() => {});

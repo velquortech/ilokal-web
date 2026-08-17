@@ -6,6 +6,7 @@
  * DELETE /api/admin/businesses/[id] - Archive business
  */
 
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import { NextRequest, NextResponse } from 'next/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import {
@@ -55,7 +56,10 @@ export async function GET(
       { status: 200 },
     );
   } catch (error) {
-    console.error('[API] GET /api/admin/businesses/[id]:', error);
+    console.error(
+      '[API] GET /api/admin/businesses/[id]:',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       { error: 'Failed to fetch business' },
       { status: 500 },
@@ -112,7 +116,10 @@ export async function PUT(
       { status: 200 },
     );
   } catch (error) {
-    console.error('[API] PUT /api/admin/businesses/[id]:', error);
+    console.error(
+      '[API] PUT /api/admin/businesses/[id]:',
+      formatErrorForLog(error),
+    );
 
     if (error instanceof Error && error.message.includes('validation')) {
       return NextResponse.json(
@@ -159,7 +166,10 @@ export async function DELETE(
       { status: 200 },
     );
   } catch (error) {
-    console.error('[API] DELETE /api/admin/businesses/[id]:', error);
+    console.error(
+      '[API] DELETE /api/admin/businesses/[id]:',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       { error: 'Failed to archive business' },
       { status: 500 },

@@ -5,6 +5,7 @@ import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse } from '@/lib/types';
 import * as moderationService from '@/lib/api/admin/moderationService';
 import { warnSchema } from '@/lib/validation/moderation';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function POST(
   request: NextRequest,
@@ -31,7 +32,10 @@ export async function POST(
     const result = await moderationService.warn(target_type, id, message ?? '');
     return NextResponse.json(result, { status: result.success ? 200 : 400 });
   } catch (error) {
-    console.error('[POST /api/admin/moderation/:id/warn]', error);
+    console.error(
+      '[POST /api/admin/moderation/:id/warn]',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       {
         success: false,

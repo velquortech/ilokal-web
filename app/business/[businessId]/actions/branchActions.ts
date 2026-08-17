@@ -19,7 +19,9 @@ import {
 } from '@/lib/validation/branches';
 import * as branchService from '@/lib/api/branches/branchService';
 import * as branchQuery from '@/lib/api/branches/branchQuery';
+import { businessBranchesPath } from '@/config/routeConfig';
 import { logActionError } from '@/lib/utils/captureError';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import {
   uploadWebP,
   ImageProcessingError,
@@ -84,7 +86,10 @@ export async function uploadBranchDocumentAction(
       .upload(filePath, file, { cacheControl: '3600', upsert: false });
 
     if (uploadError) {
-      console.error('[business/branchActions] upload error:', uploadError);
+      console.error(
+        '[business/branchActions] upload error:',
+        formatErrorForLog(uploadError),
+      );
       return {
         success: false,
         error: { code: 'UPLOAD_ERROR', message: 'Failed to upload file' },
@@ -327,7 +332,7 @@ export async function createBranchAction(
       validation.data,
     );
     if (result.success)
-      revalidatePath(`/business/${verify.business!.id}/branches`);
+      revalidatePath(businessBranchesPath(verify.business!.id));
     return result;
   } catch (error) {
     logActionError('createBranchAction', error);
@@ -385,8 +390,7 @@ export async function updateBranchAction(
     }
 
     const res = await branchService.updateBranch(id, validation.data);
-    if (res.success)
-      revalidatePath(`/business/${verify.business!.id}/branches`);
+    if (res.success) revalidatePath(businessBranchesPath(verify.business!.id));
     return res;
   } catch (error) {
     logActionError('updateBranchAction', error);
@@ -431,7 +435,7 @@ export async function deleteBranchAction(
 
     const result = await branchService.deleteBranch(id);
     if (result.success)
-      revalidatePath(`/business/${verify.business!.id}/branches`);
+      revalidatePath(businessBranchesPath(verify.business!.id));
     return result;
   } catch (error) {
     logActionError('deleteBranchAction', error);

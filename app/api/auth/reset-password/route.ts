@@ -21,6 +21,7 @@
  * No raw Supabase error text is returned to the client (SEC-5).
  */
 
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import { NextRequest, NextResponse, after } from 'next/server';
 import {
   createServerSupabaseClient,
@@ -268,7 +269,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { status: 200 },
     );
   } catch (error) {
-    console.error('[API] POST /api/auth/reset-password — Error:', error);
+    console.error(
+      '[API] POST /api/auth/reset-password — Error:',
+      formatErrorForLog(error),
+    );
     return jsonError('INTERNAL_ERROR', 'An unexpected error occurred.', 500);
   }
 }

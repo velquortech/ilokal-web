@@ -5,6 +5,7 @@ import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse } from '@/lib/types';
 import * as moderationService from '@/lib/api/admin/moderationService';
 import { createReportSchema } from '@/lib/validation/moderation';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,7 +28,10 @@ export async function POST(request: NextRequest) {
     const result = await moderationService.createReport(parsed.data);
     return NextResponse.json(result, { status: result.success ? 201 : 400 });
   } catch (error) {
-    console.error('[POST /api/admin/moderation/report]', error);
+    console.error(
+      '[POST /api/admin/moderation/report]',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       {
         success: false,

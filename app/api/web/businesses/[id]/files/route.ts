@@ -1,3 +1,4 @@
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import {
@@ -71,7 +72,10 @@ export async function POST(
         { status: 404 },
       );
     }
-    console.error('[POST /api/web/businesses/[id]/files]', error);
+    console.error(
+      '[POST /api/web/businesses/[id]/files]',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       { message: 'Failed to upload file' },
       { status: 400 },

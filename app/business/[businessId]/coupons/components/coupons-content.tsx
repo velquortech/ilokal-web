@@ -57,6 +57,10 @@ export function CouponsContent({
     [router, searchParams],
   );
 
+  // Keyed on the URL too: the closure must rebuild from the CURRENT params
+  // when the debounce fires. Keyed on the input alone, a status/branch filter
+  // clicked during the 400 ms window is silently wiped — the push re-writes
+  // the params it captured before that click. (Same guard as branches-content.)
   React.useEffect(() => {
     const timeout = setTimeout(() => {
       const current = searchParams.get('search') ?? '';
@@ -65,7 +69,7 @@ export function CouponsContent({
       }
     }, 400);
     return () => clearTimeout(timeout);
-  }, [searchInput]);
+  }, [searchInput, searchParams, updateParams]);
 
   const handleStatusChange = React.useCallback(
     (status: string) => {

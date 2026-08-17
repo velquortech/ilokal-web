@@ -19,6 +19,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Building2, CheckCircle2, Clock, Ban, XCircle } from 'lucide-react';
 import { DataTablePagination } from '@/components/custom/data-table/DataTablePagination';
+import { BUSINESS_TIME_ZONE } from '@/lib/utils/operatingHours';
 import type {
   AdminBusinessWithMeta,
   BusinessVerificationStatus,
@@ -124,7 +125,13 @@ export function BusinessDocumentsTable({
         cell: ({ row }) => (
           <span className="text-muted-foreground text-sm">
             {row.original.created_at
-              ? new Date(row.original.created_at).toLocaleDateString()
+              ? new Date(row.original.created_at).toLocaleDateString(
+                  // Pinned: the server renders this table in UTC, so without
+                  // an explicit zone a Manila submission reads as the day
+                  // before.
+                  undefined,
+                  { timeZone: BUSINESS_TIME_ZONE },
+                )
               : '—'}
           </span>
         ),

@@ -1,5 +1,6 @@
 'use client';
 
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -146,7 +147,7 @@ export function ManageSections({
       router.refresh();
       return true;
     } catch (err) {
-      console.error('[ManageSections]', err);
+      console.error('[ManageSections]', formatErrorForLog(err));
       toast.error('Something went wrong — please try again.', { id: toastId });
       return false;
     } finally {

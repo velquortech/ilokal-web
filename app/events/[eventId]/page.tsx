@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, CalendarDays, MapPin, Store, Ticket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SafeImage } from '@/components/custom/SafeImage';
 import { getEventById } from '@/lib/api/events/eventQuery';
 import { eventPath, explorePath, ROUTES } from '@/config/routeConfig';
 import { eventPhase, formatEventWhen } from '@/lib/utils/eventSchedule';
@@ -83,11 +83,12 @@ export default async function EventDetailPage({ params }: { params: Params }) {
       <header className="space-y-4">
         <div className="relative aspect-[16/7] w-full overflow-hidden rounded-xl border">
           {event.image_url ? (
-            <Image
+            // SafeImage: unoptimized storage WebP + broken-image fallback (a
+            // deleted photo shows the placeholder instead of the broken glyph).
+            <SafeImage
               src={event.image_url}
               alt=""
               fill
-              unoptimized
               priority
               sizes="(max-width: 1024px) 100vw, 1024px"
               className="object-cover"
@@ -178,11 +179,11 @@ export default async function EventDetailPage({ params }: { params: Params }) {
           >
             <div className="bg-muted relative size-12 shrink-0 overflow-hidden rounded-full">
               {event.business.logo_url ? (
-                <Image
+                // SafeImage: unoptimized storage WebP + broken-image fallback.
+                <SafeImage
                   src={event.business.logo_url}
                   alt=""
                   fill
-                  unoptimized
                   sizes="48px"
                   className="object-cover"
                 />

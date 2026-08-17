@@ -17,10 +17,8 @@
  */
 
 import {
-  BOOKING_MODES,
   OFFERING_ATTRIBUTE_FIELDS,
   defaultKindForMode,
-  type BookingMode,
   type OfferingAttributeField,
   type OfferingKind,
   type OfferingMode,
@@ -71,11 +69,7 @@ function deriveVocabulary(
   policy?: Partial<
     Pick<
       OfferingVocabulary,
-      | 'fields'
-      | 'allowedPriceTypes'
-      | 'defaultBookingMode'
-      | 'defaultKind'
-      | 'allowedKinds'
+      'fields' | 'allowedPriceTypes' | 'defaultKind' | 'allowedKinds'
     >
   >,
 ): OfferingVocabulary {
@@ -93,10 +87,9 @@ function deriveVocabulary(
     imageLabel: `${singular} Photo`,
     totalLabel: `Total ${plural}`,
     emptyLabel: `No ${plural.toLowerCase()} yet`,
-    // Retail defaults: no service fields, every price type, no booking.
+    // Retail defaults: no service fields, every price type.
     fields: policy?.fields ?? [],
     allowedPriceTypes: policy?.allowedPriceTypes ?? [...PRICE_TYPES],
-    defaultBookingMode: policy?.defaultBookingMode ?? 'none',
     defaultKind: policy?.defaultKind ?? 'product',
     // A products-only business has nothing to toggle between; the picker
     // needs no kind axis until a 'both' shop is editing.
@@ -125,13 +118,6 @@ function readAllowedPriceTypes(value: unknown): string[] | undefined {
       typeof t === 'string' && (PRICE_TYPES as readonly string[]).includes(t),
   );
   return types.length ? types : undefined;
-}
-
-function readBookingMode(value: unknown): BookingMode | undefined {
-  return typeof value === 'string' &&
-    (BOOKING_MODES as readonly string[]).includes(value)
-    ? (value as BookingMode)
-    : undefined;
 }
 
 /** The vocabulary rendered when there is no usable profile at all. */
@@ -177,7 +163,6 @@ export function resolveOfferingVocabulary(
       // vertical needs doesn't change when a salon starts selling shampoo.
       fields: readFields(raw.fields),
       allowedPriceTypes: readAllowedPriceTypes(raw.allowed_price_types),
-      defaultBookingMode: readBookingMode(raw.default_booking_mode),
       // Derived from the mode, not the profile — a services business creates
       // services. Without this the form would keep writing kind='product' and
       // the phase-1 backfill would decay on every new row.

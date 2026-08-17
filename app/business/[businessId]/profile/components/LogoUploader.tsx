@@ -1,8 +1,8 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import Image from 'next/image';
 import { Camera, Loader2, Store } from 'lucide-react';
+import { SafeImage } from '@/components/custom/SafeImage';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { compressImage, COMPRESSION_PRESETS } from '@/lib/utils/compressImage';
@@ -78,13 +78,13 @@ export function LogoUploader({
         aria-label="Upload business logo"
       >
         {value ? (
-          <Image
+          // SafeImage: unoptimized storage WebP + broken-image fallback.
+          <SafeImage
             src={value}
             alt="Business logo"
             fill
             className="object-cover"
             sizes="96px"
-            unoptimized
           />
         ) : (
           <Store className="text-muted-foreground absolute inset-0 m-auto size-8" />

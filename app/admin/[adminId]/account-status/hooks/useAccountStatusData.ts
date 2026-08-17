@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import type { Profile, UserRole } from '@/lib/types/user';
 import { PaginatedResponse } from '@/lib/services';
 import { ROUTES } from '@/config/routeConfig';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export interface AccountStatusCounts {
   active: number;
@@ -103,7 +104,10 @@ export function useAccountStatusData(
         }
         return 0;
       } catch (error) {
-        console.error(`Failed to fetch ${filter} count:`, error);
+        console.error(
+          `Failed to fetch ${filter} count:`,
+          formatErrorForLog(error),
+        );
         return 0;
       }
     },
@@ -137,7 +141,10 @@ export function useAccountStatusData(
         }
         return null;
       } catch (error) {
-        console.error(`Failed to fetch ${options.filter} data:`, error);
+        console.error(
+          `Failed to fetch ${options.filter} data:`,
+          formatErrorForLog(error),
+        );
         return null;
       }
     },
@@ -200,7 +207,10 @@ export function useAccountStatusData(
         setInactiveData(data);
       }
     } catch (error) {
-      console.error('Failed to refetch account status data:', error);
+      console.error(
+        'Failed to refetch account status data:',
+        formatErrorForLog(error),
+      );
       toast.error('Failed to refetch data');
     } finally {
       setLoading(false);
@@ -252,7 +262,10 @@ export function useAccountStatusData(
 
         fetchedTabsRef.current.add(cacheKey);
       } catch (error) {
-        console.error(`Failed to fetch ${tab} tab data:`, error);
+        console.error(
+          `Failed to fetch ${tab} tab data:`,
+          formatErrorForLog(error),
+        );
         toast.error(`Failed to load ${tab} users`);
       } finally {
         setTabLoading((prev) => ({ ...prev, [tab]: false }));

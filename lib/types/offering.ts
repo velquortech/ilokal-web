@@ -173,8 +173,6 @@ export type OfferingProfile = {
   fields?: OfferingAttributeField[];
   /** Which price types the picker offers. Absent ⇒ all of them. */
   allowed_price_types?: string[];
-  /** Preselected booking mode for a new offering. */
-  default_booking_mode?: BookingMode;
 };
 
 /**
@@ -213,7 +211,6 @@ export type OfferingVocabulary = {
   fields: OfferingAttributeField[];
   /** Non-empty; falls back to every price type when the profile says nothing. */
   allowedPriceTypes: string[];
-  defaultBookingMode: BookingMode;
   /**
    * What a NEW offering should be created as, from the business's
    * `offering_mode`. The form sends this explicitly — the DB cannot infer it,

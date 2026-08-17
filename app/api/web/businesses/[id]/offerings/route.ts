@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createBusinessRegistrationOfferings } from '@/lib/api/business/business';
 import { MAX_REGISTRATION_OFFERINGS } from '@/lib/validation/products';
 import { rateLimit, clientIp } from '@/app/api/helpers/rateLimit';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 /**
  * POST /api/web/businesses/[id]/offerings — the menu entered in the wizard.
@@ -98,7 +99,10 @@ export async function POST(
       );
     }
     // Never the driver's text — it names tables, columns and constraints.
-    console.error('[POST /api/web/businesses/[id]/offerings]', error);
+    console.error(
+      '[POST /api/web/businesses/[id]/offerings]',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       { message: 'Failed to save your items' },
       { status: 400 },

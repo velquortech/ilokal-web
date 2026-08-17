@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextResponse } from 'next/server';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 type AuthContext = {
   user: { id: string };
@@ -165,7 +166,7 @@ export async function verifyBusinessOwner(
       },
     };
   } catch (error) {
-    console.error('[verifyBusinessOwner] Error:', error);
+    console.error('[verifyBusinessOwner] Error:', formatErrorForLog(error));
     return {
       authorized: false,
       error: { code: 'INTERNAL_ERROR', message: 'Authorization failed' },

@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { BUSINESS_TIME_ZONE } from '@/lib/utils/operatingHours';
 import {
   ArrowLeft,
   Calendar,
@@ -17,6 +17,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { SafeImage } from '@/components/custom/SafeImage';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -137,11 +138,11 @@ export function BranchDetailContent({
       {/* Cover image */}
       {branch.cover_image_url && (
         <div className="bg-muted relative h-52 w-full overflow-hidden rounded-lg sm:h-64">
-          <Image
+          {/* SafeImage: unoptimized storage WebP + broken-image fallback. */}
+          <SafeImage
             src={branch.cover_image_url}
             alt={`${branch.name} cover`}
             fill
-            unoptimized
             className="object-cover"
           />
         </div>
@@ -261,11 +262,12 @@ export function BranchDetailContent({
                   key={i}
                   className="bg-muted relative aspect-square overflow-hidden rounded-md"
                 >
-                  <Image
+                  {/* SafeImage: unoptimized storage WebP + broken-image
+                      fallback. */}
+                  <SafeImage
                     src={url}
                     alt={`Gallery image ${i + 1}`}
                     fill
-                    unoptimized
                     className="object-cover"
                   />
                 </div>
@@ -281,12 +283,21 @@ export function BranchDetailContent({
           <div className="flex items-center gap-2 text-sm">
             <Calendar className="text-muted-foreground size-4" />
             <span className="text-muted-foreground">Created</span>
-            <span>{new Date(branch.created_at).toLocaleDateString()}</span>
+            <span>
+              {new Date(branch.created_at).toLocaleDateString(undefined, {
+                // Pinned: the server renders this page in UTC.
+                timeZone: BUSINESS_TIME_ZONE,
+              })}
+            </span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Calendar className="text-muted-foreground size-4" />
             <span className="text-muted-foreground">Last updated</span>
-            <span>{new Date(branch.updated_at).toLocaleDateString()}</span>
+            <span>
+              {new Date(branch.updated_at).toLocaleDateString(undefined, {
+                timeZone: BUSINESS_TIME_ZONE,
+              })}
+            </span>
           </div>
         </CardContent>
       </Card>

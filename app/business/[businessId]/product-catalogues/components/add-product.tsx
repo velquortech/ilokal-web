@@ -31,13 +31,11 @@ import { useCelebrate } from '@/components/custom/Celebrate';
 import type { Category, PriceType, ProductSectionWithCount } from '@/lib/types';
 
 import type {
-  BookingMode,
   OfferingAttributeField,
   OfferingKind,
   ServiceLocation,
 } from '@/lib/types/offering';
 import {
-  BOOKING_MODE_LABELS,
   OFFERING_KIND_LABELS,
   PRICE_TYPE_LABELS,
   SERVICE_LOCATION_LABELS,
@@ -56,11 +54,20 @@ import {
  */
 const NO_SECTION = '__none__';
 
+/** Same sentinel trick for Category — "no category" is a real, valid state. */
+const NO_CATEGORY = '__none__';
+
 interface AddProductDialogProps {
   children: React.ReactNode;
   categories: Category[];
   /** The shop's own groupings. Optional — a shop may have none yet. */
   sections?: ProductSectionWithCount[];
+  /**
+   * The vertical these categories are scoped to ("Services"). Shown as a hint
+   * under the picker so a wrong business type can never silently mis-scope
+   * the options — the guard's whole point.
+   */
+  categoryScopeLabel?: string;
   onSuccess?: () => void;
   /**
    * Controlled open state. Omit for the ordinary trigger-driven dialog; supply
@@ -98,7 +105,6 @@ type ProductFormValues = {
   min_duration_units: number | null;
   max_duration_units: number | null;
   service_location: ServiceLocation;
-  booking_mode: BookingMode;
 };
 
 /** Labels for the attribute inputs a profile can switch on. */
@@ -117,14 +123,15 @@ const ATTRIBUTE_LABELS: Record<
   },
   capacity: { label: 'Capacity (people)', hint: 'How many one unit holds' },
   deposit_amount: { label: 'Deposit (₱)', hint: 'Shown to customers only' },
-  min_duration_units: { label: 'Minimum booking length' },
-  max_duration_units: { label: 'Maximum booking length' },
+  min_duration_units: { label: 'Minimum duration' },
+  max_duration_units: { label: 'Maximum duration' },
 };
 
 export function AddProductDialog({
   children,
   categories,
   sections,
+  categoryScopeLabel,
   onSuccess,
   open: controlledOpen,
   onOpenChange: onControlledOpenChange,
@@ -182,9 +189,8 @@ export function AddProductDialog({
       min_duration_units: null,
       max_duration_units: null,
       service_location: 'at_business',
-      booking_mode: vocabulary.defaultBookingMode,
     }),
-    [priceTypeOptions, vocabulary.defaultBookingMode, vocabulary.defaultKind],
+    [priceTypeOptions, vocabulary.defaultKind],
   );
 
   const {
@@ -259,9 +265,6 @@ export function AddProductDialog({
         // shops `data.kind` IS the vertical's default; a 'both' shop has the
         // toggle, so the item carries the kind the owner actually picked.
         kind: data.kind,
-        // From the form (seeded with the vertical's default), not straight
-        // from the profile — see BOOKING_MODE_LABELS.
-        booking_mode: data.booking_mode,
         // Only the attributes this vertical actually renders are sent; the
         // rest stay NULL rather than shipping stale form state.
         ...Object.fromEntries(
@@ -299,7 +302,6 @@ export function AddProductDialog({
           section_id: data.section_id,
           kind: data.kind,
           price_type: data.price_type,
-          booking_mode: data.booking_mode,
         });
         setServerError(null);
         setFocus('name');
@@ -442,16 +444,34 @@ export function AddProductDialog({
                 sends "this vertical OR global") and by the kind picked above
                 (a service is never offered "Bakery & Pastries"). */}
             <Field>
-              <FieldLabel>Category (Optional)</FieldLabel>
+              <div className="flex items-baseline justify-between gap-2">
+                <FieldLabel>Category (Optional)</FieldLabel>
+                {categoryScopeLabel && (
+                  <span className="text-muted-foreground text-xs">
+                    Scoped to {categoryScopeLabel}
+                  </span>
+                )}
+              </div>
               <Controller
                 control={control}
                 name="category_id"
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  // The sentinel stays OUT of form state: it is the display
+                  // value for "no category chosen" (the field is optional), and
+                  // picking it again clears a previous pick — the same clear
+                  // the Update dialog offers, so an owner can un-pick a
+                  // misclicked category without canceling the dialog.
+                  <Select
+                    onValueChange={(next) =>
+                      field.onChange(next === NO_CATEGORY ? undefined : next)
+                    }
+                    value={field.value ?? NO_CATEGORY}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value={NO_CATEGORY}>No category</SelectItem>
                       {categoryOptions.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>
                           {cat.name}
@@ -589,33 +609,6 @@ export function AddProductDialog({
                 <p className="text-sm font-medium">
                   {vocabulary.singular} details
                 </p>
-
-                <Field>
-                  <FieldLabel>How do customers book this?</FieldLabel>
-                  <Controller
-                    control={control}
-                    name="booking_mode"
-                    render={({ field }) => (
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(
-                            Object.keys(BOOKING_MODE_LABELS) as BookingMode[]
-                          ).map((mode) => (
-                            <SelectItem key={mode} value={mode}>
-                              {BOOKING_MODE_LABELS[mode]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </Field>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {numericAttributes.map((field) => (

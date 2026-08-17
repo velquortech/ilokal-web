@@ -5,6 +5,7 @@
  * POST /api/admin/businesses - Create business (future)
  */
 
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import { NextRequest, NextResponse } from 'next/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { businessFiltersSchema } from '@/lib/validation/business';
@@ -61,7 +62,7 @@ export async function GET(request: NextRequest) {
       { status: 200 },
     );
   } catch (error) {
-    console.error('[API] GET /api/admin/businesses:', error);
+    console.error('[API] GET /api/admin/businesses:', formatErrorForLog(error));
     return NextResponse.json(
       {
         error: 'Failed to fetch businesses',

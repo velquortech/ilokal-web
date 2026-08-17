@@ -1,4 +1,5 @@
 import type { Coupon, CreateCouponRequest, DiscountValue } from '@/lib/types';
+import { isoToManilaInput, manilaInputToIso } from '@/lib/utils/eventSchedule';
 import type {
   PromoFormValues,
   PromoTemplateId,
@@ -85,13 +86,15 @@ export function getPromoTemplate(
   return PROMO_TEMPLATES.find((t) => t.id === id);
 }
 
-/** A local `datetime-local` string, `offsetMs` from now. */
+/**
+ * A `datetime-local` string `offsetMs` from now, as MANILA wall-clock.
+ *
+ * A `datetime-local` value carries no zone, so it must be read and written in
+ * one fixed zone or an owner abroad schedules a different instant than the one
+ * they read — the same rule events and the sale dialog follow (eventSchedule).
+ */
 export function localDatetime(offsetMs: number): string {
-  const d = new Date(Date.now() + offsetMs);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-    d.getHours(),
-  )}:${pad(d.getMinutes())}`;
+  return isoToManilaInput(new Date(Date.now() + offsetMs).toISOString());
 }
 
 /** Default expiry for a preset: 30 days out. */
@@ -223,22 +226,12 @@ export function promoDefaults(initial?: Coupon | null): PromoFormValues {
     bogo_get,
     usage_scope: initial.usage_scope === 'any' ? 'any' : 'specific_products',
     scope_values: (initial.scope_values as string[] | undefined) ?? [],
-    start_date: localDatetimeFromIso(initial.start_date),
-    expiry_date: localDatetimeFromIso(initial.expiry_date),
+    start_date: isoToManilaInput(initial.start_date),
+    expiry_date: isoToManilaInput(initial.expiry_date),
     max_redemptions_global: initial.max_redemptions_global?.toString() ?? '',
     max_redemptions_per_user:
       initial.max_redemptions_per_user?.toString() ?? '',
   };
-}
-
-/** ISO → `datetime-local` value for `<input type="datetime-local">`. */
-function localDatetimeFromIso(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-    d.getHours(),
-  )}:${pad(d.getMinutes())}`;
 }
 
 /**
@@ -296,8 +289,11 @@ export function buildPromoRequest(
     discount: buildDiscount(values),
     usage_scope: values.usage_scope,
     scope_values: values.scope_values?.length ? values.scope_values : undefined,
-    start_date: new Date(values.start_date).toISOString(),
-    expiry_date: new Date(values.expiry_date).toISOString(),
+    // A `datetime-local` value has no zone; read it as Manila so the instant
+    // stored round-trips to the same wall-clock the owner typed. `?? ''` only
+    // fires on an unparseable value, which the schema rejects anyway.
+    start_date: manilaInputToIso(values.start_date) ?? '',
+    expiry_date: manilaInputToIso(values.expiry_date) ?? '',
     max_redemptions_global: values.max_redemptions_global
       ? parseInt(values.max_redemptions_global, 10)
       : undefined,

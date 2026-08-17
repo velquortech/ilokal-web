@@ -1,5 +1,6 @@
 import http from './client';
 import { User } from '@/lib/types/user';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export type LoginResult = { user: User; message: string };
 
@@ -12,7 +13,10 @@ const authService = {
         const user = await mod.getCurrentUser();
         return user;
       } catch (err) {
-        console.error('[authService.getMe] server fast-path error', err);
+        console.error(
+          '[authService.getMe] server fast-path error',
+          formatErrorForLog(err),
+        );
         return null;
       }
     }

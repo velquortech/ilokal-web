@@ -7,6 +7,7 @@ import { loadPostFonts } from '@/lib/og/fonts';
 import { fetchImageAsDataUrl, loadWordmarkDataUrl } from '@/lib/og/remoteImage';
 import { BusinessShareCard, OG_LANDSCAPE } from '@/lib/og/businessShareCard';
 import { createServerSupabaseClient } from '@/supabase/server';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 /**
  * GET /api/og/business/:businessId — the branded 1200×630 share card as PNG.
@@ -91,7 +92,10 @@ export async function GET(_request: NextRequest, { params }: Params) {
       headers: { ...CACHE, 'Content-Type': 'image/png' },
     });
   } catch (error: unknown) {
-    console.error('[GET /api/og/business/:businessId] render failed', error);
+    console.error(
+      '[GET /api/og/business/:businessId] render failed',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       { message: 'Could not render the card' },
       { status: 500 },

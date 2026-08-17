@@ -12,6 +12,7 @@
 
 import http from '../client';
 import type { ApiResponse, CheckoutRequest } from '@/lib/types';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 /**
  * Example implementation of a browser-safe payments wrapper
@@ -41,7 +42,10 @@ export async function createCheckoutSession(
       return await paymentMod.createCheckoutSession(user.id, input);
     } catch (err: unknown) {
       // If server-fast-path fails (e.g., no request scope in Vitest), fall back to HTTP
-      console.error('[createCheckoutSession] server-fast-path error', err);
+      console.error(
+        '[createCheckoutSession] server-fast-path error',
+        formatErrorForLog(err),
+      );
       // Continue to HTTP fallback below
     }
   }

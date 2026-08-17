@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { ApiResponse, RedemptionStats } from '@/lib/types';
 import * as couponQuery from '@/lib/api/coupons/couponQuery';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function GET(
   req: NextRequest,
@@ -77,7 +78,10 @@ export async function GET(
       { headers: { 'Cache-Control': 'private, no-store' } },
     );
   } catch (error) {
-    console.error('[GET /api/web/coupons/:id/redemptions]', error);
+    console.error(
+      '[GET /api/web/coupons/:id/redemptions]',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       {
         success: false,

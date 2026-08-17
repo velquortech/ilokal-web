@@ -6,6 +6,7 @@ import type {
   EmitNotificationInput,
 } from '@/lib/types';
 import * as q from './notificationsQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 /** Keyset (cursor) page of a recipient's notifications. */
 export async function listNotifications(
@@ -16,7 +17,10 @@ export async function listNotifications(
     const data = await q.fetchNotifications(user_id, params);
     return { success: true, data };
   } catch (error) {
-    console.error('[notificationsService.listNotifications]', error);
+    console.error(
+      '[notificationsService.listNotifications]',
+      formatErrorForLog(error),
+    );
     return {
       success: false,
       error: {
@@ -35,7 +39,10 @@ export async function getUnreadCount(
     const count = await q.getUnreadCount(user_id);
     return { success: true, data: count };
   } catch (error) {
-    console.error('[notificationsService.getUnreadCount]', error);
+    console.error(
+      '[notificationsService.getUnreadCount]',
+      formatErrorForLog(error),
+    );
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to count unread' },
@@ -56,7 +63,10 @@ export async function emitNotification(
       };
     return { success: true, data: { id } };
   } catch (error) {
-    console.error('[notificationsService.emitNotification]', error);
+    console.error(
+      '[notificationsService.emitNotification]',
+      formatErrorForLog(error),
+    );
     return {
       success: false,
       error: {
@@ -78,7 +88,7 @@ export async function markRead(id: string): Promise<ApiResponse<null>> {
       };
     return { success: true };
   } catch (error) {
-    console.error('[notificationsService.markRead]', error);
+    console.error('[notificationsService.markRead]', formatErrorForLog(error));
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to mark notification' },
@@ -97,7 +107,10 @@ export async function markAllRead(user_id: string): Promise<ApiResponse<null>> {
       };
     return { success: true };
   } catch (error) {
-    console.error('[notificationsService.markAllRead]', error);
+    console.error(
+      '[notificationsService.markAllRead]',
+      formatErrorForLog(error),
+    );
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to mark all read' },
@@ -112,7 +125,10 @@ export async function getPreferences(
     const prefs = await q.getPreferences(user_id);
     return { success: true, data: prefs };
   } catch (error) {
-    console.error('[notificationsService.getPreferences]', error);
+    console.error(
+      '[notificationsService.getPreferences]',
+      formatErrorForLog(error),
+    );
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch preferences' },
@@ -133,7 +149,10 @@ export async function upsertPreferences(
       };
     return { success: true, data };
   } catch (error) {
-    console.error('[notificationsService.upsertPreferences]', error);
+    console.error(
+      '[notificationsService.upsertPreferences]',
+      formatErrorForLog(error),
+    );
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to save preferences' },

@@ -34,6 +34,15 @@ import { iconMap } from '@/app/business/registration/api/fetchCategories';
  * registration uses, so the profile offers exactly the categories an owner
  * could have picked at signup.
  */
+/**
+ * Radix Select forbids an empty-string item value, so "no category" needs a
+ * sentinel in the UI. The category is optional (`category_id` is nullable and
+ * the schema allows null) — the sentinel is mapped back to NULL on submit, the
+ * same clear the product dialogs offer, so a misclicked category can be
+ * un-picked without guessing.
+ */
+const NO_CATEGORY = '__none__';
+
 export type ProfileBusinessTypeOption = {
   id: string;
   name: string;
@@ -231,9 +240,9 @@ export function BusinessInfoForm({
               control={control}
               render={({ field }) => (
                 <Select
-                  value={field.value ?? ''}
+                  value={field.value ?? NO_CATEGORY}
                   onValueChange={(val) =>
-                    field.onChange(val === '' ? null : val)
+                    field.onChange(val === NO_CATEGORY ? null : val)
                   }
                   disabled={!selectedType}
                 >
@@ -247,6 +256,7 @@ export function BusinessInfoForm({
                     />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value={NO_CATEGORY}>No category</SelectItem>
                     {(selectedType?.categories ?? []).map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>
                         {cat.name}

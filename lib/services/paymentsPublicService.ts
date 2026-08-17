@@ -1,4 +1,5 @@
 import http from './client';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import type { ApiResponse, CheckoutRequest } from '@/lib/types';
 
 const paymentsPublicService = {
@@ -23,7 +24,7 @@ const paymentsPublicService = {
         // If server fast-path fails (eg. no request scope in tests), fall back to HTTP POST
         console.error(
           '[paymentsPublicService.checkout] server fast-path error',
-          err,
+          formatErrorForLog(err),
         );
         try {
           const res = await http.post('/payments/checkout', input);

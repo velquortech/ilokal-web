@@ -3,6 +3,7 @@
  * Handles all direct Supabase database operations for coupons and featured deals
  */
 
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import {
   createServerSupabaseClient,
   createAnalyticsSupabaseClient,
@@ -91,7 +92,7 @@ export async function getCouponsPaginated(
       total_pages: Math.ceil((count || 0) / per_page),
     };
   } catch (err) {
-    console.error('[getCouponsPaginated]', err);
+    console.error('[getCouponsPaginated]', formatErrorForLog(err));
     return {
       coupons: [] as Coupon[],
       total: 0,
@@ -120,7 +121,7 @@ export async function getCouponById(id: string) {
 
     return { coupon: data as Coupon };
   } catch (err) {
-    console.error('[getCouponById]', err);
+    console.error('[getCouponById]', formatErrorForLog(err));
     return { error: 'Failed to fetch coupon' as const };
   }
 }
@@ -146,7 +147,7 @@ export async function getCouponByCode(code: string) {
 
     return { coupon: data as Coupon };
   } catch (err) {
-    console.error('[getCouponByCode]', err);
+    console.error('[getCouponByCode]', formatErrorForLog(err));
     return { error: 'Failed to validate coupon' as const };
   }
 }
@@ -166,7 +167,7 @@ export async function couponExists(id: string): Promise<boolean> {
 
     return (count || 0) > 0;
   } catch (err) {
-    console.error('[couponExists]', err);
+    console.error('[couponExists]', formatErrorForLog(err));
     return false;
   }
 }
@@ -222,7 +223,7 @@ export async function getRedemptionStats(
       last_redeemed_at: lastRedemption?.redeemed_at || null,
     };
   } catch (err) {
-    console.error('[getRedemptionStats]', err);
+    console.error('[getRedemptionStats]', formatErrorForLog(err));
     return null;
   }
 }
@@ -285,7 +286,7 @@ export async function getFeaturedDealsPaginated(filters: FeaturedDealFilters) {
       total_pages: Math.ceil((count || 0) / per_page),
     };
   } catch (err) {
-    console.error('[getFeaturedDealsPaginated]', err);
+    console.error('[getFeaturedDealsPaginated]', formatErrorForLog(err));
     return {
       deals: [] as FeaturedDeal[],
       total: 0,
@@ -350,7 +351,7 @@ export async function getFeaturedDealsByBusinessId(
       total_pages: Math.ceil((count || 0) / per_page),
     };
   } catch (err) {
-    console.error('[getFeaturedDealsByBusinessId]', err);
+    console.error('[getFeaturedDealsByBusinessId]', formatErrorForLog(err));
     return {
       deals: [] as FeaturedDeal[],
       total: 0,
@@ -379,7 +380,7 @@ export async function getFeaturedDealById(id: string) {
 
     return { deal: data as FeaturedDeal };
   } catch (err) {
-    console.error('[getFeaturedDealById]', err);
+    console.error('[getFeaturedDealById]', formatErrorForLog(err));
     return { error: 'Failed to fetch featured deal' as const };
   }
 }
@@ -434,7 +435,7 @@ export async function featuredDealExists(id: string): Promise<boolean> {
 
     return (count || 0) > 0;
   } catch (err) {
-    console.error('[featuredDealExists]', err);
+    console.error('[featuredDealExists]', formatErrorForLog(err));
     return false;
   }
 }
@@ -589,7 +590,7 @@ export async function getRedeemedCouponsPaginated(
       total_pages: Math.ceil((count ?? 0) / per_page),
     };
   } catch (err) {
-    console.error('[getRedeemedCouponsPaginated]', err);
+    console.error('[getRedeemedCouponsPaginated]', formatErrorForLog(err));
     return {
       redemptions: [] as RedemptionRecord[],
       total: 0,
@@ -646,7 +647,10 @@ export async function getRedemptionSummaryStatsByBusiness(
 
     return { total, unique_users, active, claimed };
   } catch (err) {
-    console.error('[getRedemptionSummaryStatsByBusiness]', err);
+    console.error(
+      '[getRedemptionSummaryStatsByBusiness]',
+      formatErrorForLog(err),
+    );
     return { total: 0, unique_users: 0, active: 0, claimed: 0 };
   }
 }

@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import type { ApiResponse, Rating } from '@/lib/types';
 import { createRatingSchema } from '@/lib/validation/ratings';
 import { NextRequest, NextResponse } from 'next/server';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function POST(
   req: NextRequest,
@@ -80,7 +81,7 @@ export async function POST(
           { status: 403 },
         );
       }
-      console.error('[POST /api/ratings] DB error:', error);
+      console.error('[POST /api/ratings] DB error:', formatErrorForLog(error));
       return NextResponse.json(
         {
           success: false,
@@ -92,7 +93,10 @@ export async function POST(
 
     return NextResponse.json({ success: true, data: data as Rating });
   } catch (error) {
-    console.error('[POST /api/ratings] unexpected error:', error);
+    console.error(
+      '[POST /api/ratings] unexpected error:',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       {
         success: false,
@@ -138,7 +142,7 @@ export async function GET(
       .range(offset, offset + limit - 1);
 
     if (error) {
-      console.error('[GET /api/ratings] DB error:', error);
+      console.error('[GET /api/ratings] DB error:', formatErrorForLog(error));
       return NextResponse.json(
         {
           success: false,
@@ -153,7 +157,10 @@ export async function GET(
       data: (data || []) as Rating[],
     });
   } catch (error) {
-    console.error('[GET /api/ratings] unexpected error:', error);
+    console.error(
+      '[GET /api/ratings] unexpected error:',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       {
         success: false,

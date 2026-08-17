@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   Clock,
   Mail,
@@ -12,6 +11,7 @@ import {
   Trash2,
   XCircle,
 } from 'lucide-react';
+import { SafeImage } from '@/components/custom/SafeImage';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -61,11 +61,12 @@ export function BranchCard({ branch, businessId, onSuccess }: BranchCardProps) {
     <Card className="flex flex-col overflow-hidden">
       <div className="bg-muted relative h-36">
         {branch.cover_image_url ? (
-          <Image
+          // SafeImage: unoptimized storage WebP + broken-image fallback (a
+          // deleted photo shows the placeholder instead of the broken glyph).
+          <SafeImage
             src={branch.cover_image_url}
             alt={branch.name}
             fill
-            unoptimized
             className="object-cover"
           />
         ) : (

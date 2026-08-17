@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { uuidSchema } from '@/lib/validation/business';
 import { permanentlyDeleteBusiness } from '@/lib/api/business/businessService';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 // Use centralized assertAuthorized for admin checks
 
@@ -43,7 +44,10 @@ export async function DELETE(
       { status: 200 },
     );
   } catch (error) {
-    console.error('[API] DELETE /api/admin/businesses/[id]/delete:', error);
+    console.error(
+      '[API] DELETE /api/admin/businesses/[id]/delete:',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       {
         error: 'Failed to delete business',

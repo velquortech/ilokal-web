@@ -20,6 +20,7 @@ import type { OfferingKind } from '@/lib/types/offering';
 import * as productQuery from './productQuery';
 import { sectionBelongsToBusiness } from '@/lib/api/sections/sectionQuery';
 import { getBusinessTypeId } from '@/lib/api/offerings/offeringQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 // ===== Category Service =====
 
@@ -60,7 +61,7 @@ export async function createCategory(
       .single();
 
     if (error) {
-      console.error('[createCategory] Insert error:', error);
+      console.error('[createCategory] Insert error:', formatErrorForLog(error));
       return {
         success: false,
         error: {
@@ -75,7 +76,7 @@ export async function createCategory(
       data: data as Category,
     };
   } catch (err) {
-    console.error('[createCategory]', err);
+    console.error('[createCategory]', formatErrorForLog(err));
     return {
       success: false,
       error: {
@@ -143,7 +144,7 @@ export async function updateCategory(
       .single();
 
     if (error) {
-      console.error('[updateCategory] Update error:', error);
+      console.error('[updateCategory] Update error:', formatErrorForLog(error));
       return {
         success: false,
         error: {
@@ -158,7 +159,7 @@ export async function updateCategory(
       data: data as Category,
     };
   } catch (err) {
-    console.error('[updateCategory]', err);
+    console.error('[updateCategory]', formatErrorForLog(err));
     return {
       success: false,
       error: {
@@ -204,7 +205,7 @@ export async function deleteCategory(id: string): Promise<ApiResponse<null>> {
     const { error } = await supabase.from('categories').delete().eq('id', id);
 
     if (error) {
-      console.error('[deleteCategory] Delete error:', error);
+      console.error('[deleteCategory] Delete error:', formatErrorForLog(error));
       return {
         success: false,
         error: {
@@ -219,7 +220,7 @@ export async function deleteCategory(id: string): Promise<ApiResponse<null>> {
       data: null,
     };
   } catch (err) {
-    console.error('[deleteCategory]', err);
+    console.error('[deleteCategory]', formatErrorForLog(err));
     return {
       success: false,
       error: {
@@ -379,9 +380,6 @@ export async function createProduct(
         // fall to the DB defaults ('product' / 'none' / 'at_business' / NULL),
         // so a retail write is byte-identical to before phase 3.
         ...(input.kind !== undefined && { kind: input.kind }),
-        ...(input.booking_mode !== undefined && {
-          booking_mode: input.booking_mode,
-        }),
         ...(input.duration_minutes !== undefined && {
           duration_minutes: input.duration_minutes,
         }),
@@ -409,7 +407,7 @@ export async function createProduct(
       .single();
 
     if (error) {
-      console.error('[createProduct] Insert error:', error);
+      console.error('[createProduct] Insert error:', formatErrorForLog(error));
       return {
         success: false,
         error: {
@@ -424,7 +422,7 @@ export async function createProduct(
       data: data as Product,
     };
   } catch (err) {
-    console.error('[createProduct]', err);
+    console.error('[createProduct]', formatErrorForLog(err));
     return {
       success: false,
       error: {
@@ -580,9 +578,6 @@ export async function updateProduct(
         ...(input.status !== undefined && { status: input.status }),
         ...('branch_id' in input && { branch_id: input.branch_id ?? null }),
         ...(input.kind !== undefined && { kind: input.kind }),
-        ...(input.booking_mode !== undefined && {
-          booking_mode: input.booking_mode,
-        }),
         ...(input.duration_minutes !== undefined && {
           duration_minutes: input.duration_minutes,
         }),
@@ -614,7 +609,7 @@ export async function updateProduct(
       .single();
 
     if (error) {
-      console.error('[updateProduct] Update error:', error);
+      console.error('[updateProduct] Update error:', formatErrorForLog(error));
       return {
         success: false,
         error: {
@@ -629,7 +624,7 @@ export async function updateProduct(
       data: data as Product,
     };
   } catch (err) {
-    console.error('[updateProduct]', err);
+    console.error('[updateProduct]', formatErrorForLog(err));
     return {
       success: false,
       error: {
@@ -674,7 +669,7 @@ export async function updateProductsStatus(
       .is('archived_at', null);
 
     if (error) {
-      console.error('[updateProductsStatus]', error);
+      console.error('[updateProductsStatus]', formatErrorForLog(error));
       return {
         success: false,
         error: {
@@ -698,7 +693,7 @@ export async function updateProductsStatus(
 
     return { success: true, data: { updated: count } };
   } catch (err) {
-    console.error('[updateProductsStatus]', err);
+    console.error('[updateProductsStatus]', formatErrorForLog(err));
     return {
       success: false,
       error: {
@@ -774,7 +769,7 @@ export async function applySale(
 
     return { success: true, data: updated.product as Product };
   } catch (err) {
-    console.error('[applySale]', err);
+    console.error('[applySale]', formatErrorForLog(err));
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to apply sale' },
@@ -821,7 +816,7 @@ export async function removeSale(
 
     return { success: true, data: updated.product as Product };
   } catch (err) {
-    console.error('[removeSale]', err);
+    console.error('[removeSale]', formatErrorForLog(err));
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to remove sale' },
@@ -872,7 +867,7 @@ export async function deleteProduct(
       .eq('id', id);
 
     if (error) {
-      console.error('[deleteProduct] Update error:', error);
+      console.error('[deleteProduct] Update error:', formatErrorForLog(error));
       return {
         success: false,
         error: {
@@ -887,7 +882,7 @@ export async function deleteProduct(
       data: null,
     };
   } catch (err) {
-    console.error('[deleteProduct]', err);
+    console.error('[deleteProduct]', formatErrorForLog(err));
     return {
       success: false,
       error: {

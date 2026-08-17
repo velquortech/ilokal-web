@@ -1,5 +1,6 @@
 'use client';
 
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import React, { useState } from 'react';
 import { Upload, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -109,7 +110,7 @@ export function AvatarUpload({
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error('Error uploading avatar:', error);
+      console.error('Error uploading avatar:', formatErrorForLog(error));
       setError(`Upload error: ${errorMessage}`);
       setPreview(null);
     } finally {

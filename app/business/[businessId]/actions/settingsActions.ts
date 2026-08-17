@@ -28,6 +28,7 @@ import {
 } from '@/lib/validation/settings';
 import * as settingsQuery from '@/lib/api/settings/settingsQuery';
 import { businessSettingsPath, businessPath } from '@/config/routeConfig';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function changePasswordAction(
   businessId: string,
@@ -242,7 +243,10 @@ export async function deactivateBusinessAction(
     .eq('id', businessId);
 
   if (error) {
-    console.error('[deactivateBusinessAction] DB error:', error);
+    console.error(
+      '[deactivateBusinessAction] DB error:',
+      formatErrorForLog(error),
+    );
     return {
       success: false,
       error: { code: 'DB_ERROR', message: 'Failed to deactivate business' },
@@ -302,7 +306,7 @@ export async function deleteAccountAction(
   if (profileError) {
     console.error(
       '[deleteBusinessAccount] profile archive error:',
-      profileError,
+      formatErrorForLog(profileError),
     );
     return {
       success: false,
@@ -316,7 +320,10 @@ export async function deleteAccountAction(
     verify.user!.id,
   );
   if (deleteError) {
-    console.error('[deleteBusinessAccount] auth delete error:', deleteError);
+    console.error(
+      '[deleteBusinessAccount] auth delete error:',
+      formatErrorForLog(deleteError),
+    );
     return {
       success: false,
       error: { code: 'DELETE_FAILED', message: 'Failed to delete account' },

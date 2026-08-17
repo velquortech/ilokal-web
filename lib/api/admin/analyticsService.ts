@@ -1,6 +1,7 @@
 import type { ApiResponse } from '@/lib/types';
 import type { AdminAnalyticsResponse } from '@/lib/types';
 import * as analyticsQuery from './analyticsQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function getPlatformAnalytics(): Promise<
   ApiResponse<AdminAnalyticsResponse>
@@ -9,7 +10,7 @@ export async function getPlatformAnalytics(): Promise<
     const data = await analyticsQuery.getPlatformOverview();
     return { success: true, data };
   } catch (error) {
-    console.error('[getPlatformAnalytics]', error);
+    console.error('[getPlatformAnalytics]', formatErrorForLog(error));
     return {
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch analytics' },
@@ -24,7 +25,7 @@ export async function getUsersAnalytics(): Promise<
     const data = await analyticsQuery.getUserMetrics();
     return { success: true, data } as ApiResponse<Record<string, unknown>>;
   } catch (error) {
-    console.error('[getUsersAnalytics]', error);
+    console.error('[getUsersAnalytics]', formatErrorForLog(error));
     return {
       success: false,
       error: {
@@ -42,7 +43,7 @@ export async function getRevenueAnalytics(): Promise<
     const data = await analyticsQuery.getRevenueMetrics();
     return { success: true, data } as ApiResponse<Record<string, unknown>>;
   } catch (error) {
-    console.error('[getRevenueAnalytics]', error);
+    console.error('[getRevenueAnalytics]', formatErrorForLog(error));
     return {
       success: false,
       error: {
@@ -60,7 +61,7 @@ export async function getBusinessAnalytics(): Promise<
     const data = await analyticsQuery.getBusinessMetrics();
     return { success: true, data } as ApiResponse<Record<string, unknown>>;
   } catch (error) {
-    console.error('[getBusinessAnalytics]', error);
+    console.error('[getBusinessAnalytics]', formatErrorForLog(error));
     return {
       success: false,
       error: {

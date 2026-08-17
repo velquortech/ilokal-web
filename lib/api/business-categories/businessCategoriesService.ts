@@ -26,8 +26,8 @@ export const businessService = {
       .is('deleted_at', null);
 
     // Public pickers (registration, …) hide disabled rows (is_active = false,
-    // e.g. Tourism & Leisure while its booking flow is on hold). Admin reads
-    // call without the option and still see every row, including disabled ones.
+    // e.g. a vertical that is temporarily paused). Admin reads call without
+    // the option and still see every row, including disabled ones.
     if (options?.onlyActive) {
       query = query
         .eq('is_active', true)

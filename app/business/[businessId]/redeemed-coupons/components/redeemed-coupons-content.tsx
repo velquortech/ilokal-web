@@ -66,6 +66,9 @@ export function RedeemedCouponsContent({
     [router, searchParams],
   );
 
+  // Keyed on the URL too: a branch/status filter clicked during the 400 ms
+  // debounce window must survive the search push — a closure over the pre-
+  // click params would wipe it. (Same guard as branches-content.)
   React.useEffect(() => {
     const timeout = setTimeout(() => {
       const current = searchParams.get('search') ?? '';
@@ -74,7 +77,7 @@ export function RedeemedCouponsContent({
       }
     }, 400);
     return () => clearTimeout(timeout);
-  }, [searchInput]);
+  }, [searchInput, searchParams, updateParams]);
 
   const handleStatusChange = React.useCallback(
     (status: string) => {

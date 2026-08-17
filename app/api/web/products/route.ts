@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { ApiResponse, PaginatedProductsResponse } from '@/lib/types';
 import { productFiltersSchema } from '@/lib/validation/products';
 import * as productQuery from '@/lib/api/products/productQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function GET(req: NextRequest) {
   try {
@@ -79,7 +80,7 @@ export async function GET(req: NextRequest) {
       },
     );
   } catch (error) {
-    console.error('[GET /api/products]', error);
+    console.error('[GET /api/products]', formatErrorForLog(error));
     return NextResponse.json(
       {
         success: false,

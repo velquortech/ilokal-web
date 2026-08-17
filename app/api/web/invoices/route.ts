@@ -8,6 +8,7 @@ import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse, PaginatedInvoicesResponse } from '@/lib/types';
 import { invoiceFiltersSchema } from '@/lib/validation/payments';
 import * as paymentQuery from '@/lib/api/payments/paymentQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function GET(req: NextRequest) {
   try {
@@ -67,7 +68,7 @@ export async function GET(req: NextRequest) {
       },
     );
   } catch (err) {
-    console.error('[GET /api/invoices]', err);
+    console.error('[GET /api/invoices]', formatErrorForLog(err));
     return NextResponse.json(
       {
         success: false,

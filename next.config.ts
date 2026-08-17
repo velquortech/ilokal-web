@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from 'node:fs';
 import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs';
 
@@ -55,6 +56,39 @@ if (prodImageUrl) {
   });
 }
 
+/**
+ * Dev-only: the LIVE storage origin, read from the git-ignored `.env.cloud`
+ * (the same file pull-live.sh reads for live credentials).
+ *
+ * Local rows can carry ABSOLUTE cloud storage URLs — `make pull-live` restores
+ * live data verbatim and no longer rewrites rows — and the dev CSP otherwise
+ * only knows the local stack (NEXT_PUBLIC_SUPABASE_URL → 127.0.0.1:54321), so
+ * those images would render as broken in local dev even though the files
+ * exist. Widening img-src with the cloud origin lets absolute URLs load
+ * directly; production already allows a bare `https:` and needs none of this.
+ *
+ * Returns null in production, when `.env.cloud` is absent, or when the URL
+ * cannot be parsed — so a machine without the file just keeps the old, local-
+ * only dev CSP.
+ */
+const liveStorageOrigin = (): string | null => {
+  if (process.env.NODE_ENV === 'production') return null;
+  try {
+    if (!existsSync('.env.cloud')) return null;
+    const match = readFileSync('.env.cloud', 'utf8').match(
+      /^NEXT_PUBLIC_SUPABASE_URL=(.*)$/m,
+    );
+    if (!match) return null;
+    const parsed = parseImageUrl(match[1].trim().replace(/^"|"$/g, ''));
+    if (!parsed) return null;
+    return parsed.port
+      ? `${parsed.protocol}://${parsed.hostname}:${parsed.port}`
+      : `${parsed.protocol}://${parsed.hostname}`;
+  } catch {
+    return null;
+  }
+};
+
 const buildCSPImageSources = (): string => {
   const sources = ["'self'", 'data:', 'blob:'];
   // Derive allowed image sources from the same list Next.js uses for remotePatterns
@@ -89,6 +123,10 @@ const buildCSPImageSources = (): string => {
       : `${storageUrl.protocol}://${storageUrl.hostname}`;
     if (!sources.includes(origin)) sources.push(origin);
   }
+  // Dev-only: allow the live cloud storage origin so absolute cloud URLs in
+  // local rows render without rewriting row data (see liveStorageOrigin).
+  const cloudOrigin = liveStorageOrigin();
+  if (cloudOrigin && !sources.includes(cloudOrigin)) sources.push(cloudOrigin);
   return sources.join(' ');
 };
 

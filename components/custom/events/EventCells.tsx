@@ -8,39 +8,34 @@
  * into two different ideas of what an event looks like.
  */
 
-import * as React from 'react';
-import Image from 'next/image';
-import { ImageOff, MapPin } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { SafeImage } from '@/components/custom/SafeImage';
+import { BrokenImage } from '@/components/custom/BrokenImage';
 import { eventPhase, formatEventWhen } from '@/lib/utils/eventSchedule';
 import type { EventWithRefs } from '@/lib/types';
 
 /**
  * The event's image, or a placeholder.
  *
- * `unoptimized` matches every other dashboard thumbnail: these are already
- * write-time WebP, and the free Supabase plan has no transform endpoint.
- * `onError` covers a path that resolved but no longer exists in the bucket.
+ * `SafeImage` owns both rules: `unoptimized` (these are already write-time
+ * WebP, and the free Supabase plan has no transform endpoint) and the
+ * broken-image fallback (a path that resolved but no longer exists in the
+ * bucket).
  */
 export function EventImageCell({ event }: { event: EventWithRefs }) {
-  const [imgError, setImgError] = React.useState(false);
-
   return (
     <div className="relative size-12 shrink-0 overflow-hidden rounded-md border">
-      {event.image_url && !imgError ? (
-        <Image
+      {event.image_url ? (
+        <SafeImage
           src={event.image_url}
           alt=""
           fill
-          unoptimized
           sizes="48px"
           className="object-cover"
-          onError={() => setImgError(true)}
         />
       ) : (
-        <div className="bg-muted flex h-full w-full items-center justify-center">
-          <ImageOff className="text-muted-foreground size-5" aria-hidden />
-        </div>
+        <BrokenImage iconClassName="size-5" />
       )}
     </div>
   );

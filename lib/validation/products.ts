@@ -21,14 +21,6 @@ export const priceTypeSchema = z.enum([
 
 export const offeringKindSchema = z.enum(['product', 'service']);
 
-export const bookingModeSchema = z.enum([
-  'none',
-  'inquiry',
-  'request',
-  'timeslot',
-  'date_range',
-]);
-
 export const serviceLocationSchema = z.enum([
   'at_business',
   'at_customer',
@@ -41,7 +33,6 @@ export const serviceLocationSchema = z.enum([
  */
 const offeringAttributeShape = {
   kind: offeringKindSchema.optional(),
-  booking_mode: bookingModeSchema.optional(),
   duration_minutes: z.number().int().positive().nullable().optional(),
   lead_time_minutes: z.number().int().min(0).nullable().optional(),
   inventory_count: z.number().int().min(0).nullable().optional(),

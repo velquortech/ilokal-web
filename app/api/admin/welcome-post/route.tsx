@@ -1,3 +1,4 @@
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import { ImageResponse } from 'next/og';
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
@@ -118,7 +119,7 @@ export async function GET(request: NextRequest) {
       .is('archived_at', null);
 
     if (error) {
-      console.error('[GET /api/admin/welcome-post]', error);
+      console.error('[GET /api/admin/welcome-post]', formatErrorForLog(error));
       return NextResponse.json(
         { message: 'Could not load those shops' },
         { status: 500 },
@@ -227,7 +228,10 @@ export async function GET(request: NextRequest) {
   } catch (error: unknown) {
     // Never the driver's or the renderer's text — a font or fetch failure
     // names paths.
-    console.error('[GET /api/admin/welcome-post] render failed', error);
+    console.error(
+      '[GET /api/admin/welcome-post] render failed',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       { message: 'Could not render the post' },
       { status: 500 },

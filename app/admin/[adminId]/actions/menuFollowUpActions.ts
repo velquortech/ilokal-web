@@ -32,6 +32,7 @@ import {
 import { sendMenuFollowUpEmail } from '@/app/api/emails/sendMenuFollowUp';
 import { getMissingMenuIds } from '@/lib/api/admin/menuFollowUpQuery';
 import { z } from 'zod';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 const businessId = z.guid('Invalid business id');
 // No `.max` here on purpose: an over-cap list is not rejected, it is sent up to
@@ -98,7 +99,7 @@ async function sendToBusiness(
     p_business_id: id,
   });
   if (error) {
-    console.error('[menuFollowUp:target]', id, error);
+    console.error('[menuFollowUp:target]', id, formatErrorForLog(error));
     return { status: 'failed', businessId: id, reason: 'LOOKUP_FAILED' };
   }
 
@@ -137,7 +138,7 @@ async function sendToBusiness(
     .select('id');
 
   if (claimError) {
-    console.error('[menuFollowUp:claim]', id, claimError);
+    console.error('[menuFollowUp:claim]', id, formatErrorForLog(claimError));
     return { status: 'failed', businessId: id, reason: 'CLAIM_FAILED' };
   }
   if (!claimed || claimed.length === 0) {
@@ -162,7 +163,11 @@ async function sendToBusiness(
       .update({ menu_reminder_sent_at: prior })
       .eq('id', id);
     if (restoreError) {
-      console.error('[menuFollowUp:restore]', id, restoreError);
+      console.error(
+        '[menuFollowUp:restore]',
+        id,
+        formatErrorForLog(restoreError),
+      );
     }
     return { status: 'failed', businessId: id, reason: 'SEND_FAILED' };
   }

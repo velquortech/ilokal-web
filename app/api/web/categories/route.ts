@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { ApiResponse } from '@/lib/types';
 import { categoryFiltersSchema } from '@/lib/validation/products';
 import * as productQuery from '@/lib/api/products/productQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function GET(req: NextRequest) {
   try {
@@ -53,7 +54,7 @@ export async function GET(req: NextRequest) {
       },
     );
   } catch (error) {
-    console.error('[GET /api/categories]', error);
+    console.error('[GET /api/categories]', formatErrorForLog(error));
     return NextResponse.json(
       {
         success: false,

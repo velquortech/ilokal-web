@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Image as ImageIcon, Loader2, X } from 'lucide-react';
-import Image from 'next/image';
+import { SafeImage } from '@/components/custom/SafeImage';
 import {
   compressImage,
   describeCompression,
@@ -149,15 +149,13 @@ export function ImageUploadField({
           </div>
         ) : preview ? (
           <div className="relative h-full w-full">
-            {/* Note: If using Next.js Image with external URLs,
-                ensure the domain is in next.config.js 'remotePatterns' */}
-            <Image
+            {/* SafeImage: unoptimized storage WebP + broken-image fallback
+                (a stored URL that no longer exists shows the placeholder;
+                blob previews can't fail). */}
+            <SafeImage
               src={preview}
               alt="Preview"
               fill
-              unoptimized={
-                typeof preview === 'string' && !preview.startsWith('blob:')
-              }
               className="rounded-md object-cover"
             />
 

@@ -1,6 +1,7 @@
 'use client';
 
-import Image from 'next/image';
+import { SafeImage } from './SafeImage';
+import { BrokenImage } from './BrokenImage';
 
 interface AvatarImageProps {
   src: string | null | undefined;
@@ -11,9 +12,14 @@ interface AvatarImageProps {
 }
 
 /**
- * Avatar image component that handles both optimized and unoptimized images.
- * Uses unoptimized Image component for localhost/development URLs
- * and optimized Image component for production URLs.
+ * Avatar image component.
+ *
+ * Renders through `SafeImage`, the shared storage-image component: always
+ * unoptimized (avatars live in Supabase storage as write-time WebP, and the
+ * free plan has no transform endpoint for Next's optimizer to proxy — the same
+ * reason every other storage thumbnail in the app loads directly), and a
+ * broken URL swaps to `BrokenImage` instead of the browser's broken glyph.
+ * A missing `src` renders the placeholder outright.
  */
 export function AvatarImage({
   src,
@@ -22,17 +28,15 @@ export function AvatarImage({
   height = 40,
   className = 'h-10 w-10 rounded-full object-cover',
 }: AvatarImageProps) {
-  // Use unoptimized for localhost URLs (development)
-  const isLocalhost = !!(src && src.includes('127.0.0.1'));
-
-  return (
-    <Image
-      src={src || ''}
+  return src ? (
+    <SafeImage
+      src={src}
       alt={alt}
       width={width}
       height={height}
       className={className}
-      unoptimized={isLocalhost}
     />
+  ) : (
+    <BrokenImage className={className} />
   );
 }

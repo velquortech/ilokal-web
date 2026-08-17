@@ -20,9 +20,10 @@
     "test:products:integration": "vitest run --reporter=verbose \"__test__/features/product-api\" \"__test__/features/product-search\" \"__test__/features/product-analytics\" \"__test__/pages/mobile\"",
     "check:protected": "node WORKFLOW/tools/checkProtectedRoutes.js",
     "check:imports": "node WORKFLOW/tools/validateServiceImports.js",
+    "check:pii": "node WORKFLOW/tools/checkPiiFiles.js",
     "analyze:usage": "node WORKFLOW/tools/analyzeServiceUsage.js",
     "ci:checks": "yarn lint --fix && yarn check:protected && yarn check:imports && yarn analyze:usage && yarn test:run",
-    "pre-push": "yarn lint && yarn check:protected && yarn check:imports && yarn test:run && yarn build",
+    "pre-push": "yarn lint && yarn check:protected && yarn check:imports && yarn check:pii && yarn test:run && yarn build",
     "prepare": "husky"
   },
   "dependencies": {

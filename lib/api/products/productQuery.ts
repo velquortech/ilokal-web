@@ -3,6 +3,7 @@
  * Handles all direct Supabase database operations for products and categories
  */
 
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import { cache } from 'react';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { normalizeProductSale } from '@/lib/product-helper';
@@ -72,7 +73,7 @@ export async function getCategoriesPaginated(filters: CategoryFilters) {
       // Never interpolate a driver message into a returned error: it names
       // tables, columns and constraints, and this value reaches a client
       // component. Log it server-side, return generic copy.
-      console.error('[getCategoriesPaginated]', error);
+      console.error('[getCategoriesPaginated]', formatErrorForLog(error));
       return {
         categories: [] as Category[],
         total: 0,
@@ -88,12 +89,172 @@ export async function getCategoriesPaginated(filters: CategoryFilters) {
       total_pages: Math.ceil((count || 0) / per_page),
     };
   } catch (err) {
-    console.error('[getCategoriesPaginated]', err);
+    console.error('[getCategoriesPaginated]', formatErrorForLog(err));
     return {
       categories: [] as Category[],
       total: 0,
       error: 'Failed to fetch categories' as const,
     };
+  }
+}
+
+/**
+ * Category-vertical divergence report for the catalogue page.
+ *
+ * The Add/Edit picker scopes categories to the business's vertical ("this
+ * vertical OR global"), and `resolveCategoryInScope` enforces the same rule on
+ * write. Existing rows can still diverge — legacy rows from before vertical
+ * scoping, or a business whose vertical changed after its products were
+ * categorized — and a divergent row silently mis-scopes the picker: the owner
+ * sees a category on a row that the picker can never offer again, and a wrong
+ * vertical (the GigaGrind incident) offers a list that fits nothing. This
+ * guard makes that state visible instead of silent.
+ */
+export type CategoryDivergence = {
+  productId: string;
+  productName: string;
+  categoryId: string;
+  categoryName: string;
+  /** The vertical the category belongs to (never global — globals can't diverge). */
+  categoryBusinessTypeId: string;
+  /** Its display name, when resolvable — the banner names the OTHER vertical. */
+  categoryBusinessTypeName: string | null;
+};
+
+export type CategoryDivergenceReport = {
+  /** The vertical the picker is scoped to. null = unscoped (every category shown). */
+  businessTypeId: string | null;
+  businessTypeName: string | null;
+  /** Products categorized under a DIFFERENT vertical (or any, when unscoped). */
+  divergent: CategoryDivergence[];
+  /** The read failed — never render "all clear" from a broken query. */
+  failed: boolean;
+};
+
+/**
+ * Read the divergence for one business. Fails closed: `failed: true` on any
+ * read error, so the guard can only hide the banner, never invent one.
+ */
+export async function getCategoryDivergence(
+  businessId: string,
+): Promise<CategoryDivergenceReport> {
+  const failedReport = (partial: {
+    businessTypeId: string | null;
+    businessTypeName: string | null;
+  }): CategoryDivergenceReport => ({
+    ...partial,
+    divergent: [],
+    failed: true,
+  });
+
+  try {
+    const supabase = await createServerSupabaseClient();
+
+    const { data: business, error: businessError } = await supabase
+      .from('businesses')
+      .select('business_type_id')
+      .eq('id', businessId)
+      .maybeSingle();
+    if (businessError) {
+      console.error(
+        '[getCategoryDivergence]',
+        formatErrorForLog(businessError),
+      );
+      return failedReport({ businessTypeId: null, businessTypeName: null });
+    }
+    const businessTypeId = business?.business_type_id ?? null;
+
+    let businessTypeName: string | null = null;
+    if (businessTypeId) {
+      const { data: type, error: typeError } = await supabase
+        .from('business_types')
+        .select('name')
+        .eq('id', businessTypeId)
+        .maybeSingle();
+      if (typeError) {
+        console.error('[getCategoryDivergence]', formatErrorForLog(typeError));
+        return failedReport({ businessTypeId, businessTypeName: null });
+      }
+      businessTypeName = type?.name ?? null;
+    }
+
+    const { data: products, error: productsError } = await supabase
+      .from('products')
+      .select('id, name, category:category_id (id, name, business_type_id)')
+      .eq('business_id', businessId)
+      .is('archived_at', null)
+      .not('category_id', 'is', null);
+    if (productsError) {
+      console.error(
+        '[getCategoryDivergence]',
+        formatErrorForLog(productsError),
+      );
+      return failedReport({ businessTypeId, businessTypeName });
+    }
+
+    // The embedded to-one relation is inferred as an array by the generic
+    // client — through `unknown`, matching the other embedded casts in this
+    // file (businesses, sections).
+    const rows = (products ?? []) as unknown as Array<{
+      id: string;
+      name: string;
+      category: {
+        id: string;
+        name: string;
+        business_type_id: string | null;
+      } | null;
+    }>;
+
+    // Global categories (NULL vertical) are offered to every picker; only a
+    // non-global category that belongs to a DIFFERENT vertical is out of
+    // scope. A business with no vertical (fail-open picker) makes every
+    // non-global category divergent — surfaced as the unscoped warning.
+    const divergent: CategoryDivergence[] = rows.flatMap((row) => {
+      const category = row.category;
+      if (
+        !category?.business_type_id ||
+        category.business_type_id === businessTypeId
+      ) {
+        return [];
+      }
+      return [
+        {
+          productId: row.id,
+          productName: row.name,
+          categoryId: category.id,
+          categoryName: category.name,
+          categoryBusinessTypeId: category.business_type_id,
+          categoryBusinessTypeName: null,
+        },
+      ];
+    });
+
+    // Name the OTHER vertical so the banner can say "categorized under X".
+    const otherTypeIds = [
+      ...new Set(divergent.map((d) => d.categoryBusinessTypeId)),
+    ];
+    if (otherTypeIds.length > 0) {
+      const { data: types, error: typesError } = await supabase
+        .from('business_types')
+        .select('id, name')
+        .in('id', otherTypeIds);
+      if (typesError) {
+        console.error('[getCategoryDivergence]', formatErrorForLog(typesError));
+        return failedReport({ businessTypeId, businessTypeName });
+      }
+      const names = new Map(
+        (types ?? []).map((t) => [t.id as string, t.name as string]),
+      );
+      for (const d of divergent) {
+        d.categoryBusinessTypeName =
+          names.get(d.categoryBusinessTypeId) ?? null;
+      }
+    }
+
+    return { businessTypeId, businessTypeName, divergent, failed: false };
+  } catch (err) {
+    console.error('[getCategoryDivergence]', formatErrorForLog(err));
+    return failedReport({ businessTypeId: null, businessTypeName: null });
   }
 }
 
@@ -116,7 +277,7 @@ export async function getCategoryById(id: string) {
 
     return data as Category;
   } catch (err) {
-    console.error('[getCategoryById]', err);
+    console.error('[getCategoryById]', formatErrorForLog(err));
     return null;
   }
 }
@@ -140,7 +301,7 @@ export async function getCategoryBySlug(slug: string) {
 
     return data as Category;
   } catch (err) {
-    console.error('[getCategoryBySlug]', err);
+    console.error('[getCategoryBySlug]', formatErrorForLog(err));
     return null;
   }
 }
@@ -241,7 +402,7 @@ export async function getProductsPaginated(
     );
 
     if (error) {
-      console.error('[getProductsPaginated]', error);
+      console.error('[getProductsPaginated]', formatErrorForLog(error));
       return { error: 'Failed to fetch products' };
     }
 
@@ -253,7 +414,7 @@ export async function getProductsPaginated(
       total_pages: Math.ceil((count || 0) / per_page),
     };
   } catch (err) {
-    console.error('[getProductsPaginated]', err);
+    console.error('[getProductsPaginated]', formatErrorForLog(err));
     return { error: 'Failed to fetch products' };
   }
 }
@@ -281,7 +442,7 @@ export async function getProductById(id: string) {
 
     return { product: normalizeProductSale(data as ProductResponse) };
   } catch (err) {
-    console.error('[getProductById]', err);
+    console.error('[getProductById]', formatErrorForLog(err));
     return { error: 'Failed to fetch product' as const };
   }
 }
@@ -319,7 +480,7 @@ export const getProductStatsByBusinessId = cache(
         on_sale: data.filter((p) => p.sale_price != null).length,
       };
     } catch (err) {
-      console.error('[getProductStatsByBusinessId]', err);
+      console.error('[getProductStatsByBusinessId]', formatErrorForLog(err));
       return { total: 0, active: 0, unlisted: 0, disabled: 0, on_sale: 0 };
     }
   },
@@ -359,7 +520,7 @@ export const getProductsByBusinessId = cache(
 
       return { products: (data || []) as typeof data };
     } catch (err) {
-      console.error('[getProductsByBusinessId]', err);
+      console.error('[getProductsByBusinessId]', formatErrorForLog(err));
       return { error: 'Failed to fetch business products' as const };
     }
   },
@@ -385,7 +546,7 @@ export async function getProductsByCategory(category_id: string) {
 
     return ((data || []) as Product[]).map(normalizeProductSale);
   } catch (err) {
-    console.error('[getProductsByCategory]', err);
+    console.error('[getProductsByCategory]', formatErrorForLog(err));
     return null;
   }
 }
@@ -417,12 +578,12 @@ export async function applySaleToProduct(
       .single();
 
     if (error) {
-      console.error('[applySaleToProduct]', error);
+      console.error('[applySaleToProduct]', formatErrorForLog(error));
       return { error: 'Failed to apply sale' };
     }
     return { product: updated };
   } catch (err) {
-    console.error('[applySaleToProduct]', err);
+    console.error('[applySaleToProduct]', formatErrorForLog(err));
     return { error: 'Failed to apply sale' };
   }
 }
@@ -447,12 +608,12 @@ export async function removeSaleFromProduct(id: string) {
       .single();
 
     if (error) {
-      console.error('[removeSaleFromProduct]', error);
+      console.error('[removeSaleFromProduct]', formatErrorForLog(error));
       return { error: 'Failed to remove sale' };
     }
     return { product: updated };
   } catch (err) {
-    console.error('[removeSaleFromProduct]', err);
+    console.error('[removeSaleFromProduct]', formatErrorForLog(err));
     return { error: 'Failed to remove sale' };
   }
 }
@@ -504,7 +665,7 @@ export async function countProductsByBusiness(business_id: string) {
 
     return count || 0;
   } catch (err) {
-    console.error('[countProductsByBusiness]', err);
+    console.error('[countProductsByBusiness]', formatErrorForLog(err));
     return 0;
   }
 }

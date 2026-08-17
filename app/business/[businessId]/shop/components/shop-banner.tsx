@@ -1,5 +1,5 @@
 import { Check, MapPin } from 'lucide-react';
-import Image from 'next/image';
+import { SafeImage } from '@/components/custom/SafeImage';
 import { BusinessShop } from '@/providers/BusinessProvider';
 import type { Branch } from '@/lib/types';
 
@@ -13,9 +13,15 @@ export function ShopBanner({ business, branch }: ShopBannerProps) {
 
   return (
     <div className="bg-muted border-border group relative flex h-80 w-full flex-row items-end justify-between overflow-hidden rounded-2xl border shadow-sm">
-      {/* 1. Main Banner Image — prefer branch cover, fall back to business banner */}
+      {/* 1. Main Banner Image — prefer branch cover, fall back to business banner.
+
+          SafeImage owns both rules: `unoptimized` (these are write-time WebP
+          from Supabase storage, and the free plan has no transform endpoint,
+          so routing them through Next's optimizer leaves the banner broken)
+          and the broken-image fallback (a deleted photo shows the placeholder
+          instead of the broken glyph). */}
       {branch?.cover_image_url ? (
-        <Image
+        <SafeImage
           alt={`${branch.name} cover`}
           src={branch.cover_image_url}
           fill
@@ -24,7 +30,7 @@ export function ShopBanner({ business, branch }: ShopBannerProps) {
           sizes="100vw"
         />
       ) : hasBusinessData && business?.banner_url ? (
-        <Image
+        <SafeImage
           alt={`${business.shop_name} banner`}
           src={business.banner_url}
           fill
@@ -56,7 +62,8 @@ export function ShopBanner({ business, branch }: ShopBannerProps) {
               a 404 placeholder file. */}
           <div className="relative size-20 shrink-0 overflow-hidden rounded-2xl border-2 border-white/20 shadow-2xl sm:size-24">
             {business?.logo_url ? (
-              <Image
+              // SafeImage: unoptimized storage WebP + broken-image fallback.
+              <SafeImage
                 src={business.logo_url}
                 alt={business.shop_name ?? 'Shop Logo'}
                 width={96}

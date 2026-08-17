@@ -12,6 +12,7 @@ import type {
   BusinessHealthData,
 } from '@/lib/types';
 import * as query from './businessAnalyticsQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function getBusinessDashboard(
   businessId: string,
@@ -20,7 +21,7 @@ export async function getBusinessDashboard(
     const data = await query.getBusinessDashboard(businessId);
     return { success: true, data };
   } catch (error) {
-    console.error('[getBusinessDashboard]', error);
+    console.error('[getBusinessDashboard]', formatErrorForLog(error));
     return {
       success: false,
       error: {
@@ -38,7 +39,7 @@ export async function getCouponStats(
     const data = await query.getCouponStats(businessId);
     return { success: true, data };
   } catch (error) {
-    console.error('[getCouponStats]', error);
+    console.error('[getCouponStats]', formatErrorForLog(error));
     return {
       success: false,
       error: {
@@ -56,7 +57,7 @@ export async function getTrafficMetrics(
     const data = await query.getTrafficMetrics(businessId);
     return { success: true, data };
   } catch (error) {
-    console.error('[getTrafficMetrics]', error);
+    console.error('[getTrafficMetrics]', formatErrorForLog(error));
     return {
       success: false,
       error: {
@@ -74,7 +75,7 @@ export async function getBusinessRevenue(
     const data = await query.getBusinessRevenue(businessId);
     return { success: true, data };
   } catch (error) {
-    console.error('[getBusinessRevenue]', error);
+    console.error('[getBusinessRevenue]', formatErrorForLog(error));
     return {
       success: false,
       error: {
@@ -93,7 +94,7 @@ export async function getRetentionData(
     const data = await query.getRetentionData(businessId, branchId);
     return { success: true, data };
   } catch (error) {
-    console.error('[getRetentionData]', error);
+    console.error('[getRetentionData]', formatErrorForLog(error));
     return {
       success: false,
       error: {
@@ -112,7 +113,7 @@ export async function getMonthlyTrend(
     const data = await query.getMonthlyTrend(businessId, branchId);
     return { success: true, data };
   } catch (error) {
-    console.error('[getMonthlyTrend]', error);
+    console.error('[getMonthlyTrend]', formatErrorForLog(error));
     return {
       success: false,
       error: {
@@ -131,7 +132,7 @@ export async function getFollowerFunnel(
     const data = await query.getFollowerFunnel(businessId, branchId);
     return { success: true, data };
   } catch (error) {
-    console.error('[getFollowerFunnel]', error);
+    console.error('[getFollowerFunnel]', formatErrorForLog(error));
     return {
       success: false,
       error: {
@@ -150,7 +151,7 @@ export async function getCouponPerformance(
     const data = await query.getCouponPerformance(businessId, branchId);
     return { success: true, data };
   } catch (error) {
-    console.error('[getCouponPerformance]', error);
+    console.error('[getCouponPerformance]', formatErrorForLog(error));
     return {
       success: false,
       error: {
@@ -169,7 +170,7 @@ export async function getCustomerSegments(
     const data = await query.getCustomerSegments(businessId, branchId);
     return { success: true, data };
   } catch (error) {
-    console.error('[getCustomerSegments]', error);
+    console.error('[getCustomerSegments]', formatErrorForLog(error));
     return {
       success: false,
       error: {
@@ -188,7 +189,7 @@ export async function getBusinessHealthIndicators(
     const data = await query.getBusinessHealthIndicators(businessId, branchId);
     return { success: true, data };
   } catch (error) {
-    console.error('[getBusinessHealthIndicators]', error);
+    console.error('[getBusinessHealthIndicators]', formatErrorForLog(error));
     return {
       success: false,
       error: {

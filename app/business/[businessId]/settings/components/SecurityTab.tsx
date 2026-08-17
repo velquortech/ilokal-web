@@ -20,6 +20,7 @@ import {
   unenrollMFAAction,
 } from '../../actions/mfaActions';
 import { useBusinessShop } from '@/providers/BusinessProvider';
+import { BUSINESS_TIME_ZONE } from '@/lib/utils/operatingHours';
 import type { MFAFactor } from '@/lib/types';
 
 interface SecurityTabProps {
@@ -118,6 +119,11 @@ export function SecurityTab({ initialFactors }: SecurityTabProps) {
                     {new Date(verifiedFactor.created_at).toLocaleDateString(
                       'en-US',
                       {
+                        // Pinned, like every other date render: the server
+                        // renders this in UTC and the client in the device
+                        // zone, so a factor enrolled on a Manila evening read
+                        // as the day before without it.
+                        timeZone: BUSINESS_TIME_ZONE,
                         month: 'long',
                         day: 'numeric',
                         year: 'numeric',

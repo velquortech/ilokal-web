@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import { useCallback, useEffect } from 'react';
 import {
   Dialog,
@@ -10,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
+import { SafeImage } from './SafeImage';
 
 export type LightboxImage = {
   src: string;
@@ -95,13 +95,17 @@ export function ImageLightbox({
 
         {current && (
           <div className="relative flex h-[85dvh] w-[min(90vw,56rem)] items-center justify-center">
-            <Image
+            {/* SafeImage: unoptimized storage WebP + broken-image fallback — a
+                deleted photo opens as a dark placeholder rather than the
+                browser's broken glyph on a black screen. */}
+            <SafeImage
               src={current.src}
               alt={current.alt || 'Gallery preview'}
               fill
               priority
               sizes="(max-width: 1280px) 90vw, 1280px"
               className="object-contain p-4"
+              fallbackClassName="bg-black/60 text-white"
             />
 
             <button

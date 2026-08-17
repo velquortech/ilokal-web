@@ -19,7 +19,10 @@ import {
   resolveEventMedia,
   type StorageClient,
 } from '@/app/api/helpers/eventMedia';
-import { describeDbError } from '@/lib/utils/describeDbError';
+import {
+  describeDbError,
+  formatErrorForLog,
+} from '@/lib/utils/describeDbError';
 import { ilikePattern } from '@/lib/utils/postgrestSearch';
 import { eventIdSchema } from '@/lib/validation/events';
 import { EMPTY_EVENT_STATS } from '@/lib/types';
@@ -239,7 +242,7 @@ export async function getPublicEvents(
       },
     };
   } catch (err) {
-    console.error('[getPublicEvents]', err);
+    console.error('[getPublicEvents]', formatErrorForLog(err));
     return { ...EMPTY_PAGE(perPage), error: 'LOAD_FAILED' };
   }
 }
@@ -279,7 +282,7 @@ export async function getBannerEvents(limit = 8): Promise<EventWithRefs[]> {
       normalise(supabase, row as EmbeddedRow, 'public'),
     );
   } catch (err) {
-    console.error('[getBannerEvents]', err);
+    console.error('[getBannerEvents]', formatErrorForLog(err));
     return [];
   }
 }
@@ -322,7 +325,7 @@ export const getEventById = cache(
 
       return { event: normalise(supabase, data as EmbeddedRow, 'public') };
     } catch (err) {
-      console.error('[getEventById]', err);
+      console.error('[getEventById]', formatErrorForLog(err));
       return { error: 'LOAD_FAILED' };
     }
   },
@@ -382,7 +385,7 @@ export async function getEventsForBusiness(
       },
     };
   } catch (err) {
-    console.error('[getEventsForBusiness]', err);
+    console.error('[getEventsForBusiness]', formatErrorForLog(err));
     return { ...EMPTY_PAGE(perPage), error: 'LOAD_FAILED' };
   }
 }
@@ -438,7 +441,7 @@ export async function getEventsForReview(
       },
     };
   } catch (err) {
-    console.error('[getEventsForReview]', err);
+    console.error('[getEventsForReview]', formatErrorForLog(err));
     return { ...EMPTY_PAGE(perPage), error: 'LOAD_FAILED' };
   }
 }
@@ -524,7 +527,7 @@ export async function getPendingReviewCount(): Promise<number> {
     }
     return count ?? 0;
   } catch (err) {
-    console.error('[getPendingReviewCount]', err);
+    console.error('[getPendingReviewCount]', formatErrorForLog(err));
     return 0;
   }
 }
@@ -557,7 +560,7 @@ export async function getNearbyEvents(
     }
     return { events: (data ?? []) as NearbyEvent[] };
   } catch (err) {
-    console.error('[getNearbyEvents]', err);
+    console.error('[getNearbyEvents]', formatErrorForLog(err));
     return { events: [], error: 'LOAD_FAILED' };
   }
 }

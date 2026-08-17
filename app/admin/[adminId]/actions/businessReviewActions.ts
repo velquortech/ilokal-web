@@ -20,6 +20,7 @@ import {
 } from '@/lib/api/business/businessService';
 import { emitNotification } from '@/lib/api/notifications/notificationsService';
 import { documentDecisionSchema } from '@/lib/validation/notification';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import type { ApiResponse } from '@/lib/types';
 import type {
   BusinessActionResponse,
@@ -188,7 +189,7 @@ export async function reviewBusinessDocumentsAction(
   if (!notify.success) {
     console.error(
       '[reviewBusinessDocumentsAction] notify failed',
-      notify.error,
+      formatErrorForLog(notify.error),
     );
   }
 

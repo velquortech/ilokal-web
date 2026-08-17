@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { MapPin, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SafeImage } from '@/components/custom/SafeImage';
 import { explorePath } from '@/config/routeConfig';
 import { brandToneFor } from '@/lib/utils/brandTone';
 import type { DirectoryBusiness } from '@/lib/types';
@@ -37,7 +37,9 @@ export function BusinessCard({ business }: { business: DirectoryBusiness }) {
     >
       <div className="relative h-32 w-full">
         {business.banner_url ? (
-          <Image
+          // SafeImage: unoptimized storage WebP + broken-image fallback (a
+          // deleted banner shows the placeholder instead of the broken glyph).
+          <SafeImage
             src={business.banner_url}
             alt=""
             fill
@@ -65,7 +67,7 @@ export function BusinessCard({ business }: { business: DirectoryBusiness }) {
         <div className="flex items-center gap-3">
           <div className="bg-muted relative size-10 shrink-0 overflow-hidden rounded-full border">
             {business.logo_url ? (
-              <Image
+              <SafeImage
                 src={business.logo_url}
                 alt={`${business.shop_name} logo`}
                 fill

@@ -209,14 +209,12 @@ describe('resolveOfferingVocabulary — field policy (phase 3)', () => {
     services: { singular: 'Vehicle', plural: 'Fleet', catalogue: 'Our Fleet' },
     fields: ['inventory_count', 'capacity', 'deposit_amount'],
     allowed_price_types: ['per_day', 'on_request'],
-    default_booking_mode: 'date_range',
   };
 
-  it('reads fields, price types, and booking mode from the profile', () => {
+  it('reads fields and price types from the profile', () => {
     const v = resolveOfferingVocabulary(RENTAL_PROFILE, 'services');
     expect(v.fields).toEqual(['inventory_count', 'capacity', 'deposit_amount']);
     expect(v.allowedPriceTypes).toEqual(['per_day', 'on_request']);
-    expect(v.defaultBookingMode).toBe('date_range');
   });
 
   it('derives defaultKind from the MODE, not the profile', () => {
@@ -282,18 +280,9 @@ describe('resolveOfferingVocabulary — field policy (phase 3)', () => {
     ).toContain('on_request');
   });
 
-  it('drops an unrecognized booking mode', () => {
-    const v = resolveOfferingVocabulary(
-      { ...RENTAL_PROFILE, default_booking_mode: 'calendar' },
-      'services',
-    );
-    expect(v.defaultBookingMode).toBe('none');
-  });
-
   it('gives a profile-less vertical the retail field policy', () => {
     const v = resolveOfferingVocabulary({ services: {} }, 'services');
     expect(v.fields).toEqual([]);
-    expect(v.defaultBookingMode).toBe('none');
     expect(v.allowedPriceTypes).toContain('fixed');
   });
 });

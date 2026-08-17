@@ -1,24 +1,25 @@
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { BadgePercent, Check, Copy, MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SafeImage } from '@/components/custom/SafeImage';
 import { timeLeft } from '@/lib/utils/countdown';
 import { cn } from '@/lib/utils';
+import { formatDiscountValue } from '@/lib/utils/formatDiscount';
 import { explorePath } from '@/config/routeConfig';
 import type { WalletRedemption } from '@/lib/types';
 
 function formatDiscount(
   discount: NonNullable<WalletRedemption['coupon']>['discount'],
 ): string {
+  // 'Deal' only when the discount is missing; all four arms (percentage,
+  // fixed_amount, free, bogo) belong to the one shared formatter.
   if (!discount) return 'Deal';
-  return discount.type === 'percentage'
-    ? `${discount.value}% off`
-    : `₱${discount.value} off`;
+  return formatDiscountValue(discount);
 }
 
 /** Ticks once a minute — enough resolution for an hours/days countdown. */
@@ -60,7 +61,8 @@ export function RedemptionCard({
       <div className="flex items-center gap-3">
         <div className="bg-muted relative size-10 shrink-0 overflow-hidden rounded-full border">
           {redemption.coupon?.business?.logo_url ? (
-            <Image
+            // SafeImage: unoptimized storage WebP + broken-image fallback.
+            <SafeImage
               src={redemption.coupon.business.logo_url}
               alt=""
               fill

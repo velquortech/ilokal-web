@@ -20,6 +20,7 @@ import {
   resolveOfferingVocabulary,
 } from '@/lib/utils/offeringVocabulary';
 import type { OfferingMode, OfferingVocabulary } from '@/lib/types/offering';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export const getOfferingVocabulary = cache(
   async (
@@ -36,7 +37,8 @@ export const getOfferingVocabulary = cache(
         .maybeSingle();
 
       if (error || !data) {
-        if (error) console.error('[getOfferingVocabulary]', error);
+        if (error)
+          console.error('[getOfferingVocabulary]', formatErrorForLog(error));
         return DEFAULT_OFFERING_VOCABULARY;
       }
 
@@ -55,7 +57,7 @@ export const getOfferingVocabulary = cache(
         data.offering_mode as OfferingMode,
       );
     } catch (err) {
-      console.error('[getOfferingVocabulary]', err);
+      console.error('[getOfferingVocabulary]', formatErrorForLog(err));
       return DEFAULT_OFFERING_VOCABULARY;
     }
   },
@@ -83,12 +85,12 @@ export const getBusinessTypeId = cache(
         .maybeSingle();
 
       if (error) {
-        console.error('[getBusinessTypeId]', error);
+        console.error('[getBusinessTypeId]', formatErrorForLog(error));
         return null;
       }
       return data?.business_type_id ?? null;
     } catch (err) {
-      console.error('[getBusinessTypeId]', err);
+      console.error('[getBusinessTypeId]', formatErrorForLog(err));
       return null;
     }
   },

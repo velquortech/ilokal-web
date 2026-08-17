@@ -6,6 +6,7 @@ import type {
   EmitNotificationInput,
 } from '@/lib/types';
 import { encodeCursor, decodeCursor } from '@/lib/utils/cursor';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
@@ -49,7 +50,7 @@ export async function fetchNotifications(
   ]);
 
   if (error) {
-    console.error('[fetchNotifications]', error);
+    console.error('[fetchNotifications]', formatErrorForLog(error));
     return { notifications: [], next_cursor: null, unread_count };
   }
 
@@ -75,7 +76,7 @@ export async function getUnreadCount(user_id: string): Promise<number> {
     .is('read_at', null);
 
   if (error) {
-    console.error('[getUnreadCount]', error);
+    console.error('[getUnreadCount]', formatErrorForLog(error));
     return 0;
   }
   return count ?? 0;
@@ -101,7 +102,7 @@ export async function emitNotification(
   });
 
   if (error) {
-    console.error('[emitNotification]', error);
+    console.error('[emitNotification]', formatErrorForLog(error));
     return null;
   }
   return (data as string) ?? null;
@@ -117,7 +118,7 @@ export async function markAsRead(id: string): Promise<boolean> {
     .is('read_at', null);
 
   if (error) {
-    console.error('[markAsRead]', error);
+    console.error('[markAsRead]', formatErrorForLog(error));
     return false;
   }
   return true;
@@ -133,7 +134,7 @@ export async function markAllAsRead(user_id: string): Promise<boolean> {
     .is('read_at', null);
 
   if (error) {
-    console.error('[markAllAsRead]', error);
+    console.error('[markAllAsRead]', formatErrorForLog(error));
     return false;
   }
   return true;
@@ -149,7 +150,7 @@ export async function getPreferences(
     .eq('user_id', user_id)
     .single();
   if (error) {
-    console.error('[getPreferences]', error);
+    console.error('[getPreferences]', formatErrorForLog(error));
     return null;
   }
   return data as NotificationPreferences;
@@ -167,7 +168,7 @@ export async function upsertPreferences(
     .select()
     .single();
   if (error) {
-    console.error('[upsertPreferences]', error);
+    console.error('[upsertPreferences]', formatErrorForLog(error));
     return null;
   }
   return data as NotificationPreferences;

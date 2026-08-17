@@ -24,6 +24,7 @@
 import { createAnalyticsSupabaseClient } from '@/supabase/server';
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import type { Database } from '@/lib/types/database';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 type MissingMenuRpcRow =
   Database['public']['Functions']['admin_businesses_missing_menu']['Returns'][number];
@@ -93,7 +94,10 @@ export async function getBusinessesMissingMenu(opts: {
     ]);
 
     if (list.error || stats.error) {
-      console.error('[getBusinessesMissingMenu]', list.error ?? stats.error);
+      console.error(
+        '[getBusinessesMissingMenu]',
+        formatErrorForLog(list.error ?? stats.error),
+      );
       return { ...empty, failed: true };
     }
 
@@ -121,7 +125,7 @@ export async function getBusinessesMissingMenu(opts: {
       failed: false,
     };
   } catch (err) {
-    console.error('[getBusinessesMissingMenu]', err);
+    console.error('[getBusinessesMissingMenu]', formatErrorForLog(err));
     return { ...empty, failed: true };
   }
 }
@@ -147,12 +151,12 @@ export async function getMissingMenuIds(opts: {
       },
     );
     if (error) {
-      console.error('[getMissingMenuIds]', error);
+      console.error('[getMissingMenuIds]', formatErrorForLog(error));
       return [];
     }
     return (data as string[] | null) ?? [];
   } catch (err) {
-    console.error('[getMissingMenuIds]', err);
+    console.error('[getMissingMenuIds]', formatErrorForLog(err));
     return [];
   }
 }

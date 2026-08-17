@@ -1,5 +1,84 @@
 # Changelog
 
+## 2026-08-17 — Release: storage images, natural-ratio gallery, category clears, Manila dates, revalidate paths (release/2026-08-17)
+
+> **No migrations, no seeds, no env changes — the live database schema is untouched.** 81 files changed (+801/−2460). Full suite: 3,010 tests pass; typecheck, ESLint, Prettier clean; 88/88 contract guards green. Six change groups, summarized for the production deploy.
+
+- **Bookings removed from the web app — schema stays dormant.** Booking isn't
+  supported yet, so the web app no longer ships the flow: the customer request
+  dialog and "My bookings" page, the owner's bookings inbox and actions, the
+  `enable_bookings` flag (admin allowlist, Feature Flags card, both shells), the
+  onboarding tour step, and the product editor's "How do customers book this?"
+  picker are gone. **No migration** — `booking_requests`,
+  `products.booking_mode`, and the `booking_*` notification types remain, and the
+  mobile API still passes `booking_mode` through. Re-enabling later is a feature,
+  not a migration.
+- **Storage images now load directly (broken-image fix).** Every storage-backed
+  image — shop banner/logo, avatars, lightbox, gallery, wallet,
+  deal/business/coupon cards, following feed — renders through `next/image` with
+  `unoptimized`, bypassing the optimizer that served stale or nonexistent WebP
+  variants. Guarded by a source-scan contract test, so a future `next/image`
+  without `unoptimized` fails CI.
+- **Natural-ratio gallery.** New shared `NaturalRatioGallery`; interiors, masonry,
+  and the shop gallery no longer hard-crop into fixed squares. Images
+  auto-arrange at 1/2/3+ counts with a "+N more" overlay, preserving aspect ratio
+  even with few images.
+- **Optional category clear + divergence guard.** The Add Product, Update Product,
+  and profile Category pickers now have a "No category" clear option (the
+  sentinel pattern), so a misclicked category can be un-picked. A new
+  `getCategoryDivergence` guard fails closed and shows a banner when a business's
+  vertical and category scope diverge — a wrong business type can no longer
+  silently mis-scope the Add Product picker.
+- **Manila timezone pinning.** Dates across admin tables, branches, coupons,
+  deals, coupon cards, promo/apply-sale `datetime-local` handling, and
+  SecurityTab MFA dates are pinned to the shared `BUSINESS_TIME_ZONE` helpers —
+  no more UTC-off-by-one renders.
+- **Revalidate-path correctness.** Every business/admin action now revalidates
+  through `routeConfig` helpers or the `/admin` layout instead of literal paths
+  that named non-existent routes (`/business/coupons`, `/admin/businesses`).
+  Contract-tested, so the class can't return silently.
+- **Notes for the deploy:** two pre-existing bugs surfaced during testing but are
+  *not* from this change — the wallet's BOGO redemption card renders "₱null off"
+  (its inline `formatDiscount` doesn't handle `bogo`), and local snapshot data
+  carries absolute cloud storage URLs that the local CSP blocks (these render
+  fine in production, where host and CSP match).
+
+## 2026-08-17 — Bookings removed from the web app, kept dormant in the database (remove/booking-feature)
+
+> **No migration — the schema stays.** Booking is not supported yet, so the web
+> app no longer ships the flow: the customer request dialog and "My bookings"
+> page, the owner's bookings inbox and actions, the `enable_bookings` flag, and
+> the product editor's "How do customers book this?" picker are gone. The
+> database keeps `booking_requests`, the `products.booking_mode` column and the
+> `booking_*` notification types so nothing is lost, and the mobile API still
+> passes `booking_mode` through. Re-enabling later is a feature, not a
+> migration.
+
+- **Customer side removed** — the "Request booking" dialog on explore product
+  cards, the "My bookings" page, and the header entry (which only appeared
+  while the flag was on).
+- **Owner side removed** — the Bookings inbox page, `bookingActions`, the
+  sidebar entry, and the `nav-bookings` onboarding-tour step.
+- **The flag is gone from the web surface** — `enable_bookings` is no longer an
+  admin toggle (settings allowlist + Feature Flags card), neither customer shell
+  reads it, and the layout's `flags` record no longer carries it. The
+  `app_settings` row itself is untouched.
+- **The product editor no longer asks "How do customers book this?"** —
+  `booking_mode` was dropped from the create/update validation schemas, the
+  service write path, the shared offering labels, and the add/update dialogs.
+  New offerings fall to the DB default `'none'`; the mobile API and customer
+  queries still read the column, so nothing downstream sees a shape change.
+- **Docs that cited booking flows updated** — changelog-referenced lessons
+  (`getBookingStats`, "unlike bookings", the tour copy) now speak of events
+  only.
+- **Future improvements (logged, not lost):** the dormant pieces are the
+  re-enable plan — flip `enable_bookings` back on, restore the request dialog
+  and inbox pages (the `request_booking` RPC and its triggers were never
+  dropped), and bring back the per-vertical `default_booking_mode` vocabulary
+  policy with the product-editor picker. The `booking_*` types in
+  `notifications_type_check` are already accepted by the database, so the inbox
+  can read them as soon as the pages exist.
+
 ## 2026-08-16 — Admin category management: a UI, and kind on create (admin-category-kind)
 
 > **No migration.** Closes the follow-up left by the category-dropdown work:

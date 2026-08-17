@@ -1,8 +1,8 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import Image from 'next/image';
 import { Camera, ImagePlus, Loader2, X } from 'lucide-react';
+import { SafeImage } from '@/components/custom/SafeImage';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { compressImage, COMPRESSION_PRESETS } from '@/lib/utils/compressImage';
@@ -61,13 +61,13 @@ export function BannerUploader({
     <div>
       <div className="border-border bg-muted relative h-44 w-full overflow-hidden rounded-2xl border sm:h-56 md:h-64">
         {value ? (
-          <Image
+          // SafeImage: unoptimized storage WebP + broken-image fallback.
+          <SafeImage
             src={value}
             alt="Shop banner"
             fill
             className="object-cover"
             sizes="100vw"
-            unoptimized
           />
         ) : (
           <div className="from-primary/20 via-primary/10 to-background absolute inset-0 bg-linear-to-br" />

@@ -17,6 +17,7 @@ import {
 import { useUser } from '@/providers/UserContext';
 import { ADMIN_CONFIG } from '@/app/admin/[adminId]/config/adminConfig';
 import { PaginatedResponse } from '@/lib/services';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 interface ConsumersTabProps {
   data: PaginatedResponse<AdminUser> | null;
@@ -166,7 +167,7 @@ export default function ConsumersTab({
   const handleCreateConsumerError = useCallback((err: string) => {
     const errorMsg = extractErrorMessage(err);
     toast.error(`Failed to create consumer: ${errorMsg}`);
-    console.error('Error creating consumer:', err);
+    console.error('Error creating consumer:', formatErrorForLog(err));
   }, []);
 
   const handleUpdateConsumerSuccess = useCallback(
@@ -186,7 +187,7 @@ export default function ConsumersTab({
   const handleUpdateConsumerError = useCallback((err: string) => {
     const errorMsg = extractErrorMessage(err);
     toast.error(`Failed to update consumer: ${errorMsg}`);
-    console.error('Error updating consumer:', err);
+    console.error('Error updating consumer:', formatErrorForLog(err));
   }, []);
 
   const handleDeleteConsumerSuccess = useCallback(
@@ -212,7 +213,7 @@ export default function ConsumersTab({
   const handleDeleteConsumerError = useCallback((err: string) => {
     const errorMsg = extractErrorMessage(err);
     toast.error(`Failed to delete consumer: ${errorMsg}`);
-    console.error('Error deleting consumer:', err);
+    console.error('Error deleting consumer:', formatErrorForLog(err));
   }, []);
 
   // Mutations
@@ -275,7 +276,7 @@ export default function ConsumersTab({
       }
     } catch (err) {
       // Error is already handled by mutation callbacks
-      console.error('Error in handleCreateConsumer:', err);
+      console.error('Error in handleCreateConsumer:', formatErrorForLog(err));
     }
   };
 

@@ -12,7 +12,6 @@ import {
   sidebarDefaultOpen,
 } from '@/config/sidebarCookie';
 import {
-  getBookingsEnabled,
   getEventsEnabled,
   getOnboardingTourEnabled,
 } from '@/lib/api/appSettings';
@@ -50,7 +49,6 @@ export default async function BusinessIdLayout({
     business_shop,
     branchesResult,
     vocabulary,
-    bookingsEnabled,
     eventsEnabled,
     onboardingTourEnabled,
     // `React.cache`d — the dashboard page reads the same row for the
@@ -62,7 +60,6 @@ export default async function BusinessIdLayout({
     // Resolved once per request and handed to the client tree, so the
     // catalogue dialogs never flash "Product" before "Service".
     getOfferingVocabulary(businessId),
-    getBookingsEnabled(),
     getEventsEnabled(),
     getOnboardingTourEnabled(),
     getOnboardingState(businessId),
@@ -79,7 +76,6 @@ export default async function BusinessIdLayout({
       sidebarDefaultOpen={defaultSidebarOpen}
       tourCompleted={onboardingState.tourCompleted}
       flags={{
-        enable_bookings: bookingsEnabled,
         enable_events: eventsEnabled,
         enable_onboarding_tour: onboardingTourEnabled,
       }}

@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { createPaginatedResponse } from '@/lib/services';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function GET(request: NextRequest) {
   try {
@@ -122,7 +123,7 @@ export async function GET(request: NextRequest) {
     const totalItems = countResult.count || 0;
 
     if (countResult.error) {
-      console.error('Count query error:', countResult.error);
+      console.error('Count query error:', formatErrorForLog(countResult.error));
       return NextResponse.json(
         { message: 'Failed to fetch profiles' },
         { status: 400 },
@@ -133,7 +134,7 @@ export async function GET(request: NextRequest) {
     const dataResult = await dataQuery.range(offset, offset + validLimit - 1);
 
     if (dataResult.error) {
-      console.error('Data query error:', dataResult.error);
+      console.error('Data query error:', formatErrorForLog(dataResult.error));
       return NextResponse.json(
         { message: 'Failed to fetch profiles' },
         { status: 400 },
@@ -150,7 +151,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(paginatedResponse);
   } catch (error) {
-    console.error('Profile fetch error:', error);
+    console.error('Profile fetch error:', formatErrorForLog(error));
     return NextResponse.json(
       { message: 'Internal server error' },
       { status: 500 },

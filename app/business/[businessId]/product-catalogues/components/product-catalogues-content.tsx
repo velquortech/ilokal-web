@@ -4,7 +4,9 @@ import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/custom/PageHeader';
-import { PackageOpen, Plus } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import Link from 'next/link';
+import { PackageOpen, Plus, TriangleAlert } from 'lucide-react';
 import { Catalogues } from './catalogues';
 import { SearchBar } from '@/components/custom/Searchbar';
 import { FilterProducts } from './filter-products';
@@ -16,8 +18,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
 import {
   CATALOGUE_ADD_PARAM,
+  businessPath,
   cataloguePathWithoutAdd,
 } from '@/config/routeConfig';
+import type { CategoryDivergenceReport } from '@/lib/api/products/productQuery';
 import type {
   ProductResponse,
   Category,
@@ -42,6 +46,12 @@ interface ProductCataloguesContentProps {
   sectionsFailed?: boolean;
   /** Counts RPC failed — every `product_count` is a placeholder zero. */
   countsFailed?: boolean;
+  /**
+   * Category-vertical divergence guard. Absent (or `failed`) renders nothing;
+   * a wrong or missing vertical gets a visible banner instead of silently
+   * mis-scoping the picker.
+   */
+  categoryDivergence?: CategoryDivergenceReport;
 }
 
 export function ProductCataloguesContent({
@@ -54,6 +64,7 @@ export function ProductCataloguesContent({
   uncategorisedCount,
   sectionsFailed = false,
   countsFailed = false,
+  categoryDivergence,
 }: ProductCataloguesContentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -106,7 +117,10 @@ export function ProductCataloguesContent({
     [router, searchParams],
   );
 
-  // Debounce search input → URL update
+  // Debounce search input → URL update. Keyed on the URL too, so a
+  // section/status filter clicked during the 400 ms window is not wiped by a
+  // stale closure when the search push finally lands. (Same guard as
+  // branches-content.)
   React.useEffect(() => {
     const timeout = setTimeout(() => {
       const current = searchParams.get('search') ?? '';
@@ -115,7 +129,7 @@ export function ProductCataloguesContent({
       }
     }, 400);
     return () => clearTimeout(timeout);
-  }, [searchInput]);
+  }, [searchInput, searchParams, updateParams]);
 
   const handleSectionChange = React.useCallback(
     (sectionId: string) => {
@@ -157,6 +171,9 @@ export function ProductCataloguesContent({
               onSuccess={() => router.refresh()}
               open={addOpen}
               onOpenChange={setAddOpen}
+              categoryScopeLabel={
+                categoryDivergence?.businessTypeName ?? undefined
+              }
             >
               <Button>
                 <Plus />
@@ -166,6 +183,58 @@ export function ProductCataloguesContent({
           </>
         }
       />
+
+      {/* Category-vertical divergence guard. The picker scopes categories to
+          this shop's business type; a missing type (everything offered) or
+          rows carrying another vertical's categories are the two ways that
+          scope can silently be wrong. Both get a banner with the fix, never a
+          silent mis-scope. `failed` renders nothing — the guard must not
+          invent a problem it could not read. */}
+      {categoryDivergence &&
+        !categoryDivergence.failed &&
+        (categoryDivergence.divergent.length > 0 ||
+          categoryDivergence.businessTypeId === null) && (
+          <Alert variant="destructive">
+            <TriangleAlert />
+            <AlertTitle>
+              {categoryDivergence.businessTypeId === null
+                ? 'No business type set — the category picker shows everything'
+                : 'Some items use categories from another business type'}
+            </AlertTitle>
+            <AlertDescription>
+              {categoryDivergence.businessTypeId === null ? (
+                <>
+                  This shop has no business type, so every category is offered
+                  and nothing is scoped. Set your business type in Profile so
+                  the picker only offers matching categories.
+                </>
+              ) : (
+                <>
+                  {categoryDivergence.divergent.length}{' '}
+                  {categoryDivergence.divergent.length === 1
+                    ? 'item is'
+                    : 'items are'}{' '}
+                  categorized under a different vertical (e.g.{' '}
+                  {categoryDivergence.divergent
+                    .slice(0, 2)
+                    .map((d) => d.productName)
+                    .join(', ')}
+                  {categoryDivergence.divergent.length > 2 ? '…' : ''}). The
+                  picker here only offers {categoryDivergence.businessTypeName}{' '}
+                  categories — edit those items to re-categorize them, or update
+                  your business type in Profile if it is wrong.
+                </>
+              )}
+              <div className="pt-1.5">
+                <Button asChild variant="link" className="h-auto px-0">
+                  <Link href={businessPath(businessId, 'profile')}>
+                    Review business type in Profile
+                  </Link>
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
       <ProductStats stats={stats} />
 

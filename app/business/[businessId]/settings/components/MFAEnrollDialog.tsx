@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 interface MFAEnrollDialogProps {
   open: boolean;
@@ -108,7 +109,10 @@ export function MFAEnrollDialog({
       await onSuccess();
     } catch (err) {
       setLoading(false);
-      console.error('[MFAEnrollDialog] post-enroll refresh failed:', err);
+      console.error(
+        '[MFAEnrollDialog] post-enroll refresh failed:',
+        formatErrorForLog(err),
+      );
       setError(
         'Two-factor authentication is enabled, but the page could not be refreshed. Reload to see it.',
       );

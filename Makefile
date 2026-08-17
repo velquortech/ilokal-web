@@ -146,13 +146,23 @@ seed-db:
 seed: seed-storage seed-db
 
 # ── Live snapshot for local testing ───────────────────────────────────────────
-# Replace the local Docker DB's data with a snapshot of the LIVE (cloud) DB.
-# The connection string comes from SUPABASE_DB_URL (inline, wins) or, if unset,
-# SUPABASE_LIVE_DB_URL in the git-ignored .env (recommended). Refuses localhost.
-# Replaces public/auth/storage data; the migration ledger is kept.
+# One-shot LIVE→local pull: resets the LOCAL stack, restores live data, syncs
+# live storage FILES into local storage (rows stay verbatim — the dev CSP is
+# widened with the cloud origin so absolute URLs render). Every LIVE access is
+# read-only; all writes are local.
+# Live creds resolve from SUPABASE_DB_URL (inline, wins) → SUPABASE_LIVE_DB_URL
+# (.env) → SUPABASE_DB_URL in .env.cloud (recommended). Refuses localhost.
 # See .claude/docs/live-db-snapshot.md for details and limitations.
 pull-live:
 	@bash supabase/scripts/pull-live.sh
+
+# Regression check for pull-live.sh: runs it against a SCRATCH stack (own
+# project_id + offset ports + own storage key) and asserts the verification
+# block passed. The dev stack is never touched. Requires live creds in
+# .env.cloud — skips (exit 0) without them, so CI stays green when the repo has
+# no live credentials.
+pull-live-check:
+	@bash supabase/scripts/check-pull-live.sh
 
 # ── Cloud deploy (APK preview build) ──────────────────────────────────────────
 # Full flow: `make deploy-cloud` = migrate-cloud (schema + buckets) then seed-cloud
@@ -233,4 +243,4 @@ review:
 	yarn test:run
 	@echo "Review complete: lint, build, and tests passed"
 
-.PHONY: all init-log setup-supabase clean report-backlog migrate-new migrate-up migrate-diff migrate-reset stop-db run-dev dev-cloud slim-supabase run-start start-app build-app test test-run test-ui test-coverage review seed-storage seed-db seed pull-live seed-cloud migrate-cloud deploy-cloud
+.PHONY: all init-log setup-supabase clean report-backlog migrate-new migrate-up migrate-diff migrate-reset stop-db run-dev dev-cloud slim-supabase run-start start-app build-app test test-run test-ui test-coverage review seed-storage seed-db seed pull-live pull-live-check seed-cloud migrate-cloud deploy-cloud

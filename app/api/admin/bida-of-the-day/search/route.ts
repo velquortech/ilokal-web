@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse } from '@/lib/types';
 import * as bidaService from '@/lib/api/admin/bidaOfTheDayService';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 /**
  * GET /api/admin/bida-of-the-day/search?q=… — product picker search
@@ -22,7 +23,10 @@ export async function GET(request: NextRequest) {
     const result = await bidaService.findBidaProducts(q);
     return NextResponse.json(result, { status: result.success ? 200 : 500 });
   } catch (error) {
-    console.error('[GET /api/admin/bida-of-the-day/search]', error);
+    console.error(
+      '[GET /api/admin/bida-of-the-day/search]',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       {
         success: false,

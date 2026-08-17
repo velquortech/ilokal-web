@@ -30,6 +30,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import type { Branch } from '@/lib/types';
+import { BUSINESS_TIME_ZONE } from '@/lib/utils/operatingHours';
 import {
   approveBranchAction,
   getBranchDocumentsAction,
@@ -138,7 +139,12 @@ export function AdminBranchesClient({ branches }: AdminBranchesClientProps) {
                     {branch.address ?? '—'}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {new Date(branch.created_at).toLocaleDateString()}
+                    {/* Pinned: the server renders this table in UTC, so
+                        without an explicit zone a Manila submission reads as
+                        the day before. */}
+                    {new Date(branch.created_at).toLocaleDateString(undefined, {
+                      timeZone: BUSINESS_TIME_ZONE,
+                    })}
                   </TableCell>
                   <TableCell>
                     <Button

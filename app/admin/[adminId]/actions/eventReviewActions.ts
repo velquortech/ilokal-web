@@ -22,6 +22,7 @@ import { getEventsEnabled } from '@/lib/api/appSettings';
 import { emitNotification } from '@/lib/api/notifications/notificationsService';
 import { getBusinessById } from '@/lib/api/business/businessQuery';
 import * as eventService from '@/lib/api/events/eventService';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import {
   createEventSchema,
   eventDecisionSchema,
@@ -181,7 +182,10 @@ async function notifyOwner(
     });
 
     if (!notify.success) {
-      console.error('[decideEventAction] notify failed', notify.error);
+      console.error(
+        '[decideEventAction] notify failed',
+        formatErrorForLog(notify.error),
+      );
     }
   } catch (error) {
     // Distinct context from the action's own catch: "the decision failed" and

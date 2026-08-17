@@ -8,6 +8,7 @@ import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import type { ApiResponse } from '@/lib/types';
 import { couponFiltersSchema } from '@/lib/validation/coupons';
 import * as couponQuery from '@/lib/api/coupons/couponQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function GET(req: NextRequest) {
   try {
@@ -95,7 +96,7 @@ export async function GET(req: NextRequest) {
       },
     );
   } catch (error) {
-    console.error('[GET /api/coupons]', error);
+    console.error('[GET /api/coupons]', formatErrorForLog(error));
     return NextResponse.json(
       {
         success: false,

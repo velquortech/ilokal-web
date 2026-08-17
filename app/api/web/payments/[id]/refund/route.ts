@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { ApiResponse } from '@/lib/types';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import * as paymentService from '@/lib/api/payments/paymentService';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function POST(
   req: NextRequest,
@@ -35,7 +36,7 @@ export async function POST(
       { status: 200 },
     );
   } catch (err) {
-    console.error('[POST /api/payments/:id/refund]', err);
+    console.error('[POST /api/payments/:id/refund]', formatErrorForLog(err));
     return NextResponse.json(
       {
         success: false,

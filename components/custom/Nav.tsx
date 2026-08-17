@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/sidebar';
 
 import { LucideIcon } from 'lucide-react';
-import Image from 'next/image';
+import { SafeImage } from '@/components/custom/SafeImage';
 import type { TourStepId } from '@/lib/onboarding/tourSteps';
 
 export type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline';
@@ -122,13 +122,15 @@ export function SidebarLogo({
     <div className="flex items-center gap-3">
       {logo ? (
         <div className="relative size-8 shrink-0 overflow-hidden rounded-lg group-data-[collapsible=icon]:size-7">
-          <Image
+          {/* SafeImage: unoptimized storage WebP + broken-image fallback (a
+              deleted logo would otherwise show the browser's broken glyph in
+              the dashboard sidebar). */}
+          <SafeImage
             src={logo}
             alt={shopName ?? 'Shop Logo'}
             width={32}
             height={32}
             className="aspect-square object-cover"
-            unoptimized
           />
         </div>
       ) : shopName ? (

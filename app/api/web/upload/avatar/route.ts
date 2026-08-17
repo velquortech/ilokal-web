@@ -1,3 +1,4 @@
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof ImageProcessingError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
-    console.error('Avatar upload error:', error);
+    console.error('Avatar upload error:', formatErrorForLog(error));
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },

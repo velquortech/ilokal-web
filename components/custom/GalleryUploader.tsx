@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Image from 'next/image';
 import { ImagePlus, Loader2, X } from 'lucide-react';
+import { SafeImage } from './SafeImage';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { compressImage, COMPRESSION_PRESETS } from '@/lib/utils/compressImage';
@@ -125,13 +125,14 @@ export function GalleryUploader({
             key={`${url}-${index}`}
             className="group relative aspect-square overflow-hidden rounded-lg border"
           >
-            <Image
+            {/* SafeImage: unoptimized storage WebP + broken-image fallback (a
+                stored URL that no longer exists shows the placeholder). */}
+            <SafeImage
               src={url}
               alt="Gallery image"
               fill
               className="object-cover"
               sizes="(max-width: 640px) 30vw, 20vw"
-              unoptimized
             />
             <button
               type="button"

@@ -81,7 +81,7 @@ describe('tour step contract', () => {
   });
 
   it('names only flags the platform actually has', () => {
-    const known = ['enable_bookings', 'enable_events'];
+    const known = ['enable_events'];
     for (const id of TOUR_ORDER) {
       const { flag } = TOUR_STEPS[id];
       if (flag) expect(known).toContain(flag);
@@ -94,25 +94,11 @@ describe('tour step contract', () => {
 });
 
 describe('resolveTourSteps', () => {
-  it('drops flagged steps while their flag is off, so they never count', () => {
-    const off = resolveTourSteps({ vocabulary, flags: {} });
-    const on = resolveTourSteps({
-      vocabulary,
-      flags: { enable_bookings: true },
-    });
-
-    expect(off.map((s) => s.id)).not.toContain('nav-bookings');
-    expect(on.map((s) => s.id)).toContain('nav-bookings');
-    expect(on.length).toBe(off.length + 1);
-  });
-
-  it('treats a non-true flag value as off', () => {
-    const steps = resolveTourSteps({
-      vocabulary,
-      // A missing row reads as `undefined` here; nothing but `true` may pass.
-      flags: { enable_bookings: false },
-    });
-    expect(steps.map((s) => s.id)).not.toContain('nav-bookings');
+  it('shows every step with no flags — none depends on a kill switch', () => {
+    // nav-bookings was the only flagged step; the filter still runs for a
+    // future feature, but today no step may be silently missing from the tour.
+    const steps = resolveTourSteps({ vocabulary, flags: {} });
+    expect(steps.map((s) => s.id)).toEqual(TOUR_ORDER);
   });
 
   it('speaks the shop’s vocabulary, not retail’s', () => {
@@ -125,10 +111,7 @@ describe('resolveTourSteps', () => {
   });
 
   it('never resolves an empty title or body', () => {
-    for (const step of resolveTourSteps({
-      vocabulary,
-      flags: { enable_bookings: true },
-    })) {
+    for (const step of resolveTourSteps({ vocabulary, flags: {} })) {
       expect(step.title.trim().length).toBeGreaterThan(0);
       expect(step.body.trim().length).toBeGreaterThan(0);
     }

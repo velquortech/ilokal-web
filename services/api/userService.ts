@@ -2,6 +2,7 @@ import apiClient from './apiClient';
 import { Profile, UserRole } from '@/lib/types/user';
 import { AdminStatusFilter, AdminSortOrder } from '@/lib/types/admin';
 import { PaginatedResponse } from './paginationService';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export interface CreateUserInput {
   email: string;
@@ -35,7 +36,10 @@ const userService = {
       const response = await apiClient.get(`/admin/profiles?role=${role}`);
       return Array.isArray(response) ? response : [];
     } catch (error) {
-      console.error(`Error fetching ${role} profiles:`, error);
+      console.error(
+        `Error fetching ${role} profiles:`,
+        formatErrorForLog(error),
+      );
       throw error;
     }
   },
@@ -90,7 +94,10 @@ const userService = {
         },
       };
     } catch (error) {
-      console.error(`Error fetching paginated ${role} profiles:`, error);
+      console.error(
+        `Error fetching paginated ${role} profiles:`,
+        formatErrorForLog(error),
+      );
       throw error;
     }
   },

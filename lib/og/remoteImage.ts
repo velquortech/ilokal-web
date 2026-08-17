@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 /**
  * Fetching the images a social post draws, safely.
@@ -219,7 +220,10 @@ export function loadWordmarkDataUrl(): Promise<string | null> {
   )
     .then((data) => `data:image/png;base64,${data.toString('base64')}`)
     .catch((error: unknown) => {
-      console.error('[og/remoteImage] wordmark unreadable', error);
+      console.error(
+        '[og/remoteImage] wordmark unreadable',
+        formatErrorForLog(error),
+      );
       // The post loses its lockup but still renders. Failing the whole image
       // over a decorative asset would be the worse trade.
       return null;

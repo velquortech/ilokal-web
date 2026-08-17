@@ -5,6 +5,7 @@
 
 import { createServerSupabaseClient } from '@/supabase/server';
 import type { Branch, BranchResponse, BranchFilters } from '@/lib/types';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 // ===== Branch Queries =====
 
@@ -100,7 +101,7 @@ export async function getBranchesPaginated(filters: BranchFilters) {
       total_pages: Math.ceil((count || 0) / per_page),
     };
   } catch (err) {
-    console.error('[getBranchesPaginated]', err);
+    console.error('[getBranchesPaginated]', formatErrorForLog(err));
     return {
       branches: [] as BranchResponse[],
       total: 0,
@@ -129,7 +130,7 @@ export async function getBranchById(id: string) {
 
     return { branch: data as Branch };
   } catch (err) {
-    console.error('[getBranchById]', err);
+    console.error('[getBranchById]', formatErrorForLog(err));
     return { error: 'Failed to fetch branch' as const };
   }
 }
@@ -203,7 +204,7 @@ export async function getBranchesByBusinessId(
       total_pages: Math.ceil((count || 0) / per_page),
     };
   } catch (err) {
-    console.error('[getBranchesByBusinessId]', err);
+    console.error('[getBranchesByBusinessId]', formatErrorForLog(err));
     return {
       branches: [] as Branch[],
       total: 0,
@@ -227,7 +228,7 @@ export async function branchExists(id: string): Promise<boolean> {
 
     return (count || 0) > 0;
   } catch (err) {
-    console.error('[branchExists]', err);
+    console.error('[branchExists]', formatErrorForLog(err));
     return false;
   }
 }

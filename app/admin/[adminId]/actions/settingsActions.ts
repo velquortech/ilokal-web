@@ -16,7 +16,6 @@ import { logActionError } from '@/lib/utils/captureError';
 export type PlatformSettingKey =
   | 'require_business_documents'
   | 'auto_verify_businesses'
-  | 'enable_bookings'
   | 'enable_events'
   | 'enable_onboarding_tour';
 
@@ -26,7 +25,6 @@ export type RegistrationSettingKey = PlatformSettingKey;
 const ALLOWED_KEYS: PlatformSettingKey[] = [
   'require_business_documents',
   'auto_verify_businesses',
-  'enable_bookings',
   'enable_events',
   'enable_onboarding_tour',
 ];

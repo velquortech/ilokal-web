@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { signOutAction } from '@/app/(auth)/actions';
 import { ROUTES } from '@/config/routeConfig';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 /**
  * useAuth — client-side logout.
@@ -46,7 +47,7 @@ export function useAuth() {
         // The action is written not to throw; a rejection here means the
         // Server Action request itself failed (offline, 500), so the session
         // is untouched and we must not navigate.
-        console.error('[useAuth] sign-out failed:', error);
+        console.error('[useAuth] sign-out failed:', formatErrorForLog(error));
       } finally {
         // Always release the flag — the busy state must never stick if the
         // component survives (failed sign-out, navigation blocked).

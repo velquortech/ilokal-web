@@ -5,6 +5,7 @@ import type { ApiResponse } from '@/lib/types';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import * as subscriptionQuery from '@/lib/api/getUserBusiness';
 import * as service from '@/lib/api/analytics/businessAnalyticsService';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function GET(request: NextRequest) {
   try {
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
     const result = await service.getTrafficMetrics(businessId);
     return NextResponse.json(result, { status: result.success ? 200 : 500 });
   } catch (error) {
-    console.error('[GET /api/analytics/traffic]', error);
+    console.error('[GET /api/analytics/traffic]', formatErrorForLog(error));
     return NextResponse.json(
       {
         success: false,

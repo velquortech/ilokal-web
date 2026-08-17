@@ -1,11 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { LocateFixed, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SafeImage } from '@/components/custom/SafeImage';
 import { formatDistance, DEFAULT_MAP_CENTER } from '@/lib/utils/geo';
 import { explorePath } from '@/config/routeConfig';
 import { brandToneFor } from '@/lib/utils/brandTone';
@@ -169,7 +169,9 @@ export function NearbyContent() {
               <div className="flex min-w-0 flex-1 items-center gap-3 py-4 pr-4">
                 <div className="bg-muted relative size-11 shrink-0 overflow-hidden rounded-full border">
                   {b.logo_url && (
-                    <Image
+                    // SafeImage: unoptimized storage WebP + broken-image
+                    // fallback.
+                    <SafeImage
                       src={b.logo_url}
                       alt=""
                       fill

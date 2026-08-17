@@ -1,9 +1,8 @@
 'use client';
 
-import * as React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
-import Image from 'next/image';
-import { ImageOff } from 'lucide-react';
+import { SafeImage } from '@/components/custom/SafeImage';
+import { BrokenImage } from '@/components/custom/BrokenImage';
 import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
@@ -25,25 +24,20 @@ import { ViewProduct } from '../view-product';
 import { ProductActions } from './product-actions';
 
 function ProductImageCell({ product }: { product: ProductResponse }) {
-  const [imgError, setImgError] = React.useState(false);
-
   return (
     <ViewProduct {...product}>
       <div className="group relative size-12 shrink-0 cursor-pointer overflow-hidden rounded-md border">
-        {product.image_url && !imgError ? (
-          <Image
+        {product.image_url ? (
+          // SafeImage: unoptimized storage WebP + broken-image fallback.
+          <SafeImage
             src={product.image_url}
             alt={product.name}
             fill
-            unoptimized
             sizes="48px"
             className="object-cover transition group-hover:scale-105"
-            onError={() => setImgError(true)}
           />
         ) : (
-          <div className="bg-muted flex h-full w-full items-center justify-center">
-            <ImageOff className="text-muted-foreground size-5" />
-          </div>
+          <BrokenImage iconClassName="size-5" />
         )}
       </div>
     </ViewProduct>

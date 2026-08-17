@@ -25,6 +25,7 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/supabase/server';
 import type { User } from '@/lib/types';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 type ApiResponse<T = unknown> = {
   success: boolean;
@@ -114,7 +115,10 @@ export async function POST(): Promise<NextResponse> {
       { status: 200 },
     );
   } catch (error) {
-    console.error('[API] POST /api/auth/refresh-token - Error:', error);
+    console.error(
+      '[API] POST /api/auth/refresh-token - Error:',
+      formatErrorForLog(error),
+    );
     return NextResponse.json<ApiResponse>(
       {
         success: false,

@@ -9,6 +9,7 @@ import type { ApiResponse } from '@/lib/types';
 import { invoiceEmailSchema } from '@/lib/validation/payments';
 import * as paymentService from '@/lib/api/payments/paymentService';
 import * as paymentQuery from '@/lib/api/payments/paymentQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function POST(
   req: NextRequest,
@@ -85,7 +86,7 @@ export async function POST(
       { status: 200 },
     );
   } catch (err) {
-    console.error('[POST /api/invoices/:id/send]', err);
+    console.error('[POST /api/invoices/:id/send]', formatErrorForLog(err));
     return NextResponse.json(
       {
         success: false,

@@ -1,7 +1,8 @@
 import { Masonry } from '@/components/custom/Masonry';
+import { NaturalRatioGallery } from '@/components/custom/NaturalRatioGallery';
+import { SafeImage } from '@/components/custom/SafeImage';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Image as ImageIcon } from 'lucide-react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { BusinessShop } from '@/providers/BusinessProvider';
 import {
@@ -79,25 +80,31 @@ export function ShopGallery({ business, branch }: ShopGalleryProps) {
       {hasImages ? (
         <Masonry images={images} />
       ) : hasAnyImages ? (
-        // 1–3 images: simple row grid — 2-up on a phone (3-up thumbs at ~105px
-        // wide are too small to see), 3-up from `sm`.
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {rawImages.map((src, i) => (
-            <div
-              key={i}
-              className="relative aspect-video w-full overflow-hidden rounded-xl"
-            >
-              <Image
-                src={src}
-                alt={`Photo ${i + 1}`}
-                fill
-                loading="lazy"
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 33vw"
-              />
-            </div>
-          ))}
-        </div>
+        // 1–3 images: natural-ratio columns — every photo keeps its own aspect
+        // (nothing is cropped into a fixed frame), 2-up on a phone and 3-up
+        // from `sm`. A single image renders at its natural size, centered and
+        // height-capped so a very tall portrait can't dominate the page.
+        rawImages.length === 1 ? (
+          // SafeImage: unoptimized storage WebP + broken-image fallback (a
+          // deleted photo shows the placeholder instead of the broken glyph).
+          <SafeImage
+            src={rawImages[0]}
+            alt="Photo 1"
+            width={0}
+            height={0}
+            loading="lazy"
+            className="mx-auto h-auto max-h-[70vh] w-auto max-w-full rounded-xl"
+            fallbackClassName="mx-auto my-4 min-h-40 max-w-full rounded-xl"
+          />
+        ) : (
+          // Default columns: 2-up on a phone, 3-up from `sm`.
+          <NaturalRatioGallery
+            images={rawImages.map((src, i) => ({
+              src,
+              alt: `Photo ${i + 1}`,
+            }))}
+          />
+        )
       ) : (
         <div className="border-muted-foreground/25 bg-muted/50 flex h-64 items-center justify-center rounded-xl border border-dashed">
           <div className="text-muted-foreground flex flex-col items-center gap-2">

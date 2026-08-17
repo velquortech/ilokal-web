@@ -74,7 +74,6 @@ describe('createProductSchema — service/rental attributes', () => {
     const result = createProductSchema.safeParse({
       ...base,
       kind: 'service',
-      booking_mode: 'date_range',
       inventory_count: 3,
       capacity: 12,
       deposit_amount: 2000,
@@ -122,11 +121,7 @@ describe('createProductSchema — service/rental attributes', () => {
     ).toBe(false);
   });
 
-  it('rejects an unknown booking mode or service location', () => {
-    expect(
-      createProductSchema.safeParse({ ...base, booking_mode: 'calendar' })
-        .success,
-    ).toBe(false);
+  it('rejects an unknown service location', () => {
     expect(
       createProductSchema.safeParse({ ...base, service_location: 'anywhere' })
         .success,
@@ -239,7 +234,6 @@ describe('createProduct — quote pricing guards', () => {
       price: 3500,
       price_type: 'per_day',
       kind: 'service',
-      booking_mode: 'date_range',
       inventory_count: 3,
       capacity: 12,
     });
@@ -247,7 +241,6 @@ describe('createProduct — quote pricing guards', () => {
     expect(chain.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         kind: 'service',
-        booking_mode: 'date_range',
         inventory_count: 3,
         capacity: 12,
       }),

@@ -15,6 +15,7 @@ import type {
 import * as paymentQuery from './paymentQuery';
 import auditEvent from '@/lib/utils/audit';
 import { claimIdempotencyKey } from '@/lib/utils/idempotency';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 // Stripe would be imported from '@stripe/stripe-js' or '@stripe/stripe-node'
 // For now, we'll stub the integration
@@ -67,7 +68,10 @@ export async function createCheckoutSession(
     });
 
     if (insertError) {
-      console.error('[createCheckoutSession] Insert error:', insertError);
+      console.error(
+        '[createCheckoutSession] Insert error:',
+        formatErrorForLog(insertError),
+      );
       return {
         success: false,
         error: {
@@ -90,7 +94,7 @@ export async function createCheckoutSession(
       data: mockSession,
     };
   } catch (err) {
-    console.error('[createCheckoutSession]', err);
+    console.error('[createCheckoutSession]', formatErrorForLog(err));
     return {
       success: false,
       error: {
@@ -141,7 +145,10 @@ export async function confirmPayment(
       .eq('id', paymentId);
 
     if (updateError) {
-      console.error('[confirmPayment] Update error:', updateError);
+      console.error(
+        '[confirmPayment] Update error:',
+        formatErrorForLog(updateError),
+      );
       return {
         success: false,
         error: {
@@ -171,7 +178,7 @@ export async function confirmPayment(
       },
     };
   } catch (err) {
-    console.error('[confirmPayment]', err);
+    console.error('[confirmPayment]', formatErrorForLog(err));
     return {
       success: false,
       error: {
@@ -242,7 +249,10 @@ export async function refundPayment(
       .eq('id', paymentId);
 
     if (updateError) {
-      console.error('[refundPayment] Update error:', updateError);
+      console.error(
+        '[refundPayment] Update error:',
+        formatErrorForLog(updateError),
+      );
       return {
         success: false,
         error: {
@@ -257,7 +267,7 @@ export async function refundPayment(
       data: null,
     };
   } catch (err) {
-    console.error('[refundPayment]', err);
+    console.error('[refundPayment]', formatErrorForLog(err));
     return {
       success: false,
       error: {
@@ -334,7 +344,7 @@ export async function createInvoice(
       .single();
 
     if (error || !data) {
-      console.error('[createInvoice] Insert error:', error);
+      console.error('[createInvoice] Insert error:', formatErrorForLog(error));
       return {
         success: false,
         error: {
@@ -349,7 +359,7 @@ export async function createInvoice(
       data: data as Invoice,
     };
   } catch (err) {
-    console.error('[createInvoice]', err);
+    console.error('[createInvoice]', formatErrorForLog(err));
     return {
       success: false,
       error: {
@@ -394,7 +404,10 @@ export async function sendInvoiceEmail(
       .eq('id', invoiceId);
 
     if (updateError) {
-      console.error('[sendInvoiceEmail] Update error:', updateError);
+      console.error(
+        '[sendInvoiceEmail] Update error:',
+        formatErrorForLog(updateError),
+      );
       return {
         success: false,
         error: {
@@ -409,7 +422,7 @@ export async function sendInvoiceEmail(
       data: null,
     };
   } catch (err) {
-    console.error('[sendInvoiceEmail]', err);
+    console.error('[sendInvoiceEmail]', formatErrorForLog(err));
     return {
       success: false,
       error: {

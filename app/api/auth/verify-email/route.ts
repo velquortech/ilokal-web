@@ -26,6 +26,7 @@
 
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/supabase/server';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 type ApiResponse<T = unknown> = {
   success: boolean;
@@ -98,7 +99,10 @@ export async function POST(): Promise<NextResponse> {
       { status: 200 },
     );
   } catch (error) {
-    console.error('[API] POST /api/auth/verify-email - Error:', error);
+    console.error(
+      '[API] POST /api/auth/verify-email - Error:',
+      formatErrorForLog(error),
+    );
     return NextResponse.json<ApiResponse>(
       {
         success: false,

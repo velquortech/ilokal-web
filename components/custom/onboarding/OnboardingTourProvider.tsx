@@ -184,16 +184,15 @@ export function OnboardingTourProvider({
   // `steps` identity restarts the overlay's settle timer and re-fires
   // `scrollIntoView` mid-step. `resolveTourSteps` reads exactly two vocabulary
   // fields, so those two strings are the whole dependency.
-  const bookings = flags.enable_bookings === true;
   const events = flags.enable_events === true;
   const { catalogue, plural } = vocabulary;
   const steps = useMemo(
     () =>
       resolveTourSteps({
         vocabulary,
-        flags: { enable_bookings: bookings, enable_events: events },
+        flags: { enable_events: events },
       }),
-    [catalogue, plural, bookings, events],
+    [catalogue, plural, events],
   );
 
   return (

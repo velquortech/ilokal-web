@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { MapPin, Star, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { SafeImage } from '@/components/custom/SafeImage';
 import { BusinessMapLazy } from '@/components/customer/BusinessMapLazy';
 import { FollowButton } from '@/components/customer/FollowButton';
 import { PaginationBar } from '@/components/customer/PaginationBar';
@@ -18,7 +18,6 @@ import { businessSocialCard } from '@/lib/utils/socialCard';
 import { brandToneFor } from '@/lib/utils/brandTone';
 import { cn } from '@/lib/utils';
 import { getOfferingVocabulary } from '@/lib/api/offerings/offeringQuery';
-import { getBookingsEnabled } from '@/lib/api/appSettings';
 import { getSectionsForDisplay } from '@/lib/api/sections/sectionQuery';
 import { groupOfferingsBySection } from '@/lib/utils/groupOfferings';
 import { BusinessInfoPanel } from './components/business-info-panel';
@@ -94,25 +93,18 @@ export default async function PublicBusinessPage({
 
   const isCustomer = user ? user.role === 'app_user' : null;
 
-  const [
-    productsResult,
-    couponsResult,
-    following,
-    vocabulary,
-    bookingsEnabled,
-    sections,
-  ] = await Promise.all([
-    getPublicMenu(business.id, menuPage, 8),
-    getPublicCoupons(business.id),
-    user && isCustomer ? isFollowingBusiness(user.id, business.id) : false,
-    // A salon's public page should read "Service Menu", not "Menu".
-    getOfferingVocabulary(business.id),
-    getBookingsEnabled(),
-    // Names and order only — this page renders no counts, and the aggregate
-    // RPC is not worth a per-request cost on the busiest anonymous route.
-    // Public read: RLS exposes sections of verified, non-archived shops only.
-    getSectionsForDisplay(business.id),
-  ]);
+  const [productsResult, couponsResult, following, vocabulary, sections] =
+    await Promise.all([
+      getPublicMenu(business.id, menuPage, 8),
+      getPublicCoupons(business.id),
+      user && isCustomer ? isFollowingBusiness(user.id, business.id) : false,
+      // A salon's public page should read "Service Menu", not "Menu".
+      getOfferingVocabulary(business.id),
+      // Names and order only — this page renders no counts, and the aggregate
+      // RPC is not worth a per-request cost on the busiest anonymous route.
+      // Public read: RLS exposes sections of verified, non-archived shops only.
+      getSectionsForDisplay(business.id),
+    ]);
 
   const products =
     'error' in productsResult
@@ -139,7 +131,9 @@ export default async function PublicBusinessPage({
           floating in it that used to live here read as a broken image. */}
       <div className="relative h-40 w-full overflow-hidden rounded-2xl sm:h-56">
         {business.banner_url ? (
-          <Image
+          // SafeImage: unoptimized storage WebP + broken-image fallback (a
+          // deleted banner shows the placeholder instead of the broken glyph).
+          <SafeImage
             src={business.banner_url}
             alt=""
             fill
@@ -173,7 +167,8 @@ export default async function PublicBusinessPage({
           )}
         >
           {business.logo_url ? (
-            <Image
+            // SafeImage: unoptimized storage WebP + broken-image fallback.
+            <SafeImage
               src={business.logo_url}
               alt={`${business.shop_name} logo`}
               fill
@@ -278,15 +273,7 @@ export default async function PublicBusinessPage({
                     )}
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {group.products.map((product) => (
-                        <ProductCard
-                          key={product.id}
-                          product={product}
-                          bookingsEnabled={bookingsEnabled}
-                          // Owners/admins/anon don't get a booking CTA,
-                          // matching how FollowButton and Redeem are gated.
-                          canBook={isCustomer === true}
-                          branches={business.branches}
-                        />
+                        <ProductCard key={product.id} product={product} />
                       ))}
                     </div>
                   </div>

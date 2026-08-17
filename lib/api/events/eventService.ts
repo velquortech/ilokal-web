@@ -18,7 +18,10 @@
  */
 
 import { createServerSupabaseClient } from '@/supabase/server';
-import { describeDbError } from '@/lib/utils/describeDbError';
+import {
+  describeDbError,
+  formatErrorForLog,
+} from '@/lib/utils/describeDbError';
 import type { ApiResponse, Event, EventStatus } from '@/lib/types';
 import type {
   CreateEventInput,
@@ -469,7 +472,7 @@ export async function notifyProposalSubmitted(
     }
     return typeof data === 'number' ? data : 0;
   } catch (err) {
-    console.error('[notifyProposalSubmitted]', err);
+    console.error('[notifyProposalSubmitted]', formatErrorForLog(err));
     return 0;
   }
 }

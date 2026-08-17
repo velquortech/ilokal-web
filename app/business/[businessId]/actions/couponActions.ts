@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { businessCouponsPath } from '@/config/routeConfig';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import type {
@@ -124,7 +125,8 @@ export async function createCouponAction(
       verify.business!.id,
       validation.data,
     )) as ApiResponse<Coupon>;
-    if (result.success) revalidatePath('/business/coupons');
+    if (result.success)
+      revalidatePath(businessCouponsPath(verify.business!.id));
     return result;
   } catch (error) {
     logActionError('createCouponAction', error);
@@ -188,7 +190,8 @@ export async function updateCouponAction(
       id,
       validation.data,
     )) as ApiResponse<Coupon>;
-    if (result.success) revalidatePath('/business/coupons');
+    if (result.success)
+      revalidatePath(businessCouponsPath(verify.business!.id));
     return result;
   } catch (error) {
     logActionError('updateCouponAction', error);
@@ -235,7 +238,8 @@ export async function deleteCouponAction(
     }
 
     const result = (await couponService.delete(id)) as ApiResponse<null>;
-    if (result.success) revalidatePath('/business/coupons');
+    if (result.success)
+      revalidatePath(businessCouponsPath(verify.business!.id));
     return result;
   } catch (error) {
     logActionError('deleteCouponAction', error);
@@ -315,7 +319,8 @@ export async function createFeaturedDealAction(
       verify.business!.id,
       validation.data,
     )) as ApiResponse<FeaturedDeal>;
-    if (result.success) revalidatePath('/business/coupons');
+    if (result.success)
+      revalidatePath(businessCouponsPath(verify.business!.id));
     return result;
   } catch (error) {
     logActionError('createFeaturedDealAction', error);
@@ -379,7 +384,8 @@ export async function updateFeaturedDealAction(
       id,
       validation.data,
     )) as ApiResponse<FeaturedDeal>;
-    if (result.success) revalidatePath('/business/coupons');
+    if (result.success)
+      revalidatePath(businessCouponsPath(verify.business!.id));
     return result;
   } catch (error) {
     logActionError('updateFeaturedDealAction', error);
@@ -428,7 +434,8 @@ export async function deleteFeaturedDealAction(
     const result = (await couponService.deleteFeaturedDeal(
       id,
     )) as ApiResponse<null>;
-    if (result.success) revalidatePath('/business/coupons');
+    if (result.success)
+      revalidatePath(businessCouponsPath(verify.business!.id));
     return result;
   } catch (error) {
     logActionError('deleteFeaturedDealAction', error);

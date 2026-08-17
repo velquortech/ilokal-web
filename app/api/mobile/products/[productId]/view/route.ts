@@ -4,7 +4,9 @@ import {
   successResponse,
   unauthorizedResponse,
   loggedServerError,
+  notFoundResponse,
 } from '@/app/api/helpers/response';
+import { productIdSchema } from '@/lib/validation/products';
 import { NextRequest } from 'next/server';
 
 type Params = { params: Promise<{ productId: string }> };
@@ -17,6 +19,13 @@ export async function POST(req: NextRequest, { params }: Params) {
     if (!auth) return unauthorizedResponse();
 
     const { productId } = await params;
+
+    // A malformed id raises 22P02 inside the RPC, which would be a REPORTED
+    // 500 on every such request — same rule as the business view route. Reject
+    // it in the shape check instead, where it costs nothing.
+    if (!productIdSchema.safeParse(productId).success) {
+      return notFoundResponse();
+    }
 
     const { error } = await auth.supabase.rpc('record_view', {
       p_product_id: productId,

@@ -1,7 +1,7 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SafeImage } from '@/components/custom/SafeImage';
 import { explorePath } from '@/config/routeConfig';
 import type { FeedDeal } from '@/lib/api/customer/customerQuery';
 import { brandToneIndex } from '@/lib/utils/brandTone';
@@ -54,8 +54,9 @@ export function DealCard({
   featured?: boolean;
 }) {
   const ends = new Date(deal.expiry_date).toLocaleDateString('en-PH', {
-    // Pinned, like bookings: the server renders in UTC, so a deal expiring on
-    // a Manila evening would otherwise read as ending the day before.
+    // Pinned to the business timezone: the server renders in UTC, so a deal
+    // expiring on a Manila evening would otherwise read as ending the day
+    // before.
     timeZone: BUSINESS_TIME_ZONE,
     month: 'short',
     day: 'numeric',
@@ -79,7 +80,8 @@ export function DealCard({
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="relative size-9 shrink-0 overflow-hidden rounded-full bg-black/10">
             {deal.business_logo_url && (
-              <Image
+              // SafeImage: unoptimized storage WebP + broken-image fallback.
+              <SafeImage
                 src={deal.business_logo_url}
                 alt=""
                 fill

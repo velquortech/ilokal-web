@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 /**
  * DELETE /api/admin/profiles/[id]/delete
@@ -53,7 +54,10 @@ export async function DELETE(
       .eq('id', id);
 
     if (deleteError) {
-      console.error('Profile permanent deletion error:', deleteError);
+      console.error(
+        'Profile permanent deletion error:',
+        formatErrorForLog(deleteError),
+      );
       return NextResponse.json(
         { message: deleteError.message },
         { status: 400 },
@@ -68,7 +72,10 @@ export async function DELETE(
       data: { id },
     });
   } catch (error) {
-    console.error('Profile permanent deletion error:', error);
+    console.error(
+      'Profile permanent deletion error:',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       { message: 'Internal server error' },
       { status: 500 },

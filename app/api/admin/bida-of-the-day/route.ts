@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse } from '@/lib/types';
 import * as bidaService from '@/lib/api/admin/bidaOfTheDayService';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 const upsertSchema = z.object({
   pick_date: z
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
     const result = await bidaService.getBidaPicks();
     return NextResponse.json(result, { status: result.success ? 200 : 500 });
   } catch (error) {
-    console.error('[GET /api/admin/bida-of-the-day]', error);
+    console.error('[GET /api/admin/bida-of-the-day]', formatErrorForLog(error));
     return NextResponse.json(
       {
         success: false,
@@ -72,7 +73,10 @@ export async function POST(request: NextRequest) {
     const result = await bidaService.createBidaPick(parsed.data);
     return NextResponse.json(result, { status: result.success ? 200 : 400 });
   } catch (error) {
-    console.error('[POST /api/admin/bida-of-the-day]', error);
+    console.error(
+      '[POST /api/admin/bida-of-the-day]',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       {
         success: false,
@@ -105,7 +109,10 @@ export async function DELETE(request: NextRequest) {
     const result = await bidaService.removeBidaPick(parsed.data.pick_date);
     return NextResponse.json(result, { status: result.success ? 200 : 500 });
   } catch (error) {
-    console.error('[DELETE /api/admin/bida-of-the-day]', error);
+    console.error(
+      '[DELETE /api/admin/bida-of-the-day]',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       {
         success: false,

@@ -15,6 +15,7 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { BUSINESS_TIME_ZONE } from '@/lib/utils/operatingHours';
 import type { WelcomePostCandidate } from '@/lib/types';
 import {
   DEFAULT_TEXT_SCALES,
@@ -255,7 +256,7 @@ export function PostComposer({
                           ? new Date(shop.created_at).toLocaleDateString(
                               'en-PH',
                               {
-                                timeZone: 'Asia/Manila',
+                                timeZone: BUSINESS_TIME_ZONE,
                                 day: 'numeric',
                                 month: 'short',
                               },

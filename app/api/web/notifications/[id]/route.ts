@@ -5,6 +5,7 @@ import type { ApiResponse } from '@/lib/types';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import * as notificationsService from '@/lib/api/notifications/notificationsService';
 import { markNotificationReadSchema } from '@/lib/validation/notification';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function PUT(
   request: NextRequest,
@@ -32,7 +33,7 @@ export async function PUT(
     const result = await notificationsService.markRead(parsed.data.id);
     return NextResponse.json(result, { status: result.success ? 200 : 400 });
   } catch (error) {
-    console.error('[PUT /api/notifications/:id]', error);
+    console.error('[PUT /api/notifications/:id]', formatErrorForLog(error));
     return NextResponse.json(
       {
         success: false,

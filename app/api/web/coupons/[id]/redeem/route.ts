@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/supabase/server';
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import type { ApiResponse } from '@/lib/types';
 import { NextRequest, NextResponse } from 'next/server';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 // POST /api/coupons/[couponId]/redeem - User redeems a coupon
 export async function POST(
@@ -110,7 +111,7 @@ export async function POST(
     if (redemptionError) {
       console.error(
         '[POST /api/coupons/[id]/redeem] DB error:',
-        redemptionError,
+        formatErrorForLog(redemptionError),
       );
       return NextResponse.json(
         {
@@ -156,7 +157,10 @@ export async function POST(
       data: redemption,
     });
   } catch (error) {
-    console.error('[POST /api/coupons/[id]/redeem] unexpected error:', error);
+    console.error(
+      '[POST /api/coupons/[id]/redeem] unexpected error:',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       {
         success: false,

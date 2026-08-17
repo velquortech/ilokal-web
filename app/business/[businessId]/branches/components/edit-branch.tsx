@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -19,6 +18,7 @@ import { Field, FieldLabel, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ImageIcon, Loader2, Plus, Upload, X } from 'lucide-react';
+import { SafeImage } from '@/components/custom/SafeImage';
 import { toast } from 'sonner';
 import { updateBranchSchema } from '@/lib/validation/branches';
 import {
@@ -280,12 +280,13 @@ export function EditBranchDialog({
               <p className="text-sm font-medium">Cover Photo</p>
               {coverUrl ? (
                 <div className="relative h-36 w-full overflow-hidden rounded-lg border">
-                  <Image
+                  {/* SafeImage: unoptimized storage WebP + broken-image
+                      fallback. */}
+                  <SafeImage
                     src={coverUrl}
                     alt="Cover"
                     fill
                     className="object-cover"
-                    unoptimized
                   />
                   <div className="absolute top-2 right-2 flex gap-1">
                     <Button
@@ -368,12 +369,13 @@ export function EditBranchDialog({
                       key={i}
                       className="group relative aspect-square overflow-hidden rounded-md border"
                     >
-                      <Image
+                      {/* SafeImage: unoptimized storage WebP + broken-image
+                          fallback. */}
+                      <SafeImage
                         src={url}
                         alt={`Gallery ${i + 1}`}
                         fill
                         className="object-cover"
-                        unoptimized
                       />
                       <button
                         type="button"

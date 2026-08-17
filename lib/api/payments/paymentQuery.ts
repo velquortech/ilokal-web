@@ -3,6 +3,7 @@
  * All database read operations
  */
 
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import { createServerSupabaseClient } from '@/supabase/server';
 import type {
   Payment,
@@ -62,7 +63,7 @@ export async function getPaymentHistory(
     );
 
     if (error) {
-      console.error('[getPaymentHistory]', error);
+      console.error('[getPaymentHistory]', formatErrorForLog(error));
       return {
         payments: [] as Payment[],
         total: 0,
@@ -78,7 +79,7 @@ export async function getPaymentHistory(
       total_pages: Math.ceil((count || 0) / per_page),
     };
   } catch (err) {
-    console.error('[getPaymentHistory]', err);
+    console.error('[getPaymentHistory]', formatErrorForLog(err));
     return {
       payments: [] as Payment[],
       total: 0,
@@ -107,7 +108,7 @@ export async function getPaymentById(id: string) {
 
     return { payment: data as Payment };
   } catch (err) {
-    console.error('[getPaymentById]', err);
+    console.error('[getPaymentById]', formatErrorForLog(err));
     return { error: 'Failed to fetch payment' as const };
   }
 }
@@ -132,7 +133,7 @@ export async function getPaymentByStripeIntentId(stripeIntentId: string) {
 
     return { payment: data as Payment };
   } catch (err) {
-    console.error('[getPaymentByStripeIntentId]', err);
+    console.error('[getPaymentByStripeIntentId]', formatErrorForLog(err));
     return { error: 'Failed to fetch payment' as const };
   }
 }
@@ -152,7 +153,7 @@ export async function paymentExists(id: string): Promise<boolean> {
 
     return count !== null && count > 0;
   } catch (err) {
-    console.error('[paymentExists]', err);
+    console.error('[paymentExists]', formatErrorForLog(err));
     return false;
   }
 }
@@ -221,7 +222,7 @@ export async function getPaymentAnalytics(
       },
     };
   } catch (err) {
-    console.error('[getPaymentAnalytics]', err);
+    console.error('[getPaymentAnalytics]', formatErrorForLog(err));
     return { error: 'Failed to fetch analytics' };
   }
 }
@@ -261,7 +262,7 @@ export async function getInvoices(userId: string, filters: InvoiceFilters) {
       .range(offset, offset + per_page - 1);
 
     if (error) {
-      console.error('[getInvoices]', error);
+      console.error('[getInvoices]', formatErrorForLog(error));
       return {
         invoices: [] as Invoice[],
         total: 0,
@@ -277,7 +278,7 @@ export async function getInvoices(userId: string, filters: InvoiceFilters) {
       total_pages: Math.ceil((count || 0) / per_page),
     };
   } catch (err) {
-    console.error('[getInvoices]', err);
+    console.error('[getInvoices]', formatErrorForLog(err));
     return {
       invoices: [] as Invoice[],
       total: 0,
@@ -306,7 +307,7 @@ export async function getInvoiceById(id: string) {
 
     return { invoice: data as Invoice };
   } catch (err) {
-    console.error('[getInvoiceById]', err);
+    console.error('[getInvoiceById]', formatErrorForLog(err));
     return { error: 'Failed to fetch invoice' as const };
   }
 }
@@ -331,7 +332,7 @@ export async function getInvoiceByNumber(invoiceNumber: string) {
 
     return { invoice: data as Invoice };
   } catch (err) {
-    console.error('[getInvoiceByNumber]', err);
+    console.error('[getInvoiceByNumber]', formatErrorForLog(err));
     return { error: 'Failed to fetch invoice' as const };
   }
 }
@@ -351,7 +352,7 @@ export async function invoiceExists(id: string): Promise<boolean> {
 
     return count !== null && count > 0;
   } catch (err) {
-    console.error('[invoiceExists]', err);
+    console.error('[invoiceExists]', formatErrorForLog(err));
     return false;
   }
 }

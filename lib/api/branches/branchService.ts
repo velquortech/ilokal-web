@@ -11,6 +11,7 @@ import type {
   UpdateBranchRequest,
 } from '@/lib/types';
 import * as branchQuery from './branchQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 // ===== Branch Service =====
 
@@ -48,7 +49,7 @@ export async function createBranch(
       .single();
 
     if (error) {
-      console.error('[createBranch] Insert error:', error);
+      console.error('[createBranch] Insert error:', formatErrorForLog(error));
       return {
         success: false,
         error: {
@@ -89,7 +90,7 @@ export async function createBranch(
       data: branch,
     };
   } catch (err) {
-    console.error('[createBranch]', err);
+    console.error('[createBranch]', formatErrorForLog(err));
     return {
       success: false,
       error: {
@@ -161,7 +162,7 @@ export async function updateBranch(
       .single();
 
     if (error) {
-      console.error('[updateBranch] Update error:', error);
+      console.error('[updateBranch] Update error:', formatErrorForLog(error));
       return {
         success: false,
         error: {
@@ -176,7 +177,7 @@ export async function updateBranch(
       data: data as Branch,
     };
   } catch (err) {
-    console.error('[updateBranch]', err);
+    console.error('[updateBranch]', formatErrorForLog(err));
     return {
       success: false,
       error: {
@@ -214,7 +215,7 @@ export async function deleteBranch(id: string): Promise<ApiResponse<null>> {
       .eq('id', id);
 
     if (error) {
-      console.error('[deleteBranch] Update error:', error);
+      console.error('[deleteBranch] Update error:', formatErrorForLog(error));
       return {
         success: false,
         error: {
@@ -229,7 +230,7 @@ export async function deleteBranch(id: string): Promise<ApiResponse<null>> {
       data: null,
     };
   } catch (err) {
-    console.error('[deleteBranch]', err);
+    console.error('[deleteBranch]', formatErrorForLog(err));
     return {
       success: false,
       error: {

@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { ApiResponse, BranchResponse } from '@/lib/types';
 import * as branchQuery from '@/lib/api/branches/branchQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function GET(
   req: NextRequest,
@@ -54,7 +55,7 @@ export async function GET(
       },
     );
   } catch (error) {
-    console.error('[GET /api/branches/:id]', error);
+    console.error('[GET /api/branches/:id]', formatErrorForLog(error));
     return NextResponse.json(
       {
         success: false,

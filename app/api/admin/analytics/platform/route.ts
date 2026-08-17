@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse } from '@/lib/types';
 import * as analyticsService from '@/lib/api/admin/analyticsService';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +14,10 @@ export async function GET(request: NextRequest) {
     const result = await analyticsService.getPlatformAnalytics();
     return NextResponse.json(result, { status: result.success ? 200 : 500 });
   } catch (error) {
-    console.error('[GET /api/admin/analytics/platform]', error);
+    console.error(
+      '[GET /api/admin/analytics/platform]',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       {
         success: false,

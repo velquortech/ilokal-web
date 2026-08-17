@@ -5,6 +5,7 @@ import type { ApiResponse } from '@/lib/types';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import * as subscriptionQuery from '@/lib/api/getUserBusiness';
 import * as service from '@/lib/api/analytics/bidaAnalyticsService';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 /**
  * GET /api/web/analytics/bida?business_id=… — the owner's Bida Ngayon
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
     const result = await service.getBidaAnalytics(businessId);
     return NextResponse.json(result, { status: result.success ? 200 : 500 });
   } catch (error) {
-    console.error('[GET /api/web/analytics/bida]', error);
+    console.error('[GET /api/web/analytics/bida]', formatErrorForLog(error));
     return NextResponse.json(
       {
         success: false,

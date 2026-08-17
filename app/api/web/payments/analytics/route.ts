@@ -8,6 +8,7 @@ import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 // import { createServerSupabaseClient } from '@/supabase/server';
 import type { ApiResponse, PaymentAnalytics } from '@/lib/types';
 import * as paymentQuery from '@/lib/api/payments/paymentQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function GET(req: NextRequest) {
   try {
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
       },
     );
   } catch (err) {
-    console.error('[GET /api/payments/analytics]', err);
+    console.error('[GET /api/payments/analytics]', formatErrorForLog(err));
     return NextResponse.json(
       {
         success: false,

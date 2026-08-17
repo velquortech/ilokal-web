@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  CalendarClock,
   CalendarDays,
   Compass,
   Home,
@@ -194,17 +193,6 @@ export function CustomerHeader({
                       My wallet
                     </Link>
                   </DropdownMenuItem>
-                  {/* Only rendered when bookings are switched on — the route
-                      404s while the flag is off, so advertising it would be a
-                      dead end. */}
-                  {flags.enable_bookings && (
-                    <DropdownMenuItem asChild>
-                      <Link href={ROUTES.CUSTOMER.BOOKINGS}>
-                        <CalendarClock className="h-4 w-4" />
-                        My bookings
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
                   <DropdownMenuItem asChild>
                     <Link href={ROUTES.CUSTOMER.FOLLOWING}>
                       <UserRound className="h-4 w-4" />

@@ -1,6 +1,7 @@
 import type { ApiResponse } from '@/lib/types';
 import type { BidaAnalyticsPayload } from '@/lib/types/bidaAnalytics';
 import * as query from './bidaAnalyticsQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function getBidaAnalytics(
   businessId: string,
@@ -9,7 +10,7 @@ export async function getBidaAnalytics(
     const data = await query.getBidaAnalytics(businessId);
     return { success: true, data };
   } catch (error) {
-    console.error('[getBidaAnalytics]', error);
+    console.error('[getBidaAnalytics]', formatErrorForLog(error));
     return {
       success: false,
       error: {

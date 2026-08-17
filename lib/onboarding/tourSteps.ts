@@ -19,7 +19,6 @@ export type TourStepId =
   | 'nav-catalogue'
   | 'nav-coupons'
   | 'nav-shop'
-  | 'nav-bookings'
   | 'branch-switcher'
   | 'notifications';
 
@@ -29,7 +28,7 @@ export type TourStepId =
  * `BusinessSidebar` filters by — a step naming a route that 404s is exactly the
  * failure ON7 exists to prevent.
  */
-export type TourStepFlag = 'enable_bookings' | 'enable_events';
+export type TourStepFlag = 'enable_events';
 
 export interface TourStep {
   id: TourStepId;
@@ -86,15 +85,6 @@ export const TOUR_STEPS: Record<TourStepId, TourStep> = {
     side: 'right',
     inSidebar: true,
   },
-  'nav-bookings': {
-    id: 'nav-bookings',
-    title: () => 'Bookings',
-    body: (v) =>
-      `Requests to book one of your ${v.plural.toLowerCase()} land here. Confirm, decline or quote each one.`,
-    flag: 'enable_bookings',
-    side: 'right',
-    inSidebar: true,
-  },
   'branch-switcher': {
     id: 'branch-switcher',
     title: () => 'Branch switcher',
@@ -105,8 +95,7 @@ export const TOUR_STEPS: Record<TourStepId, TourStep> = {
   notifications: {
     id: 'notifications',
     title: () => 'Notifications',
-    body: () =>
-      'Redemptions, booking requests and decisions on your shop arrive here.',
+    body: () => 'Redemptions and decisions on your shop arrive here.',
     side: 'bottom',
   },
 };
@@ -117,7 +106,6 @@ export const TOUR_ORDER: TourStepId[] = [
   'nav-catalogue',
   'nav-coupons',
   'nav-shop',
-  'nav-bookings',
   'branch-switcher',
   'notifications',
 ];

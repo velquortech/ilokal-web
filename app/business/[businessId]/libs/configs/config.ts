@@ -4,7 +4,6 @@ import {
   Bell,
   Home,
   ShoppingBasket,
-  CalendarClock,
   CalendarDays,
   BadgeCheck,
   BarChart3,
@@ -43,13 +42,6 @@ export const storeNavigation: NavItem[] = [
     href: '/business/product-catalogues',
     icon: ShoppingBasket,
     tourId: 'nav-catalogue',
-  },
-  {
-    title: 'Bookings',
-    href: '/business/bookings',
-    icon: CalendarClock,
-    flag: 'enable_bookings',
-    tourId: 'nav-bookings',
   },
   {
     title: 'Events',

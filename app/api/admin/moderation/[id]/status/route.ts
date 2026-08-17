@@ -5,6 +5,7 @@ import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse } from '@/lib/types';
 import * as moderationService from '@/lib/api/admin/moderationService';
 import { moderationActionSchema } from '@/lib/validation/moderation';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function PUT(
   request: NextRequest,
@@ -43,7 +44,10 @@ export async function PUT(
     );
     return NextResponse.json(result, { status: result.success ? 200 : 400 });
   } catch (error) {
-    console.error('[PUT /api/admin/moderation/:id/status]', error);
+    console.error(
+      '[PUT /api/admin/moderation/:id/status]',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       {
         success: false,

@@ -76,6 +76,10 @@ claude.md
 # of the tree. Git never tracks them anyway — this only stops the accident.
 .claude/worktrees/
 
+# Runtime verification log appended by supabase/scripts/pull-live.sh. The SQL
+# probes in this dir ARE checked in; this generated log is not.
+supabase/reports/pull-live.log
+
 # Variable font cuts: the image renderer (Satori) cannot parse them, so they
 # are never the file to commit. Static cuts only.
 assets/fonts/*-Variable.ttf

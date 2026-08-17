@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { calculatePercentage } from '@/lib/product-helper';
+import { manilaInputToIso, isoToManilaInput } from '@/lib/utils/eventSchedule';
 import {
   applySaleAction,
   removeSaleAction,
@@ -65,12 +66,12 @@ export function ApplySale({ product, children }: ApplySaleProps) {
         product.sale_price && product.price != null
           ? String(calculatePercentage(product.price, product.sale_price))
           : '',
-      sale_starts_at: product.sale_starts_at
-        ? toDatetimeLocal(product.sale_starts_at)
-        : '',
-      sale_ends_at: product.sale_ends_at
-        ? toDatetimeLocal(product.sale_ends_at)
-        : '',
+      // Stored as TIMESTAMPTZ (UTC ISO); show the owner the Manila wall-clock
+      // the instant represents — the same `datetime-local`-has-no-zone rule
+      // events follow. A naive `iso.slice(0, 16)` used to show UTC as local
+      // and re-save the window 8 hours early.
+      sale_starts_at: isoToManilaInput(product.sale_starts_at),
+      sale_ends_at: isoToManilaInput(product.sale_ends_at),
     },
   });
 
@@ -110,12 +111,10 @@ export function ApplySale({ product, children }: ApplySaleProps) {
     try {
       const result = await applySaleAction(product.id, {
         sale_price: data.salePrice,
-        sale_starts_at: data.sale_starts_at
-          ? new Date(data.sale_starts_at).toISOString()
-          : null,
-        sale_ends_at: data.sale_ends_at
-          ? new Date(data.sale_ends_at).toISOString()
-          : null,
+        // A `datetime-local` value has no zone; read it as Manila so the
+        // instant stored round-trips to the same wall-clock the owner typed.
+        sale_starts_at: manilaInputToIso(data.sale_starts_at),
+        sale_ends_at: manilaInputToIso(data.sale_ends_at),
       });
       if (!result.success) {
         const msg = result.error?.message ?? 'Failed to apply sale';
@@ -409,8 +408,4 @@ export function ApplySale({ product, children }: ApplySaleProps) {
       </DialogContent>
     </Dialog>
   );
-}
-
-function toDatetimeLocal(iso: string): string {
-  return iso.slice(0, 16);
 }

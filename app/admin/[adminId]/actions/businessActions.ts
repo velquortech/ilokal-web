@@ -229,8 +229,10 @@ export async function verifyBusinessAction(
       return { success: false, error: apiError };
     }
 
-    // Revalidate the businesses page
-    revalidatePath('/admin/businesses');
+    // Revalidate the admin dashboard. The route is /admin/[adminId]/businesses
+    // — a literal '/admin/businesses' revalidates nothing, so the layout
+    // revalidate is the admin convention (same as userActions).
+    revalidatePath('/admin', 'layout');
 
     return { success: true, data };
   } catch (err) {
@@ -264,8 +266,10 @@ export async function rejectBusinessAction(
       return { success: false, error: apiError };
     }
 
-    // Revalidate the businesses page
-    revalidatePath('/admin/businesses');
+    // Revalidate the admin dashboard. The route is /admin/[adminId]/businesses
+    // — a literal '/admin/businesses' revalidates nothing, so the layout
+    // revalidate is the admin convention (same as userActions).
+    revalidatePath('/admin', 'layout');
 
     return { success: true, data };
   } catch (err) {
@@ -303,8 +307,10 @@ export async function suspendBusinessAction(
       return { success: false, error: apiError };
     }
 
-    // Revalidate the businesses page
-    revalidatePath('/admin/businesses');
+    // Revalidate the admin dashboard. The route is /admin/[adminId]/businesses
+    // — a literal '/admin/businesses' revalidates nothing, so the layout
+    // revalidate is the admin convention (same as userActions).
+    revalidatePath('/admin', 'layout');
 
     return { success: true, data };
   } catch (err) {
@@ -335,8 +341,10 @@ export async function reactivateBusinessAction(
       return { success: false, error: apiError };
     }
 
-    // Revalidate the businesses page
-    revalidatePath('/admin/businesses');
+    // Revalidate the admin dashboard. The route is /admin/[adminId]/businesses
+    // — a literal '/admin/businesses' revalidates nothing, so the layout
+    // revalidate is the admin convention (same as userActions).
+    revalidatePath('/admin', 'layout');
 
     return { success: true, data };
   } catch (err) {
@@ -374,9 +382,9 @@ export async function updateBusinessAction(
       return { success: false, error: apiError };
     }
 
-    // Revalidate the businesses page and specific business page
-    revalidatePath('/admin/businesses');
-    revalidatePath(`/admin/businesses/${businessId}`);
+    // Revalidate the whole dashboard: the routes are /admin/[adminId]/...
+    // (list and detail), which one layout revalidate covers.
+    revalidatePath('/admin', 'layout');
 
     return { success: true, data };
   } catch (err) {
@@ -410,8 +418,10 @@ export async function archiveBusinessAction(
       return { success: false, error: apiError };
     }
 
-    // Revalidate the businesses page
-    revalidatePath('/admin/businesses');
+    // Revalidate the admin dashboard. The route is /admin/[adminId]/businesses
+    // — a literal '/admin/businesses' revalidates nothing, so the layout
+    // revalidate is the admin convention (same as userActions).
+    revalidatePath('/admin', 'layout');
 
     return { success: true };
   } catch (err) {
@@ -442,8 +452,10 @@ export async function deleteBusinessAction(
       return { success: false, error: apiError };
     }
 
-    // Revalidate the businesses page
-    revalidatePath('/admin/businesses');
+    // Revalidate the admin dashboard. The route is /admin/[adminId]/businesses
+    // — a literal '/admin/businesses' revalidates nothing, so the layout
+    // revalidate is the admin convention (same as userActions).
+    revalidatePath('/admin', 'layout');
 
     return { success: true };
   } catch (err) {

@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse, Invoice } from '@/lib/types';
 import * as paymentQuery from '@/lib/api/payments/paymentQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function GET(
   req: NextRequest,
@@ -62,7 +63,7 @@ export async function GET(
       },
     );
   } catch (err) {
-    console.error('[GET /api/invoices/:id]', err);
+    console.error('[GET /api/invoices/:id]', formatErrorForLog(err));
     return NextResponse.json(
       {
         success: false,

@@ -19,6 +19,7 @@ vi.mock('@/lib/api/products/productQuery', () => ({
   getProductsPaginated: vi.fn(),
   getProductStatsByBusinessId: vi.fn(),
   getCategoriesPaginated: vi.fn(),
+  getCategoryDivergence: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -53,6 +54,12 @@ beforeEach(() => {
     page: 1,
     per_page: 100,
     total_pages: 0,
+  });
+  vi.mocked(productQuery.getCategoryDivergence).mockResolvedValue({
+    businessTypeId: null,
+    businessTypeName: null,
+    divergent: [],
+    failed: false,
   });
 });
 

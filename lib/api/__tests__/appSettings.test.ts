@@ -95,14 +95,10 @@ describe('getRegistrationSettings', () => {
     // and reading that as "not configured" would regress the authenticated
     // flows that worked via the table read: the wizard would grow a Documents
     // step, the success dialog would promise a review again.
-    const supabase = mockSettingsRows(
-      { enable_events: true, enable_bookings: false },
-      null,
-      [
-        { key: 'require_business_documents', value: false },
-        { key: 'auto_verify_businesses', value: true },
-      ],
-    );
+    const supabase = mockSettingsRows({ enable_events: true }, null, [
+      { key: 'require_business_documents', value: false },
+      { key: 'auto_verify_businesses', value: true },
+    ]);
 
     await expect(getRegistrationSettings()).resolves.toEqual({
       requireBusinessDocuments: false,
@@ -114,7 +110,7 @@ describe('getRegistrationSettings', () => {
   it('stays strict when neither source can answer', async () => {
     // The anonymous, pre-migration case: the old RPC has no registration keys
     // and the table is invisible to this caller.
-    mockSettingsRows({ enable_events: true, enable_bookings: false }, null, []);
+    mockSettingsRows({ enable_events: true }, null, []);
 
     // No `failed` here: both reads SUCCEEDED, they just carried no rows. That
     // is "not configured", which the strict defaults are the right answer to —

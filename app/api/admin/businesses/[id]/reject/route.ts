@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { uuidSchema } from '@/lib/validation/business';
 import { rejectBusiness } from '@/lib/api/business/businessService';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 // Use centralized assertAuthorized for admin checks
 
@@ -52,7 +53,10 @@ export async function POST(
       { status: 200 },
     );
   } catch (error) {
-    console.error('[API] POST /api/admin/businesses/[id]/reject:', error);
+    console.error(
+      '[API] POST /api/admin/businesses/[id]/reject:',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       {
         error: 'Failed to reject business',

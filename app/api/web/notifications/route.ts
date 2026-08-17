@@ -5,6 +5,7 @@ import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import type { ApiResponse } from '@/lib/types';
 import * as notificationsService from '@/lib/api/notifications/notificationsService';
 import { notificationListQuerySchema } from '@/lib/validation/notification';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
     });
     return NextResponse.json(result, { status: result.success ? 200 : 500 });
   } catch (error) {
-    console.error('[GET /api/notifications]', error);
+    console.error('[GET /api/notifications]', formatErrorForLog(error));
     return NextResponse.json(
       {
         success: false,

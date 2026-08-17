@@ -2,6 +2,7 @@ import { PageHeader } from '@/components/custom/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { listBidaPicks } from '@/lib/api/admin/bidaOfTheDayQuery';
 import { BidaOfTheDayAdmin } from './components/bida-of-the-day-admin';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 /**
  * Bida of the Day — the editorial daily star on the mobile board's hero.
@@ -17,7 +18,10 @@ export default async function BidaOfTheDayPage() {
   try {
     initialPicks = await listBidaPicks();
   } catch (error) {
-    console.error('[bida-of-the-day page] failed to load picks', error);
+    console.error(
+      '[bida-of-the-day page] failed to load picks',
+      formatErrorForLog(error),
+    );
   }
 
   return (

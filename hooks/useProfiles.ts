@@ -6,6 +6,7 @@ import { UserRole, Profile } from '@/lib/types/user';
 import { AdminStatusFilter, AdminSortOrder } from '@/lib/types/admin';
 import { ADMIN_CONFIG } from '@/app/admin/[adminId]/config/adminConfig';
 import { PaginatedResponse } from '@/services';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 interface UseProfilesByRoleOptions {
   page?: number;
@@ -61,7 +62,7 @@ export function useProfilesByRole(
       const error =
         err instanceof Error ? err : new Error('Failed to fetch profiles');
       setError(error);
-      console.error('Error fetching profiles:', error);
+      console.error('Error fetching profiles:', formatErrorForLog(error));
     } finally {
       setIsLoading(false);
     }

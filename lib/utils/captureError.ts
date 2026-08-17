@@ -12,6 +12,7 @@
  * See `.claude/SENTRY_MONITORING.md` (SN7, SN8, SN20).
  */
 
+import { formatErrorForLog } from './describeDbError';
 import { isExpectedError } from './monitoring';
 
 /**
@@ -135,17 +136,24 @@ function fingerprintFor(
 /**
  * Log a Server Action failure and report it.
  *
- * The console output is deliberately byte-identical to the
+ * The console output stays byte-identical to the
  * `console.error('[actionName]', error)` call this replaced across the action
  * layer — the log line is what people actually grep in a hosting provider's
- * log stream, and changing its shape to add monitoring would have been a
- * trade nobody asked for.
+ * log stream — EXCEPT for DB-shaped errors. `PostgrestError` carries its
+ * fields non-enumerably, so logging it raw renders `{}` (an error report that
+ * names no error); those are flattened with `describeDbError` instead. Real
+ * `Error` instances keep their stack and redirect/notFound digests keep
+ * theirs, so only the genuinely unreadable case changes shape.
+ *
+ * The flattening is console-only: `captureServerError` always receives the
+ * ORIGINAL error, which Sentry's fingerprinting (`code`/SQLSTATE grouping)
+ * and redaction rules are written against.
  */
 export function logActionError(
   action: string,
   error: unknown,
   userId?: string,
 ): void {
-  console.error(`[${action}]`, error);
+  console.error(`[${action}]`, formatErrorForLog(error));
   captureServerError(action, error, undefined, userId);
 }

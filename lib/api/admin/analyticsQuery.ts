@@ -11,6 +11,7 @@ import type {
   WelcomePostCandidates,
 } from '@/lib/types';
 import { WELCOME_POST_NEW_DAYS } from '@/lib/types';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function getPlatformOverview(): Promise<PlatformAnalytics> {
   const supabase = await createServerSupabaseClient();
@@ -38,12 +39,21 @@ export async function getPlatformOverview(): Promise<PlatformAnalytics> {
   ]);
 
   if (userErr) {
-    console.error('[getPlatformOverview] user count error', userErr);
+    console.error(
+      '[getPlatformOverview] user count error',
+      formatErrorForLog(userErr),
+    );
   }
   if (bizErr)
-    console.error('[getPlatformOverview] business count error', bizErr);
+    console.error(
+      '[getPlatformOverview] business count error',
+      formatErrorForLog(bizErr),
+    );
   if (revenueErr)
-    console.error('[getPlatformOverview] revenue error', revenueErr);
+    console.error(
+      '[getPlatformOverview] revenue error',
+      formatErrorForLog(revenueErr),
+    );
 
   const totalRevenue =
     Array.isArray(revenueData) && revenueData.length
@@ -186,14 +196,14 @@ async function countRows(
       : base)) as unknown as { count: number | null; error: unknown };
 
     if (error) {
-      console.error(`[countRows] ${table}`, error);
+      console.error(`[countRows] ${table}`, formatErrorForLog(error));
       return { count: null, failed: true };
     }
     return { count: Number(count ?? 0) || 0, failed: false };
   } catch (error: unknown) {
     // `createServerSupabaseClient` throws on missing env, and a thrown read
     // here would 500 a dashboard whose whole point is degrading to an em dash.
-    console.error(`[countRows] ${table} threw`, error);
+    console.error(`[countRows] ${table} threw`, formatErrorForLog(error));
     return { count: null, failed: true };
   }
 }
@@ -234,7 +244,7 @@ export async function getPlatformGrowth(months = 6): Promise<PlatformGrowth> {
     });
 
     if (error) {
-      console.error('[getPlatformGrowth]', error);
+      console.error('[getPlatformGrowth]', formatErrorForLog(error));
       return { buckets: [], failed: true };
     }
 
@@ -260,7 +270,7 @@ export async function getPlatformGrowth(months = 6): Promise<PlatformGrowth> {
       failed: false,
     };
   } catch (error: unknown) {
-    console.error('[getPlatformGrowth] threw', error);
+    console.error('[getPlatformGrowth] threw', formatErrorForLog(error));
     return { buckets: [], failed: true };
   }
 }
@@ -385,7 +395,7 @@ export async function getWelcomePostCandidates(
     if (listed.error || windowed.error) {
       console.error(
         '[getWelcomePostCandidates]',
-        listed.error ?? windowed.error,
+        formatErrorForLog(listed.error ?? windowed.error),
       );
       return { rows: [], newIds: [], newCount: 0, failed: true };
     }
@@ -403,7 +413,7 @@ export async function getWelcomePostCandidates(
       failed: false,
     };
   } catch (error: unknown) {
-    console.error('[getWelcomePostCandidates] threw', error);
+    console.error('[getWelcomePostCandidates] threw', formatErrorForLog(error));
     return { rows: [], newIds: [], newCount: 0, failed: true };
   }
 }

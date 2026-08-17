@@ -23,6 +23,7 @@ import { createServerSupabaseClient } from '@/supabase/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { z } from 'zod';
 import type { User } from '@/lib/types';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 type ApiResponse<T = unknown> = {
   success: boolean;
@@ -110,7 +111,10 @@ export async function GET(
       { status: 200 },
     );
   } catch (error) {
-    console.error('[API] GET /api/users/:id - Error:', error);
+    console.error(
+      '[API] GET /api/users/:id - Error:',
+      formatErrorForLog(error),
+    );
     return NextResponse.json<ApiResponse>(
       {
         success: false,
@@ -260,7 +264,10 @@ export async function PUT(
       { status: 200 },
     );
   } catch (error) {
-    console.error('[API] PUT /api/users/:id - Error:', error);
+    console.error(
+      '[API] PUT /api/users/:id - Error:',
+      formatErrorForLog(error),
+    );
     return NextResponse.json<ApiResponse>(
       {
         success: false,
@@ -338,7 +345,10 @@ export async function DELETE(
       { status: 200 },
     );
   } catch (error) {
-    console.error('[API] DELETE /api/users/:id - Error:', error);
+    console.error(
+      '[API] DELETE /api/users/:id - Error:',
+      formatErrorForLog(error),
+    );
     return NextResponse.json<ApiResponse>(
       {
         success: false,

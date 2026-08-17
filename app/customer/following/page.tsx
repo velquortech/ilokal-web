@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { BadgePercent, Newspaper, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SafeImage } from '@/components/custom/SafeImage';
 import { FollowButton } from '@/components/customer/FollowButton';
 import { FeedPager } from '@/components/customer/FeedPager';
 import { PageHeader } from '@/components/custom/PageHeader';
@@ -13,6 +13,7 @@ import {
   getUpdatesFeed,
 } from '@/lib/api/customer/customerQuery';
 import { ROUTES, explorePath } from '@/config/routeConfig';
+import { BUSINESS_TIME_ZONE } from '@/lib/utils/operatingHours';
 
 export const metadata: Metadata = {
   title: 'Following',
@@ -101,7 +102,9 @@ export default async function FollowingPage({
                       >
                         {item.image_url ? (
                           <div className="bg-muted relative size-14 shrink-0 overflow-hidden rounded-lg">
-                            <Image
+                            {/* SafeImage: unoptimized storage WebP + broken-image
+                                fallback. */}
+                            <SafeImage
                               src={item.image_url}
                               alt=""
                               fill
@@ -129,7 +132,15 @@ export default async function FollowingPage({
                               ·{' '}
                               {new Date(item.published_at).toLocaleDateString(
                                 'en-PH',
-                                { month: 'short', day: 'numeric' },
+                                {
+                                  // Pinned, like deal cards: the server
+                                  // renders in UTC, so an update published on
+                                  // a Manila evening would read as the day
+                                  // before without it.
+                                  timeZone: BUSINESS_TIME_ZONE,
+                                  month: 'short',
+                                  day: 'numeric',
+                                },
                               )}
                             </span>
                           </div>
@@ -180,7 +191,9 @@ export default async function FollowingPage({
                 >
                   <div className="bg-muted relative size-10 shrink-0 overflow-hidden rounded-full border">
                     {business.logo_url && (
-                      <Image
+                      // SafeImage: unoptimized storage WebP + broken-image
+                      // fallback.
+                      <SafeImage
                         src={business.logo_url}
                         alt=""
                         fill

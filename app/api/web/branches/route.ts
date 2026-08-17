@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { ApiResponse } from '@/lib/types';
 import { branchFiltersSchema } from '@/lib/validation/branches';
 import * as branchQuery from '@/lib/api/branches/branchQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function GET(req: NextRequest) {
   try {
@@ -75,7 +76,7 @@ export async function GET(req: NextRequest) {
       },
     );
   } catch (error) {
-    console.error('[GET /api/branches]', error);
+    console.error('[GET /api/branches]', formatErrorForLog(error));
     return NextResponse.json(
       {
         success: false,

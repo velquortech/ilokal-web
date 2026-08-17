@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import type { BranchStatus } from '@/lib/types';
 import { DataTablePagination } from '@/components/custom/data-table/DataTablePagination';
+import { BUSINESS_TIME_ZONE } from '@/lib/utils/operatingHours';
 import { EditBranchDialog } from './edit-branch';
 import { DeleteBranchDialog } from './delete-branch';
 import type { Branch } from '@/lib/types';
@@ -127,7 +128,9 @@ export function BranchesTable({
         header: 'Created',
         cell: ({ row }) => (
           <span className="text-muted-foreground text-sm">
-            {new Date(row.original.created_at).toLocaleDateString()}
+            {new Date(row.original.created_at).toLocaleDateString(undefined, {
+              timeZone: BUSINESS_TIME_ZONE,
+            })}
           </span>
         ),
       },

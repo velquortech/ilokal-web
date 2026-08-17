@@ -190,7 +190,7 @@ export interface NearbyEvent {
  *
  * `failed` is not decoration: four confident zeros and "we couldn't read this"
  * look identical on a stat card, and this repo has already shipped that
- * confusion once (`getBookingStats`). `staff_picks` is admin-only — the number
+ * confusion once. `staff_picks` is admin-only — the number
  * of platform events (`business_id IS NULL`) — and stays 0 on the owner's side.
  */
 export interface EventStats {

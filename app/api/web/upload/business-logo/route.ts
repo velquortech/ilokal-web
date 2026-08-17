@@ -1,3 +1,4 @@
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
@@ -127,7 +128,7 @@ export async function POST(request: NextRequest) {
     }
     // Storage/unexpected failure — log server-side, return a generic message so
     // raw driver errors (table/policy names) don't leak to the client.
-    console.error('[upload/business-logo]', error);
+    console.error('[upload/business-logo]', formatErrorForLog(error));
     return NextResponse.json(
       {
         success: false,

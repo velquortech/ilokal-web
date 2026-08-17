@@ -1,5 +1,6 @@
 'use client';
 
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import {
@@ -30,7 +31,7 @@ export function useAccountStatusActions(
           toast.error(result.error || 'Failed to restore user');
         }
       } catch (error) {
-        console.error('Error restoring user:', error);
+        console.error('Error restoring user:', formatErrorForLog(error));
         toast.error('Error restoring user');
       } finally {
         setIsSubmitting(false);
@@ -51,7 +52,7 @@ export function useAccountStatusActions(
           toast.error(result.error || 'Failed to reactivate user');
         }
       } catch (error) {
-        console.error('Error reactivating user:', error);
+        console.error('Error reactivating user:', formatErrorForLog(error));
         toast.error('Error reactivating user');
       } finally {
         setIsSubmitting(false);

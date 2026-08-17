@@ -1,20 +1,21 @@
 /**
  * Shop-section writes.
  *
- * Writes go straight to the table — unlike bookings, there is no RPC, because
- * every rule here is expressible as a constraint or a policy and the DB
+ * Writes go straight to the table — there is no RPC, because every rule here
+ * is expressible as a constraint or a policy and the DB
  * enforces all of them against a direct PostgREST call too: ownership (RLS),
  * one name per shop (partial unique index), the 30-section cap (trigger,
  * IL003), and the length CHECK.
  *
- * This layer's job is the same as `bookingService`'s: turn a SQLSTATE into
- * copy an owner can act on. A raw driver message names tables, columns and
- * constraints, so it never reaches the client.
+ * This layer's job is to turn a SQLSTATE into copy an owner can act on. A raw
+ * driver message names tables, columns and constraints, so it never reaches
+ * the client.
  */
 
 import { createServerSupabaseClient } from '@/supabase/server';
 import { MAX_SECTIONS_PER_SHOP } from '@/lib/types/section';
 import type { ApiResponse, ProductSection } from '@/lib/types';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 type PgError = { code?: string; message?: string };
 
@@ -65,7 +66,7 @@ function mapSectionError(error: PgError): {
 }
 
 function failure(error: PgError, context: string): ApiResponse<never> {
-  console.error(`[${context}]`, error);
+  console.error(`[${context}]`, formatErrorForLog(error));
   return { success: false, error: mapSectionError(error) };
 }
 

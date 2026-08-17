@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function DELETE(
   request: NextRequest,
@@ -96,7 +97,10 @@ export async function DELETE(
       .remove([filePath]);
 
     if (deleteError) {
-      console.error('[DELETE /api/web/upload/[bucket]/[id]]', deleteError);
+      console.error(
+        '[DELETE /api/web/upload/[bucket]/[id]]',
+        formatErrorForLog(deleteError),
+      );
       return NextResponse.json(
         { success: false, error: 'Failed to delete file' },
         { status: 400 },
@@ -111,7 +115,10 @@ export async function DELETE(
       { status: 200 },
     );
   } catch (error) {
-    console.error('[DELETE /api/web/upload/[bucket]/[id]]', error);
+    console.error(
+      '[DELETE /api/web/upload/[bucket]/[id]]',
+      formatErrorForLog(error),
+    );
     return NextResponse.json(
       { success: false, error: 'Delete failed' },
       { status: 500 },

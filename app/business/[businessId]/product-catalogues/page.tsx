@@ -5,6 +5,7 @@ import {
   getProductsPaginated,
   getProductStatsByBusinessId,
   getCategoriesPaginated,
+  getCategoryDivergence,
 } from '@/lib/api/products/productQuery';
 import { getSectionsWithCounts } from '@/lib/api/sections/sectionQuery';
 import { getBusinessTypeId } from '@/lib/api/offerings/offeringQuery';
@@ -63,50 +64,67 @@ export default async function ProductCataloguesPage({
       ? (sp.status as ProductStatus)
       : ('' as const); // '' = all statuses (owner view); omitting would default to 'active'
 
-  const [productsResult, stats, categoriesResult, sectionsResult] =
-    await Promise.all([
-      businessId
-        ? getProductsPaginated({
-            business_id: businessId,
-            branch_id: branchId,
-            page,
-            per_page: perPage,
-            search,
-            section_id: sectionId,
-            status,
-          })
-        : Promise.resolve({
-            products: [],
-            total: 0,
-            page: 1,
-            per_page: perPage,
-            total_pages: 0,
-          }),
-      businessId
-        ? getProductStatsByBusinessId(businessId, branchId)
-        : Promise.resolve({
-            total: 0,
-            active: 0,
-            unlisted: 0,
-            disabled: 0,
-            on_sale: 0,
-          }),
-      // Chained rather than awaited ahead of the batch (P7): only the
-      // categories read depends on the vertical, so the other three should not
-      // wait for it. The picker offers this vertical's categories plus the
-      // global ones — a null type or a failed read falls back to every
-      // category, the pre-phase-5 behaviour.
-      getBusinessTypeId(businessId).then((businessTypeId) =>
-        getCategoriesPaginated({
+  const [
+    productsResult,
+    stats,
+    categoriesResult,
+    sectionsResult,
+    categoryDivergence,
+  ] = await Promise.all([
+    businessId
+      ? getProductsPaginated({
+          business_id: businessId,
+          branch_id: branchId,
+          page,
+          per_page: perPage,
+          search,
+          section_id: sectionId,
+          status,
+        })
+      : Promise.resolve({
+          products: [],
+          total: 0,
           page: 1,
-          per_page: 100,
-          business_type_id: businessTypeId,
+          per_page: perPage,
+          total_pages: 0,
         }),
-      ),
-      businessId
-        ? getSectionsWithCounts(businessId, branchId)
-        : Promise.resolve({ sections: [], uncategorised_count: 0 }),
-    ]);
+    businessId
+      ? getProductStatsByBusinessId(businessId, branchId)
+      : Promise.resolve({
+          total: 0,
+          active: 0,
+          unlisted: 0,
+          disabled: 0,
+          on_sale: 0,
+        }),
+    // Chained rather than awaited ahead of the batch (P7): only the
+    // categories read depends on the vertical, so the other three should not
+    // wait for it. The picker offers this vertical's categories plus the
+    // global ones — a null type or a failed read falls back to every
+    // category, the pre-phase-5 behaviour.
+    getBusinessTypeId(businessId).then((businessTypeId) =>
+      getCategoriesPaginated({
+        page: 1,
+        per_page: 100,
+        business_type_id: businessTypeId,
+      }),
+    ),
+    businessId
+      ? getSectionsWithCounts(businessId, branchId)
+      : Promise.resolve({ sections: [], uncategorised_count: 0 }),
+    // Category-vertical divergence guard: makes a wrong vertical (or rows
+    // carrying another vertical's categories) visible instead of letting it
+    // silently mis-scope the picker. Independent of everything above, so it
+    // runs in the same batch and never holds the others up.
+    businessId
+      ? getCategoryDivergence(businessId)
+      : Promise.resolve({
+          businessTypeId: null,
+          businessTypeName: null,
+          divergent: [],
+          failed: false,
+        }),
+  ]);
 
   const paginatedData =
     'error' in productsResult
@@ -131,6 +149,7 @@ export default async function ProductCataloguesPage({
       countsFailed={
         'counts_failed' in sectionsResult && !!sectionsResult.counts_failed
       }
+      categoryDivergence={categoryDivergence}
     />
   );
 }

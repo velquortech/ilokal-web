@@ -15,6 +15,7 @@ import type {
   UpdateFeaturedDealRequest,
 } from '@/lib/types';
 import * as couponQuery from './couponQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 // ===== Coupon Service =====
 
@@ -65,7 +66,7 @@ export async function createCoupon(
       .single();
 
     if (error) {
-      console.error('[createCoupon] Insert error:', error);
+      console.error('[createCoupon] Insert error:', formatErrorForLog(error));
       if (error.code === '23505') {
         return {
           success: false,
@@ -90,7 +91,7 @@ export async function createCoupon(
       data: data as Coupon,
     };
   } catch (err) {
-    console.error('[createCoupon]', err);
+    console.error('[createCoupon]', formatErrorForLog(err));
     return {
       success: false,
       error: {
@@ -158,7 +159,7 @@ export async function updateCoupon(
       .single();
 
     if (error) {
-      console.error('[updateCoupon] Update error:', error);
+      console.error('[updateCoupon] Update error:', formatErrorForLog(error));
       return {
         success: false,
         error: {
@@ -173,7 +174,7 @@ export async function updateCoupon(
       data: data as Coupon,
     };
   } catch (err) {
-    console.error('[updateCoupon]', err);
+    console.error('[updateCoupon]', formatErrorForLog(err));
     return {
       success: false,
       error: {
@@ -213,7 +214,7 @@ export async function deleteCoupon(
       .eq('id', id);
 
     if (error) {
-      console.error('[deleteCoupon] Update error:', error);
+      console.error('[deleteCoupon] Update error:', formatErrorForLog(error));
       return {
         success: false,
         error: {
@@ -228,7 +229,7 @@ export async function deleteCoupon(
       data: null,
     };
   } catch (err) {
-    console.error('[deleteCoupon]', err);
+    console.error('[deleteCoupon]', formatErrorForLog(err));
     return {
       success: false,
       error: {
@@ -336,7 +337,10 @@ export async function redeemCoupon(
       .single();
 
     if (redeemError) {
-      console.error('[redeemCoupon] Insert error:', redeemError);
+      console.error(
+        '[redeemCoupon] Insert error:',
+        formatErrorForLog(redeemError),
+      );
       return {
         success: false,
         error: {
@@ -397,7 +401,7 @@ export async function redeemCoupon(
       },
     };
   } catch (err) {
-    console.error('[redeemCoupon]', err);
+    console.error('[redeemCoupon]', formatErrorForLog(err));
     return {
       success: false,
       error: {
@@ -462,7 +466,10 @@ export async function createFeaturedDeal(
       .single();
 
     if (error) {
-      console.error('[createFeaturedDeal] Insert error:', error);
+      console.error(
+        '[createFeaturedDeal] Insert error:',
+        formatErrorForLog(error),
+      );
       return {
         success: false,
         error: {
@@ -477,7 +484,7 @@ export async function createFeaturedDeal(
       data: data as FeaturedDeal,
     };
   } catch (err) {
-    console.error('[createFeaturedDeal]', err);
+    console.error('[createFeaturedDeal]', formatErrorForLog(err));
     return {
       success: false,
       error: {
@@ -530,7 +537,10 @@ export async function updateFeaturedDeal(
       .single();
 
     if (error) {
-      console.error('[updateFeaturedDeal] Update error:', error);
+      console.error(
+        '[updateFeaturedDeal] Update error:',
+        formatErrorForLog(error),
+      );
       return {
         success: false,
         error: {
@@ -545,7 +555,7 @@ export async function updateFeaturedDeal(
       data: data as FeaturedDeal,
     };
   } catch (err) {
-    console.error('[updateFeaturedDeal]', err);
+    console.error('[updateFeaturedDeal]', formatErrorForLog(err));
     return {
       success: false,
       error: {
@@ -585,7 +595,10 @@ export async function deleteFeaturedDeal(
       .eq('id', id);
 
     if (error) {
-      console.error('[deleteFeaturedDeal] Update error:', error);
+      console.error(
+        '[deleteFeaturedDeal] Update error:',
+        formatErrorForLog(error),
+      );
       return {
         success: false,
         error: {
@@ -600,7 +613,7 @@ export async function deleteFeaturedDeal(
       data: null,
     };
   } catch (err) {
-    console.error('[deleteFeaturedDeal]', err);
+    console.error('[deleteFeaturedDeal]', formatErrorForLog(err));
     return {
       success: false,
       error: {

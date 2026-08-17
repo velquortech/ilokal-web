@@ -89,6 +89,45 @@ jobs:
       - name: Run integration tests
         run: yarn vitest run --reporter=verbose "integration.test"
 
+  # Pull-live regression check: runs pull-live.sh against a SCRATCH local
+  # Supabase stack and asserts the verification block (see
+  # supabase/scripts/check-pull-live.sh). Needs live credentials as secrets;
+  # the job self-skips (exit 0) when they aren't configured, so repos without
+  # live access stay green. Ubuntu runners have Docker + the Supabase CLI is
+  # installed below; the scratch stack uses offset ports (5532x) so nothing
+  # collides.
+  Pull-live-check:
+    runs-on: ubuntu-latest
+    needs: Setup
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'yarn'
+      - run: yarn install
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.101.0
+      # The check reads live creds from .env.cloud when present, or from these
+      # env vars (pull-live.sh honours LIVE_KEY/LIVE_HOST/SUPABASE_DB_URL
+      # overrides). Without secrets it prints SKIP and exits 0.
+      - name: Write .env.cloud from secrets
+        if: env.SUPABASE_DB_URL != ''
+        run: |
+          cat > .env.cloud <<EOF
+          SUPABASE_DB_URL=${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          EOF
+      - name: Run pull-live regression check
+        run: make pull-live-check
+
   # Deploy-preview:
   #   runs-on: ${{ matrix.os }}
   #   needs: [Setup, Unit-tests, Integration-tests]

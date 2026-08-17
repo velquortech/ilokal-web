@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { ApiResponse, FeaturedDeal } from '@/lib/types';
 import * as couponQuery from '@/lib/api/coupons/couponQuery';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function GET(
   req: NextRequest,
@@ -54,7 +55,7 @@ export async function GET(
       },
     );
   } catch (error) {
-    console.error('[GET /api/featured-deals/:id]', error);
+    console.error('[GET /api/featured-deals/:id]', formatErrorForLog(error));
     return NextResponse.json(
       {
         success: false,

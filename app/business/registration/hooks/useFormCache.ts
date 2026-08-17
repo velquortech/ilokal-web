@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { BusinessProps } from '../validator/business-registration-form-schema';
 import { putFiles, getFiles, removeFiles, clearAllFiles } from './fileCache';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 const FORM_CACHE_KEY = 'ilokal-business-registration-cache';
 
@@ -162,7 +163,7 @@ export function useFormCache(form: UseFormReturn<BusinessProps>) {
 
       localStorage.setItem(FORM_CACHE_KEY, JSON.stringify(cached));
     } catch (error: unknown) {
-      console.error('Failed to cache form data:', error);
+      console.error('Failed to cache form data:', formatErrorForLog(error));
     }
   };
 
@@ -362,7 +363,10 @@ export function useFormCache(form: UseFormReturn<BusinessProps>) {
           }
         }
       } catch (error: unknown) {
-        console.error('Failed to restore cached data:', error);
+        console.error(
+          'Failed to restore cached data:',
+          formatErrorForLog(error),
+        );
       } finally {
         if (!cancelled) {
           setIsHydrated(true);
@@ -415,7 +419,7 @@ export function useFormCache(form: UseFormReturn<BusinessProps>) {
       void clearAllFiles();
       for (const field of LEGACY_FILE_FIELDS) purgeLegacyKey(field);
     } catch (error: unknown) {
-      console.error('Failed to clear cache:', error);
+      console.error('Failed to clear cache:', formatErrorForLog(error));
     }
   };
 

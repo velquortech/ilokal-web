@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/supabase/server';
 import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import type { ApiResponse } from '@/lib/types';
 import { NextRequest, NextResponse } from 'next/server';
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 // GET /api/admin/subscriptions/plans - List all subscription plans (admin only)
 // POST /api/admin/subscriptions/plans - Create new subscription plan (admin only)
@@ -45,7 +46,10 @@ export async function GET(
       .order('price', { ascending: true });
 
     if (error) {
-      console.error('[GET /api/admin/subscriptions/plans] DB error:', error);
+      console.error(
+        '[GET /api/admin/subscriptions/plans] DB error:',
+        formatErrorForLog(error),
+      );
       return NextResponse.json(
         {
           success: false,
@@ -59,7 +63,7 @@ export async function GET(
   } catch (error) {
     console.error(
       '[GET /api/admin/subscriptions/plans] unexpected error:',
-      error,
+      formatErrorForLog(error),
     );
     return NextResponse.json(
       {
@@ -139,7 +143,10 @@ export async function POST(
       .single();
 
     if (error) {
-      console.error('[POST /api/admin/subscriptions/plans] DB error:', error);
+      console.error(
+        '[POST /api/admin/subscriptions/plans] DB error:',
+        formatErrorForLog(error),
+      );
       return NextResponse.json(
         {
           success: false,
@@ -153,7 +160,7 @@ export async function POST(
   } catch (error) {
     console.error(
       '[POST /api/admin/subscriptions/plans] unexpected error:',
-      error,
+      formatErrorForLog(error),
     );
     return NextResponse.json(
       {

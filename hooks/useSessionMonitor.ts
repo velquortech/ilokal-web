@@ -1,5 +1,6 @@
 'use client';
 
+import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { verifySessionAction } from '@/app/(auth)/actions';
@@ -85,7 +86,10 @@ export function useSessionMonitor() {
           setSessionExpiration(expirationTime);
         }
       } catch (error) {
-        console.error('[useSessionMonitor] Initialization error:', error);
+        console.error(
+          '[useSessionMonitor] Initialization error:',
+          formatErrorForLog(error),
+        );
       }
     }
 
@@ -130,7 +134,10 @@ export function useSessionMonitor() {
         await logout(loginPath, { force: true });
       }
     } catch (error) {
-      console.error('[useSessionMonitor] Failed to refresh session:', error);
+      console.error(
+        '[useSessionMonitor] Failed to refresh session:',
+        formatErrorForLog(error),
+      );
     }
   }, [logout, loginPath]);
 

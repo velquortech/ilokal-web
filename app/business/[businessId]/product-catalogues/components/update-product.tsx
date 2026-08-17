@@ -35,9 +35,8 @@ import type {
 import { PRODUCT_STATUS_OPTIONS } from '@/lib/types';
 import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
 import { cn } from '@/lib/utils';
-import { BOOKING_MODE_LABELS, PRICE_TYPE_LABELS } from './offering-labels';
+import { PRICE_TYPE_LABELS } from './offering-labels';
 import type { PriceType } from '@/lib/types';
-import type { BookingMode } from '@/lib/types/offering';
 import {
   updateProductAction,
   uploadProductImageAction,
@@ -72,7 +71,6 @@ type ProductFormValues = {
   price: number | null;
   price_type: PriceType;
   status: 'active' | 'unlisted' | 'disabled';
-  booking_mode: BookingMode;
   section_id: string;
   /** NO_CATEGORY when unset — mapped back to NULL on submit. */
   category_id: string;
@@ -101,7 +99,6 @@ export function UpdateProductDialog({
       price_type: product.price_type,
       status: product.status,
       image_url: product.image_url,
-      booking_mode: product.booking_mode,
       section_id: product.section_id ?? NO_SECTION,
       category_id: product.category_id ?? NO_CATEGORY,
     }),
@@ -192,7 +189,6 @@ export function UpdateProductDialog({
         ...(nextIsQuote ? {} : { price: data.price }),
         price_type: data.price_type,
         status: data.status,
-        booking_mode: data.booking_mode,
         // Always sent, so an owner can move an offering back to
         // Uncategorised — omitting it would make that impossible.
         section_id: data.section_id === NO_SECTION ? null : data.section_id,
@@ -348,30 +344,6 @@ export function UpdateProductDialog({
                           {PRICE_TYPE_LABELS[pt]}
                         </SelectItem>
                       ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </Field>
-
-            <Field>
-              <FieldLabel>How do customers book this?</FieldLabel>
-              <Controller
-                control={control}
-                name="booking_mode"
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(Object.keys(BOOKING_MODE_LABELS) as BookingMode[]).map(
-                        (mode) => (
-                          <SelectItem key={mode} value={mode}>
-                            {BOOKING_MODE_LABELS[mode]}
-                          </SelectItem>
-                        ),
-                      )}
                     </SelectContent>
                   </Select>
                 )}

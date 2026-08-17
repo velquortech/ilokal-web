@@ -603,4 +603,52 @@ BEGIN
          AND existing.business_type_id = v.business_type_id
     );
 
+    -- 12. 'General' fallback category per ACTIVE vertical
+    -- (20260819010000). One row per type as the honest last resort for a shop
+    -- that fits none of the specific categories. The migration creates the
+    -- rows for whichever types exist AT MIGRATION TIME — on a fresh DB that is
+    -- the 4 verticals seeded by 20260815000000_new_business_types.sql, NOT
+    -- zero — and this block covers the types the seed itself creates (Food &
+    -- Beverage, Retail, Services). The composite guard makes the split safe
+    -- either way: the two files agree per (name, vertical).
+    --
+    -- Composite guard (name + vertical) matching blocks 8/10/11, so a future
+    -- re-seed cannot duplicate a row that is already live. Tourism & Leisure
+    -- is deliberately excluded: the vertical is disabled (is_active = false),
+    -- so a General row there would be invisible to every picker. Same image
+    -- rules as blocks 3a/6/7/11: non-NULL, images.unsplash.com only, `h=1200`
+    -- for the 4:3 crop.
+    INSERT INTO business_categories (business_type_id, name, description, image_url)
+    SELECT bt.id, v.name, v.description, v.image_url
+    FROM business_types bt
+    JOIN (VALUES
+      ('Food & Beverage', 'General',
+       'Shops that fit none of the more specific food and drink categories.',
+       'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      ('Retail', 'General',
+       'Stores that fit none of the more specific retail categories.',
+       'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      ('Services', 'General',
+       'Services that fit none of the more specific service categories.',
+       'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      ('Entertainment & Events', 'General',
+       'Entertainment, events, and recreation venues that fit none of the more specific categories.',
+       'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      ('Health & Wellness', 'General',
+       'Health and wellness providers that fit none of the more specific categories.',
+       'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      ('Education & Learning', 'General',
+       'Learning providers that fit none of the more specific categories.',
+       'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?q=80&w=1600&h=1200&fit=crop&auto=format'),
+      ('Home & Property Services', 'General',
+       'Home and property services that fit none of the more specific categories.',
+       'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?q=80&w=1600&h=1200&fit=crop&auto=format')
+    ) AS v(vertical, name, description, image_url)
+      ON bt.name = v.vertical
+    WHERE NOT EXISTS (
+      SELECT 1 FROM business_categories existing
+       WHERE existing.name = v.name
+         AND existing.business_type_id = bt.id
+    );
+
 END $$;

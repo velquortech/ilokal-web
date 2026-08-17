@@ -42,6 +42,7 @@ import {
 } from './offering-labels';
 import { useBusinessShop } from '@/providers/BusinessProvider';
 import { useOfferingVocabulary } from '@/providers/OfferingVocabularyProvider';
+import { useFormDraft } from '@/hooks/useFormDraft';
 import {
   createProductAction,
   uploadProductImageAction,
@@ -136,7 +137,7 @@ export function AddProductDialog({
   open: controlledOpen,
   onOpenChange: onControlledOpenChange,
 }: AddProductDialogProps) {
-  const { selectedBranchId } = useBusinessShop();
+  const { selectedBranchId, business } = useBusinessShop();
   const vocabulary = useOfferingVocabulary();
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
   const isControlled = controlledOpen !== undefined;
@@ -193,6 +194,11 @@ export function AddProductDialog({
     [priceTypeOptions, vocabulary.defaultKind],
   );
 
+  // The whole form instance is kept so `useFormDraft` can subscribe to it —
+  // a destructure-only read would leave `form` undefined and crash on mount.
+  const form = useForm<ProductFormValues>({
+    defaultValues: emptyForm,
+  });
   const {
     register,
     handleSubmit,
@@ -202,9 +208,57 @@ export function AddProductDialog({
     setValue,
     setFocus,
     formState: { errors },
-  } = useForm<ProductFormValues>({
-    defaultValues: emptyForm,
+  } = form;
+
+  // ── Draft persistence ────────────────────────────────────────────────────
+  // The form is long and closing the dialog mid-way loses it — a fat-fingered
+  // X on a phone costs a typed name, price and attributes. The serializable
+  // values (everything but the File) are kept in localStorage per business,
+  // debounced, and restored on the next open. Discarded only on a successful
+  // create, so a cancel or an accidental close never loses the work.
+  type ProductDraft = Omit<ProductFormValues, 'image'>;
+  const draftKey = business?.id ? `ilokal-product-draft:${business.id}` : '';
+  const emptyDraft = React.useMemo<ProductDraft>(() => {
+    const { image, ...rest } = emptyForm;
+    void image;
+    return rest;
+  }, [emptyForm]);
+  const { readDraft, clearDraft } = useFormDraft<
+    ProductFormValues,
+    ProductDraft
+  >({
+    form,
+    key: draftKey,
+    enabled: !!business?.id,
+    pick: (values) => {
+      const { image, ...rest } = values;
+      void image;
+      return rest;
+    },
+    isEmpty: (picked) => JSON.stringify(picked) === JSON.stringify(emptyDraft),
   });
+
+  // Restore the draft when the dialog opens (covers the trigger AND the
+  // `?add=1` deep link, which drives `open` from outside). Guarded by the
+  // was-open ref so re-renders while open cannot re-seed over the owner's
+  // current typing.
+  const wasOpenRef = React.useRef(false);
+  React.useEffect(() => {
+    if (open && !wasOpenRef.current) {
+      const draft = readDraft();
+      if (draft) {
+        // keepDefaultValues: the draft is CURRENT values, not the form's
+        // defaults. Without this, RHF's reset(values) rewrites
+        // `_defaultValues` to the draft — so a later reset() (no-arg) in the
+        // submit path would restore the draft instead of an empty form, and
+        // the autosave would write it back: a successful save would never
+        // clear the draft.
+        reset({ ...emptyForm, ...draft }, { keepDefaultValues: true });
+      }
+      setServerError(null);
+    }
+    wasOpenRef.current = open;
+  }, [open, reset, emptyForm, readDraft]);
 
   const watchedPriceType = watch('price_type');
   const isQuoteBased = watchedPriceType === 'on_request';
@@ -286,6 +340,9 @@ export function AddProductDialog({
 
       toast.success(`"${data.name}" added to your catalogue`);
       onSuccess?.();
+      // The draft's job is done: this item is saved. The next item starts
+      // fresh (with the carried choices below); a reload mid-run keeps those.
+      clearDraft();
 
       if (addAnother) {
         // Keep the choices that repeat across a run of items — a menu is
@@ -313,7 +370,12 @@ export function AddProductDialog({
       // rather than as a moment.
       celebrate();
       setOpen(false);
-      reset();
+      // Explicit values, not reset(): the restore effect seeded the form from
+      // a draft, and reset() would fall back to `_defaultValues` — which a
+      // non-keepDefaultValues reset can leave pointing at the draft (see the
+      // restore effect). An explicit reset always lands on a truly empty form.
+      reset(emptyForm);
+      clearDraft();
     } catch {
       const msg =
         'Something went wrong, or check image size the limit is 2MB per image only';
@@ -338,14 +400,9 @@ export function AddProductDialog({
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
-    if (!isOpen) {
-      // Same object as defaultValues. RHF's reset(values) REPLACES the whole
-      // value set, so a partial literal here silently dropped the service
-      // attributes — `service_location` became undefined and its Radix Select
-      // flipped controlled → uncontrolled on the second open.
-      reset(emptyForm);
-      setServerError(null);
-    }
+    // No reset on close: the draft autosave already holds the values, and the
+    // open effect restores them — closing mid-form must not lose the work.
+    if (!isOpen) setServerError(null);
   };
 
   return (

@@ -54,8 +54,12 @@ export const signupSchema = z
         'Password must contain uppercase, lowercase, and numbers',
       ),
     confirmPassword: z.string(),
+    // Trim before min-length, or a whitespace-only name passes `min(2)` and
+    // the field-level error never shows (the server then rejects it with a
+    // generic message). Same convention as the events schema.
     name: z
       .string()
+      .trim()
       .min(2, 'Name must be at least 2 characters')
       .max(100, 'Name is too long'),
     role: z.enum(['admin', 'business_owner', 'app_user'], {
@@ -79,7 +83,7 @@ export type SignupInput = z.infer<typeof signupSchema>;
 export const serverSignupSchema = z.object({
   email: z.email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  name: z.string().min(1, 'Name is required'),
+  name: z.string().trim().min(1, 'Name is required'),
   role: z.enum(['admin', 'business_owner', 'app_user'], {
     message: 'Invalid role',
   }),
@@ -191,6 +195,7 @@ export type ResetPasswordFormInput = z.infer<typeof resetPasswordFormSchema>;
 export const updateCurrentUserProfileSchema = z.object({
   full_name: z
     .string()
+    .trim()
     .min(2, 'Name must be at least 2 characters')
     .max(100, 'Name is too long')
     .optional(),

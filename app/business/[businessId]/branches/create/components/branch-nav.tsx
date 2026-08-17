@@ -22,20 +22,42 @@ export function BranchNav({ isSubmitting, onBack }: BranchNavProps) {
   return (
     <div className="border-border mt-auto flex justify-between border-t px-4 py-4 sm:px-10">
       <div className="inline-flex w-full items-center justify-between">
+        {/* All three navigation buttons are explicitly `type="button"`.
+            Inside the wizard's <form>, a button without an explicit type
+            defaults to `type="submit"`, so clicking Next/Back would run the
+            full-form submit handler instead of stepping — and because this
+            form's schema only requires name + address, that silently submits
+            the whole application from step 2, skipping Photos, Documents and
+            Review (observed in the mobile walkthrough). Only the final
+            Submit Application button is a submit. */}
         {step > 1 ? (
-          <Button variant="outline" onClick={prevStep} disabled={isSubmitting}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={prevStep}
+            disabled={isSubmitting}
+          >
             <ChevronLeft className="mr-2 size-4" />
             Back
           </Button>
         ) : (
-          <Button variant="outline" onClick={onBack} disabled={isSubmitting}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onBack}
+            disabled={isSubmitting}
+          >
             <ChevronLeft className="mr-2 size-4" />
             Back to Branches
           </Button>
         )}
 
         {step < BRANCH_STEPS.length ? (
-          <Button onClick={handleNext} disabled={!canProceed || isSubmitting}>
+          <Button
+            type="button"
+            onClick={handleNext}
+            disabled={!canProceed || isSubmitting}
+          >
             {isSubmitting ? (
               <Loader2 className="mr-2 size-4 animate-spin" />
             ) : (

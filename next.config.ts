@@ -131,6 +131,17 @@ const buildCSPImageSources = (): string => {
 };
 
 const nextConfig: NextConfig = {
+  // The dev server 403s cross-origin dev resources (HMR websocket, dev fonts,
+  // overlay) unless the requesting host is in this allowlist — and the
+  // built-in defaults only cover localhost/*.localhost (see
+  // block-cross-site-dev.ts: allowedOrigins = ['*.localhost', 'localhost',
+  // ...allowedDevOrigins]). A browser hitting 127.0.0.1 — curl, headless
+  // testing, Freebuff's preview, a phone on the LAN — gets those requests
+  // blocked, and on this app that silently breaks hydration: forms submit
+  // natively as GETs and every onClick is dead. Dev-only; ignored outside
+  // development. This APPENDS to the localhost defaults, it does not replace
+  // them.
+  allowedDevOrigins: ['127.0.0.1'],
   // The welcome-post renderer reads brand fonts off disk at request time, and
   // builds the path dynamically (`assets/fonts/${base}.${ext}` across a list of
   // candidate cuts). Output file tracing works by static analysis, so it cannot
@@ -265,7 +276,7 @@ const nextConfig: NextConfig = {
                 style-src 'self' 'unsafe-inline';
                 img-src ${buildCSPImageSources()} https://i.ytimg.com https://*.tile.openstreetmap.org;
                 frame-src 'self' https://www.google.com https://www.youtube.com https://youtube.com;
-                connect-src 'self' https://maps.googleapis.com http://127.0.0.1:54321 ${process.env.NEXT_PUBLIC_SUPABASE_URL || ''};
+                connect-src 'self' https://maps.googleapis.com https://nominatim.openstreetmap.org http://127.0.0.1:54321 ${process.env.NEXT_PUBLIC_SUPABASE_URL || ''};
                 font-src 'self' data:;
               `
               .replace(/\s{2,}/g, ' ')

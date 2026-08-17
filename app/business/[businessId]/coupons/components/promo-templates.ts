@@ -10,6 +10,15 @@ import type {
  * discount fields and suggests a code; the owner keeps control of everything.
  * `discount_type: null` marks the "custom" chip — build from scratch.
  */
+/**
+ * Default redemption caps for a NEW promo, mirroring the date defaults — a
+ * fresh form is fully valid without the owner touching anything. Clearing a
+ * field still means Unlimited (the placeholder says so), which maps to NULL
+ * server-side.
+ */
+export const DEFAULT_MAX_REDEMPTIONS_GLOBAL = '100';
+export const DEFAULT_MAX_REDEMPTIONS_PER_USER = '3';
+
 export interface PromoTemplate {
   id: 'pct5' | 'pct10' | 'pct15' | 'fixed' | 'free' | 'bogo' | 'custom';
   label: string;
@@ -194,8 +203,8 @@ export function promoDefaults(initial?: Coupon | null): PromoFormValues {
       scope_values: [],
       start_date: localDatetime(0),
       expiry_date: localDatetime(DEFAULT_EXPIRY_MS),
-      max_redemptions_global: '',
-      max_redemptions_per_user: '',
+      max_redemptions_global: DEFAULT_MAX_REDEMPTIONS_GLOBAL,
+      max_redemptions_per_user: DEFAULT_MAX_REDEMPTIONS_PER_USER,
     };
   }
 

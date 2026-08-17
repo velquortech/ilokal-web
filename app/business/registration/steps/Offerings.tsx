@@ -196,8 +196,10 @@ export function ShopOfferings() {
       ? errors.offerings.message
       : null;
 
+  // gap-6: the wizard's 24px rhythm — the alert and the add-row sit as far
+  // apart as field groups on the other steps.
   return (
-    <div className="flex flex-1 flex-col gap-7">
+    <div className="flex flex-1 flex-col gap-6">
       <Alert>
         <ListPlus />
         <AlertTitle>Your {vocabulary.catalogue.toLowerCase()}</AlertTitle>
@@ -210,8 +212,11 @@ export function ShopOfferings() {
 
       {/* Add row. Kept above the list so it does not walk down the screen as
           items accumulate — on a phone that turns into a scroll per item. */}
-      <div className="space-y-4 rounded-lg border p-5">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-[2fr_1fr]">
+      {/* space-y-6 / gap-6: the wizard's 24px field rhythm — name, price,
+          on-request, photo and the add button are all fields, so they sit as
+          far apart as fields do anywhere else in the wizard. */}
+      <div className="space-y-6 rounded-lg border p-5">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-[2fr_1fr]">
           <div className="space-y-2">
             <Label htmlFor="offering-name">{vocabulary.singular} name</Label>
             <Input

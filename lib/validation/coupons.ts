@@ -68,7 +68,7 @@ export const createCouponSchema = z
   .object({
     promotion_type: promotionTypeSchema.default('coupon'),
     status: couponStatusSchema.default('draft'),
-    code: z.string().min(1).max(50).toUpperCase(),
+    code: z.string().trim().min(1).max(50).toUpperCase(),
     description: z.string().optional(),
     discount: discountValueSchema,
     usage_scope: usageScopeSchema,
@@ -92,7 +92,7 @@ export const updateCouponSchema = z
   .object({
     promotion_type: promotionTypeSchema.optional(),
     status: couponStatusSchema.optional(),
-    code: z.string().min(1).max(50).toUpperCase().optional(),
+    code: z.string().trim().min(1).max(50).toUpperCase().optional(),
     description: z.string().optional(),
     discount: discountValueSchema.optional(),
     usage_scope: usageScopeSchema.optional(),

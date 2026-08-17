@@ -34,6 +34,8 @@ import {
   promoDefaults,
   templateChanges,
   flatDiscountLabel,
+  DEFAULT_MAX_REDEMPTIONS_GLOBAL,
+  DEFAULT_MAX_REDEMPTIONS_PER_USER,
 } from './promo-templates';
 import {
   promoFormSchema,
@@ -41,6 +43,8 @@ import {
   type PromoTemplateId,
 } from '@/lib/validation/promoForm';
 import type { Coupon, ProductResponse } from '@/lib/types';
+import { useBusinessShop } from '@/providers/BusinessProvider';
+import { useFormDraft } from '@/hooks/useFormDraft';
 
 interface PromoFormDialogProps {
   /** The element that opens the dialog (button, menu item, …). */
@@ -70,6 +74,7 @@ export function PromoFormDialog({
   onSubmit,
   onSuccess,
 }: PromoFormDialogProps) {
+  const { business } = useBusinessShop();
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
@@ -78,6 +83,13 @@ export function PromoFormDialog({
   // auto code while a code the owner typed themselves is never clobbered.
   const lastSuggested = React.useRef('');
 
+  // The whole form instance is kept so `useFormDraft` can subscribe to it —
+  // a destructure-only read would leave `form` undefined and crash on mount.
+  const form = useForm<PromoFormValues>({
+    resolver: zodResolver(promoFormSchema),
+    mode: 'onChange',
+    defaultValues: promoDefaults(initial),
+  });
   const {
     register,
     handleSubmit,
@@ -87,24 +99,65 @@ export function PromoFormDialog({
     trigger,
     watch,
     formState: { errors },
-  } = useForm<PromoFormValues>({
-    resolver: zodResolver(promoFormSchema),
-    mode: 'onChange',
-    defaultValues: promoDefaults(initial),
-  });
+  } = form;
 
   const values = watch();
 
+  // ── Draft persistence (create mode only) ─────────────────────────────────
+  // The form is long, and closing it mid-way loses the promo being built. In
+  // CREATE mode the serializable values are kept in localStorage per business,
+  // debounced, and merged back over the defaults on the next open. Discarded
+  // on a successful create, and never applied in EDIT mode — a row's own
+  // values are the source of truth there, and a stale draft must not clobber
+  // them. Dates ride WITH the draft (the owner may have set them); a pristine
+  // form is considered empty, so untouched defaults never get persisted.
+  const draftKey = business?.id ? `ilokal-promo-draft:${business.id}` : '';
+  const { readDraft, clearDraft } = useFormDraft<
+    PromoFormValues,
+    PromoFormValues
+  >({
+    form,
+    key: draftKey,
+    enabled: !initial && !!business?.id,
+    pick: (v) => v,
+    isEmpty: (p) =>
+      !p.code &&
+      !p.description &&
+      p.discount_value == null &&
+      p.bogo_buy == null &&
+      p.bogo_get == null &&
+      (!p.scope_values || p.scope_values.length === 0) &&
+      // The caps now default to 100 / 3 (like the dates), so "still at the
+      // defaults" counts as untouched — a pristine form must not write a
+      // draft. Clearing a cap to '' (Unlimited) is equally pristine.
+      (!p.max_redemptions_global ||
+        p.max_redemptions_global === DEFAULT_MAX_REDEMPTIONS_GLOBAL) &&
+      (!p.max_redemptions_per_user ||
+        p.max_redemptions_per_user === DEFAULT_MAX_REDEMPTIONS_PER_USER),
+  });
+
   // Re-seed from `initial` every time the dialog opens: an edit dialog reused
-  // across rows must prefill row B when the owner opens it after row A.
+  // across rows must prefill row B when the owner opens it after row A. In
+  // create mode the stored draft rides on top of the defaults.
   React.useEffect(() => {
     if (open) {
-      reset(promoDefaults(initial));
+      reset(
+        {
+          ...promoDefaults(initial),
+          ...(initial ? {} : (readDraft() ?? {})),
+        },
+        // keepDefaultValues: the draft is CURRENT values, not the form's
+        // defaults. Without this, RHF's reset(values) rewrites
+        // `_defaultValues` to the draft, so a later reset() in the submit
+        // path (or any future no-arg reset) would restore the draft instead
+        // of the defaults.
+        { keepDefaultValues: true },
+      );
       setImage(null);
       setServerError(null);
       lastSuggested.current = '';
     }
-  }, [open, initial, reset]);
+  }, [open, initial, reset, readDraft]);
 
   const applyTemplate = (id: PromoTemplateId) => {
     const tpl = getPromoTemplate(id);
@@ -133,8 +186,11 @@ export function PromoFormDialog({
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
+    // No reset on close: the draft autosave already holds the values, and the
+    // open effect re-seeds them — closing mid-form must not lose the work (a
+    // reset here would also make the autosave overwrite the stored draft with
+    // defaults). `setImage(null)` stays: the picked file is not in the draft.
     if (!next) {
-      reset(promoDefaults(initial));
       setImage(null);
       setServerError(null);
       lastSuggested.current = '';
@@ -150,6 +206,9 @@ export function PromoFormDialog({
         setServerError(result.message ?? 'Something went wrong');
         return;
       }
+      // The draft's job is done: the promo was created. (No-op in edit mode,
+      // where drafts are never written.)
+      clearDraft();
       setOpen(false);
       reset(promoDefaults(initial));
       setImage(null);
@@ -412,7 +471,11 @@ export function PromoFormDialog({
                 </Field>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              {/* items-end: the two labels wrap to different line counts at
+                  phone widths, so without it the inputs sit at different
+                  heights — the left one floats above the right. Bottom-aligning
+                  the cells keeps the pair level whatever the label does. */}
+              <div className="grid grid-cols-2 items-end gap-4">
                 <Field>
                   <FieldLabel>Max Total Uses (Optional)</FieldLabel>
                   <Input

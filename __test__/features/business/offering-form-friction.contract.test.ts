@@ -114,11 +114,19 @@ describe('save and add another', () => {
 
   it('carries the repeated choices to the next item', () => {
     // A menu is many items in one category and section. Re-picking them per
-    // item is the tax the button exists to remove.
-    const reset = source.match(/reset\(\{[\s\S]*?\}\);/)?.[0] ?? '';
-    expect(reset).toMatch(/category_id: data\.category_id/);
-    expect(reset).toMatch(/section_id: data\.section_id/);
-    expect(reset).toMatch(/price_type: data\.price_type/);
+    // item is the tax the button exists to remove. Anchored on the add-another
+    // reset specifically — the restore-from-draft effect calls `reset({ ... })`
+    // too, and the submit payload also writes `category_id: data.category_id`
+    // (`?? null`), so a bare first-match sweep reads the wrong block. The
+    // unique signature: `category_id:` immediately after `...emptyForm,` (the
+    // restore spreads `...draft` there).
+    const addAnotherReset =
+      source.match(
+        /reset\(\{\s*\.\.\.emptyForm,\s*category_id: data\.category_id,[\s\S]*?\}\);/,
+      )?.[0] ?? '';
+    expect(addAnotherReset).toMatch(/section_id: data\.section_id/);
+    expect(addAnotherReset).toMatch(/price_type: data\.price_type/);
+    expect(addAnotherReset).toMatch(/kind: data\.kind/);
   });
 
   it('spreads emptyForm first so the service attributes survive the reset', () => {

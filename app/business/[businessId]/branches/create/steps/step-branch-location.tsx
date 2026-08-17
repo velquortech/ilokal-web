@@ -78,7 +78,9 @@ export function StepBranchLocation() {
         )}
       />
 
-      <div className="space-y-4">
+      {/* space-y-6: the wizard's 24px field rhythm — this heading + pin
+          summary must sit as far apart as every other field group. */}
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-medium">Exact Coordinates</h3>
@@ -110,7 +112,11 @@ export function StepBranchLocation() {
             values below just confirm what got set. */}
         {latitude != null && longitude != null ? (
           <p className="bg-muted text-muted-foreground rounded-md px-3 py-2 text-sm">
-            Pin set: {latitude.toFixed(4)}, {longitude.toFixed(4)}
+            {/* 6 decimals, not 4: the pin is stored to 6 (the map's dragend
+                rounds to 1e-6), and at zoom 16+ a single pixel is ~2e-5
+                degrees — a small drag under 4 decimals displays as
+                "unchanged" while the pin actually moved. */}
+            Pin set: {latitude.toFixed(6)}, {longitude.toFixed(6)}
           </p>
         ) : (
           <p className="text-muted-foreground text-sm">
@@ -119,10 +125,9 @@ export function StepBranchLocation() {
         )}
       </div>
 
-      <div
-        className="hidden overflow-hidden rounded-md md:block"
-        style={{ minHeight: '320px' }}
-      >
+      {/* Shown at every width — hidden on mobile meant phones could only
+          set a pin via "Use My Location", never by tapping the map. */}
+      <div className="h-72 overflow-hidden rounded-md md:h-auto md:min-h-[320px]">
         <LocationPicker
           latitude={latitude}
           longitude={longitude}

@@ -59,8 +59,14 @@ export default function RootLayout({
      * predated the token system and painted the html element a colour the app
      * no longer uses. `body` carries `bg-background` instead, so the overscroll
      * area matches Porcelain / Charcoal.
+     *
+     * `dir="ltr"` is pinned, not left to the browser: `lang="en"` does NOT
+     * force a direction, so on a device whose system language is RTL (Arabic,
+     * Hebrew, Urdu...) the whole document — including every form input —
+     * renders right-to-left, and typing Latin text displays reversed. This
+     * app is English-only Latin script, so LTR is always correct.
      */
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" dir="ltr" suppressHydrationWarning>
       <body className={`${fontVariables} bg-background antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}

@@ -108,6 +108,18 @@ describe('the event form pins on a map rather than asking for numbers', () => {
   });
 });
 
+describe('the pin itself cannot be re-placed by a tap', () => {
+  it('the map ignores clicks that land on the marker', () => {
+    // Markers bubble mouse events to the map, so clicking the icon re-pins at
+    // the icon's CENTRE (~20px north of the point) unless the handler filters
+    // it out — and a sub-threshold drag that resolves as a click is how the
+    // pin "jumps" on grab. A real drag suppresses the click, so the guard
+    // only ever eats taps on the pin itself.
+    const source = read(SHARED);
+    expect(source).toContain("closest?.('.leaflet-marker-icon");
+  });
+});
+
 describe('leaflet is contained in its own stacking context', () => {
   // Leaflet hardcodes `z-index: 400` on its panes and `1000` on its control
   // corners. Both outrank the sticky public header (`z-50`) and a Radix

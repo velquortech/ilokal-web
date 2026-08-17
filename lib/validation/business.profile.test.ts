@@ -35,6 +35,22 @@ describe('updateBusinessProfileSchema', () => {
       const result = updateBusinessProfileSchema.safeParse({});
       expect(result.success).toBe(false);
     });
+
+    it('rejects a whitespace-only shop_name (trim before min)', () => {
+      const result = updateBusinessProfileSchema.safeParse({
+        shop_name: '   ',
+      });
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0].message).toMatch(/at least 2/);
+    });
+
+    it('trims surrounding whitespace from a valid shop_name', () => {
+      const result = updateBusinessProfileSchema.safeParse({
+        shop_name: '  My Cafe  ',
+      });
+      expect(result.success).toBe(true);
+      if (result.success) expect(result.data.shop_name).toBe('My Cafe');
+    });
   });
 
   // ===== description =====

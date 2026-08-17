@@ -30,7 +30,11 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html lang="en">
+    // Same `dir="ltr"` as the root layout: this document replaces the root
+    // layout's entirely, so it cannot inherit it — and on an RTL-configured
+    // device an undirected <html> would flip this error page (and any text
+    // it contains) right-to-left.
+    <html lang="en" dir="ltr">
       <body
         style={{
           margin: 0,

@@ -99,6 +99,12 @@ describe('buildPromoRequest', () => {
     expect(req.scope_values).toBeUndefined();
     expect(req.max_redemptions_global).toBeUndefined();
   });
+
+  it('sends the default caps as real numbers', () => {
+    const req = buildPromoRequest(promoDefaults(null));
+    expect(req.max_redemptions_global).toBe(100);
+    expect(req.max_redemptions_per_user).toBe(3);
+  });
 });
 
 describe('templateForDiscount', () => {
@@ -172,6 +178,12 @@ describe('promoDefaults', () => {
     expect(new Date(d.expiry_date) > new Date(d.start_date)).toBe(true);
   });
 
+  it('defaults redemption caps for a new promo — 100 total, 3 per customer', () => {
+    const d = promoDefaults(null);
+    expect(d.max_redemptions_global).toBe('100');
+    expect(d.max_redemptions_per_user).toBe('3');
+  });
+
   it('reads and writes dates as Manila, never the device zone', () => {
     // 2026-08-14T00:00Z is 08:00 in Manila — the prefill must show 08:00
     // wherever this test machine sits, and saving it must land back on the
@@ -219,6 +231,28 @@ describe('promoDefaults', () => {
     expect(d.template).toBe('bogo');
     expect(d.promotion_type).toBe('deal');
     expect(d.status).toBe('published');
+    // A coupon with NO caps prefills empty — unlimited is the row's truth,
+    // and the fresh-form defaults must never leak into edit mode.
+    expect(d.max_redemptions_global).toBe('');
+    expect(d.max_redemptions_per_user).toBe('');
+  });
+
+  it('prefills a capped coupon for edit with its real values', () => {
+    const coupon = {
+      promotion_type: 'coupon',
+      status: 'draft',
+      code: 'CAPPED',
+      discount: null,
+      usage_scope: 'any',
+      start_date: '2026-08-14T00:00:00.000Z',
+      expiry_date: '2026-09-14T00:00:00.000Z',
+      max_redemptions_global: 50,
+      max_redemptions_per_user: 2,
+    } as unknown as Coupon;
+
+    const d = promoDefaults(coupon);
+    expect(d.max_redemptions_global).toBe('50');
+    expect(d.max_redemptions_per_user).toBe('2');
   });
 });
 

@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ImageIcon, Loader2, Plus, Upload, X } from 'lucide-react';
 import { SafeImage } from '@/components/custom/SafeImage';
+import { LocationField } from '@/components/custom/map/LocationField';
 import { toast } from 'sonner';
 import { updateBranchSchema } from '@/lib/validation/branches';
 import {
@@ -70,11 +71,33 @@ export function EditBranchDialog({
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<UpdateBranchRequest>({
     resolver: zodResolver(updateBranchSchema),
     defaultValues,
   });
+
+  // The map drives the coordinates as strings (a half-typed "10." is not a
+  // number); convert back to numbers for the schema on the way in.
+  const latitude = watch('latitude');
+  const longitude = watch('longitude');
+  const handleLocationChange = React.useCallback(
+    (next: { latitude: string; longitude: string }) => {
+      setValue(
+        'latitude',
+        next.latitude === '' ? undefined : parseFloat(next.latitude),
+        { shouldValidate: true },
+      );
+      setValue(
+        'longitude',
+        next.longitude === '' ? undefined : parseFloat(next.longitude),
+        { shouldValidate: true },
+      );
+    },
+    [setValue],
+  );
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = e.target.files?.[0];
@@ -242,38 +265,23 @@ export function EditBranchDialog({
               )}
             </Field>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field>
-                <FieldLabel>Latitude (Optional)</FieldLabel>
-                <Input
-                  type="number"
-                  step="any"
-                  placeholder="e.g. 10.7312"
-                  {...register('latitude', {
-                    setValueAs: (v) =>
-                      v === '' || v === undefined ? undefined : parseFloat(v),
-                  })}
-                />
-                {errors.latitude && (
-                  <FieldError>{errors.latitude.message}</FieldError>
-                )}
-              </Field>
-              <Field>
-                <FieldLabel>Longitude (Optional)</FieldLabel>
-                <Input
-                  type="number"
-                  step="any"
-                  placeholder="e.g. 122.5649"
-                  {...register('longitude', {
-                    setValueAs: (v) =>
-                      v === '' || v === undefined ? undefined : parseFloat(v),
-                  })}
-                />
-                {errors.longitude && (
-                  <FieldError>{errors.longitude.message}</FieldError>
-                )}
-              </Field>
-            </div>
+            {/* A map, not two bare numbers: nobody knows their own
+                coordinates, and the create wizard pins on a map — editing a
+                branch should too (shared LocationField, same as the event
+                form). `scrollWheelZoom={false}` because this sits in a
+                scrolling dialog body. */}
+            <LocationField
+              latitude={latitude == null ? '' : String(latitude)}
+              longitude={longitude == null ? '' : String(longitude)}
+              onChange={handleLocationChange}
+              scrollWheelZoom={false}
+              height={240}
+            />
+            {(errors.latitude || errors.longitude) && (
+              <FieldError>
+                {errors.latitude?.message ?? errors.longitude?.message}
+              </FieldError>
+            )}
 
             {/* Cover Image */}
             <div className="space-y-2">

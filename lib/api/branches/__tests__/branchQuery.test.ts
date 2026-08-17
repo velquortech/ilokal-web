@@ -47,6 +47,18 @@ const mockBranch = {
   archived_at: null,
 };
 
+/**
+ * PostgREST serializes the PostGIS `geography` column as EWKB hex. This is a
+ * real value captured from the local stack — decodes to lng 122.5732,
+ * lat 10.6969 (the branch walk's geolocation pin).
+ */
+const WKB_HEX = '0101000020E61000004D840D4FAFA45E40302AA913D0642540';
+
+const wkbBranch = {
+  ...mockBranch,
+  location: WKB_HEX,
+};
+
 describe('branchQuery', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -149,6 +161,23 @@ describe('branchQuery', () => {
       expect(result.branches).toHaveLength(0);
       expect(result.error).toBeDefined();
     });
+
+    it('decodes WKB hex location into GeoJSON coordinates', async () => {
+      const chain = makeChain([wkbBranch], 1);
+      mockClient(chain);
+      const result = await getBranchesPaginated({ page: 1, per_page: 20 });
+      expect(result.branches[0].location).toEqual({
+        type: 'Point',
+        coordinates: [122.5732, 10.6969],
+      });
+    });
+
+    it('turns an unparseable location into null instead of crashing', async () => {
+      const chain = makeChain([{ ...mockBranch, location: 'not-hex' }], 1);
+      mockClient(chain);
+      const result = await getBranchesPaginated({ page: 1, per_page: 20 });
+      expect(result.branches[0].location).toBeNull();
+    });
   });
 
   // ===== getBranchById =====
@@ -175,6 +204,16 @@ describe('branchQuery', () => {
       mockClient(chain);
       await getBranchById('branch-1');
       expect(chain.is).toHaveBeenCalledWith('archived_at', null);
+    });
+
+    it('decodes WKB hex location on a single branch read', async () => {
+      const chain = makeChain(wkbBranch);
+      mockClient(chain);
+      const result = await getBranchById('branch-1');
+      expect(result.branch?.location).toEqual({
+        type: 'Point',
+        coordinates: [122.5732, 10.6969],
+      });
     });
   });
 
@@ -291,6 +330,17 @@ describe('branchQuery', () => {
       const result = await getBranchesByBusinessId('biz-1', { status: 'all' });
       expect(result.branches).toHaveLength(0);
       expect(result.error).toBeDefined();
+    });
+
+    it('decodes WKB hex location for every branch of a business', async () => {
+      const chain = makeChain([wkbBranch, mockBranch], 2);
+      mockClient(chain);
+      const result = await getBranchesByBusinessId('biz-1', { status: 'all' });
+      expect(result.branches[0].location).toEqual({
+        type: 'Point',
+        coordinates: [122.5732, 10.6969],
+      });
+      expect(result.branches[1].location).toBeNull();
     });
   });
 

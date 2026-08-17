@@ -22,6 +22,7 @@ import {
 } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { LocationSearch } from './LocationSearch';
 
 /**
  * Iloilo City Proper. A world map at zoom 2 asks the user to find their own
@@ -66,6 +67,17 @@ function ClickHandler({
 }) {
   useMapEvents({
     click: (e) => {
+      // A click that landed ON the pin is a grab, not a re-pin. Markers bubble
+      // mouse events to the map, so without this guard a tap on the icon (or a
+      // sub-threshold drag that resolves as a click) re-places the pin at the
+      // icon's CENTRE — ~20px north of the point it points at, 2-4m at the
+      // zooms these maps use — which is how the pin seemed to "jump" the
+      // moment you grabbed it. Leaflet suppresses the click after a real
+      // drag, so this only ever eats genuine taps on the pin itself.
+      const target = e.originalEvent?.target as HTMLElement | null;
+      if (target?.closest?.('.leaflet-marker-icon, .leaflet-marker-shadow')) {
+        return;
+      }
       const { lat, lng } = e.latlng;
       onLocationSelect(parseFloat(lat.toFixed(6)), parseFloat(lng.toFixed(6)));
     },
@@ -139,53 +151,62 @@ export function LocationPicker({
     // context here those numbers compete with the whole page, so the map paints
     // over the nav. Contained on the shared component rather than at each of the
     // four call sites, which is also why the hint badge below keeps its
-    // `z-[1000]`: it now competes with the tiles, nothing else.
-    <div className="location-picker relative isolate z-0 h-full w-full">
+    // `z-[1000]`: it now competes with the tiles, nothing else. The map wrapper
+    // carries its own `z-0` so the search dropdown (`z-[1000]`) always renders
+    // above leaflet's panes.
+    <div className="location-picker relative isolate z-0 flex h-full w-full flex-col gap-2">
       <style>
         {
           '.location-picker .leaflet-container { cursor: crosshair !important; }'
         }
       </style>
 
-      <MapContainer
-        center={hasPin ? [latitude, longitude] : DEFAULT_CENTER}
-        zoom={hasPin ? 16 : 13}
-        scrollWheelZoom={scrollWheelZoom}
-        style={{ height: '100%', width: '100%' }}
-        className="rounded-md"
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <ClickHandler onLocationSelect={onLocationSelect} />
-        <MapSyncer latitude={latitude} longitude={longitude} />
-        <InvalidateOnResize />
-        {hasPin && (
-          <Marker
-            position={[latitude, longitude]}
-            icon={pinIcon}
-            draggable
-            eventHandlers={{
-              dragend: (e) => {
-                const { lat, lng } = (e.target as L.Marker).getLatLng();
-                onLocationSelect(
-                  parseFloat(lat.toFixed(6)),
-                  parseFloat(lng.toFixed(6)),
-                );
-              },
-            }}
-          />
-        )}
-      </MapContainer>
+      {/* Type a place name instead of panning and tapping — the box sits
+          above the map so a phone keyboard never covers it. Picking a result
+          goes through the same `onLocationSelect` as a tap. */}
+      <LocationSearch onSelect={onLocationSelect} />
 
-      {!hasPin && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-4 z-[1000] flex justify-center">
-          <span className="rounded-full bg-black/60 px-3 py-1.5 text-xs text-white">
-            Click anywhere to pin your location
-          </span>
-        </div>
-      )}
+      <div className="relative z-0 min-h-0 flex-1">
+        <MapContainer
+          center={hasPin ? [latitude, longitude] : DEFAULT_CENTER}
+          zoom={hasPin ? 16 : 13}
+          scrollWheelZoom={scrollWheelZoom}
+          style={{ height: '100%', width: '100%' }}
+          className="rounded-md"
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <ClickHandler onLocationSelect={onLocationSelect} />
+          <MapSyncer latitude={latitude} longitude={longitude} />
+          <InvalidateOnResize />
+          {hasPin && (
+            <Marker
+              position={[latitude, longitude]}
+              icon={pinIcon}
+              draggable
+              eventHandlers={{
+                dragend: (e) => {
+                  const { lat, lng } = (e.target as L.Marker).getLatLng();
+                  onLocationSelect(
+                    parseFloat(lat.toFixed(6)),
+                    parseFloat(lng.toFixed(6)),
+                  );
+                },
+              }}
+            />
+          )}
+        </MapContainer>
+
+        {!hasPin && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-4 z-[1000] flex justify-center">
+            <span className="rounded-full bg-black/60 px-3 py-1.5 text-xs text-white">
+              Click anywhere to pin your location
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

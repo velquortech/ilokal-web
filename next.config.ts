@@ -276,7 +276,7 @@ const nextConfig: NextConfig = {
                 style-src 'self' 'unsafe-inline';
                 img-src ${buildCSPImageSources()} https://i.ytimg.com https://*.tile.openstreetmap.org;
                 frame-src 'self' https://www.google.com https://www.youtube.com https://youtube.com;
-                connect-src 'self' https://maps.googleapis.com http://127.0.0.1:54321 ${process.env.NEXT_PUBLIC_SUPABASE_URL || ''};
+                connect-src 'self' https://maps.googleapis.com https://nominatim.openstreetmap.org http://127.0.0.1:54321 ${process.env.NEXT_PUBLIC_SUPABASE_URL || ''};
                 font-src 'self' data:;
               `
               .replace(/\s{2,}/g, ' ')

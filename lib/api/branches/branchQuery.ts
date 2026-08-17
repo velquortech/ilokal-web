@@ -7,6 +7,73 @@ import { createServerSupabaseClient } from '@/supabase/server';
 import type { Branch, BranchResponse, BranchFilters } from '@/lib/types';
 import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
+/**
+ * Decode a PostGIS EWKB hex POINT (the shape PostgREST returns for a
+ * `geography` column) into longitude/latitude.
+ *
+ * Layout of the 25-byte little-endian value: 1 byte endianness, 4 bytes type
+ * (bit 0x20000000 = SRID present), 4 bytes SRID, then two float64s — lng
+ * first, then lat. Events hit the same wall and solved it with generated
+ * columns (20260802034107: "PostgREST returns a geography column as WKB hex");
+ * branches decode it publicly in `business_branches` SQL (20260602000000) but
+ * the owner-side reads below never did — so `location` arrived as a hex
+ * string, `.coordinates` was undefined, and every owner surface that read it
+ * crashed (detail page, desktop table) or silently prefilled empty (edit
+ * dialog).
+ */
+function parseWkbPointHex(hex: string): { lng: number; lat: number } | null {
+  if (hex.length < 50) return null;
+  const bytes = new Uint8Array(25);
+  for (let i = 0; i < 25; i++) {
+    const byte = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+    if (Number.isNaN(byte)) return null;
+    bytes[i] = byte;
+  }
+  const little = bytes[0] === 1;
+  const readUint32 = (off: number) =>
+    little
+      ? bytes[off] |
+        (bytes[off + 1] << 8) |
+        (bytes[off + 2] << 16) |
+        (bytes[off + 3] << 24)
+      : (bytes[off] << 24) |
+        (bytes[off + 1] << 16) |
+        (bytes[off + 2] << 8) |
+        bytes[off + 3];
+  // Mask off the SRID-present flag; anything that is not a bare POINT is not
+  // a branch pin.
+  if ((readUint32(1) & 0x1fffffff) !== 1) return null;
+  const view = new DataView(bytes.buffer);
+  const lng = view.getFloat64(9, little);
+  const lat = view.getFloat64(17, little);
+  if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null;
+  return { lng, lat };
+}
+
+/**
+ * Bring a raw `location` column into the `Branch` contract.
+ *
+ * PostgREST hands back the geography column as EWKB hex; the type says
+ * GeoJSON `{ type: 'Point', coordinates: [lng, lat] }`. Unparseable values
+ * become `null` — the same thing as "no pin", which is what every consumer
+ * already renders.
+ */
+function normaliseLocation(raw: unknown): Branch['location'] {
+  if (!raw) return null;
+  if (typeof raw === 'string') {
+    const point = parseWkbPointHex(raw);
+    return point
+      ? { type: 'Point', coordinates: [point.lng, point.lat] }
+      : null;
+  }
+  // Already GeoJSON — test fixtures and any future jsonb-backed rows.
+  return raw as Branch['location'];
+}
+
+function normaliseBranch(branch: Branch): Branch {
+  return { ...branch, location: normaliseLocation(branch.location) };
+}
+
 // ===== Branch Queries =====
 
 /**
@@ -62,7 +129,9 @@ export async function getBranchesPaginated(filters: BranchFilters) {
     }
 
     // Handle proximity filtering if latitude/longitude provided
-    let branches: BranchResponse[] = (data || []) as Branch[];
+    let branches: BranchResponse[] = ((data || []) as Branch[]).map(
+      normaliseBranch,
+    );
 
     if (latitude !== undefined && longitude !== undefined && radius_km) {
       branches = branches.filter((branch) => {
@@ -128,7 +197,7 @@ export async function getBranchById(id: string) {
       return { error: 'Branch not found' as const };
     }
 
-    return { branch: data as Branch };
+    return { branch: normaliseBranch(data as Branch) };
   } catch (err) {
     console.error('[getBranchById]', formatErrorForLog(err));
     return { error: 'Failed to fetch branch' as const };
@@ -197,7 +266,7 @@ export async function getBranchesByBusinessId(
     }
 
     return {
-      branches: (data || []) as Branch[],
+      branches: ((data || []) as Branch[]).map(normaliseBranch),
       total: count || 0,
       page,
       per_page,

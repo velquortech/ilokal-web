@@ -300,8 +300,9 @@ function Location() {
 
           {/* COORDINATES — read-only by design. Owners should never type
               coordinates; the map pin + "Use My Location" are the only ways
-              to set them, and the values below just confirm what got set. */}
-          <div className="space-y-4">
+              to set them, and the values below just confirm what got set.
+              space-y-6: the wizard's 24px rhythm, same as the branch step. */}
+          <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-medium">Exact Location</h3>
@@ -329,7 +330,11 @@ function Location() {
 
             {latitude != null && longitude != null ? (
               <p className="bg-muted text-muted-foreground rounded-md px-3 py-2 text-sm">
-                Pin set: {latitude.toFixed(4)}, {longitude.toFixed(4)}
+                {/* 6 decimals, not 4: the pin is stored to 6 (the map's
+                    dragend rounds to 1e-6), and at zoom 16+ a single pixel is
+                    ~2e-5 degrees — a small drag under 4 decimals displays as
+                    "unchanged" while the pin actually moved. */}
+                Pin set: {latitude.toFixed(6)}, {longitude.toFixed(6)}
               </p>
             ) : (
               <p className="text-muted-foreground text-sm">
@@ -345,11 +350,12 @@ function Location() {
           </div>
         </div>
 
-        {/* INTERACTIVE MAP — click to pin, drag to adjust */}
-        <div
-          className="hidden overflow-hidden rounded-md md:block"
-          style={{ minHeight: '400px' }}
-        >
+        {/* INTERACTIVE MAP — click to pin, drag to adjust. Shown at every
+            width: hidden on mobile meant phones could only set a pin via
+            "Use My Location", never by tapping the map. Mobile gets an
+            explicit height (h-72); on desktop the grid stretches it to the
+            form column's height with a 400px floor, as before. */}
+        <div className="h-72 overflow-hidden rounded-md md:h-auto md:min-h-[400px]">
           <LocationPicker
             latitude={latitude}
             longitude={longitude}
@@ -358,8 +364,8 @@ function Location() {
         </div>
       </div>
 
-      {/* NOTE */}
-      <div className="mt-5 rounded-md border border-amber-200 bg-amber-50 p-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-50">
+      {/* NOTE — mt-6: the wizard's 24px rhythm below the map. */}
+      <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 p-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-50">
         <p className="text-sm">
           <strong>Note:</strong> This address will be used for verification
           purposes and may be displayed to customers. Please ensure it&apos;s

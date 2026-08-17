@@ -47,7 +47,15 @@ export default function BusinessLayout({
       <CelebrateProvider>
         <OfferingVocabularyProvider vocabulary={vocabulary}>
           <BusinessShopProvider businessShop={shop} branches={branches}>
-            <div className="bg-background flex h-screen overflow-hidden">
+            {/* `h-dvh`, not `h-screen`: 100vh is taller than the visible
+                viewport on a phone while the browser URL bar is showing, so
+                with the shell's `overflow-hidden` the bottom of the app (e.g.
+                the branch wizard's Back/Next bar) sits behind the browser
+                chrome — unreachable on browsers whose URL bar never collapses
+                (embedded webviews). dvh tracks the dynamic viewport instead;
+                identical to vh on desktop. Same migration the registration
+                wizard's own layout made. */}
+            <div className="bg-background flex h-dvh overflow-hidden">
               <AIChatProvider>
                 <SidebarProvider
                   defaultOpen={sidebarDefaultOpen}

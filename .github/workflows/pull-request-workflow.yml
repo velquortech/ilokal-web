@@ -89,20 +89,37 @@ jobs:
       - name: Run integration tests
         run: yarn vitest run --reporter=verbose "integration.test"
 
+  # Probe job: job-level `if` conditions cannot read the `secrets` or `env`
+  # contexts (GitHub's parser rejects both), so surface whether live
+  # credentials exist as a job output that the gated job reads via `needs` —
+  # the only supported way to skip a job based on a secret's presence.
+  Pull-live-credentials:
+    runs-on: ubuntu-latest
+    outputs:
+      has_credentials: ${{ steps.check.outputs.has_credentials }}
+    steps:
+      - id: check
+        run: |
+          if [[ "${{ secrets.SUPABASE_DB_URL }}" != "" ]]; then
+            echo "has_credentials=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_credentials=false" >> "$GITHUB_OUTPUT"
+          fi
+
   # Pull-live regression check: runs pull-live.sh against a SCRATCH local
   # Supabase stack and asserts the verification block (see
-  # supabase/scripts/check-pull-live.sh). Needs live credentials as secrets;
-  # without them the job is SKIPPED (a visible skipped check), never a green
-  # pass — a green pass that never ran the script is exactly the silent
-  # regression this job exists to catch. Ubuntu runners have Docker + the
-  # Supabase CLI is installed below; the scratch stack uses offset ports
-  # (5532x) so nothing collides. The source-level contract test
+  # supabase/scripts/check-pull-live.sh). Without live credentials the job is
+  # SKIPPED (a visible skipped check, decided by the probe output above),
+  # never a green pass — a green pass that never ran the script is exactly
+  # the silent regression this job exists to catch. Ubuntu runners have
+  # Docker + the Supabase CLI is installed below; the scratch stack uses
+  # offset ports (5532x) so nothing collides. The source-level contract test
   # (__test__/config/pull-live-script.contract.test.ts) pins the script's
   # verification invariants so they cannot regress even when this job skips.
   Pull-live-check:
     runs-on: ubuntu-latest
-    needs: Setup
-    if: ${{ env.SUPABASE_DB_URL != '' }}
+    needs: [Setup, Pull-live-credentials]
+    if: ${{ needs.Pull-live-credentials.outputs.has_credentials == 'true' }}
     env:
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

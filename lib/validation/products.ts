@@ -103,7 +103,9 @@ function refineOfferingPricing(
 }
 
 const createProductShape = z.object({
-  name: z.string().min(1, 'Product name is required').max(255),
+  // Trim before min-length so whitespace-only names fail at the field. Same
+  // convention as the events schema.
+  name: z.string().trim().min(1, 'Product name is required').max(255),
   description: z.string().optional(),
   price: z.number().min(0, 'Price must be positive').nullable().optional(),
   sale_price: z.number().min(0).nullable().optional(),
@@ -204,7 +206,7 @@ export const applySaleSchema = z
 // ===== Category Schemas =====
 
 export const createCategorySchema = z.object({
-  name: z.string().min(1, 'Category name is required').max(255),
+  name: z.string().trim().min(1, 'Category name is required').max(255),
   slug: z.string().min(1, 'Category slug is required').max(255),
   description: z.string().optional(),
   // NULL = either kind (the fail-open default). `nullable().optional()` lets

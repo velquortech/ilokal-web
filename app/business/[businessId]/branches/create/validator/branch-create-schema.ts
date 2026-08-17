@@ -1,23 +1,28 @@
 import { z } from 'zod';
 
 export const branchInfoSchema = z.object({
+  // Trim before min-length, so whitespace-only names fail at the field rather
+  // than surfacing as a generic server error. Same convention as events.
   name: z
     .string()
+    .trim()
     .min(1, 'Branch name is required')
     .max(255, 'Name must be 255 characters or fewer'),
-  phone: z.string().max(50).optional(),
+  phone: z.string().trim().max(50).optional(),
   email: z
     .string()
+    .trim()
     .email('Invalid email address')
     .max(255)
     .optional()
     .or(z.literal('')),
-  description: z.string().max(1000).optional(),
+  description: z.string().trim().max(1000).optional(),
 });
 
 export const branchLocationSchema = z.object({
   address: z
     .string()
+    .trim()
     .min(1, 'Address is required')
     .max(500, 'Address must be 500 characters or fewer'),
   latitude: z.number().min(-90).max(90).optional(),

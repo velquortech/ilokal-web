@@ -83,8 +83,11 @@ export const businessGallerySchema = z.object({
 export type BusinessGalleryInput = z.infer<typeof businessGallerySchema>;
 
 export const updateBusinessProfileSchema = z.object({
+  // Trim before min-length so whitespace-only names fail at the field. Same
+  // convention as the events schema.
   shop_name: z
     .string()
+    .trim()
     .min(2, 'Business name must be at least 2 characters')
     .max(255, 'Business name must not exceed 255 characters'),
   description: z
@@ -126,6 +129,7 @@ export type UpdateBusinessProfileInput = z.infer<
 export const createBusinessSchema = z.object({
   name: z
     .string()
+    .trim()
     .min(2, 'Business name must be at least 2 characters')
     .max(255, 'Business name must not exceed 255 characters'),
   description: z

@@ -14,18 +14,21 @@ export const branchStatusSchema = z.enum([
 ]);
 
 export const createBranchSchema = z.object({
-  name: z.string().min(1, 'Branch name is required').max(255),
-  address: z.string().min(1, 'Address is required').max(500),
+  // Trim before min-length: whitespace-only name/address must fail at the
+  // field, not as a generic server error. Same convention as the events schema.
+  name: z.string().trim().min(1, 'Branch name is required').max(255),
+  address: z.string().trim().min(1, 'Address is required').max(500),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
-  phone: z.string().max(50).optional(),
+  phone: z.string().trim().max(50).optional(),
   email: z
     .string()
+    .trim()
     .email('Invalid email address')
     .max(255)
     .optional()
     .or(z.literal('')),
-  description: z.string().max(1000).optional(),
+  description: z.string().trim().max(1000).optional(),
   status: branchStatusSchema.optional(),
   business_permit_url: z.string().url().optional(),
   other_document_url: z.string().url().optional(),

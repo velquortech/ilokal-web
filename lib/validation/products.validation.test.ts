@@ -90,6 +90,18 @@ describe('createProductSchema', () => {
     expect(() => createProductSchema.parse({ ...base, name: '' })).toThrow();
   });
 
+  it('rejects a whitespace-only name (trim before min)', () => {
+    expect(() => createProductSchema.parse({ ...base, name: '   ' })).toThrow();
+  });
+
+  it('trims surrounding whitespace from a valid name', () => {
+    const result = createProductSchema.parse({
+      ...base,
+      name: '  Flat White  ',
+    });
+    expect(result.name).toBe('Flat White');
+  });
+
   it('rejects negative price', () => {
     expect(() => createProductSchema.parse({ ...base, price: -1 })).toThrow();
   });

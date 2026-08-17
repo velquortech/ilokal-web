@@ -131,6 +131,17 @@ const buildCSPImageSources = (): string => {
 };
 
 const nextConfig: NextConfig = {
+  // The dev server 403s cross-origin dev resources (HMR websocket, dev fonts,
+  // overlay) unless the requesting host is in this allowlist — and the
+  // built-in defaults only cover localhost/*.localhost (see
+  // block-cross-site-dev.ts: allowedOrigins = ['*.localhost', 'localhost',
+  // ...allowedDevOrigins]). A browser hitting 127.0.0.1 — curl, headless
+  // testing, Freebuff's preview, a phone on the LAN — gets those requests
+  // blocked, and on this app that silently breaks hydration: forms submit
+  // natively as GETs and every onClick is dead. Dev-only; ignored outside
+  // development. This APPENDS to the localhost defaults, it does not replace
+  // them.
+  allowedDevOrigins: ['127.0.0.1'],
   // The welcome-post renderer reads brand fonts off disk at request time, and
   // builds the path dynamically (`assets/fonts/${base}.${ext}` across a list of
   // candidate cuts). Output file tracing works by static analysis, so it cannot

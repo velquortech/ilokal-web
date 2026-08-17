@@ -608,7 +608,7 @@ pushed on `feat/business-dashboard-ux-revamp`, held for PR.** Migration
    `reg_submitted` (with `with_deal` / `require_documents`). 3 action tests.
    Later phases extend the `OwnerEventName` union.
 
-**Browser verification (local DB, `okimistudios@gmail.com` — an owner with
+**Browser verification (local DB, `owner@example.com` — an owner with
 no business, so the wizard is reachable):** honest copy replaces the claims;
 no Latitude/Longitude inputs; "No pin set yet" + "Use My Location" present;
 all 6 preset chips; BOGO Buy/Get inputs; 10% off prefills value 10; category
@@ -670,7 +670,7 @@ migration — instrumentation reuses the Phase 2 `owner_events` table.
 funnel/segments/retention zero-state guidance; charts hidden by default;
 "See the full report" → all four charts + "Show less"; checklist Hide →
 `dash_checklist_dismiss`; expand → `dash_full_report_open` (1 row each, in
-`owner_events`). Part B on `gugmasalon@showcase.ilokal.dev` with the business
+`owner_events`). Part B on `owner2@example.com` with the business
 flipped to `pending` in the LOCAL DB (restored after): gate card copy, CTA
 href → `/business/:id/profile`, click lands on Profile with AccountStatusCard,
 and `dash_card_clicked` `{"card":"verification_gate"}` rows recorded.
@@ -743,7 +743,7 @@ md:w-8`); desktop stays compact. Verified: at 375px no horizontal scroll,
    customers." (the 6-step wizard already reuses the StepProgress visual
    language).
 
-**Browser verification (local DB, Gugma — `gugmasalon@showcase.ilokal.dev`):**
+**Browser verification (local DB, Gugma — `owner2@example.com`):**
 toolbar lede + all three links' hrefs (Edit profile, Add Service →
 `product-catalogues?add=1`, Manage gallery); at 375px the catalogue renders
 cards (product name, Active pill, kebab) with the table `display:none` and no

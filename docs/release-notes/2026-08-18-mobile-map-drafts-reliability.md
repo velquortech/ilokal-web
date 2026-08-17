@@ -1,7 +1,7 @@
 # Release — Mobile Map Pinning, Place Search & Form Drafts (2026-08-18)
 
-> Window: this session · 10 commits, 48 files, +2,537/−157
-> Commits `de4435a` → `245ff49` (not yet merged — pending push/PR to `main`).
+> Window: this session · 11 commits, 49 files, +2,645/−157
+> Commits `de4435a` → `b3e8550` — **merged to `main` via PR #61** ✅
 
 ## What's new — by surface
 

@@ -56,7 +56,10 @@ export function StepBranchInfo() {
         )}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {/* gap-6 to match the step's space-y-6 rhythm: when this grid stacks on
+          mobile the phone/email pair would otherwise sit 16px apart while
+          every other field in the step is 24px apart. */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <Controller
           name="phone"
           control={form.control}

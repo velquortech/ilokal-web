@@ -10,8 +10,10 @@ import { useBranchForm } from '../provider/branch-form-provider';
 import { compressImage, COMPRESSION_PRESETS } from '@/lib/utils/compressImage';
 
 export function StepBranchImages() {
+  // gap-6: the wizard's 24px rhythm — the upload sections and tips sit as
+  // far apart as field groups do on the other steps.
   return (
-    <div className="flex flex-1 flex-col gap-8">
+    <div className="flex flex-1 flex-col gap-6">
       <CoverImageUpload />
 
       <div className="bg-muted/50 border-border space-y-2 rounded-lg border p-4">
@@ -59,7 +61,9 @@ function CoverImageUpload() {
       control={form.control}
       render={({ fieldState }) => (
         <Field data-invalid={fieldState.invalid}>
-          <div className="flex flex-col gap-3">
+          {/* gap-6: 24px from the heading to the upload box, matching the
+              other steps' heading-to-field spacing. */}
+          <div className="flex flex-col gap-6">
             <h2 className="font-semibold">Cover Photo (Optional)</h2>
 
             <div
@@ -225,7 +229,9 @@ function GalleryImagesUpload() {
       control={form.control}
       render={({ fieldState }) => (
         <Field data-invalid={fieldState.invalid}>
-          <div className="flex flex-col gap-3">
+          {/* gap-6: 24px from the heading to the upload box, matching the
+              cover section's heading-to-field spacing. */}
+          <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold">Gallery Images (Optional)</h2>
               {galleryFiles.length > 0 && galleryFiles.length < 10 && (

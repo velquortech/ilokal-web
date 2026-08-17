@@ -110,8 +110,10 @@ export function ShopDeal() {
     );
   }
 
+  // gap-6: the wizard's 24px rhythm — the alert and the deal form sit as far
+  // apart as field groups on the other steps.
   return (
-    <div className="flex flex-1 flex-col gap-7">
+    <div className="flex flex-1 flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
         <Alert className="flex-1">
           <BadgePercent />
@@ -123,7 +125,10 @@ export function ShopDeal() {
         </Alert>
       </div>
 
-      <div className="space-y-4 rounded-lg border p-5">
+      {/* space-y-6: the wizard's 24px field rhythm — code, discount chips,
+          value, description, duration and publish are all fields, so they sit
+          as far apart as fields do anywhere else in the wizard. */}
+      <div className="space-y-6 rounded-lg border p-5">
         <div className="space-y-2">
           <Label htmlFor="deal-code">Code</Label>
           <Input

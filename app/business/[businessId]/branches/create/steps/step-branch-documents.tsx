@@ -20,8 +20,10 @@ import { MouseEvent, useRef } from 'react';
 import type { BranchCreateValues } from '../validator/branch-create-schema';
 
 export function StepBranchDocuments() {
+  // gap-6: the wizard's 24px rhythm — the alert and the two uploads sit as
+  // far apart as field groups on the other steps.
   return (
-    <div className="flex flex-1 flex-col gap-7">
+    <div className="flex flex-1 flex-col gap-6">
       <Alert className="border-amber-200 bg-amber-50 p-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-50">
         <AlertTriangleIcon />
         <AlertTitle>Branch Verification Documents</AlertTitle>
@@ -42,7 +44,7 @@ export function StepBranchDocuments() {
         icon={Layers}
       />
 
-      <div className="bg-muted/50 border-border mt-2 space-y-2 rounded-lg border p-5">
+      <div className="bg-muted/50 border-border space-y-2 rounded-lg border p-5">
         <p className="text-foreground text-sm font-medium">
           Document Guidelines:
         </p>

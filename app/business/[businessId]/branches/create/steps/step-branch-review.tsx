@@ -18,8 +18,10 @@ export function StepBranchReview() {
   const { form } = useBranchForm();
   const values = form.getValues();
 
+  // gap-6: the wizard's 24px rhythm — sections sit as far apart as field
+  // groups on the other steps.
   return (
-    <div className="flex flex-1 flex-col gap-5">
+    <div className="flex flex-1 flex-col gap-6">
       <p className="text-muted-foreground text-sm">
         Review your branch details before submitting. Once submitted, an admin
         will review your application within 24–48 hours.

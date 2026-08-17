@@ -17,8 +17,10 @@ import {
 } from '@/lib/utils/compressImage';
 
 export function ShopGallery() {
+  // space-y-6: the wizard's 24px rhythm — upload sections and the guideline
+  // boxes sit as far apart as field groups on the other steps.
   return (
-    <div className="flex flex-1 flex-col space-y-8">
+    <div className="flex flex-1 flex-col space-y-6">
       <ShopLogo />
       <div className="bg-muted/50 border-border space-y-2 rounded-lg border p-4">
         <p className="text-foreground text-sm font-medium">Logo Guidelines:</p>
@@ -81,7 +83,9 @@ function ShopLogo() {
       render={({ fieldState }) => (
         <Field data-invalid={fieldState.invalid}>
           <div className="h-max flex-col">
-            <h2 className="mb-4 font-semibold">Shop Logo</h2>
+            {/* mb-6: 24px from the heading to the upload box, matching the
+                other steps' heading-to-field spacing. */}
+            <h2 className="mb-6 font-semibold">Shop Logo</h2>
 
             <div
               className="border-border hover:border-primary hover:bg-muted/50 cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors sm:p-12"
@@ -215,7 +219,7 @@ function ShopBanner() {
       render={({ fieldState }) => (
         <Field data-invalid={fieldState.invalid}>
           <div className="h-max flex-col">
-            <h2 className="mb-4 font-semibold">Shop Banner</h2>
+            <h2 className="mb-6 font-semibold">Shop Banner</h2>
 
             <div
               className="border-border hover:border-primary hover:bg-muted/50 cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors sm:p-12"
@@ -359,8 +363,13 @@ function InteriorImageItem({
       <div className="relative">
         {/* object-cover, not contain: the shop gallery crops every interior to
             a cover (masonry / aspect-video grid), so a letterboxed preview
-            hides the crop the owner is approving. */}
-        <div className="bg-card border-border aspect-video h-64 overflow-hidden rounded-lg border-2">
+            hides the crop the owner is approving. The box is width-driven
+            (`w-full`, not a fixed `h-64`): a fixed 256px height + 16:9 ratio
+            resolves to a 455px-wide card that overflows a phone's column
+            (and any grid cell narrower than 455px), stretching the page
+            sideways. Full-width keeps the 16:9 crop truthful at every
+            breakpoint — one column on mobile, half the row at `sm+`. */}
+        <div className="bg-card border-border aspect-video w-full overflow-hidden rounded-lg border-2">
           <Image
             src={preview}
             alt={`Interior ${index + 1}`}
@@ -467,7 +476,7 @@ function InteriorImages() {
       render={({ fieldState }) => (
         <Field data-invalid={fieldState.invalid}>
           <div className="flex flex-1 flex-col">
-            <h2 className="mb-4 font-semibold">Interior Images</h2>
+            <h2 className="mb-6 font-semibold">Interior Images</h2>
 
             <div
               className={cn(

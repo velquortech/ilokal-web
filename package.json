@@ -23,8 +23,9 @@
     "check:pii": "node WORKFLOW/tools/checkPiiFiles.js",
     "analyze:usage": "node WORKFLOW/tools/analyzeServiceUsage.js",
     "ci:checks": "yarn lint --fix && yarn check:protected && yarn check:imports && yarn analyze:usage && yarn test:run",
-    "pre-push": "yarn lint && yarn check:protected && yarn check:imports && yarn check:pii && yarn test:run && yarn build",
-    "prepare": "husky"
+  "pre-push": "yarn lint && yarn check:protected && yarn check:imports && yarn check:pii && yarn test:run && yarn build",
+  "pre-commit": "yarn check:pii",
+  "prepare": "husky"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

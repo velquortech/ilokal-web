@@ -41,8 +41,11 @@ Notes:
 ## 2. Smoke test
 
 ```bash
-# a) CSP actually updated — the header must name the new source
-curl -sI http://localhost:3002/ | grep -i 'content-security-policy' \
+# a) CSP actually updated — the header must name the new source.
+#    NOTE: `curl -sI /` alone is a 308-redirect response whose headers carry
+#    NO CSP — always follow the redirect with -L, or hit a route that returns
+#    200 (e.g. /business/<id>). Otherwise this reports a false "STALE CSP".
+curl -sIL http://localhost:3002/ | grep -i 'content-security-policy' \
   | grep -o 'nominatim\.openstreetmap\.org' || echo 'STALE CSP — restart did not take'
 
 # b) App renders its own HTML

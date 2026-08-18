@@ -27,8 +27,11 @@ export type NotificationType =
  * NOT a complete mirror of the `notifications_type_check` CHECK: the four
  * `booking_*` types added in `20260727000005` are accepted by the database and
  * missing here, so a booking notification cannot be constructed through this
- * union even though the row is legal. Add them before anything on the web side
- * needs to read one.
+ * union even though the row is legal. That gap is now DELIBERATE and expected
+ * to stay — the booking feature was removed from the web app on 2026-08-17 and
+ * is not planned, so nothing emits or reads those types. The CHECK still
+ * accepts them because the schema was kept dormant on purpose; do not "fix"
+ * this by adding them back.
  */
 export const NOTIFICATION_TYPES = [
   'business_document_approved',

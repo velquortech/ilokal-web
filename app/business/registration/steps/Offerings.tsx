@@ -73,8 +73,10 @@ function OfferingThumbnail({ file, alt }: { file?: File; alt: string }) {
  *
  *  - No category select. It is optional there now, and here there is no reason
  *    to show a 9-to-20 option taxonomy before the shop exists.
- *  - No section, no service attributes, no booking mode. Those are refinements
- *    of a catalogue that exists; this step's whole job is that it exists.
+ *  - No section and no service attributes. Those are refinements of a catalogue
+ *    that exists; this step's whole job is that it exists. (Booking mode used to
+ *    be listed here too — the booking feature was removed on 2026-08-17 and is
+ *    not planned, so there is nothing to defer.)
  *
  * What is left is a name, a price and an optional photo, entered inline. The
  * photo cannot be uploaded here — the `product-images` bucket keys its INSERT

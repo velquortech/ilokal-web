@@ -11,6 +11,7 @@ import { createColumns } from './columns';
 import { MobileCouponCardList } from './mobile-coupon-card-list';
 import type { Coupon, ProductResponse } from '@/lib/types';
 import { formatOfferingPrice } from '@/lib/utils/formatOfferingPrice';
+import { SafeImage } from '@/components/custom/SafeImage';
 import { Package, Tag } from 'lucide-react';
 
 interface CouponsTableProps {
@@ -52,10 +53,14 @@ export function ExpandedProducts({
           className="bg-muted/50 border-border flex items-center gap-2.5 rounded-lg border px-3 py-2"
         >
           {product.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            // SafeImage: unoptimized storage WebP + broken-image fallback (a
+            // stored URL that resolves but no longer exists shows the muted
+            // placeholder instead of the browser's broken glyph).
+            <SafeImage
               src={product.image_url}
               alt={product.name}
+              width={32}
+              height={32}
               className="size-8 rounded-md object-cover"
             />
           ) : (

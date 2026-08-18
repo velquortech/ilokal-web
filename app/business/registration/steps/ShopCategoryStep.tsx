@@ -10,7 +10,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Check, ImageOff, List, LucideIcon, Search, X } from 'lucide-react';
-import Image from 'next/image';
+import { SafeImage } from '@/components/custom/SafeImage';
 import { useEffect, useRef, useState } from 'react';
 import { useMultiStepForm } from '../provider/registration-form-provider';
 import { useRecentCategories } from '../hooks/useRecentCategories';
@@ -496,9 +496,10 @@ function CategoryCard(item: {
             handled here rather than pretended away upstream. The placeholder
             reuses the vertical's icon — the same language the search dropdown
             already uses — so a missing photo reads as a category without a
-            picture, not as a broken tile. */}
+            picture, not as a broken tile. A URL that EXISTS but fails to load
+            swaps through SafeImage's own broken-image fallback. */}
         {item.imageURL ? (
-          <Image
+          <SafeImage
             alt={item.name}
             src={item.imageURL}
             width={1000}

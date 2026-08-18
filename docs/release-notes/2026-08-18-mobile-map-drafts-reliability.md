@@ -39,7 +39,9 @@
   typing.
 - **Forms no longer reject valid input with stray spaces** — values are trimmed
   before length checks across signup, branches, business, coupon, and product
-  forms (with tests).
+  forms (with tests), so a name typed with accidental padding saves clean —
+  and a name made of only spaces now fails at the field with a clear message
+  instead of a generic server error.
 - **Back / Next buttons can't submit the form** — wizard navigation is now
   explicit `type="button"`, so tapping Back no longer fires the form early.
 - **Consistent field spacing** — every wizard step and dialog body now keeps a
@@ -71,9 +73,10 @@
 > 🎟️ **Smarter promos** — new deals default to 100 redemptions / 3 per
 > customer instead of Unlimited, so you're never over-committing
 >
-> 🔧 **Fixes** — signup forms no longer type in reverse, valid inputs with
-> stray spaces are accepted, Back/Next buttons won't submit your form early,
-> and all forms now have consistent, comfortable spacing on mobile and desktop
+> 🔧 **Fixes** — signup forms no longer type in reverse, names with stray
+> spaces are accepted (and saved clean — spaces-only entries get a clear
+> error), Back/Next buttons won't submit your form early, and all forms now
+> have consistent, comfortable spacing on mobile and desktop
 >
 > Update and take a look! ✨
 
@@ -92,7 +95,8 @@
 > - New promos default to **100 redemptions / 3 per customer** instead of
 >   Unlimited.
 > - Fixed: reversed characters while typing in signup, forms rejecting valid
->   inputs with stray spaces, and Back/Next accidentally submitting the form.
+>   inputs with stray spaces (names now save trimmed; spaces-only entries get
+>   a clear field error), and Back/Next accidentally submitting the form.
 > - All wizard steps now share a consistent 24px field spacing on mobile and
 >   desktop.
 
@@ -103,6 +107,7 @@
 > • Add Item and Coupons & Deals forms keep your draft if the dialog is closed
 > • New promos default to 100 total redemptions / 3 per customer
 > • General fallback category added for every business type
-> • Fixed signup text reversing, space-only input rejection, and Back/Next
->   submitting forms early
+> • Fixed signup text reversing and space-only input rejection — names save
+>   trimmed, spaces-only entries get a clear error; Back/Next no longer
+>   submits forms early
 > • Consistent field spacing across all wizard steps on mobile and desktop

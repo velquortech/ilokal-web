@@ -52,7 +52,20 @@ export const OFFERING_MODES: readonly OfferingMode[] = [
  * - `timeslot`   — a duration against a provider (salon, clinic)
  * - `date_range` — whole days against unit stock (van rental, rooms)
  *
- * Phase 3 stores and displays this; phase 4's `booking_requests` acts on it.
+ * **Nothing acts on this today.** The booking feature was removed from the web
+ * app on 2026-08-17 and is not planned; no surface renders a booking CTA and
+ * there is no write path — `booking_mode` was dropped from the create/update
+ * schemas, so every offering created since then takes the DB default `'none'`.
+ *
+ * This type is kept ON PURPOSE: `products.booking_mode` still exists in the
+ * database (deliberately dormant, see CLAUDE.md "Schema state"), and it is the
+ * second axis of the offerings model — the thing that stops `kind` sprawling
+ * into `product | service | rental | room | tour`. Deleting the type while the
+ * column lives would leave the app unable to name its own schema. Drop both
+ * together, in one migration, or neither.
+ *
+ * The runtime mirror `BOOKING_MODES` was deleted on 2026-08-18 — it had zero
+ * consumers. Restore it beside a picker that needs it, not before.
  */
 export type BookingMode =
   | 'none'
@@ -60,14 +73,6 @@ export type BookingMode =
   | 'request'
   | 'timeslot'
   | 'date_range';
-
-export const BOOKING_MODES: readonly BookingMode[] = [
-  'none',
-  'inquiry',
-  'request',
-  'timeslot',
-  'date_range',
-] as const;
 
 /** Where the offering is delivered. */
 export type ServiceLocation = 'at_business' | 'at_customer' | 'both';

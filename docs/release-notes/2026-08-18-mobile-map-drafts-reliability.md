@@ -111,3 +111,32 @@
 >   trimmed, spaces-only entries get a clear error; Back/Next no longer
 >   submits forms early
 > • Consistent field spacing across all wizard steps on mobile and desktop
+
+---
+
+## Internal — deploy checklist (do NOT post)
+
+1. **Merge PR #62 first.** The `Deploy-migration` workflow refuses to run
+   without `--include-all`: `20260816120000` (categories.kind) was never
+   applied to the cloud DB, so `db push` aborts before `20260819010000`
+   (General rows) gets a turn. Without #62, the General category never
+   reaches production.
+2. **Watch the push-to-main Deploy-migration run go green.** It applies both
+   missing migrations in order: `20260816120000` (additive: nullable `kind`
+   column + index) then `20260819010000` (General rows).
+3. **Verify the General rows landed** — `supabase migration list --linked`
+   shows both versions applied; expect 7 `General` rows (one per active
+   vertical), no duplicates, Tourism excluded.
+4. **App deploy (Vercel):** the CSP change lives in `next.config.ts` — a fresh
+   Vercel build picks it up automatically. **Dev / hot-patched instances need
+   a full restart**: `next.config.ts` and env changes are NOT hot-reloaded,
+   and the running dev server served a stale CSP (no `nominatim` in
+   `connect-src`) that silently blocked place search until restarted.
+5. **Post-deploy smoke test** — place search returns results and pins a shop
+   (nominatim reachable under the new CSP), map renders and the pin drags on
+   a phone, a draft survives closing the Add Item / Coupons & Deals dialog,
+   and a new promo shows 100 / 3 defaults.
+
+Go/No-Go for the social post: **only publish after step 3 is verified** — the
+post's General-category bullet describes a feature that is code-merged but not
+live until the migration deploys.

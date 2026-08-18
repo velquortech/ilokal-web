@@ -21,6 +21,10 @@ hard-won, non-obvious ones.
 
 - Preview dev server: http://localhost:3002 (`yarn dev` in the Freebuff
   worktree). `curl /` returns 308 — a Next.js redirect, not an error.
+- `next.config.ts` / `.env.local` / `.env.cloud` changes are read at startup
+  ONLY — the running dev server keeps its old CSP/headers until restarted (a
+  stale CSP silently blocked the nominatim place-search fetch with zero
+  on-page error). Restart + smoke-test recipe: `docs/runbooks/dev-restart-next-config.md`.
 - Local DB: `docker exec supabase_db_ilokal-web psql -U postgres -d postgres`.
   Delete throwaway signups with `DELETE FROM auth.users WHERE email LIKE ...`
   (cascades to businesses).

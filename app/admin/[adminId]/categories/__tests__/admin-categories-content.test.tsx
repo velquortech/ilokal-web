@@ -118,6 +118,157 @@ async function flush() {
   });
 }
 
+/** The Business Type field's searchable picker — same search-to-pick
+ *  pattern as the registration wizard: type to filter, ↑/↓ + Enter (or
+ *  click) to pick, and the field auto-fills with the chosen vertical. */
+function businessTypeTrigger(): HTMLButtonElement {
+  return qa('button').find(
+    (b) => b.getAttribute('aria-haspopup') === 'listbox',
+  ) as HTMLButtonElement;
+}
+
+function openBusinessTypePicker() {
+  act(() => {
+    const trigger = businessTypeTrigger();
+    trigger.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, button: 0 }),
+    );
+    trigger.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  });
+}
+
+function searchInput(): HTMLInputElement {
+  return q('input[aria-label="Search business types..."]') as HTMLInputElement;
+}
+
+function typeInSearch(value: string) {
+  typeInto(searchInput(), value);
+}
+
+function pressKeyInSearch(key: string) {
+  act(() => {
+    searchInput().dispatchEvent(
+      new KeyboardEvent('keydown', { key, bubbles: true }),
+    );
+  });
+}
+
+function pickOption(text: string) {
+  const option = qa('[role="option"]').find((o) =>
+    o.textContent?.includes(text),
+  )!;
+  act(() => {
+    option.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    option.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    option.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  });
+}
+
+describe('the Business Type searchable picker', () => {
+  it('opens with every vertical plus Global and the current selection', () => {
+    render();
+    click(buttonWith(/Add Category/)!);
+
+    // The trigger shows the default selection (Global) until a type is picked.
+    expect(businessTypeTrigger().textContent).toContain('Global');
+
+    openBusinessTypePicker();
+    expect(searchInput()).toBeTruthy();
+    const labels = qa('[role="option"]').map((o) => o.textContent!.trim());
+    expect(labels).toEqual(
+      expect.arrayContaining([
+        'Global',
+        'Food & Beverage',
+        'Tourism & Leisure',
+      ]),
+    );
+  });
+
+  it('filters the options as you type', () => {
+    render();
+    click(buttonWith(/Add Category/)!);
+    openBusinessTypePicker();
+
+    typeInSearch('tourism');
+    const labels = qa('[role="option"]').map((o) => o.textContent!.trim());
+    expect(labels).toEqual(['Tourism & Leisure']);
+  });
+
+  it('picks with arrow keys + Enter and submits the pinned vertical', async () => {
+    create.mockResolvedValue({ success: true, data: CATS[0] });
+    render();
+
+    click(buttonWith(/Add Category/)!);
+    typeInto(q('#cat-name') as HTMLInputElement, 'Burger Barn');
+    openBusinessTypePicker();
+    typeInSearch('tourism');
+    // The only result is already highlighted; Enter picks it.
+    pressKeyInSearch('Enter');
+
+    // The trigger auto-fills with the picked vertical.
+    expect(businessTypeTrigger().textContent).toContain('Tourism & Leisure');
+    // The dialog portals to body — the field description updates there.
+    expect(document.body.textContent).toContain(
+      'Pinned — only Tourism & Leisure sees it.',
+    );
+
+    click(buttonWith(/Create Category/)!);
+    await flush();
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ business_type_id: 'type-tourism' }),
+    );
+  });
+
+  it('moves the highlight with arrows before Enter picks a different row', async () => {
+    create.mockResolvedValue({ success: true, data: CATS[0] });
+    render();
+
+    click(buttonWith(/Add Category/)!);
+    typeInto(q('#cat-name') as HTMLInputElement, 'Burger Barn');
+    openBusinessTypePicker();
+    // 'Food' matches only Food & Beverage when typed — with an empty query
+    // all three rows show and arrows move through them.
+    pressKeyInSearch('ArrowDown');
+    pressKeyInSearch('ArrowDown');
+    pressKeyInSearch('Enter');
+
+    // Global (0) → Food & Beverage (1) → Tourism & Leisure (2).
+    expect(businessTypeTrigger().textContent).toContain('Tourism & Leisure');
+  });
+
+  it('picks by clicking an option', () => {
+    render();
+    click(buttonWith(/Add Category/)!);
+    openBusinessTypePicker();
+
+    pickOption('Food & Beverage');
+    expect(businessTypeTrigger().textContent).toContain('Food & Beverage');
+  });
+
+  it('can move a pinned category back to Global', async () => {
+    create.mockResolvedValue({ success: true, data: CATS[0] });
+    render();
+
+    click(buttonWith(/Add Category/)!);
+    typeInto(q('#cat-name') as HTMLInputElement, 'Burger Barn');
+    openBusinessTypePicker();
+    pickOption('Food & Beverage');
+    expect(businessTypeTrigger().textContent).toContain('Food & Beverage');
+
+    openBusinessTypePicker();
+    pickOption('Global');
+    expect(businessTypeTrigger().textContent).toContain('Global');
+
+    click(buttonWith(/Create Category/)!);
+    await flush();
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ business_type_id: null }),
+    );
+  });
+});
+
 describe('AdminCategoriesContent', () => {
   it('renders the rows with their kind and vertical scope', () => {
     render();

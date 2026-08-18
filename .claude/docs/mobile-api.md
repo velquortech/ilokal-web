@@ -288,7 +288,14 @@ client's `mapWireToPopularProduct` works unchanged:
 
 ## Endpoints — Protected (requires `Authorization: Bearer <jwt>`)
 
-### `GET /api/protected/mobile/subscriptions`
+> **⚠️ Renamed — the old `/subscriptions` paths 404.** The table was renamed
+> `subscriptions` → `follows` in `20260605000000`, and the routes moved with
+> it. This section documented `/api/protected/mobile/subscriptions` until
+> 2026-08-18; there is no such route. The response key changed too
+> (`subscriptions` → `follows`). `subscription_plans` / `business_subscriptions`
+> are the unrelated **billing** tables and are not reachable here.
+
+### `GET /api/protected/mobile/follows`
 
 List all businesses the user follows.
 
@@ -296,7 +303,7 @@ List all businesses the user follows.
 
 ```json
 {
-  "subscriptions": [
+  "follows": [
     {
       "id": "uuid",
       "created_at": "iso",
@@ -310,13 +317,42 @@ List all businesses the user follows.
 }
 ```
 
-### `POST /api/protected/mobile/subscriptions`
+### `POST /api/protected/mobile/follows`
 
-Subscribe (follow) a business. **Body:** `{ "business_id": "uuid" }` · **409** if already subscribed.
+Follow a business. **Body:** `{ "business_id": "uuid" }` — missing/blank ⇒ **400**,
+already following ⇒ **409**. **Response 200:** `{ "follow": { ... } }`
 
-### `DELETE /api/protected/mobile/subscriptions/:businessId`
+### `DELETE /api/protected/mobile/follows/:businessId`
 
-Unsubscribe. **Response 200:** `{ "message": "Unsubscribed successfully" }`
+Unfollow. **Response 200:** `{ "message": "Unfollowed successfully" }`
+
+---
+
+## Endpoints not yet detailed here
+
+These routes exist under `app/api/` and are live, but have no full entry in this
+file yet. **Read the handler before integrating** — do not assume a shape.
+
+**Public (`app/api/mobile/`)**
+
+| Route | Handler |
+| --- | --- |
+| `GET /api/mobile/deals` | `deals/route.ts` — the Deals feed, backed by the `mobile_deals` RPC |
+| `GET /api/mobile/events` · `/events/[id]` · `/events/nearby` | the events surface; kill-switched on `enable_events` |
+| `GET /api/mobile/popular-products` · `/popular-products/facets` | ranked-by-views feed + its filter facets |
+| `GET /api/mobile/businesses/[businessId]/ratings` | public rating list for a shop |
+| `POST /api/mobile/businesses/[businessId]/view` · `/products/[productId]/view` | view-event ingestion (feeds `view_events`) |
+
+**Protected (`app/api/protected/mobile/`)**
+
+| Route | Handler |
+| --- | --- |
+| `GET /api/protected/mobile/updates` | followed-business feed (posts + live coupons + new products) |
+| `GET`/`PATCH` `/api/protected/mobile/notifications` · `/[id]` · `/read-all` | in-app inbox |
+| `POST /api/protected/mobile/me/avatar` | avatar upload (WebP pipeline) |
+| `GET /api/protected/mobile/redemptions/[id]` · `PATCH /[id]/claim` | single redemption + the atomic claim flip |
+| `POST /api/protected/mobile/ratings/businesses/[businessId]` · `/ratings/products/[productId]` | rating writes — gated by SEC-4 (`has_redeemed_from_business`), 42501 maps to a friendly 403 |
+
 
 ### `GET /api/protected/mobile/redemptions`
 

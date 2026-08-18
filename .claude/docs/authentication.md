@@ -474,9 +474,9 @@ NEXT_PUBLIC_SESSION_WARNING_INTERVAL=5
 
 ## 📚 Related Files
 
-- [SESSION_MANAGEMENT.md](SESSION_MANAGEMENT.md) - Session & expiration details
-- [SECURITY.md](SECURITY.md) - Cookie/header security & verification
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture overview
+- [session-management.md](session-management.md) - Session & expiration details
+- [security.md](security.md) - Cookie/header security & verification
+- [architecture.md](architecture.md) - System architecture overview
 
 ---
 

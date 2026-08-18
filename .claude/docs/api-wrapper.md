@@ -2,7 +2,7 @@
 
 **⚠️ Scope: Admin panel only.** This doc covers the `lib/services/` isomorphic layer used by the admin UI (axios-based HTTP calls). For **business-owner features**, use Server Actions + `lib/api/` directly — see `.claude/docs/frontend-patterns.md` instead.
 
-**⚠️ Updated March 31, 2026** — Document corrected to match current `lib/services/index.ts` barrel status. See [WORKFLOW/INVENTORY_AUDIT_REPORT.md](WORKFLOW/INVENTORY_AUDIT_REPORT.md) for audit details.
+**⚠️ Updated March 31, 2026** — Document corrected to match current `lib/services/index.ts` barrel status. (That audit report, `WORKFLOW/INVENTORY_AUDIT_REPORT.md`, no longer exists.)
 
 ## Purpose
 
@@ -101,25 +101,35 @@ import {
   branchService,
   uploadService,
   trendingService,
+  productCategoryService,
   http,
 } from '@/lib/services';
 ```
 
-### ❌ Server-only — NOT exported from barrel (13 services)
+> **⚠️ Three services named in earlier versions of this doc no longer exist.**
+> `searchService`, `reviewService` and `subscriptionService` were **deleted** in
+> the 2026-07-17 phase-4 dead-surface removal, along with `lib/api/search`,
+> `lib/api/reviews`, `lib/api/subscriptions` and the
+> `/api/web/{search,trending,reviews,subscriptions,billing}` routes. Every one
+> of them queried tables that never existed (`reviews`, `subscriptions`,
+> `payment_methods`, `page_views`) and had errored on every call for months
+> with zero UI callers. The real review surface is `/api/web/ratings` plus the
+> mobile rating routes over `ratings` / `business_ratings`.
+
+### ❌ Server-only — NOT exported from barrel
 
 Import these **only in server contexts** (API routes, server actions, Server Components):
 
 ```ts
 // ✅ OK in API routes and server contexts:
 import authService from '@/lib/services/authService';
-import searchService from '@/lib/services/searchService';
 import productService from '@/lib/services/productService';
 import categoryService from '@/lib/services/categoryService';
 import invoiceService from '@/lib/services/invoiceService';
-import reviewService from '@/lib/services/reviewService';
 import analyticsService from '@/lib/services/analyticsService';
+import adminService from '@/lib/services/adminService';
+import businessPublicService from '@/lib/services/businessPublicService';
 import paymentService from '@/lib/services/paymentService';
-import subscriptionService from '@/lib/services/subscriptionService';
 import couponService from '@/lib/services/couponService';
 import businessService from '@/lib/services/businessService';
 import notificationService from '@/lib/services/notificationService';
@@ -131,16 +141,21 @@ import authService from '@/lib/services/authService'; // ❌ Server-only
 
 **Do NOT import server-only services in browser code.** The build will fail with a clear error message.
 
-For browser operations that need server-backed flows (auth, DB access, business logic), use isomorphic public wrappers or call `/api/*` routes. See [lib/services/README.md](lib/services/README.md) for the pattern.
+For browser operations that need server-backed flows (auth, DB access, business logic), use isomorphic public wrappers or call `/api/*` routes. See [lib/services/README.md](../../lib/services/README.md) for the pattern.
 
-**See [WORKFLOW/api-wrapper-inventory.md](WORKFLOW/api-wrapper-inventory.md) for the complete, authoritative list and per-route classifications.**
+**There is no separate inventory file.** This doc used to point at
+`WORKFLOW/api-wrapper-inventory.md` as "the complete, authoritative list" —
+that file does not exist (`WORKFLOW/` contains only `tools/`). The authoritative
+list is the barrel itself: read `lib/services/index.ts` for what is safe to
+import from `@/lib/services`, and treat everything else in `lib/services/` as
+server-only.
 
 ## Migration checklist (small batches)
 
-Before starting: See [WORKFLOW/api-wrapper-inventory.md](WORKFLOW/api-wrapper-inventory.md) for which services are safe to import from the barrel (✅) vs server-only (❌).
+Before starting: read `lib/services/index.ts` — what it re-exports is barrel-safe (✅); everything else in `lib/services/` is server-only (❌).
 
 1. Replace one import at a time from `services/api/*` -> `lib/services` barrel.
-   - **Only import from barrel**: `userService`, `ratingService`, `featuredDealService`, `branchService`, `uploadService`, `trendingService`
+   - **Only import from barrel**: `userService`, `ratingService`, `featuredDealService`, `branchService`, `uploadService`, `trendingService`, `productCategoryService`
    - **For server-only services**: import directly from `@/lib/services/[serviceName]` (in server contexts only)
 
 2. Run `yarn lint --fix` and `yarn test` after each small batch to catch type errors.
@@ -150,11 +165,11 @@ Before starting: See [WORKFLOW/api-wrapper-inventory.md](WORKFLOW/api-wrapper-in
    - **Solution**: That service is server-only; import it directly only in API routes/server actions, not from the barrel.
 
 4. If a build error indicates server-only code in client bundle:
-   - Check [lib/services/index.ts](lib/services/index.ts) to confirm the service is NOT exported
+   - Check [lib/services/index.ts](../../lib/services/index.ts) to confirm the service is NOT exported
    - Import the service directly only in server callsites: `import service from '@/lib/services/[serviceName]'`
    - Never re-export it from the barrel
 
-For detailed status of each route and service, refer to [WORKFLOW/api-wrapper-inventory.md](WORKFLOW/api-wrapper-inventory.md).
+For detailed status of each route and service, read [lib/services/index.ts](../../lib/services/index.ts).
 
 ## Error handling & auth notes
 
@@ -174,8 +189,8 @@ For detailed status of each route and service, refer to [WORKFLOW/api-wrapper-in
   - **Root cause**: A service with server-only dependencies was imported in server context (should be fine) but got pulled into client bundle.
   - **Fix**: Check the import trace and either:
     - Remove the import from client code and import in server callsites only, OR
-    - Create a browser-safe wrapper with an HTTP fallback (see [lib/services/README.md](lib/services/README.md) for the pattern)
-  - **Verify**: Use [WORKFLOW/api-wrapper-inventory.md](WORKFLOW/api-wrapper-inventory.md) to confirm which services can be safely imported from the barrel (✅) vs which are server-only (❌).
+    - Create a browser-safe wrapper with an HTTP fallback (see [lib/services/README.md](../../lib/services/README.md) for the pattern)
+  - **Verify**: Read [lib/services/index.ts](../../lib/services/index.ts) to confirm which services can be safely imported from the barrel (✅) vs which are server-only (❌).
 
 ## Build enforcement
 
@@ -193,18 +208,16 @@ Q: Why not call server actions directly from the client? A: Server actions run o
 
 ## Where to look for examples
 
-- [lib/services/index.ts](lib/services/index.ts) — barrel exports and comments explaining what's safe for client
+- [lib/services/index.ts](../../lib/services/index.ts) — barrel exports and comments explaining what's safe for client
 - `lib/services/*` — wrapper implementations
-- [lib/services/README.md](lib/services/README.md) — technical patterns and isomorphic wrapper pattern
+- [lib/services/README.md](../../lib/services/README.md) — technical patterns and isomorphic wrapper pattern
 - `app/admin/users/tabs/*` — optimistic updates and cache mutation patterns
 - `services/api/apiClient.ts` — axios interceptors, error shaping, 401 redirect behavior
 
 ## Reference Documentation
 
-- **[WORKFLOW/api-wrapper-inventory.md](WORKFLOW/api-wrapper-inventory.md)** — Authoritative list of API routes and whether they're safe for client import (✅) or server-only (❌)
-- **[WORKFLOW/INVENTORY_AUDIT_REPORT.md](WORKFLOW/INVENTORY_AUDIT_REPORT.md)** — Audit report showing what was corrected in the inventory (March 31, 2026)
-- **[lib/services/index.ts](lib/services/index.ts)** — Current barrel exports (source of truth)
+- **[lib/services/index.ts](../../lib/services/index.ts)** — Current barrel exports (source of truth)
 
 ## Contact
 
-If you find a service that should be exported from the barrel but isn't, or want a short example added to a component, check [WORKFLOW/api-wrapper-inventory.md](WORKFLOW/api-wrapper-inventory.md) first to understand the design decision. Then open an issue or comment on PR #46.
+If you find a service that should be exported from the barrel but isn't, or want a short example added to a component, check [lib/services/index.ts](../../lib/services/index.ts) first to understand the design decision. Then open an issue or comment on PR #46.

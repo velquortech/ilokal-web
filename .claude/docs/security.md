@@ -479,9 +479,9 @@ NEXT_IMAGE_PUBLIC_URL=https://your-storage-url.com
 
 ## 🔗 Related Files
 
-- [AUTHENTICATION.md](AUTHENTICATION.md) - Auth implementation & flows
-- [SESSION_MANAGEMENT.md](SESSION_MANAGEMENT.md) - Session & expiration
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture
+- [authentication.md](authentication.md) - Auth implementation & flows
+- [session-management.md](session-management.md) - Session & expiration
+- [architecture.md](architecture.md) - System architecture
 
 ---
 

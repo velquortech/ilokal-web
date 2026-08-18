@@ -35,7 +35,7 @@ hard-won, non-obvious ones.
 - Test owner: `mobilecheck@ilokal.dev` / `MobileCheck123`, business
   `a0f4ecae-a200-48e3-b860-017075930936`. Sign-in URL is `/sign-in` (NOT
   `/signin`); fields `#email` / `#password` + `button[type=submit]`.
-- `npx tsc --noEmit 2>&1 | tail -5; echo $?` reports TAIL's exit — use
+- `yarn tsc --noEmit 2>&1 | tail -5; echo $?` reports TAIL's exit — use
   `echo ${PIPESTATUS[0]}` or type errors hide behind a false green.
 
 ## Puppeteer probes (/tmp/mobile-check)

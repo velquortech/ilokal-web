@@ -14,9 +14,9 @@ Types and validation
 
 Supabase
 
-- Use a single wrapper for Supabase interactions; prefer `lib/api/supabase.ts` or `supabase/*` helpers.
+- Use a single wrapper for Supabase interactions. There is no `lib/api/supabase.ts` — the clients are `supabase/server.ts` (cookie/RLS + the service-role clients), `supabase/bearer.ts` (public mobile), `config/client.ts` (browser), and `app/api/helpers/mobile-request.ts` (`getMobileUser`, protected mobile).
 - Generate DB types with `make generate-types` and check them into `lib/types/database.ts` as needed.
-- Browser client: `supabase/client.ts` expects `NEXT_PUBLIC_SUPABASE_URL` and anon/publishable key.
+- Browser client: `config/client.ts` (NOT `supabase/client.ts`, which does not exist) expects `NEXT_PUBLIC_SUPABASE_URL` and the anon/publishable key. Components must never import it directly — see the "Supabase must never appear in components" rule in CLAUDE.md.
 
 Error handling
 
@@ -34,7 +34,7 @@ Scripts and CI
 Docs and change management
 
 - All workflow/reference-fill artifacts must set `requiresApproval=true` and include acceptance criteria, risk level, and rollback steps.
-- Update `WORKFLOW/CHANGELOG.md` and `WORKFLOW/retrospective.md` after major agent-driven changes.
+- Update `.claude/CHANGELOG.md` after major agent-driven changes. (`WORKFLOW/CHANGELOG.md` and `WORKFLOW/retrospective.md` no longer exist — `WORKFLOW/` now holds only `tools/`.)
 
 Security
 

@@ -757,9 +757,9 @@ NEXT_PUBLIC_SESSION_WARNING_INTERVAL=15     # 15 min warning
 
 ## 🔗 Related Files
 
-- [AUTHENTICATION.md](AUTHENTICATION.md) - Auth implementation & flows
-- [SECURITY.md](SECURITY.md) - Cookie/header security
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture
+- [authentication.md](authentication.md) - Auth implementation & flows
+- [security.md](security.md) - Cookie/header security
+- [architecture.md](architecture.md) - System architecture
 
 ---
 

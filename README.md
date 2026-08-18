@@ -40,10 +40,10 @@ Instead of the local Docker stack, you can run the app straight against the **ho
 **Prerequisite:** a `.env.cloud` file with the cloud credentials. It is git-ignored; the quickest way to (re)create it from the project's Vercel config is:
 
 ```bash
-npx vercel env pull --environment=production > .env.cloud
+yarn dlx vercel env pull --environment=production > .env.cloud
 ```
 
-> If you overwrite the file this way, re-add three keys afterwards: `SUPABASE_SERVICE_ROLE_KEY` (Vercel returns it as `[SENSITIVE]` — grab the real value from **Project Settings → API** in the Supabase dashboard, or fetch it with the CLI: `npx supabase projects api-keys --project-ref <ref>`), `SUPABASE_DB_URL` (cloud Postgres connection string, percent-encoded), and `SEED_DEV_PASSWORD` (used by cloud seeding). Check the header comments in `.env.cloud` for where each comes from.
+> If you overwrite the file this way, re-add three keys afterwards: `SUPABASE_SERVICE_ROLE_KEY` (Vercel returns it as `[SENSITIVE]` — grab the real value from **Project Settings → API** in the Supabase dashboard, or fetch it with the CLI: `yarn supabase projects api-keys --project-ref <ref>` (the CLI is a project dependency — the repo forbids `npx`; use `yarn dlx` for packages that are not installed)), `SUPABASE_DB_URL` (cloud Postgres connection string, percent-encoded), and `SEED_DEV_PASSWORD` (used by cloud seeding). Check the header comments in `.env.cloud` for where each comes from.
 
 Then start the app:
 

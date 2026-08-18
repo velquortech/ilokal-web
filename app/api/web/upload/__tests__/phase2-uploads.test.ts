@@ -2,6 +2,13 @@
  * Phase 2: Business Upload APIs Unit Tests
  * Tests: Business Logo, Interior Photos, Verification Docs, File Delete, Verification Status
  * Coverage: Validation, Authorization, Error Handling, File Type/Size Restrictions
+ *
+ * ⚠️ These routes now call `checkUploadRateLimit`, whose counters live in a
+ * module-level Map that is NOT reset between tests in this file. The budget is
+ * 30 requests / 60s per user id, and nothing here comes close — but a test that
+ * loops 30+ requests as the same user would start failing with a 429 that looks
+ * unrelated to what it is testing. Call `vi.resetModules()` in a `beforeEach`
+ * if that day comes.
  */
 
 import { describe, it, expect } from 'vitest';

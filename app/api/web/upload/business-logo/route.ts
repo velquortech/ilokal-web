@@ -2,6 +2,7 @@ import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
+import { checkUploadRateLimit } from '@/app/api/helpers/upload-rate-limit';
 import {
   uploadWebP,
   ImageProcessingError,
@@ -28,6 +29,22 @@ export async function POST(request: NextRequest) {
         { status },
       );
     }
+
+    // The verified session user. `verifyBusinessOwner` returns it on every
+    // success path; an authorized result carrying none is unreachable today, so
+    // treat it as unauthorized rather than skipping the guard — the failure
+    // direction that matters here is an open flood door.
+    if (!auth.user?.id) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 },
+      );
+    }
+
+    // Before formData(): buffering a 2 MB body and re-encoding it through
+    // sharp is exactly the cost this guard exists to prevent.
+    const limited = checkUploadRateLimit(auth.user.id);
+    if (limited) return limited;
 
     const supabase = await createServerSupabaseClient();
     const formData = await request.formData();

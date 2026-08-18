@@ -5,16 +5,17 @@
  * and scrubbed from history. This suite pins the guard that makes a repeat
  * impossible: `WORKFLOW/tools/checkPiiFiles.js` must keep flagging PII export
  * filenames (data/user-emails*) and personal-email content, and the check
- * must stay wired into BOTH the pre-push hook and the CI Setup job — so a
- * future edit that weakens the patterns or drops the wiring fails CI instead
- * of silently allowing another data dump through.
+ * must stay wired into the pre-commit hook, the pre-push hook, AND the CI
+ * Setup job — so a future edit that weakens the patterns or drops the wiring
+ * fails CI instead of silently allowing another data dump through.
  *
  * What it pins:
  *   - the tool's filename patterns (user-emails* etc.) and personal-host
  *     regex, at the source level (exact-string pins, so renames break CI);
  *   - the exit-1 on violation behavior (guarded by a run of the tool against
  *     a planted file, cleaned up after);
- *   - package.json: the `check:pii` script exists and pre-push runs it;
+ *   - package.json: the `check:pii` script exists, the pre-commit script runs
+ *     it (wired via the `.husky/pre-commit` hook), and pre-push runs it;
  *   - the CI workflow: the Setup job runs `yarn run check:pii`.
  *
  * NOTE: this test never contains a contiguous personal-email literal — the
@@ -33,6 +34,7 @@ const read = (relative: string) => readFileSync(join(ROOT, relative), 'utf8');
 const tool = read('WORKFLOW/tools/checkPiiFiles.js');
 const pkg = read('package.json');
 const workflow = read('.github/workflows/pull-request-workflow.yml');
+const preCommitHook = read('.husky/pre-commit');
 
 // The planted addresses, split so no contiguous personal-email literal
 // exists in THIS file.
@@ -118,13 +120,16 @@ describe('checkPiiFiles.js — the tool itself', () => {
 });
 
 describe('wiring survives (the guard cannot be silently removed)', () => {
-  it('package.json exposes check:pii and pre-push runs it', () => {
+  it('package.json exposes check:pii, pre-push runs it, and pre-commit runs it', () => {
     expect(pkg).toContain(
       '"check:pii": "node WORKFLOW/tools/checkPiiFiles.js"',
     );
     expect(pkg).toContain(
       '"pre-push": "yarn lint && yarn check:protected && yarn check:imports && yarn check:pii',
     );
+    expect(pkg).toContain('"pre-commit": "yarn check:pii"');
+    // the thin husky hook must delegate to the script
+    expect(preCommitHook).toContain('yarn pre-commit');
   });
 
   it('the CI Setup job runs yarn run check:pii', () => {

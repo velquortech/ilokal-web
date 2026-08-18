@@ -1,25 +1,40 @@
 # CLAUDE.md — iLokal Web
 
-> **✅ Local and cloud are IN SYNC as of 2026-08-10 — all 24 migrations after
-> `20260717082537` are applied to `ilokal-database`, verified by object
-> existence and cross-checked with `supabase migration list --linked`.**
-> There is no pending queue. This banner claimed a large unapplied backlog for
-> months and that claim was **wrong** — 23 of the 24 were already live; the
-> 24th (`20260808090000_nearby_banner`) was applied on 2026-08-10.
+> **⚠️ Cloud sync was VERIFIED on 2026-08-10 through `20260808090000` ONLY.**
+> At that date every migration after `20260717082537` was confirmed applied to
+> `ilokal-database` by object existence, cross-checked with
+> `supabase migration list --linked`. **That verification has not been repeated
+> since.** `supabase/migrations/` now holds **47** migrations after
+> `20260717082537` (max version `20260819010000`, 151 files total) — so **23
+> migrations added after the audit have never been probed against cloud.**
+> Their state is UNKNOWN, not "behind" and not "in sync".
 >
-> **Do not re-add a "cloud is behind" warning from memory.** Re-derive it:
+> **Do not assert either direction from memory or from this file.** Re-derive:
 > `yarn supabase db query --linked -f supabase/reports/cloud_drift_probe.sql`
 > (read-only, one verdict per migration). A stale "it isn't there" costs as
-> much as a stale "it is" — the old banner told people to avoid tables that
-> had been in production for weeks.
+> much as a stale "it is" — an older version of this banner told people to
+> avoid tables that had been in production for weeks, and the version before
+> that claimed a backlog that did not exist.
 >
-> **Flag values ON CLOUD (read from `app_settings`, not assumed):**
-> `enable_events` **true** · `enable_bookings` **false** ·
-> `enable_onboarding_tour` **true** · `auto_verify_businesses` **true** ·
-> `require_business_documents` **false**. Events are **not dark** — the
-> "ships dark" note that used to sit here described the seeded default, not the
-> current value. (Whether events RENDER also depends on the deployed build
-> carrying the events code; only the flag was verified.) Bookings remain dark.
+> **🔴 The probe itself is now incomplete.** `cloud_drift_probe.sql` carries
+> **31** version rows against **47** migrations after the cutoff, so **20
+> migrations have no probe row and are silently reported as nothing at all**.
+> Add a row to its `VALUES` list for each missing version before trusting a
+> run. (`cloud_object_inventory.sql` still declares 98 objects, matching the
+> count quoted below.)
+>
+> **Flag values ON CLOUD as read on 2026-08-10 (not re-read since):**
+> `enable_events` **true** · `enable_onboarding_tour` **true** ·
+> `auto_verify_businesses` **true** · `require_business_documents` **false**.
+> Events are **not dark** — the "ships dark" note that used to sit here
+> described the seeded default, not the current value. (Whether events RENDER
+> also depends on the deployed build carrying the events code; only the flag
+> was verified.)
+> **`enable_bookings` is no longer a live web flag** — the 2026-08-17 removal
+> deleted every web reader of it (admin allowlist, Feature Flags card, both
+> shells). The `app_settings` row and the `public_feature_flags()` return
+> column still exist and are still read by the DB contract, but nothing in this
+> app branches on them; see "Schema state" for the dormant booking schema.
 
 ## Commands
 
@@ -91,7 +106,7 @@ no call site breaks) rather than forking a near-duplicate.
 
 ## Stack
 
-Next.js 16.2.7 (App Router; latest stable — open proxy-bypass advisories have no stable fix yet, compensated in the Proxy bullet) · React 19 · TypeScript strict · Supabase SSR + PostGIS · Zod 4 · shadcn-ui + Radix UI · Tailwind CSS v4 · Vitest
+Next.js 16 (`^16.2.6` in package.json; App Router; latest stable — open proxy-bypass advisories have no stable fix yet, compensated in the Proxy bullet) · React 19 · TypeScript strict · Supabase SSR + PostGIS · Zod 4 · shadcn-ui + Radix UI · Tailwind CSS v4 · Vitest
 
 **Stack is frozen — no new dependencies without explicit approval.** Do not
 `yarn add` any package (runtime or dev) unless the user explicitly asks for it
@@ -215,20 +230,27 @@ Key facts about the current normalized schema (as of 2026-06-08):
 - **Deals promotion** — the explore feed (`/api/mobile/deals`) sizes bento cards by `subscription_plans.features_promo_boost` (boolean, `20260530000002`), NOT by `price`. The anon feed reads promoted subs via the public SELECT policy in `20260530000003` (active subs on promo-boost plans only). Set the flag on new promoted plans, or they silently won't get boosted.
 - **Coupon access invariant** — every route that fetches a coupon for display or redemption must filter `.eq('status', 'published').is('archived_at', null).lte('start_date', now)`. Omitting any of the three allows draft, archived, or not-yet-active coupons to be acted on.
 - **`increment_coupon_redemptions(p_coupon_id uuid)`** — SECURITY DEFINER RPC (`20260527000001`). Call via `supabase.rpc('increment_coupon_redemptions', { p_coupon_id })` after inserting into `user_redemptions`. Returns `true` if incremented, `false` if global cap already hit. Must be SECURITY DEFINER — authenticated users have no UPDATE policy on `coupons`. Only the **global** cap is race-safe via this RPC; the per-user cap in the redeem route is a non-atomic count-then-insert (TOCTOU) — concurrent redeems by one user can slip past it.
-- **Migration state — IN SYNC. Verified against the live cloud DB 2026-08-10.**
-  All **24** migrations after `20260717082537` are applied to
-  `ilokal-database`, with 24 matching `schema_migrations` rows
-  (`max(version) = 20260808090000`). `supabase migration list --linked` shows
+- **Migration state — VERIFIED THROUGH `20260808090000` ONLY (2026-08-10).**
+  As of that audit, all **24** migrations then existing after `20260717082537`
+  were applied to `ilokal-database`, with 24 matching `schema_migrations` rows
+  (`max(version) = 20260808090000`). `supabase migration list --linked` showed
   both columns populated for every row. Everything from `20260717093122`
   through `20260808090000` — the offerings model, product sections, events,
   booking requests, onboarding columns, both menu-follow-up RPCs, the 4-column
   `public_feature_flags()`, the data-only trade seeds, and `banner_url` on
-  `nearby_businesses` — is present on cloud. Confirmed by object existence,
+  `nearby_businesses` — was present on cloud. Confirmed by object existence,
   not by the ledger alone:
   `public.events` (24 cols, 1 row), `public.product_sections` (5 rows),
   `public.booking_requests` (0 rows), and
   `public_feature_flags() RETURNS TABLE(enable_events, enable_bookings,
   require_business_documents, auto_verify_businesses)`.
+  - **🔴 That audit is now stale by 23 migrations.** `supabase/migrations/`
+    holds **47** migrations after `20260717082537` (max `20260819010000`); the
+    24 above are the ones the probe covered. The other 23 — everything after
+    `20260808090000`, including the popular-products, product-search, nearby
+    type-count and map/draft work — have **never been probed against cloud**.
+    Do not read the paragraph above as covering them. Re-run the probe (and
+    first extend it — see the next bullet) before assuming either state.
   **Scope of that claim:** ONE discriminator object per migration, plus four
   post-review version assertions (below). It proves each migration ran; it does
   not prove every statement inside it landed — so a second sweep,
@@ -289,6 +311,12 @@ Key facts about the current normalized schema (as of 2026-06-08):
     skvgasimllpyhyudpycu` → `yarn supabase db query --linked -f
     supabase/reports/cloud_drift_probe.sql`. Add a row to its `VALUES` list
     for each new migration.
+    **🔴 That upkeep has lapsed: the probe carries 31 version rows against 47
+    migrations after the cutoff, so 20 migrations are missing from it.** A
+    migration with no row produces no verdict — the run looks clean and says
+    nothing about it, which is the same silent-success failure mode this probe
+    exists to catch. Extend the `VALUES` list before reading a result as
+    coverage.
     The ledger is a hint, not the fact — a row can exist without its DDL (and
     then `db push` silently SKIPS it) or DDL can exist under a different
     version string. For the three **data-only** migrations
@@ -380,7 +408,16 @@ code must follow these:
   `payment_methods`, `page_views`, `products.is_active`, …) — every call
   errored and returned empty for months. Check `lib/types/database.ts` (or the
   live DB) for every table/column a new query touches; don't scaffold against
-  an imagined schema. Deleted dead surfaces: `/api/web/{search,trending,
+  an imagined schema.
+  **⚠️ `lib/types/database.ts` is itself stale as of 2026-08-18** — it is missing
+  the `product_search` and `nearby_business_type_counts` RPCs, both of which have
+  migrations on disk (`20260814170000`, `20260812000000`) and live callers
+  (`app/api/mobile/product-search/route.ts`,
+  `app/api/mobile/businesses/nearby/route.ts`). So "not in `database.ts`" does
+  **not** prove "does not exist" right now. Run `make generate-types` and commit
+  the diff; until then, cross-check `supabase/migrations/` before concluding an
+  object is missing.
+  Deleted dead surfaces: `/api/web/{search,trending,
   reviews,subscriptions,billing}`, `/api/web/ratings/[id]`,
   `/api/web/analytics/products`. `getUserBusiness` lives in
   `lib/api/getUserBusiness.ts`.
@@ -442,9 +479,9 @@ Load on request (read when topic is relevant):
 - `.claude/docs/rbac-model.md` — permission tiers, audit logging
 - `.claude/docs/api-wrapper.md` — isomorphic service layer, client vs server imports
 - `.claude/docs/tech-debt.md` — universal debt/roadmap doc: audit findings log (TD-NNN), active refactors, protected-route audit phases, and enforcement map
-- `.claude/docs/api-strategy.md` — full endpoint implementation plan and status
+- `.claude/docs/api-strategy.md` — **ARCHIVED** March-2026 status snapshot. Its endpoint list and "480 tests passing" figure are historical; several endpoints it marks ✅ (billing, subscriptions) were deleted 2026-07-17. Read for intent, never for current state.
 - `.claude/docs/coupon-rules.md` — coupon claim rules, redeem gates, error codes
-- `.claude/docs/testing.md` — untested routes matrix, test templates
+- `.claude/docs/testing.md` — untested routes matrix (**partly stale** — lists deleted subscription/billing surfaces; see its banner) + test templates
 - `.claude/docs/analytics-dashboard.md` — analytics panel ideas, RFM segments, retention queries, automation nudges
 - `.claude/docs/DESIGN.md` — **brand v1.0**: palette, measured contrast ledger, OKLCH token tables (light/dark/sidebar/chart), type system, radius scale. Read before any significant visual work — the "Design system" section above is only the trap list.
 - `.claude/docs/caching-strategy.md` — Next.js App Router caching layers, Supabase data-fetching rules
@@ -453,3 +490,6 @@ Load on request (read when topic is relevant):
 - `.claude/docs/component-standards.md` — file structure, naming, shadcn/ui usage rules
 - `.claude/docs/git-workflow.md` — conventional commits format, branch naming, PR process
 - `.claude/docs/ui-standards.md` — approved UI toolset, responsive strategy, visual consistency rules
+- `.claude/docs/business-owner-flow.md` / `business-owner-flow-simple.md` — the owner journey end to end (registration → dashboard), long and short forms
+- `.claude/docs/media-and-feed-scaling.md` — the write-time WebP pipeline, the `mobile_deals` RPC, and the notification outbox/pg_cron fan-out
+- `.claude/docs/live-db-snapshot.md` — a point-in-time dump of live table shapes; **historical**, re-derive from `lib/types/database.ts` before trusting it

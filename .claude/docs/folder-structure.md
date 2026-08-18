@@ -529,6 +529,6 @@ helpers/
 
 ## 📖 Related Documentation
 
-- [AUTH_IMPLEMENTATION.md](./AUTH_IMPLEMENTATION.md) - Authentication details
-- [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture
-- [SETUP_CHECKLIST.md](./SETUP_CHECKLIST.md) - Initial setup guide
+- [authentication.md](./authentication.md) - Authentication details
+- [architecture.md](./architecture.md) - System architecture
+- [../../README.md](../../README.md) - Initial setup guide (there is no `SETUP_CHECKLIST.md`)

@@ -356,9 +356,9 @@ async function updateOwnProduct(productId: string, changes: Partial<Product>) {
 
 ## 📖 Related Documentation
 
-- **Authentication:** See [AUTHENTICATION.md](AUTHENTICATION.md)
-- **API Security:** See [SECURITY.md](SECURITY.md)
-- **Backend Workflow:** See [claude.md](claude.md)
+- **Authentication:** See [authentication.md](authentication.md)
+- **API Security:** See [security.md](security.md)
+- **Backend Workflow:** See [CLAUDE.md](../../CLAUDE.md)
 
 ---
 

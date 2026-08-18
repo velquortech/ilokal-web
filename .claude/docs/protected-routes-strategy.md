@@ -18,9 +18,9 @@ Goals
 - `config/routeConfig.ts` now includes canonical `ROUTES.API.*` constants used across the codebase.
 - `lib/utils/protectedRoutes.ts` implemented `isProtectedPath` and `roleAllowedForPath` helpers and is used by `proxy.ts`.
 - `lib/utils/assertAuthorized.ts` implemented and wired into representative handlers (e.g., `users/me`, `admin/profiles`, `billing/invoices`).
-- Added short developer reference: [lib/utils/PROTECTED_ROUTES.md](lib/utils/PROTECTED_ROUTES.md).
-- Added convenience re-exports: [lib/utils/auth/index.ts](lib/utils/auth/index.ts).
-- Created a remediation plan for replacing literal API route strings: [WORKFLOW/route-remediation-plan.md](WORKFLOW/route-remediation-plan.md).
+- Added short developer reference: `.claude/docs/protected-routes.md` (the file this bullet used to call `lib/utils/PROTECTED_ROUTES.md`, which does not exist).
+- Added convenience re-exports: [lib/utils/auth/index.ts](../../lib/utils/auth/index.ts).
+- Created a remediation plan for replacing literal API route strings. **That plan file is gone** (`WORKFLOW/` now holds only `tools/`); the surviving rule is in `.claude/docs/protected-routes.md` — route strings come from `config/routeConfig.ts`, never literals.
 - Ran lint and build; addressed reported lint errors and ensured build passes.
 
 Key principles
@@ -78,7 +78,7 @@ Implementation checklist (developer-ready)
 - [x] Update representative API handlers to call `assertAuthorized` (start with `users/me`, `admin/profiles`, `billing/*`).
 - [x] Add unit tests for `protectedRoutes` helpers and guarded routes (vitest).
 - [x] Add integration tests to verify unauthenticated callers get 401 and unauthorized roles get 403.
-- [x] Document strategy in `WORKFLOW/Protected_Route_strategy.md` (this file) and add a short developer note in `README` linking to it.
+- [x] Document strategy in this file (`.claude/docs/protected-routes-strategy.md`; it was moved here from `WORKFLOW/Protected_Route_strategy.md`) and add a short developer note in `README` linking to it.
 
 Acceptance criteria
 

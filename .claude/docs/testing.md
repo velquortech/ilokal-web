@@ -2,6 +2,22 @@
 
 **Use this to quickly find what needs testing and understand dependencies.**
 
+> **⚠️ STALE IN PARTS — audited 2026-08-18, not rewritten.** This matrix was
+> written before the 2026-07-17 dead-surface removal and still lists routes and
+> test files for code that **no longer exists**. Do not create a test for an
+> entry below without first checking the route is real.
+>
+> **Deleted surfaces still listed here:** `/api/subscriptions/*` (upgrade,
+> downgrade), `/api/admin/subscriptions/plans`, `billingActions.ts`, and the
+> planned `subscriptions.integration.test.ts` / `billingActions.test.ts`. Also
+> note `/api/upload/*` is really `/api/web/upload/*`, and several "Test file"
+> paths are proposals that were never created — they are targets, not files on
+> disk.
+>
+> **Ground truth:** the repo currently has **256** `*.test.ts(x)` files. Get the
+> real untested set from coverage (`yarn test:coverage`), not from this list.
+> Route existence: `find app/api -name route.ts`.
+
 ---
 
 ## 🔴 CRITICAL - START HERE (20 items, ~20 hours)

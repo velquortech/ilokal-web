@@ -1,5 +1,13 @@
 # Service Layer Quick Reference
 
+> **⚠️ `searchService`, `reviewService` and `subscriptionService` are GONE.**
+> Deleted in the 2026-07-17 dead-surface removal along with `lib/api/search`,
+> `lib/api/reviews`, `lib/api/subscriptions` and the
+> `/api/web/{search,trending,reviews,subscriptions,billing}` routes — every one
+> queried tables that never existed and had zero callers. If an example below
+> still names one, it is stale; `lib/services/index.ts` is the authority for
+> what the barrel exports.
+
 ## For Client Code (Browser & Server Components)
 
 ### ✅ Safe to import from `@/lib/services`
@@ -14,6 +22,7 @@ import {
   branchService,
   uploadService, // File uploads
   trendingService,
+  productCategoryService,
 } from '@/lib/services';
 
 // Use in: Components, any file, browser-safe
@@ -41,7 +50,7 @@ import authService from '@/lib/services/authService';
 // Inside app/api/route.ts or a Server Component only:
 import paymentService from '@/lib/services/paymentService';
 import authService from '@/lib/services/authService';
-import subscriptionService from '@/lib/services/subscriptionService';
+import couponService from '@/lib/services/couponService';
 
 // Server-only imports work here - Turbopack won't bundle them
 const payment = await paymentService.confirm(id);
@@ -86,9 +95,9 @@ export const exampleWrapper = {
 | `branchService`       | Client ✅      | Branch data          | `@/lib/services`                   |
 | `uploadService`       | Client ✅      | File upload          | `@/lib/services`                   |
 | `trendingService`     | Client ✅      | Trending items       | `@/lib/services`                   |
+| `productCategoryService` | Client ✅   | Product categories   | `@/lib/services`                   |
 | `paymentService`      | Server only ⛔ | Payments             | Direct module import (server-only) |
 | `authService`         | Server only ⛔ | Auth checks          | Direct module import (server-only) |
-| `subscriptionService` | Server only ⛔ | Subscriptions        | Direct module import (server-only) |
 | `notificationService` | Server only ⛔ | Notifications        | Direct module import (server-only) |
 | `analyticsService`    | Server only ⛔ | Analytics            | Direct module import (server-only) |
 | `businessService`     | Server only ⛔ | Business ops         | Direct module import (server-only) |

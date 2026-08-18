@@ -359,13 +359,13 @@ If you get a Turbopack error about server-only code in the build, ensure:
 - [ ] Created tests for wrapper and server implementation
 - [ ] Ran `yarn build` successfully
 - [ ] Ran `yarn test --run` successfully
-- [ ] Updated `WORKFLOW/api-wrapper-inventory.md` with new route
-- [ ] Updated `API_WRAPPER_FOR_FRONTEND.md` with usage example
+- [ ] Re-exported from `lib/services/index.ts` if it is browser-safe
+- [ ] Documented in `.claude/docs/api-wrapper.md` with a usage example
 - [ ] Added JSDoc comments explaining wrapper behavior
 
 ## See Also
 
-- [API_WRAPPER_FOR_FRONTEND.md](../../API_WRAPPER_FOR_FRONTEND.md) — Frontend developer guide
-- [lib/services/README.md](../../lib/services/README.md) — Isomorphic pattern details
+- [.claude/docs/api-wrapper.md](../../../.claude/docs/api-wrapper.md) — Frontend developer guide (replaces the old root `API_WRAPPER_FOR_FRONTEND.md`, which no longer exists)
+- [lib/services/README.md](../README.md) — Isomorphic pattern details
 - [lib/services/public/paymentsPublicWrapper.example.ts](paymentsPublicWrapper.example.ts) — Real example
-- [WORKFLOW/api-wrapper-inventory.md](../../WORKFLOW/api-wrapper-inventory.md) — Route inventory
+- [lib/services/index.ts](../index.ts) — the barrel; what it re-exports is browser-safe. (There is no `WORKFLOW/api-wrapper-inventory.md`; that pointer was dead.)

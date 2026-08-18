@@ -37,7 +37,7 @@ planned work. Supersedes the old `roadmap.md` (merged in below).
 | TD-008 | 🟢  | Validation   | `follows` POST lacks UUID validation             | 🔲 Open |
 | TD-009 | 🟠  | Architecture | Two auth helpers (`assertAuthorized` vs `getCurrentUser`) | 🔲 Open |
 | TD-010 | 🟠  | Architecture | Dual profile-creation paths (trigger + signup insert) | 🔲 Open |
-| TD-011 | 🔴  | Architecture | Migration drift — local is 18 migrations ahead of cloud | 🔲 Open |
+| TD-011 | 🔴  | Architecture | Migration drift — 23 migrations never probed against cloud; probe covers 31 of 47 | 🔲 Open |
 | TD-012 | 🟢  | Architecture | Stale empty `database.types.ts` at repo root     | 🔲 Open |
 | TD-013 | 🟢  | Code quality | Response-envelope drift in web routes            | 🔲 Open |
 | TD-014 | 🟠  | UI/UX        | No `loading.tsx` / streaming states              | ✅ Fixed 2026-07-24 |
@@ -58,7 +58,14 @@ then severity.
 
 ### Security
 
-#### TD-001 · 🔴 · Service-role key is named `NEXT_PUBLIC_*`
+#### TD-001 · 🔴 · Service-role key is named `NEXT_PUBLIC_*` · ✅ Fixed 2026-06-08
+
+> **Resolved.** Renamed to the server-only `SUPABASE_SERVICE_ROLE_KEY` and
+> `config/index.ts` was deleted outright (it was a dead RLS-bypassing client with
+> zero importers). Re-verified: **0** occurrences of `NEXT_PUBLIC_SUPABASE_SERVICE`
+> anywhere in `app`/`lib`/`config`/`supabase`/`proxy.ts`/`next.config.ts`, and no
+> `config/index.ts` on disk. The description below is kept as the historical
+> finding — **the file paths and line numbers in it no longer resolve.**
 
 [.env](../../.env) defines `NEXT_PUBLIC_SUPABASE_SERVICE_SECRET_KEY` (full
 RLS-bypass key), consumed by [config/index.ts:8](../../config/index.ts#L8) and
@@ -74,7 +81,13 @@ RLS-bypass key), consumed by [config/index.ts:8](../../config/index.ts#L8) and
   consumers, rotate the key. [supabase/server.ts:65](../../supabase/server.ts#L65)
   (`createServerAdminClient`) already follows the correct pattern.
 
-#### TD-002 · 🔴 · No rate limit on `/api/auth/*`
+#### TD-002 · 🔴 · No rate limit on `/api/auth/*` · ✅ Fixed 2026-07-17
+
+> **Resolved by SEC-8.** `checkAuthRateLimit`
+> (`app/api/helpers/auth-rate-limit.ts`) enforces per-IP 30/60s + per-account
+> 8/300s with a 429 + `Retry-After`. Re-verified: **7** files under `app` call it.
+> The proxy matcher was deliberately NOT widened — the guard lives in the
+> handlers, so the description below overstates the fix's shape.
 
 Proxy matcher ([proxy.ts:191](../../proxy.ts#L191)) covers `/api/mobile`,
 `/api/protected`, `/admin`, `/business` — but not `/api/auth/login|signup|
@@ -107,7 +120,11 @@ return raw `error.message`, exposing table/column/constraint names and RLS hints
 
 - **Fix:** route all 500s through `loggedServerError`.
 
-#### TD-005 · 🟠 · Taxonomy mutations rely on RLS alone
+#### TD-005 · 🟠 · Taxonomy mutations rely on RLS alone · ✅ Fixed 2026-06-08
+
+> **Resolved.** `assertAuthorized(undefined, { roles: ['admin'] })` was added to
+> the `business-types` and `business-categories` mutation handlers. Re-verified:
+> `assertAuthorized` is present in `app/api/web/business-types/route.ts`.
 
 [business-types/[id]](../../app/api/web/business-types/[id]/route.ts) and
 `business-categories` PATCH/DELETE/POST have no auth check in the handler — saved
@@ -149,36 +166,70 @@ The `handle_new_user` trigger and the signup route's manual `profiles` insert bo
 create the profile row → guaranteed PK conflict → misleading 500 path and a
 redundant write. Let the trigger own profile creation (ties to TD-003).
 
-#### TD-011 · 🔴 · Migration drift — local is 18 migrations ahead of cloud
+#### TD-011 · 🔴 · Migration drift — 23 migrations unprobed against cloud
 
-**Re-scoped 2026-08-05.** The original entry was three migrations; it is now the
-whole queue after `20260717082537`, the last version confirmed on
-`ilokal-database`. Merged to `main` and applied **locally only**:
+> **🔴 CORRECTED 2026-08-18. The previous body of this entry was WRONG and had
+> been wrong for two weeks.** It stated that cloud had no `events`,
+> `booking_requests` or `product_sections` tables, no `products.kind` /
+> `booking_mode` / offering columns, no `business_settings` onboarding columns
+> and a 2-column `public_feature_flags()` — and that live code selecting from
+> them was broken in production. The 2026-08-10 cloud audit
+> (`chore/cloud-migration-audit`) **disproved every one of those claims by
+> object existence**: all of it was already live, most of it for weeks. Reading
+> that paragraph is what makes people avoid tables that are in production. It
+> has been deleted rather than amended, because a wrong "it isn't there" costs
+> exactly as much as a wrong "it is".
 
-`20260717093122` · `20260723000000` · `20260725000000` · `20260727000000`–
-`20260727000006` · `20260801061117` · `20260801064656` · `20260802034107` ·
-`20260804061500` · `20260804233000` · `20260805090000`
+**What is actually known, and how it was established:**
 
-Plus two on `feat/image-compression`, not yet on `main` —
-`20260805120000` · `20260805130000`. Both are **data-only** (rows in
-`categories` / `business_categories`, no DDL), so unlike the queue above they
-break nothing in production by their absence; cloud simply keeps the thin
-category pickers they exist to fix.
+- **Verified applied through `20260808090000`** (2026-08-10, by object
+  existence + `supabase migration list --linked`, not by the ledger alone).
+  The whole queue this entry used to list as pending was already on cloud.
+- **One real partial application was found in that audit** and fixed:
+  `idx_products_section_id` was absent while `20260801061117` read APPLIED,
+  because the index was added to the migration file in a *later* commit than
+  the one that created it. **Any migration edited in place after cloud has
+  applied it silently loses the edit** — `db push` keys on the version and
+  skips the file. This repo edits migrations in place routinely, so re-run
+  `supabase/reports/cloud_object_inventory.sql` after any such edit.
 
-**What breaks in production until they land** — not hypothetical, these are
-tables and columns live code selects from: no `events` / `booking_requests` /
-`product_sections` tables, no `products.kind` / `booking_mode` / offering
-columns, no `business_settings` onboarding columns, and a 2-column
-`public_feature_flags()` (so the public `/for-business` page shows the strict
-"permits required, review pending" copy, and `getRegistrationSettings` falls
-back to a table read anonymous callers cannot see).
+**The open part of this item — the reason it is still 🔴:**
 
-**Fix:** human approval → `make migrate-cloud` → rewrite
-`supabase_migrations.schema_migrations` to each local file's version, or the
-next `db push` re-applies everything. Then re-confirm and shrink this entry.
-Note the ordering constraint recorded in the 2026-08-05 CHANGELOG entry: the
-cloud apply should precede the app deploy, or anonymous visitors see the strict
-registration copy.
+- `supabase/migrations/` now holds **47** migrations after `20260717082537`
+  (max `20260819010000`; 151 files total). Only the first 24 were ever probed.
+  **The state of the other 23 on cloud is UNKNOWN** — not "behind", not "in
+  sync". Nothing in this repo can answer it without cloud credentials.
+- **The probe that would answer it is itself incomplete:**
+  `supabase/reports/cloud_drift_probe.sql` carries **31** version rows against
+  those 47 migrations, so **20 have no row and produce no verdict**. A run
+  looks clean and reports nothing about them — the same silent-success failure
+  the probe exists to catch.
+
+**Fix:**
+
+1. Extend `cloud_drift_probe.sql`'s `VALUES` list to cover all 47 versions
+   (data-only migrations need a *row* probe, not an object probe — an object
+   probe reports "present" for them unconditionally, i.e. checks nothing).
+2. `yarn supabase login --token <PAT>` → `yarn supabase link --project-ref
+   skvgasimllpyhyudpycu` → `yarn supabase db query --linked -f
+   supabase/reports/cloud_drift_probe.sql`, then the 98-object
+   `cloud_object_inventory.sql` sweep.
+3. Apply only what the probe reports missing, via
+   `yarn supabase db push --linked --yes` (it records the FILE's version, so no
+   ledger reconcile is needed — that ritual applies only to the Supabase MCP's
+   `apply_migration`, which records its own timestamp).
+4. Before any `DROP FUNCTION` + `CREATE` migration, save the current definition
+   (`pg_get_functiondef`) as a rollback artifact and expect a brief PGRST202
+   window for anon callers.
+
+**Note the failure mode that hid the last gap:** `20260808090000` sat unapplied
+while 23 louder migrations landed, because it only added a column to an RPC's
+`RETURNS TABLE`. The function still succeeded, the mobile client's `z.object()`
+dropped the absent key, and the cards silently fell back. **A missing table
+42P01s on first call; a missing return column just degrades** — which is why
+the probe checks `pg_get_function_result()` and not merely `proname`.
+
+Related: TD-012 (stale root `database.types.ts`).
 
 #### TD-012 · 🟢 · Stale `database.types.ts`
 
@@ -198,7 +249,10 @@ uses. Standardize.
 
 ### UI/UX
 
-#### TD-014 · 🟠 · No `loading.tsx` / streaming states
+#### TD-014 · 🟠 · No `loading.tsx` / streaming states · ✅ Fixed 2026-07-24
+
+> **Resolved.** Re-verified: **31** `loading.tsx` files under `app/`, backed by
+> the shared skeleton set in `components/custom/skeletons.tsx`.
 
 `0` `loading.tsx` across 22 pages; only 1 `error.tsx` / 1 `not-found.tsx`. App
 Router Suspense/skeletons unused — every navigation blocks on data with no
@@ -283,7 +337,14 @@ priority until profiling shows a bottleneck.
 
 ### Architecture
 
-#### TD-017 · 🔴 · Web billing/subscription routes query a non-existent `subscriptions` table
+#### TD-017 · 🔴 · Web billing/subscription routes query a non-existent `subscriptions` table · ✅ Resolved by removal 2026-07-17
+
+> **Resolved by deleting the surface**, not by repointing it. Re-verified:
+> `app/api/web/` contains no `subscriptions/` or `billing/` directory, and
+> `lib/api/subscriptions/` is gone. **Ignore the "Fix" and "Blast radius"
+> paragraphs below** — those routes no longer exist, so nothing is broken at
+> runtime. `lib/types/subscription.ts` does still exist; the admin `plans`
+> routes and `subscription_plans` reads were kept and are self-contained.
 
 [lib/api/subscriptions/subscriptionQuery.ts](../../lib/api/subscriptions/subscriptionQuery.ts)
 and [subscriptionService.ts](../../lib/api/subscriptions/subscriptionService.ts) call

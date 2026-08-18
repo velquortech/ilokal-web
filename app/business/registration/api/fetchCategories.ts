@@ -25,7 +25,13 @@ export type BusinessCategory = {
   id: string;
   name: string;
   description: string;
-  imageURL: string;
+  /**
+   * NULL when the category has no image. `business_categories.image_url` is
+   * nullable, so this must be too — typing it `string` is what let a NULL
+   * reach `<Image src={...} />` and crash the whole registration step.
+   * `CategoryCard` renders a fallback tile instead; see ShopCategoryStep.
+   */
+  imageURL: string | null;
 };
 
 export type BusinessType = {
@@ -48,8 +54,23 @@ export type BusinessType = {
 export type RawBusinessCategory = {
   id: string;
   name: string;
-  description: string;
-  image_url: string;
+  /**
+   * NULLABLE in the database — `business_categories.description` is `text NULL`,
+   * and `POST /api/web/business-categories` passes its body to the service with
+   * NO Zod validation — so a row with no description is one admin action away.
+   * Declared honestly here and normalised to `''` in `transformBusinessTypes`,
+   * which is what lets `BusinessCategory.description` stay a plain `string`.
+   */
+  description: string | null;
+  /**
+   * NULLABLE in the database, and deliberately NOT normalised to `''` below.
+   * An empty string is not a safe fallback — next/image throws on an empty
+   * `src` exactly as it throws on null, so coercing here would trade one crash
+   * for another. The nullability is carried through to `BusinessCategory` and
+   * handled where it can actually be handled: `CategoryCard` renders a
+   * placeholder tile when there is no image.
+   */
+  image_url: string | null;
 };
 
 export type RawBusinessType = {
@@ -69,7 +90,15 @@ export function transformBusinessTypes(raw: RawBusinessType[]): BusinessType[] {
     items: type.business_categories.map((cat) => ({
       id: cat.id,
       name: cat.name,
-      description: cat.description,
+      // `?? ''` is load-bearing, not defensive noise: the category search
+      // calls `.toLowerCase()` on this while the owner types, so a single NULL
+      // row would throw on the first keystroke and take the whole step down.
+      // Normalising at the boundary fixes it for every consumer at once
+      // instead of leaving each call site to remember the guard.
+      description: cat.description ?? '',
+      // Deliberately NOT `?? ''` — see the note on `image_url` above. A blank
+      // string is as fatal to next/image as a null, so the null is preserved
+      // and the card branches on it.
       imageURL: cat.image_url,
     })),
   }));

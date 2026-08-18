@@ -27,6 +27,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Select,
   SelectContent,
@@ -267,22 +268,21 @@ function CategoryFormDialog({
           </Field>
           <Field>
             <FieldLabel htmlFor="cat-type">Business Type</FieldLabel>
-            <Select
+            {/* Searchable so an admin with many verticals can type to find
+                one instead of scrolling the list; the search box is keyboard
+                navigable (↑/↓ + Enter), the same pick pattern as the
+                registration wizard's category search. */}
+            <SearchableSelect
+              id="cat-type"
+              options={[{ id: 'global', name: 'Global' }, ...businessTypes]}
               value={form.businessTypeId}
-              onValueChange={(value) => update({ businessTypeId: value })}
-            >
-              <SelectTrigger id="cat-type" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="global">Global</SelectItem>
-                {businessTypes.map((type) => (
-                  <SelectItem key={type.id} value={type.id}>
-                    {type.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onChange={(value) => update({ businessTypeId: value })}
+              getLabel={(option) => option.name}
+              getValue={(option) => option.id}
+              placeholder="Select a business type..."
+              searchPlaceholder="Search business types..."
+              emptyMessage="No business types match your search."
+            />
             <FieldDescription>
               {form.businessTypeId === 'global'
                 ? 'Global — shown in every business type’s category picker.'

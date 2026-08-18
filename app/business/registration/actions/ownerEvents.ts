@@ -15,6 +15,8 @@ export type OwnerEventName =
   | 'reg_step_error'
   | 'reg_back_nav'
   | 'reg_submitted'
+  | 'reg_category_searched'
+  | 'reg_recent_picked'
   | 'dash_full_report_open'
   | 'dash_checklist_dismiss'
   | 'dash_card_clicked';

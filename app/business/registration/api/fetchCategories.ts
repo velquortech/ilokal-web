@@ -48,7 +48,23 @@ export type BusinessType = {
 export type RawBusinessCategory = {
   id: string;
   name: string;
-  description: string;
+  /**
+   * NULLABLE in the database — `business_categories.description` is `text NULL`,
+   * and `POST /api/web/business-categories` passes its body to the service with
+   * NO Zod validation — so a row with no description is one admin action away.
+   * Declared honestly here and normalised to `''` in `transformBusinessTypes`,
+   * which is what lets `BusinessCategory.description` stay a plain `string`.
+   */
+  description: string | null;
+  /**
+   * ALSO nullable in the database, and deliberately NOT normalised below.
+   * `''` is not a safe fallback: `ShopCategoryStep` renders this straight into
+   * `<Image src={item.imageURL} />`, and next/image throws on an empty src the
+   * same way it throws on null — it would trade one crash for another. The real
+   * fix is a placeholder tile in the card component, which is a change to a
+   * wizard step with its own QA (recorded in CLAUDE.md). Left as-is so the
+   * existing behaviour is unchanged.
+   */
   image_url: string;
 };
 
@@ -69,7 +85,12 @@ export function transformBusinessTypes(raw: RawBusinessType[]): BusinessType[] {
     items: type.business_categories.map((cat) => ({
       id: cat.id,
       name: cat.name,
-      description: cat.description,
+      // `?? ''` is load-bearing, not defensive noise: the category search
+      // calls `.toLowerCase()` on this while the owner types, so a single NULL
+      // row would throw on the first keystroke and take the whole step down.
+      // Normalising at the boundary fixes it for every consumer at once
+      // instead of leaving each call site to remember the guard.
+      description: cat.description ?? '',
       imageURL: cat.image_url,
     })),
   }));

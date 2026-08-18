@@ -162,6 +162,28 @@ jobs:
           fi
           echo "All $actual declared objects present."
 
+      # Deploy-checklist step 3, automated: the General fallback category must
+      # be live for every ACTIVE business type. supabase/tests/general_categories
+      # .test.sql asserts exactly one live 'General' per active vertical (image
+      # and description present), no duplicates, Tourism & Leisure excluded, and
+      # insert idempotency. It is wrapped in BEGIN/ROLLBACK, so it is
+      # non-destructive even on failure — safe to run against the live DB on
+      # every deploy.
+      #
+      # The verdict is the EXIT CODE, not the output: a failing ASSERT aborts
+      # the query and `db query` exits non-zero (verified: "Failed to run sql
+      # query: ERROR: P0004 ...", exit 1), while --output json surfaces no
+      # NOTICE sentinel to grep. Exit code only — anything else would pass
+      # silently.
+      - name: Verify General fallback categories on the database
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          supabase db query --linked --output json \
+            -f supabase/tests/general_categories.test.sql
+          echo "General-categories test passed: every active vertical has exactly one live 'General' category."
+
   Production-preview:
     runs-on: ${{ matrix.os }}
     needs: Deploy-migration
@@ -183,4 +205,33 @@ jobs:
       - name: Build Project Artifacts
         run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
       - name: Deploy Project Artifacts to Vercel
-        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+        run: |
+          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} | tail -1)
+          echo "Deployed to: $url"
+          echo "DEPLOY_URL=$url" >> "$GITHUB_ENV"
+
+      # Deploy-checklist step 5 (automated): smoke the artifact THIS run just
+      # deployed. next.config.ts CSP edits are NOT hot-reloaded — a running
+      # server keeps its old header, and that exact stale-CSP bug silently
+      # blocked nominatim place search on the dev server until it was
+      # restarted. A fresh build picks the new CSP up, so this asserts the
+      # deployed build actually carries it: the header must name
+      # nominatim.openstreetmap.org in connect-src, and the app must answer
+      # with its own HTML (not a Vercel error page).
+      - name: Smoke test the deployed app (CSP + render)
+        run: |
+          set -euo pipefail
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "::error::vercel deploy returned no URL to smoke-test"
+            exit 1
+          fi
+          if ! curl -sIL --max-time 30 "$DEPLOY_URL" \
+            | grep -qiE 'content-security-policy: .*nominatim\.openstreetmap\.org'; then
+            echo "::error::Deployed app's CSP is missing nominatim.openstreetmap.org in connect-src — the build is stale or the config was not picked up. Rebuild/restart before shipping."
+            exit 1
+          fi
+          if ! curl -sL --max-time 30 "$DEPLOY_URL" | grep -qi 'iLokal'; then
+            echo "::error::Deployed app did not render its own HTML at $DEPLOY_URL"
+            exit 1
+          fi
+          echo "CSP smoke check passed for $DEPLOY_URL (nominatim allowed, page renders)."

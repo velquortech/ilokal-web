@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { Check, List, LucideIcon, Search, X } from 'lucide-react';
+import { Check, ImageOff, List, LucideIcon, Search, X } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import { useMultiStepForm } from '../provider/registration-form-provider';
@@ -462,7 +462,7 @@ export function ShopCategoryStep() {
 
 function CategoryCard(item: {
   name: string;
-  imageURL: string;
+  imageURL: string | null;
   description: string;
   isSelected?: boolean;
   onSelect: () => void;
@@ -490,18 +490,40 @@ function CategoryCard(item: {
         </div>
       )}
       <div className="bg-muted border-border z-10 h-28 w-full overflow-hidden rounded-md border sm:h-52">
-        <Image
-          alt={item.name}
-          src={item.imageURL}
-          width={1000}
-          height={1000}
-          className={cn(
-            'transition-all duration-300 group-hover:scale-110',
-            !item.isSelected &&
-              item.hasSelected &&
-              'grayscale hover:grayscale-0',
-          )}
-        />
+        {/* `image_url` is nullable and an admin can create a category without
+            one. Passing a null OR an empty string to next/image throws and
+            takes the whole registration step down with it, so the absence is
+            handled here rather than pretended away upstream. The placeholder
+            reuses the vertical's icon — the same language the search dropdown
+            already uses — so a missing photo reads as a category without a
+            picture, not as a broken tile. */}
+        {item.imageURL ? (
+          <Image
+            alt={item.name}
+            src={item.imageURL}
+            width={1000}
+            height={1000}
+            className={cn(
+              'transition-all duration-300 group-hover:scale-110',
+              !item.isSelected &&
+                item.hasSelected &&
+                'grayscale hover:grayscale-0',
+            )}
+          />
+        ) : (
+          <div
+            className="bg-primary/5 flex h-full w-full items-center justify-center"
+            // Decorative: the card already names the category in text below,
+            // so announcing the placeholder would just repeat it.
+            aria-hidden
+          >
+            {item.type ? (
+              <item.type.icon className="text-primary/40 size-8 sm:size-12" />
+            ) : (
+              <ImageOff className="text-muted-foreground/40 size-8 sm:size-12" />
+            )}
+          </div>
+        )}
       </div>
       <div className="mt-2 min-h-16 p-2 pb-0">
         <p className="text-foreground text-sm font-medium sm:text-base">

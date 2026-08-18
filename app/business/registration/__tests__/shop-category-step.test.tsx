@@ -631,3 +631,82 @@ describe('the grid keeps its own behavior', () => {
     });
   });
 });
+
+describe('a category with no image', () => {
+  // `business_categories.image_url` is NULLABLE and the admin create path runs
+  // no Zod validation, so a category with no picture is reachable today.
+  // Passing null (or '') to next/image THROWS and takes the whole registration
+  // step down — the grid is the step's entire content.
+  //
+  // NOTE ON WHAT THIS CAN PROVE: next/image is mocked as a plain <img> at the
+  // top of this file, so a mocked render would happily accept a null src and
+  // no test here can reproduce the real throw. What it CAN pin — and what
+  // actually prevents the crash — is that the component never hands next/image
+  // a falsy src in the first place.
+  beforeEach(() => {
+    businessTypes = [
+      {
+        name: 'Food & Drink',
+        description: 'Restaurants and cafes',
+        icon: Coffee,
+        offeringProfile: null,
+        items: [
+          {
+            id: 'cat-noimage',
+            name: 'Carinderia',
+            description: 'Home-style eateries',
+            imageURL: null,
+          },
+          {
+            id: 'cat-cafe',
+            name: 'Cafe',
+            description: 'Coffee shops',
+            imageURL: 'https://example.com/cafe.jpg',
+          },
+        ],
+      },
+    ];
+  });
+
+  it('renders the card without passing a falsy src to next/image', () => {
+    act(() => root.render(<Harness />));
+
+    // The category is still offered — a missing photo must not hide a whole
+    // trade from the taxonomy.
+    expect(container.textContent).toContain('Carinderia');
+
+    // The real invariant: every rendered image has a non-empty src.
+    const srcs = Array.from(container.querySelectorAll('img')).map((img) =>
+      img.getAttribute('src'),
+    );
+    expect(srcs.length).toBeGreaterThan(0);
+    for (const src of srcs) {
+      expect(src).toBeTruthy();
+    }
+    // Only the category that HAS an image contributes one.
+    expect(srcs).toEqual(['https://example.com/cafe.jpg']);
+  });
+
+  // NOTE: the shared `clickGridCard`/`gridCardNames` helpers locate cards by
+  // their <img> ALT text, so they cannot see an imageless card at all — the
+  // same assumption that produced the bug. Clicking by title text instead;
+  // the handler sits on the card root and the event bubbles up to it.
+  function clickCardByTitle(name: string) {
+    const title = Array.from(container.querySelectorAll('p')).find(
+      (el) => el.textContent?.trim() === name,
+    )!;
+    act(() => {
+      title.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+  }
+
+  it('still lets the imageless category be picked', () => {
+    act(() => root.render(<Harness />));
+    clickCardByTitle('Carinderia');
+
+    expect(formRef.current!.getValues('business_category')).toMatchObject({
+      id: 'cat-noimage',
+      name: 'Carinderia',
+    });
+  });
+});

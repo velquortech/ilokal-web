@@ -25,7 +25,13 @@ export type BusinessCategory = {
   id: string;
   name: string;
   description: string;
-  imageURL: string;
+  /**
+   * NULL when the category has no image. `business_categories.image_url` is
+   * nullable, so this must be too — typing it `string` is what let a NULL
+   * reach `<Image src={...} />` and crash the whole registration step.
+   * `CategoryCard` renders a fallback tile instead; see ShopCategoryStep.
+   */
+  imageURL: string | null;
 };
 
 export type BusinessType = {
@@ -57,15 +63,14 @@ export type RawBusinessCategory = {
    */
   description: string | null;
   /**
-   * ALSO nullable in the database, and deliberately NOT normalised below.
-   * `''` is not a safe fallback: `ShopCategoryStep` renders this straight into
-   * `<Image src={item.imageURL} />`, and next/image throws on an empty src the
-   * same way it throws on null — it would trade one crash for another. The real
-   * fix is a placeholder tile in the card component, which is a change to a
-   * wizard step with its own QA (recorded in CLAUDE.md). Left as-is so the
-   * existing behaviour is unchanged.
+   * NULLABLE in the database, and deliberately NOT normalised to `''` below.
+   * An empty string is not a safe fallback — next/image throws on an empty
+   * `src` exactly as it throws on null, so coercing here would trade one crash
+   * for another. The nullability is carried through to `BusinessCategory` and
+   * handled where it can actually be handled: `CategoryCard` renders a
+   * placeholder tile when there is no image.
    */
-  image_url: string;
+  image_url: string | null;
 };
 
 export type RawBusinessType = {
@@ -91,6 +96,9 @@ export function transformBusinessTypes(raw: RawBusinessType[]): BusinessType[] {
       // Normalising at the boundary fixes it for every consumer at once
       // instead of leaving each call site to remember the guard.
       description: cat.description ?? '',
+      // Deliberately NOT `?? ''` — see the note on `image_url` above. A blank
+      // string is as fatal to next/image as a null, so the null is preserved
+      // and the card branches on it.
       imageURL: cat.image_url,
     })),
   }));

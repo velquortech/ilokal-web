@@ -39,7 +39,9 @@
   typing.
 - **Forms no longer reject valid input with stray spaces** — values are trimmed
   before length checks across signup, branches, business, coupon, and product
-  forms (with tests).
+  forms (with tests), so a name typed with accidental padding saves clean —
+  and a name made of only spaces now fails at the field with a clear message
+  instead of a generic server error.
 - **Back / Next buttons can't submit the form** — wizard navigation is now
   explicit `type="button"`, so tapping Back no longer fires the form early.
 - **Consistent field spacing** — every wizard step and dialog body now keeps a
@@ -71,9 +73,10 @@
 > 🎟️ **Smarter promos** — new deals default to 100 redemptions / 3 per
 > customer instead of Unlimited, so you're never over-committing
 >
-> 🔧 **Fixes** — signup forms no longer type in reverse, valid inputs with
-> stray spaces are accepted, Back/Next buttons won't submit your form early,
-> and all forms now have consistent, comfortable spacing on mobile and desktop
+> 🔧 **Fixes** — signup forms no longer type in reverse, names with stray
+> spaces are accepted (and saved clean — spaces-only entries get a clear
+> error), Back/Next buttons won't submit your form early, and all forms now
+> have consistent, comfortable spacing on mobile and desktop
 >
 > Update and take a look! ✨
 
@@ -92,7 +95,8 @@
 > - New promos default to **100 redemptions / 3 per customer** instead of
 >   Unlimited.
 > - Fixed: reversed characters while typing in signup, forms rejecting valid
->   inputs with stray spaces, and Back/Next accidentally submitting the form.
+>   inputs with stray spaces (names now save trimmed; spaces-only entries get
+>   a clear field error), and Back/Next accidentally submitting the form.
 > - All wizard steps now share a consistent 24px field spacing on mobile and
 >   desktop.
 
@@ -103,6 +107,36 @@
 > • Add Item and Coupons & Deals forms keep your draft if the dialog is closed
 > • New promos default to 100 total redemptions / 3 per customer
 > • General fallback category added for every business type
-> • Fixed signup text reversing, space-only input rejection, and Back/Next
->   submitting forms early
+> • Fixed signup text reversing and space-only input rejection — names save
+>   trimmed, spaces-only entries get a clear error; Back/Next no longer
+>   submits forms early
 > • Consistent field spacing across all wizard steps on mobile and desktop
+
+---
+
+## Internal — deploy checklist (do NOT post)
+
+1. **Merge PR #62 first.** The `Deploy-migration` workflow refuses to run
+   without `--include-all`: `20260816120000` (categories.kind) was never
+   applied to the cloud DB, so `db push` aborts before `20260819010000`
+   (General rows) gets a turn. Without #62, the General category never
+   reaches production.
+2. **Watch the push-to-main Deploy-migration run go green.** It applies both
+   missing migrations in order: `20260816120000` (additive: nullable `kind`
+   column + index) then `20260819010000` (General rows).
+3. **Verify the General rows landed** — `supabase migration list --linked`
+   shows both versions applied; expect 7 `General` rows (one per active
+   vertical), no duplicates, Tourism excluded.
+4. **App deploy (Vercel):** the CSP change lives in `next.config.ts` — a fresh
+   Vercel build picks it up automatically. **Dev / hot-patched instances need
+   a full restart**: `next.config.ts` and env changes are NOT hot-reloaded,
+   and the running dev server served a stale CSP (no `nominatim` in
+   `connect-src`) that silently blocked place search until restarted.
+5. **Post-deploy smoke test** — place search returns results and pins a shop
+   (nominatim reachable under the new CSP), map renders and the pin drags on
+   a phone, a draft survives closing the Add Item / Coupons & Deals dialog,
+   and a new promo shows 100 / 3 defaults.
+
+Go/No-Go for the social post: **only publish after step 3 is verified** — the
+post's General-category bullet describes a feature that is code-merged but not
+live until the migration deploys.

@@ -83,12 +83,30 @@ jobs:
       # `db push` refuses rather than guessing, and it is right to. Fix it by
       # merging the branch that owns that migration; only use
       # `supabase migration repair` if the version is genuinely never coming.
+      #
+      # The OTHER refusal, the one this job actually hit:
+      #   "Found local migration files to be inserted before the last migration
+      #    on remote database"
+      # means the REPOSITORY has a migration OLDER than the remote's newest
+      # that was never applied — its ledger row is missing even though newer
+      # versions were pushed. `db push` refuses by default because applying it
+      # would rewrite history the remote already moved past. `--include-all`
+      # is the documented recovery: it applies every local version missing
+      # from the remote ledger in timestamp order, so the gap heals in the
+      # right sequence instead of staying a permanent wall. It does NOT
+      # disable the opposite-direction check above (remote versions missing
+      # locally still refuse), so the "database is ahead" guard survives.
+      #
+      # This is what happened here: 20260816120000 (categories.kind) merged
+      # on 2026-08-16 and was never applied to the cloud DB, so every
+      # subsequent push to main failed on it and silently left cloud behind
+      # until 20260819010000 (General categories) tripped the same wall.
       - name: Apply Supabase migrations
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           supabase link --project-ref "$SUPABASE_PROJECT_REF"
-          supabase db push --linked --yes
+          supabase db push --linked --yes --include-all
 
       # `db push` keys on the migration VERSION, so a migration whose ledger row
       # already exists is SKIPPED WHOLE — including statements added to the file

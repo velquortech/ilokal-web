@@ -10,10 +10,13 @@
  * fails CI instead of silently allowing another data dump through.
  *
  * What it pins:
- *   - the tool's filename patterns (user-emails* etc.) and personal-host
- *     regex, at the source level (exact-string pins, so renames break CI);
+ *   - the tool's filename patterns (user-emails* etc., plus `.env*` but NOT
+ *     `.env.example`) and personal-host regex, at the source level
+ *     (exact-string pins, so renames break CI);
  *   - the exit-1 on violation behavior (guarded by a run of the tool against
  *     a planted file, cleaned up after);
+ *   - a staged/tracked `.env*` file exits 1 while a staged `.env.example`
+ *     passes (guarded in a throwaway git repo, cleaned up after);
  *   - package.json: the `check:pii` script exists, the pre-commit script runs
  *     it (wired via the `.husky/pre-commit` hook), and pre-push runs it;
  *   - the CI workflow: the Setup job runs `yarn run check:pii`.
@@ -25,7 +28,15 @@
 
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import {
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  rmSync,
+  mkdtempSync,
+  copyFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const ROOT = join(__dirname, '../..');
@@ -56,6 +67,16 @@ describe('checkPiiFiles.js — the tool itself', () => {
     ]) {
       expect(tool).toContain(source);
     }
+  });
+
+  it('blocks staged/tracked .env files but never the .env.example template', () => {
+    // exact-string pin of the env regex as written in the tool (dotfiles are
+    // skipped by the tree walk, so this rule lives in the staged + tracked
+    // filename checks instead — local untracked .env* never fail dev hooks)
+    expect(tool).toContain('/^\\.env(?!\\.example($|\\.))(\\.|$)/');
+    expect(tool).toContain('Staged environment file');
+    expect(tool).toContain('Tracked environment file');
+    expect(tool).toContain("git', ['ls-files'");
   });
 
   it('flags personal-email hosts but never the app/test domains', () => {
@@ -116,6 +137,35 @@ describe('checkPiiFiles.js — the tool itself', () => {
       encoding: 'utf8',
     });
     expect(after).toContain('No PII export files');
+  });
+
+  it('exits 1 for a staged/tracked .env.local but 0 for a staged .env.example', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'pii-env-guard-'));
+    const toolPath = join(tmp, 'WORKFLOW/tools/checkPiiFiles.js');
+    try {
+      execFileSync('git', ['init', '-q'], { cwd: tmp });
+      execFileSync('git', ['config', 'user.email', 'guard@test'], { cwd: tmp });
+      execFileSync('git', ['config', 'user.name', 'guard'], { cwd: tmp });
+      mkdirSync(join(tmp, 'WORKFLOW/tools'), { recursive: true });
+      copyFileSync(join(ROOT, 'WORKFLOW/tools/checkPiiFiles.js'), toolPath);
+
+      // The legit template must pass, staged or not.
+      writeFileSync(join(tmp, '.env.example'), 'SUPABASE_URL=https://example.com\n');
+      execFileSync('git', ['add', '.env.example'], { cwd: tmp });
+      const clean = execFileSync('node', [toolPath], { cwd: tmp, encoding: 'utf8' });
+      expect(clean).toContain('No PII export files');
+
+      // A real env file force-staged (bypassing gitignore) must fail.
+      writeFileSync(join(tmp, '.env.local'), 'SERVICE_ROLE_KEY=placeholder-secret-123\n');
+      execFileSync('git', ['add', '-f', '.env.local'], { cwd: tmp });
+      expect(() => execFileSync('node', [toolPath], { cwd: tmp })).toThrow();
+
+      // And once committed to the index, the tracked-file check still fails it.
+      execFileSync('git', ['commit', '-qm', 'plant'], { cwd: tmp });
+      expect(() => execFileSync('node', [toolPath], { cwd: tmp })).toThrow();
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
   });
 });
 

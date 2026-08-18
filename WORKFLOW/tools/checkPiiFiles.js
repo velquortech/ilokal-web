@@ -38,6 +38,14 @@ const PII_FILE_PATTERNS = [
   /^profiles-.*\.(csv|txt|jsonl?|xlsx?)$/,
 ];
 
+// Environment files that must never be committed — they carry live secrets
+// (Supabase service-role keys, DB URLs, tokens). `.env.example` is excluded:
+// it is the intentionally-committed template, and so are `.env.example.*`
+// variants. Enforced via STAGED filenames (pre-commit/pre-push) and TRACKED
+// files (CI) — never via the working-tree walk, which skips dotfiles so the
+// untracked `.env*` files on a dev machine never fail local hooks.
+const ENV_FILE_RE = /^\.env(?!\.example($|\.))(\.|$)/;
+
 // Real personal-email hosts. The app's own domains (ilokal.ph, ilokal.dev,
 // showcase.ilokal.dev, example.com, shop.ph) are deliberately NOT here — those
 // are product/test addresses, not user PII.
@@ -94,6 +102,15 @@ function stagedFileNames() {
   }
 }
 
+function trackedFileNames() {
+  try {
+    const out = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' });
+    return out.split('\0').filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 const problems = [];
 const seen = new Set();
 const report = (path) => {
@@ -110,6 +127,20 @@ for (const name of stagedFileNames()) {
   if (PII_FILE_PATTERNS.some((re) => re.test(base))) {
     console.error(`[check:pii] Staged PII export filename: ${name}`);
     problems.push(`staged:${name}`);
+  } else if (ENV_FILE_RE.test(base)) {
+    console.error(`[check:pii] Staged environment file (likely secrets): ${name}`);
+    problems.push(`staged:${name}`);
+  }
+}
+
+// 1b) Tracked dotfiles — a committed `.env` must fail CI even though the
+//     working-tree walk skips dotfiles. `git ls-files` only sees tracked
+//     files, so untracked on-disk `.env*` stay invisible to this check.
+for (const name of trackedFileNames()) {
+  const base = name.split('/').pop() || '';
+  if (ENV_FILE_RE.test(base)) {
+    console.error(`[check:pii] Tracked environment file (likely secrets): ${name}`);
+    problems.push(`tracked:${name}`);
   }
 }
 

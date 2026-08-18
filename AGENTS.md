@@ -25,6 +25,10 @@ hard-won, non-obvious ones.
   ONLY — the running dev server keeps its old CSP/headers until restarted (a
   stale CSP silently blocked the nominatim place-search fetch with zero
   on-page error). Restart + smoke-test recipe: `docs/runbooks/dev-restart-next-config.md`.
+- After a branch's commit→push→PR→merge cycle, remove its worktree with
+  `./scripts/cleanup-worktree.sh <path|branch> [--delete-remote]` — it refuses
+  main, dirty trees, open PRs, unmerged branches, locked worktrees, and live
+  servers. Recipe: `docs/runbooks/worktree-cleanup.md`.
 - Local DB: `docker exec supabase_db_ilokal-web psql -U postgres -d postgres`.
   Delete throwaway signups with `DELETE FROM auth.users WHERE email LIKE ...`
   (cascades to businesses).

@@ -23,11 +23,21 @@ export default defineConfig({
     //
     // A worktree's tests belong to its own branch and run from its own directory,
     // where it has its own node_modules and its own config.
+    //
+    // `.freebuff/worktrees/*` is the same third category: Freebuff feature
+    // worktrees live INSIDE the repo (the preview dev server runs one), so their
+    // `**/*.test.*` files matched `include` too. Worse than the `.claude` case,
+    // the `@/*` alias RESOLVES against this root while `react`/`react-dom` are
+    // still hoisted from the worktree's own node_modules — two React copies in
+    // one render, and every Radix component dies in `useScope` with a null hook
+    // dispatcher. Excluded for the same reason the `.claude` ones are: they run
+    // from their own directory.
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
       '**/.next/**',
       '**/.claude/worktrees/**',
+      '**/.freebuff/worktrees/**',
     ],
   },
   resolve: {

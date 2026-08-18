@@ -31,6 +31,7 @@ export default tseslint.config(
       // branches with their own configs) and pathologically slow. Mirrors the
       // `.claude/worktrees` exclusion already in vitest.config.ts.
       '.claude/worktrees/**',
+      '.freebuff/worktrees/**',
     ],
   },
 

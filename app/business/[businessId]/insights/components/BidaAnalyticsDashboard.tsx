@@ -7,6 +7,7 @@ import type {
   BidaAnalyticsProduct,
 } from '@/lib/types/bidaAnalytics';
 import { cn } from '@/lib/utils';
+import { SafeImage } from '@/components/custom/SafeImage';
 
 /**
  * The owner-facing "your item's Bida Ngayon ranking this week" surface
@@ -128,10 +129,14 @@ function ProductRow({
     <li className="flex items-center gap-4 border-b py-4 last:border-b-0">
       {/* Thumbnail — product photo → gray glyph fallback. */}
       {product.image_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        // SafeImage: unoptimized storage WebP + broken-image fallback (a
+        // stored URL that resolves but no longer exists shows the muted
+        // placeholder instead of the browser's broken glyph).
+        <SafeImage
           src={product.image_url}
           alt=""
+          width={56}
+          height={56}
           className="bg-muted h-14 w-14 shrink-0 rounded-lg object-cover"
         />
       ) : (

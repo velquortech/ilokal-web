@@ -30,7 +30,7 @@ const ROUTES_DIR = join(process.cwd(), 'app/api/mobile/events');
  * the next reader knows why the current shape is what it is. A sweep over raw
  * text matches those explanations and fails, and the cheapest way to make it
  * pass is to delete the explanation. The repo has already learned this once
- * (see the shop-gallery entry in `.claude/CHANGELOG.md`).
+ * (see the 2026-08-06 shop-gallery entry in `.claude/CHANGELOG-ARCHIVE.md`).
  */
 function source(relative: string): string {
   return readFileSync(join(ROUTES_DIR, relative), 'utf8')

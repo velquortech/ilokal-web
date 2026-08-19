@@ -377,7 +377,8 @@ Key facts about the current normalized schema (as of 2026-06-08):
 
 Standards established by the 2026-07-17 perf/security audit (branch
 `perf/security-hardening`; the audit doc was local and is gone — the findings
-and what landed are in the four 2026-07-17 `.claude/CHANGELOG.md` entries). All new
+and what landed are in the four 2026-07-17 entries in
+`.claude/CHANGELOG-ARCHIVE.md`). All new
 code must follow these:
 
 - **RLS policies: always wrap auth functions** — write `(select auth.uid())` /
@@ -495,6 +496,11 @@ Always loaded:
 @.claude/CHANGELOG.md
 
 Load on request (read when topic is relevant):
+- `.claude/CHANGELOG-ARCHIVE.md` — every changelog entry older than 2026-08-07,
+  moved byte-for-byte out of `CHANGELOG.md` so the always-loaded half stays
+  small. **Do not add an `@` to this line** — that re-inlines 297 KB into every
+  session and undoes the split. `CHANGELOG.md` carries an index of *all* entries
+  across both files; start there, open this only when the index points here.
 - `.claude/docs/architecture.md` — system design, auth flow diagrams
 - `.claude/docs/folder-structure.md` — where to put new files
 - `.claude/docs/authentication.md` — auth flows, signup/login/session detail

@@ -122,7 +122,9 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 
 ## Changelog
 
-Update `.claude/CHANGELOG.md` after any major agent-driven change. Format:
+Update `.claude/CHANGELOG.md` after any major agent-driven change. New entries
+go at the **top** (newest first), and add a matching line to that file's index
+under "In this file".
 
 ```markdown
 ## YYYY-MM-DD — Short summary
@@ -130,4 +132,30 @@ Update `.claude/CHANGELOG.md` after any major agent-driven change. Format:
 - What changed and why
 - Risk level
 - Acceptance criteria
+```
+
+### Rotation — keep the always-loaded half small
+
+`CLAUDE.md` inlines `CHANGELOG.md` into **every** session. It reached 381 KB
+(~95k tokens of fixed context per task) before being split on 2026-08-19, so
+the file has a size budget, not just a format.
+
+- **When `CHANGELOG.md` passes ~15 entries**, cut the oldest ones and paste them
+  at the **top** of `.claude/CHANGELOG-ARCHIVE.md` (whole entries, byte-for-byte,
+  still newest-first there), then move their index lines from "In this file" to
+  "In the archive".
+- **Never rewrite, compress, summarise or "correct" a past entry.** Several
+  deliberately record that an earlier entry was wrong — that record is why the
+  file is worth loading at all. Rotation moves text; it never edits it.
+- **Never put an `@` on the archive path in `CLAUDE.md`.** The `@` prefix inlines
+  a file into every session; on the archive it would silently restore the whole
+  381 KB cost with the split still done.
+- Both files are checked by two structural rules: entries are strictly
+  newest-first, and every `## ` heading has a blank line before it. Re-runnable
+  check:
+
+```bash
+# blank line before every entry heading (prints nothing when clean)
+awk 'prev!="" && /^## /{print FILENAME" line "NR} {prev=$0}' \
+  .claude/CHANGELOG.md .claude/CHANGELOG-ARCHIVE.md
 ```

@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
+import { checkUploadRateLimit } from '@/app/api/helpers/upload-rate-limit';
 import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB for documents
@@ -40,6 +41,24 @@ export async function POST(request: NextRequest) {
         { status },
       );
     }
+
+    // The verified session user. `verifyBusinessOwner` returns it on every
+    // success path; an authorized result carrying none is unreachable today, so
+    // treat it as unauthorized rather than skipping the guard — the failure
+    // direction that matters here is an open flood door.
+    if (!auth.user?.id) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 },
+      );
+    }
+
+    // Before formData(): buffering the body is the cost. Documents are stored
+    // raw (no sharp pass — a PDF through a canvas is a corrupt PDF), so this
+    // door is cheaper than the image ones, but it writes to the PRIVATE
+    // verification-docs bucket and shares the same budget by design.
+    const limited = checkUploadRateLimit(auth.user.id);
+    if (limited) return limited;
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;

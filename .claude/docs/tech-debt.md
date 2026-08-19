@@ -47,6 +47,7 @@ planned work. Supersedes the old `roadmap.md` (merged in below).
 | TD-018 | 🟠  | Security     | Mobile protected routes not status-gated (deactivate/archive enforced app-side only) | 🔲 Open |
 | TD-019 | 🟢  | UX           | `safeNext` is customer-scoped — an owner is not returned to the wizard after signup | 🔲 Open |
 | TD-020 | 🟢  | Verification | Surfaces shipped without a browser pass (auth-gated in CI, no headless browser) | 🔲 Open |
+| TD-021 | 🔴  | Security     | `/api/web` + `/api/admin` absent from the proxy limiter — 33 mutating routes + 22 Server Action files unguarded | 🔲 Open (uploads fixed 2026-08-19) |
 
 ---
 
@@ -442,6 +443,58 @@ z-index containment, and `/for-business` at 320/768/1280 in both themes.
 that a cached Playwright chromium turned out to be available during the landing
 redesign (2026-08-01) — worth checking again before assuming it cannot be done
 here.
+
+---
+
+#### TD-021 · 🔴 · `/api/web` and `/api/admin` are absent from the proxy rate limiter
+
+**The defect is structural, not per-route.** `proxy.ts` rate-limits by IP before
+any auth or DB work, but its limiter block tests only `/api/mobile` and
+`/api/protected/mobile`. `/api/admin` is in the matcher (for the role gate) but
+never reaches the limiter; `/api/web` is not in the matcher at all. So a mutating
+route added under either prefix is **unthrottled by default, and nothing at
+review time says so** — which is how this went unnoticed for months. Server
+Action POSTs are a third path with the same property: they never enter the proxy.
+
+**Still unguarded** (re-derive with
+`grep -rLn "rateLimit\|checkAuthRateLimit\|checkUploadRateLimit"` over the
+mutating handlers):
+
+- `app/api/web/businesses/[id]/files/route.ts` — a sibling upload endpoint (the
+  registration per-file POST). Same cost profile as the routes fixed below, but
+  it sits outside `upload/` so the contract sweep does not reach it. **Closest
+  to done; take this one first.**
+- 15 other mutating `/api/web/**` routes — payments (`checkout`, `confirm`,
+  `refund`), `ratings`, `coupons/[id]/redeem`, `invoices/[id]/send`,
+  `notifications/[id]` + `preferences`, `users/[id]` + `users/me`,
+  `businesses`, and the four taxonomy handlers.
+- 14 mutating `/api/admin/**` routes — business verify/suspend/reject/delete,
+  moderation, subscription plans.
+- `/api/auth/logout`, `/refresh-token`, `/verify-email` — the three auth routes
+  with no `checkAuthRateLimit`.
+- 22 Server Action files — `couponActions`, `branchActions`, `profileActions`,
+  `sectionActions`, `settingsActions`, and most of `app/admin/[adminId]/actions/`.
+
+**Fixed so far:** the seven `/api/web/upload/**` routes (2026-08-19) via
+`checkUploadRateLimit` — one shared bucket, keyed on the verified session user,
+placed before `request.formData()`, pinned by a filesystem-driven contract sweep
+so an eighth upload route fails until guarded.
+
+**Fix — two halves, and the second is the durable one:**
+
+1. Per-route guards for the surfaces above, following the upload pattern. Cheap,
+   but it is the same forgettable manual step that created the gap.
+2. **Add `/api/web` to the proxy matcher and widen the limiter block** so the
+   prefix is guarded by default and a per-route guard becomes a tightening
+   rather than the only thing standing there. Do this together with **TD-007**
+   (a distributed store) — a proxy-level limit that resets per isolate is a
+   weaker promise than it looks, and doing both at once means one change to the
+   thing every request passes through, not two.
+
+**Note:** most of these sit behind `assertAuthorized` / `verifyBusinessOwner`,
+so they are *authenticated*-abuse surfaces, not anonymous ones. That bounds the
+blast radius; it does not close it, since a single stolen session is enough and
+several routes amplify into storage writes, emails, or payment calls.
 
 ---
 

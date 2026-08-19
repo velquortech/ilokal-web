@@ -1,5 +1,136 @@
 # Changelog
 
+## 2026-08-19 — The upload routes were the app's most expensive endpoints and had no rate limit (worktree-upload-rate-limit)
+
+> **No schema, API-contract or auth change.** One new helper, a one-line guard
+> in each of the seven routes under `app/api/web/upload/`, and two test files.
+> LOW risk: the guard is additive and every existing response shape is
+> unchanged.
+
+- **🔴 `/api/web` is absent from the proxy matcher, so every upload route was
+  unthrottled.** The proxy rate-limits the whole mobile surface by IP before any
+  auth or DB work, and `checkAuthRateLimit` covers login/signup/reset — but
+  neither reaches `/api/web`. That left the seven upload endpoints as the most
+  expensive unguarded surface in the app: each buffers a 2–4 MB body and then
+  runs a sharp decode/re-encode (`uploadWebP`) before writing to storage. An
+  authenticated owner — or a stolen session — could spend CPU and storage quota
+  at will.
+- **The gap was structural, not an oversight in any one file.** Nothing at
+  review time says an `/api/web` route is unthrottled by default; the two
+  registration routes that DO self-guard (`businesses/[id]/offerings`,
+  `/deal`) are the tell. That is why the fix ships with a filesystem-driven
+  contract sweep rather than seven careful diffs — the eighth route is the one
+  that would be forgotten.
+- **ONE shared bucket (`web-upload:${userId}`), not seven.** There are six POST
+  doors plus the DELETE, and a per-route budget would let a caller multiply
+  their allowance by rotating between them — **the exact defect the login door
+  already fixed** by sharing `auth:login:*` between the API route and the
+  Server Action. A test pretends three calls come from three different routes
+  and asserts the third is refused.
+- **Keyed on the verified session user, never a client-supplied id.**
+  `avatar/route.ts` reads a `userId` form field for admin edits; keying on that
+  would hand an attacker unlimited budget by rotating it. The sweep asserts
+  every call site passes `auth.user.id` — proven by pointing one at the form
+  field and watching it go red.
+- **Placed after auth but BEFORE `request.formData()`, which is the whole
+  point.** `formData()` buffers the entire multipart body and the sharp
+  re-encode runs after it, so a guard placed later throttles the *response*
+  without preventing the *cost*. Pinned by a sweep assertion that compares the
+  two call offsets — also proven by moving one guard below `formData()` and
+  watching that one test fail.
+- **🔴 The 429 body is `{ error }`, NOT the `{ message }` of the shared
+  `tooManyRequestsResponse` — and that was decided by reading the clients, not
+  by preference.** `BannerUploader` does `json.error ?? 'Banner upload failed'`,
+  so a `{ message }` body would render as a generic failure with no hint that
+  the caller should wait — inviting the immediate retry that makes a flood
+  worse. `{ error }` also satisfies the business routes' `{ success: false,
+  error }` clients, since `json.success` is absent (falsy) on a 429.
+- **A missing user id fails closed.** `verifyBusinessOwner`'s return type marks
+  `user` optional even though every success path populates it; an authorized
+  result carrying none returns 401 rather than falling through, so a future
+  refactor of that helper cannot silently turn "no id" into "skip the limiter".
+- **30 requests / 60s**, env-tunable via `WEB_UPLOAD_RATE_LIMIT` /
+  `WEB_UPLOAD_RATE_WINDOW_MS`, matching the `BUSINESS_ACTION_RATE_LIMIT` family.
+  The binding legitimate flow is a 10-image gallery edit and the registration
+  burst (logo + banner + 4–6 interiors + 2 docs), both comfortably inside it.
+- **Same per-instance limitation as everything else built on `rateLimit.ts`** —
+  state is a module-level `Map`, so on serverless the effective ceiling is
+  looser than configured. A baseline flood guard, not a distributed quota; the
+  swap path (Upstash/KV behind the same `rateLimit()` signature) is named in the
+  helper.
+- **Tests (+40):** the helper (6 — budget exhaustion, `Retry-After`, the
+  `{ error }` shape with `message` asserted absent, per-caller isolation, the
+  shared-bucket property, and the window reaching the reported retry) and a
+  contract sweep (34 — discovers routes from the filesystem, asserts each
+  imports the helper, calls it, returns its 429, keys on the session user,
+  guards before buffering, and fails closed on a missing id; plus an assertion
+  that it found ≥7 routes, since a sweep matching nothing is the failure mode
+  it exists to catch). Comments are stripped before every assertion — these
+  routes name the trap they avoid in prose, and a sweep that passed on an
+  explanation would teach people to delete the explanation.
+- **Every guard was proven by breaking it**, five ways: guard call deleted
+  (3 failures), guard moved below `formData()` (1), key switched to the
+  client-supplied field (1), a new unguarded route dropped into the directory
+  (7), and the fail-closed check deleted (1).
+- **That last break caught a bug in the test rather than the code.** Scoping
+  the fail-closed assertion by "calls `verifyBusinessOwner`" also matched the
+  DELETE route — which gates on `assertAuthorized` (that helper narrows `user`,
+  so the check is unnecessary there) and merely calls `verifyBusinessOwner`
+  afterwards for per-bucket ownership. Re-scoped to the helper the route
+  actually gates on; re-broken to confirm it now fails on exactly one file.
+- **The pre-existing upload suites now run through the live limiter.**
+  `phase2-uploads`, `businessid-verification` and `delete-path-guards` pass
+  today because none makes 30+ requests as one user, but the counters are a
+  module-level Map with no reset between tests — so a future loop test would
+  fail with a 429 that looks unrelated. Noted in `phase2-uploads`' header with
+  the fix (`vi.resetModules()` in a `beforeEach`).
+- **🔴 The security doc described a system nobody built, and that is fixed
+  here.** `security.md`'s "Rate Limiting & Abuse Protection" specified
+  "10 req/min per IP", "100/day per account" and a "5 failed logins → 15-minute
+  lockout with exponential backoff" — **none of which exists anywhere in this
+  repo**. The real numbers are 30/60s per IP + 8/300s per account, and there is
+  no lockout at all. A security doc that overstates coverage is worse than no
+  doc: it is read as proof a surface is protected, so nobody checks. Rewritten
+  to the enforced state, with a **coverage table** naming every guarded and
+  unguarded surface, and aspirational items moved to an explicit "Not built"
+  list.
+- **Rate limiting is now a documented MERGE GATE.** New "Security Gate" checklist
+  in `git-workflow.md` — run before any push or merge to `main`, and treated as a
+  priority item in any audit or test pass. Nine boxes (guard present, keyed on a
+  verified identity, placed between auth and work, handler-level authz, Zod
+  validation, no driver text, no `NEXT_PUBLIC_` secret, RLS shape, and a contract
+  test proven by breaking it). An unticked box must be stated explicitly in the
+  PR with a TD- entry — silence reads as "checked and fine", which is how
+  `/api/web` went unthrottled for months. `CLAUDE.md`'s standards section leads
+  with the same rule and now names the `/api/web` + `/api/admin` blind spot
+  instead of mentioning only auth routes.
+- **`testing.md` gained a runnable abuse-control sweep** as a priority step ahead
+  of its coverage matrix, because an endpoint can be fully tested and still be
+  unthrottled — a different class of defect than the one coverage measures.
+- **The counts in those docs were measured, not estimated:** 47 mutating API
+  routes carry no guard, of which 14 are `/api/mobile*` and covered by the proxy,
+  leaving **33 genuinely unguarded** (16 `/api/web`, 14 `/api/admin`, 3
+  `/api/auth`) plus 22 Server Action files. An earlier draft of this entry said
+  "~37" and "~22"; both were corrected against the sweep, since a doc whose whole
+  point is that the previous one was fiction cannot itself ship guesses.
+- **New TD-021** tracks the structural cause — `/api/web` is not in the proxy
+  matcher and `/api/admin` never reaches the limiter block — with the durable fix
+  (widen the proxy) paired with TD-007 (a distributed store), rather than an
+  endless list of per-route guards.
+- Verified: `yarn lint` clean + **3217** tests (258 files, 1 skipped) + a clean
+  `yarn build` (`.next` removed first), plus both documented sweeps executed to
+  confirm they run and return the numbers quoted.
+- **Not done — the remaining `/api/web` gap is larger than this branch.**
+  `app/api/web/businesses/[id]/files/route.ts` is a sibling upload endpoint
+  (the registration per-file POST) and is still unguarded; it sits outside
+  `upload/` so the sweep does not cover it. Beyond that, ~22 more mutating
+  `/api/web` routes (payments, ratings, coupon redeem, notifications, users)
+  and all 14 `/api/admin` mutating routes have no limit — `/api/admin` is in
+  the proxy matcher but the limiter block only tests the two mobile prefixes.
+  22 Server Action files are likewise unguarded. The durable fix for the whole
+  class is a distributed store plus an `/api/web` entry in the proxy, not more
+  per-route guards.
+
 ## 2026-08-17 — Release: storage images, natural-ratio gallery, category clears, Manila dates, revalidate paths (release/2026-08-17)
 
 > **No migrations, no seeds, no env changes — the live database schema is untouched.** 81 files changed (+801/−2460). Full suite: 3,010 tests pass; typecheck, ESLint, Prettier clean; 88/88 contract guards green. Six change groups, summarized for the production deploy.

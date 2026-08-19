@@ -453,27 +453,119 @@ NEXT_IMAGE_PUBLIC_URL=https://your-storage-url.com
 
 ## 🚦 Rate Limiting & Abuse Protection
 
-### Rules
+> **This section describes what is ACTUALLY ENFORCED, re-derived from the code
+> on 2026-08-19.** It previously described a design that was never built —
+> "10 req/min per IP", "100/day per account", and a "5 failed logins → 15-minute
+> lockout" that does not exist anywhere in this repo. **A security doc that
+> overstates coverage is worse than no doc**: it is read as proof a surface is
+> protected, so nobody checks. If you change a limit, change this table in the
+> same commit. Aspirational items live under "Not built" at the bottom, clearly
+> separated from enforced ones.
 
-- Rate-limit login / signup / reset endpoints: **10 req/min per IP**, **100/day per account**.
-- After **5 failed logins**: 15-minute account lockout with exponential backoff.
-- Apply global rate limits to public mutating endpoints (reviews, uploads) to mitigate abuse.
-- Revoke refresh tokens server-side on logout.
-- Log auth failures and suspicious activity to the audit stream.
+### The primitive
 
-### Implementation options
+One function backs every layer: `rateLimit(key, limit, windowMs)` in
+`app/api/helpers/rateLimit.ts` — a fixed-window counter in a module-level `Map`,
+no external dependency. The **caller builds the key**, which is what lets one
+primitive serve three different identity models (IP, email, user id) without
+knowing anything about auth.
 
-| Layer            | Tool                                         |
-| ---------------- | -------------------------------------------- |
-| Edge (preferred) | Cloudflare Rate Limiting / Vercel edge rules |
-| App              | Redis sliding-window middleware → return 429 |
-| Long-term        | WAF / dedicated bot-detection service        |
+**🔴 State is per-runtime-instance.** On serverless each isolate holds its own
+`Map`, so with N warm instances the effective ceiling is roughly N × the
+configured limit. **Treat every number below as a baseline flood guard, not a
+distributed quota.** The swap path is a Redis/Upstash store behind the same
+`rateLimit()` signature — one file, no call-site changes. Tracked as **TD-007**.
+
+Windows are fixed, not sliding: a burst straddling a boundary can briefly get
+2× the limit. Acceptable for flood control, not for anything billed.
+
+### What is enforced
+
+| Layer | Where | Keyed by | Budget | Env |
+| --- | --- | --- | --- | --- |
+| **Edge / pre-auth** | `proxy.ts` | IP | **200 / 60s** on `/api/mobile` + `/api/protected/mobile` | `MOBILE_RATE_LIMIT`, `MOBILE_RATE_WINDOW_MS` |
+| **Edge / pre-auth** | `proxy.ts` | IP | **60 / 60s** on the Sentry tunnel (`/monitoring`) | `SENTRY_TUNNEL_RATE_LIMIT`, `SENTRY_TUNNEL_WINDOW_MS` |
+| **Auth surface** | `checkAuthRateLimit()` | IP **and** email | **30 / 60s** per IP + **8 / 300s** per account | `AUTH_RATE_LIMIT_IP`, `AUTH_RATE_LIMIT_ACCOUNT`, `AUTH_RATE_WINDOW_MS`, `AUTH_ACCOUNT_WINDOW_MS` |
+| **Upload surface** | `checkUploadRateLimit()` | user id | **30 / 60s** shared across all 7 `/api/web/upload/**` routes | `WEB_UPLOAD_RATE_LIMIT`, `WEB_UPLOAD_RATE_WINDOW_MS` |
+| **Server Actions** | inline per action | user id | **30 / 60s** business + customer, **20 / 60s** admin menu-follow-up | `BUSINESS_ACTION_RATE_LIMIT`, `CUSTOMER_ACTION_RATE_LIMIT`, `ADMIN_ACTION_RATE_LIMIT` (+ `_WINDOW_MS`) |
+
+Three properties worth preserving, each of which cost something to learn:
+
+- **The proxy limits mobile BEFORE `getUser()` or any PostgREST call** — a flood
+  cannot reach the database at all. A guard placed after auth still pays for the
+  auth.
+- **Doors that share a budget must share a key namespace.** The login API route
+  and `signInAction` both use `auth:login:*`; all seven upload routes use
+  `web-upload:${userId}`. Give each door its own bucket and an attacker
+  multiplies their allowance by rotating between them.
+- **Never key on a client-supplied identifier.** `upload/avatar` accepts a
+  `userId` form field for admin edits; keying on it would grant unlimited budget
+  by rotating the value. Key on the *verified* session identity.
+
+### Coverage — check this during any audit
+
+| Surface | State |
+| --- | --- |
+| `/api/mobile/**`, `/api/protected/mobile/**` | ✅ proxy, per IP |
+| `/api/auth/login`, `/signup`, `/reset-password` | ✅ per IP + per account |
+| `/api/web/upload/**` (7 routes) | ✅ per user, shared bucket (2026-08-19) |
+| `/api/web/businesses/[id]/offerings`, `/deal` | ✅ self-guarded (registration) |
+| `/monitoring` (Sentry tunnel) | ✅ proxy, per IP |
+| 8 Server Action files (business/customer/admin writes) | ✅ per user |
+| **`/api/web/businesses/[id]/files`** | 🔲 **unguarded** — sibling upload route, outside `upload/` |
+| **15 other mutating `/api/web/**` routes** | 🔲 **unguarded** — payments (checkout/confirm/refund), ratings, coupon redeem, invoices, notifications, users, taxonomy |
+| **14 mutating `/api/admin/**` routes** | 🔲 **unguarded** — in the proxy matcher, but the limiter block only tests the two mobile prefixes |
+| **22 Server Action files** | 🔲 **unguarded** — incl. coupons, branches, profile, sections, most of admin |
+| `/api/auth/logout`, `/refresh-token`, `/verify-email` | 🔲 unguarded |
+
+**🔴 The structural cause, which matters more than any single route:
+`/api/web` is absent from the proxy matcher.** A route added there is
+unthrottled *by default* and nothing at review time says so. Until that changes,
+every new `/api/web` mutating route must guard itself. Tracked as **TD-021**.
+
+### Rules for new code
+
+- **Any new `/api/auth/*` route** must call `checkAuthRateLimit` (per-IP +
+  per-account, scoped by endpoint label).
+- **Any new `/api/web/upload/**` route** must call `checkUploadRateLimit(userId)`
+  after auth and **before `request.formData()`** — buffering the body and
+  re-encoding the image is the cost being prevented. Enforced by
+  `app/api/web/upload/__tests__/upload-rate-limit.contract.test.ts`, which
+  discovers routes from the filesystem, so a new one fails until guarded.
+- **Any new mutating `/api/web/*` or `/api/admin/*` route** must guard itself —
+  the proxy will not do it for you.
+- **Any new Server Action that writes, uploads, emails, or fans out** must
+  rate-limit per user. Server-Action POSTs never reach the proxy limiter.
+- **Return 429 with `Retry-After`**, and **match the route's existing error
+  shape**. `tooManyRequestsResponse` emits `{ message }`; the upload routes emit
+  `{ error }` because their clients read `.error` (`BannerUploader` does
+  `json.error ?? 'Banner upload failed'`). A body the client cannot read renders
+  as a generic failure and invites the immediate retry that makes a flood worse.
+- **Place the guard between auth and work**, and fail closed: a missing user id
+  is `401`, never "skip the limiter".
+
+### Not built (aspirational — do not read as coverage)
+
+- Distributed/shared-state limiting (Redis, Upstash, Vercel KV) — **TD-007**.
+- Failed-login lockout with exponential backoff. There is a *throttle*
+  (8/300s per account); there is **no lockout**.
+- CAPTCHA / progressive challenge on suspicious activity.
+- Edge/WAF-layer limiting (Cloudflare, Vercel firewall rules).
+- Bot-detection service.
+- An audit stream for auth failures (failures are `console.error`'d and reach
+  Sentry via `logActionError`/`loggedServerError`; there is no dedicated
+  security audit log).
 
 ### Acceptance criteria
 
-- Login, signup, and reset-password endpoints have an operational rate limit.
-- Failed login attempts escalate to lockout after threshold.
-- Integration tests emulate rate-limit behavior.
+- Every surface in the coverage table is either ✅ or listed as a tracked gap —
+  no third state.
+- A new route on a guarded surface fails its contract test until guarded.
+- **The numbers here match the code.** Counted 2026-08-19: **47** mutating API
+  routes carry no guard, of which **14 are `/api/mobile*` and covered by the
+  proxy**, leaving **33 genuinely unguarded** (16 `/api/web`, 14 `/api/admin`,
+  3 `/api/auth`) plus 22 Server Action files. Re-derive with the sweep in
+  [testing.md](testing.md) — do not trust this paragraph after a release.
 
 ---
 

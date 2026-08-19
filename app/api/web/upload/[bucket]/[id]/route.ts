@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
+import { checkUploadRateLimit } from '@/app/api/helpers/upload-rate-limit';
 import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function DELETE(
@@ -11,6 +12,13 @@ export async function DELETE(
   try {
     const auth = await assertAuthorized();
     if (!auth.authorized) return auth.error;
+
+    // Shares the upload budget rather than owning one: delete is the other half
+    // of the same storage surface, and a separate bucket would hand a caller a
+    // second allowance for hammering the same storage API.
+    const limited = checkUploadRateLimit(auth.user.id);
+    if (limited) return limited;
+
     const supabase = await createServerSupabaseClient();
 
     const { bucket, id } = await params;

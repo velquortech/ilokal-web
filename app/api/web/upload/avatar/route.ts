@@ -2,6 +2,7 @@ import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { assertAuthorized } from '@/lib/utils/assertAuthorized';
+import { checkUploadRateLimit } from '@/app/api/helpers/upload-rate-limit';
 import {
   uploadWebP,
   ImageProcessingError,
@@ -16,6 +17,13 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await assertAuthorized();
     if (!auth.authorized) return auth.error;
+
+    // Keyed on the SESSION user, never the `userId` form field read below —
+    // that field is the admin-edit target and is client-supplied, so keying on
+    // it would let a caller rotate it for unlimited budget.
+    const limited = checkUploadRateLimit(auth.user.id);
+    if (limited) return limited;
+
     const supabase = await createServerSupabaseClient();
 
     const formData = await request.formData();

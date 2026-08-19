@@ -140,7 +140,7 @@ under "In this file".
 (~95k tokens of fixed context per task) before being split on 2026-08-19, so
 the file has a size budget, not just a format.
 
-- **When `CHANGELOG.md` passes ~15 entries**, cut the oldest ones and paste them
+- **When `CHANGELOG.md` passes 20 entries**, cut the oldest ones and paste them
   at the **top** of `.claude/CHANGELOG-ARCHIVE.md` (whole entries, byte-for-byte,
   still newest-first there), then move their index lines from "In this file" to
   "In the archive".

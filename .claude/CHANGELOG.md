@@ -18,7 +18,7 @@
 > not a live one.
 >
 > **🔴 Rotation rule — this is what stops the file regrowing to 381 KB.** When
-> this file passes ~15 entries, cut the oldest ones and paste them at the
+> this file passes 20 entries, cut the oldest ones and paste them at the
 > **top** of the archive (whole entries, byte-for-byte, still newest-first
 > there), then move their index lines from "In this file" to "In the archive".
 > **Never rewrite, compress, or "correct" a past entry.** Several entries
@@ -160,7 +160,7 @@
   documented as one in `git-workflow.md`.
 - **A rotation rule now exists, which is the difference between a cleanup and a
   fix.** `git-workflow.md` — which already said "update the CHANGELOG" and said
-  nothing about size — now carries the budget: past ~15 entries, cut the oldest
+  nothing about size — now carries the budget: past 20 entries, cut the oldest
   to the top of the archive, move their index lines, never rewrite an entry,
   never add an `@`. Without it the next agent regrows this to 381 KB and nobody
   knows it was ever trimmed.
@@ -173,7 +173,7 @@
   checks clean on **each** file (blank-line-before-heading, strict
   newest-first), `grep '@.claude/CHANGELOG' CLAUDE.md` returning exactly one
   line, `yarn lint` clean, and the events contract suite green (20 tests).
-- **Not done:** the ~15-entry rotation threshold is a written rule, not an
+- **Not done:** the 20-entry rotation threshold is a written rule, not an
   enforced one — no test fails when the live file outgrows it. A contract test
   asserting the live file's size and the absence of an `@` on the archive path
   would close that, and belongs with the next changelog-touching change rather

@@ -20,6 +20,45 @@
 
 ---
 
+## 🔒 Priority check for every test/audit pass: is the endpoint GUARDED?
+
+**Coverage is not the only question — an endpoint can be fully tested and still
+be unthrottled.** Before working through the matrix below, run the abuse-control
+sweep; it is faster than writing tests and finds a different class of defect.
+
+```bash
+# Mutating routes with no rate-limit guard of any kind
+for f in $(find app/api -name route.ts); do
+  grep -qE "export async function (POST|PATCH|PUT|DELETE)" "$f" || continue
+  grep -qE "rateLimit|checkAuthRateLimit|checkUploadRateLimit" "$f" || echo "UNGUARDED $f"
+done
+
+# Server Action files with no guard ('use server' POSTs never reach the proxy)
+for f in $(grep -rl "^'use server'" --include=*.ts app lib | grep -v __tests__); do
+  grep -q "rateLimit" "$f" || echo "UNGUARDED $f"
+done
+```
+
+Cross-check the output against the coverage table in
+[security.md](security.md#-rate-limiting--abuse-protection): every hit is either
+already listed as a tracked gap (**TD-021**) or is a new regression to fix in the
+PR that introduced it. **`/api/web` and `/api/admin` are not covered by the
+proxy limiter**, so routes there are unthrottled by default — the sweep is the
+only thing that surfaces them.
+
+**When you add a guard, add a contract test that discovers its surface from the
+filesystem** rather than listing files —
+`app/api/web/upload/__tests__/upload-rate-limit.contract.test.ts` is the
+template. A hand-listed sweep passes forever once someone adds the eighth route.
+**Prove it by breaking it**: delete the guard, move it after the expensive step,
+and swap the key to a client-supplied value — each should turn the suite red. A
+guard whose failure has never been observed is not known to work, which is the
+lesson from the CI migration check that could only ever pass.
+
+Full pre-merge list: [git-workflow.md](git-workflow.md) → "Security Gate".
+
+---
+
 ## 🔴 CRITICAL - START HERE (20 items, ~20 hours)
 
 ### Auth Routes - SECURITY CRITICAL

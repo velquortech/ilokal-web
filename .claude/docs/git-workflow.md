@@ -69,6 +69,49 @@ Prefer `merge` over `rebase` for shared feature branches — rebase rewrites his
 
 Flag these in the PR description with a **Risk:** line and include rollback steps.
 
+## 🔒 Security Gate — Check BEFORE Pushing or Merging to `main`
+
+**Standing rule: rate limiting and the other abuse/authz controls are a
+first-class merge gate, not a nice-to-have.** Every push to a shared branch and
+every merge to `main` is checked against this list, and any audit or test pass
+treats it as a priority item. A feature that works but ships an unguarded
+mutating endpoint is **not done**.
+
+Run through this whenever a PR touches a route handler, a Server Action, RLS, or
+a migration. Answer each with a file reference, not a recollection.
+
+- [ ] **Rate limiting.** Does every new/changed mutating endpoint have a guard?
+      `/api/web/**` and `/api/admin/**` are **NOT** covered by the proxy — a
+      route there is unthrottled by default. Server-Action POSTs never reach the
+      proxy limiter either. See the coverage table in
+      [security.md](security.md#-rate-limiting--abuse-protection).
+- [ ] **The guard is keyed on a verified identity** (session user / verified IP),
+      never a client-supplied id, and doors that should share a budget share a
+      key namespace — otherwise rotating between them multiplies the allowance.
+- [ ] **The guard runs between auth and work**, before any expensive step
+      (`request.formData()`, image re-encode, fan-out, email send), and fails
+      closed when the identity is missing.
+- [ ] **Authorization at the handler**, not RLS alone — `assertAuthorized` /
+      `verifyBusinessOwner` with the **route segment's** id (a bare
+      `verifyBusinessOwner()` falls back to whichever shop `.limit(1)` returns).
+- [ ] **Input validated with Zod** before it reaches PostgREST; `z.guid()` for
+      ids, never `z.uuid()`.
+- [ ] **No driver text in a client response** — 500 paths go through
+      `loggedServerError`; Server Action catches call `logActionError`.
+- [ ] **No secret gains a `NEXT_PUBLIC_` prefix**, and no new Supabase import
+      lands in a `.tsx`.
+- [ ] **RLS**: new policies wrap auth calls as `(select auth.uid())`; a `FOR ALL`
+      policy has an explicit `WITH CHECK`; SECURITY DEFINER functions pin
+      `search_path` and REVOKE from `PUBLIC`/`anon`/`authenticated`.
+- [ ] **A contract test pins whatever you just fixed**, so the next route cannot
+      regress it silently. Prove it by breaking it and watching it go red — a
+      guard that has never failed is not known to work.
+
+**If a box cannot be ticked, say so explicitly in the PR** under a
+**Security:** line, with the reason and a TD- entry in
+[tech-debt.md](tech-debt.md). Silence reads as "checked and fine", which is how
+`/api/web` went unthrottled for months.
+
 ## Commit Co-authorship
 
 When commits are AI-assisted, append:

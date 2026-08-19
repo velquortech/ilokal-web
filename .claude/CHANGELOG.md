@@ -84,8 +84,42 @@
   module-level Map with no reset between tests — so a future loop test would
   fail with a 429 that looks unrelated. Noted in `phase2-uploads`' header with
   the fix (`vi.resetModules()` in a `beforeEach`).
+- **🔴 The security doc described a system nobody built, and that is fixed
+  here.** `security.md`'s "Rate Limiting & Abuse Protection" specified
+  "10 req/min per IP", "100/day per account" and a "5 failed logins → 15-minute
+  lockout with exponential backoff" — **none of which exists anywhere in this
+  repo**. The real numbers are 30/60s per IP + 8/300s per account, and there is
+  no lockout at all. A security doc that overstates coverage is worse than no
+  doc: it is read as proof a surface is protected, so nobody checks. Rewritten
+  to the enforced state, with a **coverage table** naming every guarded and
+  unguarded surface, and aspirational items moved to an explicit "Not built"
+  list.
+- **Rate limiting is now a documented MERGE GATE.** New "Security Gate" checklist
+  in `git-workflow.md` — run before any push or merge to `main`, and treated as a
+  priority item in any audit or test pass. Nine boxes (guard present, keyed on a
+  verified identity, placed between auth and work, handler-level authz, Zod
+  validation, no driver text, no `NEXT_PUBLIC_` secret, RLS shape, and a contract
+  test proven by breaking it). An unticked box must be stated explicitly in the
+  PR with a TD- entry — silence reads as "checked and fine", which is how
+  `/api/web` went unthrottled for months. `CLAUDE.md`'s standards section leads
+  with the same rule and now names the `/api/web` + `/api/admin` blind spot
+  instead of mentioning only auth routes.
+- **`testing.md` gained a runnable abuse-control sweep** as a priority step ahead
+  of its coverage matrix, because an endpoint can be fully tested and still be
+  unthrottled — a different class of defect than the one coverage measures.
+- **The counts in those docs were measured, not estimated:** 47 mutating API
+  routes carry no guard, of which 14 are `/api/mobile*` and covered by the proxy,
+  leaving **33 genuinely unguarded** (16 `/api/web`, 14 `/api/admin`, 3
+  `/api/auth`) plus 22 Server Action files. An earlier draft of this entry said
+  "~37" and "~22"; both were corrected against the sweep, since a doc whose whole
+  point is that the previous one was fiction cannot itself ship guesses.
+- **New TD-021** tracks the structural cause — `/api/web` is not in the proxy
+  matcher and `/api/admin` never reaches the limiter block — with the durable fix
+  (widen the proxy) paired with TD-007 (a distributed store), rather than an
+  endless list of per-route guards.
 - Verified: `yarn lint` clean + **3217** tests (258 files, 1 skipped) + a clean
-  `yarn build` (`.next` removed first).
+  `yarn build` (`.next` removed first), plus both documented sweeps executed to
+  confirm they run and return the numbers quoted.
 - **Not done — the remaining `/api/web` gap is larger than this branch.**
   `app/api/web/businesses/[id]/files/route.ts` is a sibling upload endpoint
   (the registration per-file POST) and is still unguarded; it sits outside

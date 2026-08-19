@@ -421,9 +421,36 @@ code must follow these:
   reviews,subscriptions,billing}`, `/api/web/ratings/[id]`,
   `/api/web/analytics/products`. `getUserBusiness` lives in
   `lib/api/getUserBusiness.ts`.
-- **Auth-route rate limiting** — any new `/api/auth/*` route must call
-  `checkAuthRateLimit` (`app/api/helpers/auth-rate-limit.ts`): per-IP 30/60s +
-  per-account 8/300s, 429 + Retry-After.
+- **Rate limiting is a MERGE GATE, not a follow-up.** Checked before every push
+  and every merge to `main`, and treated as a priority item in any audit or test
+  pass — the checklist is in `.claude/docs/git-workflow.md` ("Security Gate"),
+  the enforced-coverage table in `.claude/docs/security.md`.
+  - **🔴 `/api/web` and `/api/admin` are NOT covered by the proxy limiter** (it
+    tests only the two mobile prefixes), and Server-Action POSTs never reach it
+    at all. A mutating route on those surfaces is unthrottled **by default** —
+    so it must guard itself. This is TD-021, and it is the reason every upload
+    route went unguarded for months.
+  - Any new `/api/auth/*` route calls `checkAuthRateLimit`
+    (`app/api/helpers/auth-rate-limit.ts`): per-IP 30/60s + per-account 8/300s.
+  - Any new `/api/web/upload/**` route calls `checkUploadRateLimit`
+    (`app/api/helpers/upload-rate-limit.ts`) after auth and **before
+    `request.formData()`** — buffering the body and re-encoding it is the cost.
+    One shared bucket across all upload doors; a contract sweep discovers routes
+    from the filesystem, so a new one fails until guarded.
+  - Any new Server Action that writes, uploads, emails or fans out limits per
+    user id (30/60s, the `BUSINESS_ACTION_RATE_LIMIT` family).
+  - Always 429 + `Retry-After`, keyed on a **verified** identity (never a
+    client-supplied id), failing closed when the identity is missing, and
+    matching the route's existing error shape — `tooManyRequestsResponse` emits
+    `{ message }` while the upload routes emit `{ error }`, because their
+    clients read `.error` and a body they cannot read reads as a generic
+    failure and invites an immediate retry.
+  - Doors that should share a budget **share a key namespace** (`auth:login:*`
+    across the route and the Server Action; `web-upload:${userId}` across all
+    seven upload routes) — otherwise rotating between them multiplies the
+    allowance.
+  - All of it is `rateLimit.ts`'s in-memory `Map`, so it is **per-instance**: a
+    baseline flood guard, not a distributed quota (TD-007).
 - **Storage delete paths** — `upload/[bucket]/[id]` rejects traversal-shaped /
   non-UUID-rooted paths (400) and enforces ownership per bucket (business
   buckets → `verifyBusinessOwner`; `avatars` → first segment must equal the

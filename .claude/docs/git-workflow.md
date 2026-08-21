@@ -33,20 +33,20 @@ Feature branches tied to a ticket: `feat-<ticket>/description` (e.g. `feat-10/bu
 
 ## Rules
 
-- Branch from `develop` for features; branch from `main` for hotfixes.
-- Never commit directly to `main` or `develop`.
+- Branch from `main` — for features and hotfixes alike.
+- Never commit directly to `main`.
 - One logical change per commit. Do not bundle unrelated changes.
 - PR title must follow the same Conventional Commits format as commits.
-- Squash-merge PRs into `develop` to keep history clean.
+- Squash-merge PRs into `main` to keep history clean.
 - After merging, delete the feature branch.
 
-## Merging from develop
+## Merging from main
 
-When your branch is outdated from `develop`:
+When your branch is outdated from `main`:
 
 ```bash
-git fetch origin develop
-git merge origin/develop
+git fetch origin main
+git merge origin/main
 ```
 
 Prefer `merge` over `rebase` for shared feature branches — rebase rewrites history others may have pulled.

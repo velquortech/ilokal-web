@@ -15,6 +15,7 @@ setup-supabase: init-log
 		echo "[$(TIMESTAMP)] Error: Docker is not installed or not running." | tee -a $(LOG_FILE); \
 		exit 1; \
 	fi
+	@./scripts/check-ports.sh
 	@echo "[$(TIMESTAMP)] Docker is running, executing 'yarn supabase start'..." | tee -a $(LOG_FILE)
 	@rm -f .env
 	@if yarn supabase start > supabase_output.txt 2>> $(LOG_FILE); then \
@@ -50,6 +51,7 @@ run-dev:
 		echo "         yarn supabase stop --project-id $$project"; \
 		exit 1; \
 	fi
+	@./scripts/check-ports.sh
 	yarn supabase start --ignore-health-check
 	@./scripts/slim-supabase.sh
 	yarn dev
@@ -84,7 +86,14 @@ dev-cloud:
 slim-supabase:
 	@./scripts/slim-supabase.sh
 
+# Is Windows holding the ports the local stack needs? (WSL2 only; a no-op
+# everywhere else.) Called automatically before every `supabase start` — this
+# target is for running the diagnosis on its own.
+check-ports:
+	@./scripts/check-ports.sh && echo "Ports are available."
+
 run-start:
+	@./scripts/check-ports.sh
 	yarn supabase start --ignore-health-check
 	yarn start
 	@echo "Running prod with supabase"

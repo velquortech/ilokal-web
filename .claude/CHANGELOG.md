@@ -1,5 +1,72 @@
 # Changelog
 
+## 2026-08-22 — `make run-dev` died on an unactionable Docker 500 (chore/wsl-port-preflight)
+
+> **Tooling only.** No app code, no schema, no API. One shell script, three
+> one-line Makefile hooks, a standalone target, and a doc section.
+
+- **🔴 The error named none of its causes.** `make run-dev` on WSL2 died with
+  `ports are not available: exposing port TCP 0.0.0.0:54322 -> 127.0.0.1:0:
+  /forwards/expose returned unexpected status: 500`. Both obvious readings are
+  wrong — checked, not assumed: `netstat -ano` showed **nothing listening** on
+  `5432x`, and `docker ps -a` held **no Supabase container** at all.
+- **What actually happened: WinNAT/Hyper-V had reserved the range.**
+  `netsh interface ipv4 show excludedportrange protocol=tcp` listed
+  **54319–54418**, which swallows every port the stack binds — 54320 (shadow),
+  54321 (API), 54322 (db), 54323 (studio), 54324 (mailpit), 54327, 54329. The
+  port was free; it was *reserved*, so Docker Desktop's forwarder was refused.
+  Windows picks those ranges randomly at boot, which is exactly why the same
+  command worked the day before.
+- **`make run-dev` already had a port guard and it could not see this one.** It
+  looks for a competing Supabase container holding `:54322->` — a real cause,
+  and the wrong one here. It passed, correctly, and then Docker failed with the
+  500. New `scripts/check-ports.sh` runs before every `yarn supabase start`
+  (`run-dev`, `run-start`, `setup-supabase`) and turns that into the blocked
+  port list, the range holding them, and the three commands that fix it.
+- **The ports are read from `supabase/config.toml`, not typed in**, so the
+  reservation span in the printed command is computed — a stack that moves or
+  gains a port gets the right `startport`/`numberofports` without anyone
+  remembering to edit the script. Commented-out lines are skipped: `#
+  smtp_port = 54325` is never bound, and reporting it would send someone
+  reserving a port nothing wants.
+- **🔴 It is a diagnostic, never a gate, and that is the whole contract.** It
+  exits 0 — silently — unless it can positively name a blocked port: not WSL,
+  no interop, netsh missing, netsh failing, netsh output unparseable, config
+  unreadable, no ports declared. A preflight that can produce a false "your
+  ports are blocked" gets worked around instead of read, so every degradation
+  path is a test.
+- **`tr -d '\r'` is load-bearing, and removing it fails four tests.** This is
+  Windows output crossing into a Linux pipeline; a trailing `\r` makes every
+  numeric comparison fail, and it fails **open** — the script would report
+  "ports are fine" while the stack cannot start, which is precisely the false
+  "no" the contract forbids. Verified by deleting it and watching the suite go
+  red rather than by trusting the comment.
+- **Deliberately NOT moving the ports in `supabase/config.toml`.** That looks
+  like the tidy fix and is not: `54321` is hardcoded in `next.config.ts` twice
+  (the CSP `connect-src` and the `img-src` derivation) plus `.env`,
+  `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_DB_URL`. Dev images and the CSP would
+  break, to work around a per-machine Windows quirk that a reboot may clear on
+  its own.
+- **`make check-ports`** runs the diagnosis alone, and
+  `.claude/docs/mobile-api.md` carries the error string so the next person can
+  search for it.
+- **Tests (+13):** the real `netsh` output and the real port set (verbatim from
+  the machine that hit this) producing the exact blocked list; the span computed
+  from config; the fix commands in the order that matters (`net stop winnat`
+  before the add — the add fails while WinNAT holds the range); commented ports
+  ignored; a range covering exactly one port caught; **both off-by-one
+  boundaries** (a range ending at 54319 and one starting at 54330 are clear);
+  the six degradation paths exiting 0 silently; and a Makefile sweep asserting
+  the check precedes **every** uncommented `yarn supabase start` — a check that
+  runs after Docker is a check that never runs.
+- Verified: `yarn lint` clean + **3233** tests, and the script run against this
+  machine's real reservation, where it reproduces the failure and prints the
+  fix. `yarn build` not re-run: no app source is touched (Makefile, one shell
+  script, one test, one doc), and the pre-push hook builds anyway.
+- **Not fixed by this branch, because it cannot be:** the reservation itself
+  needs an Administrator PowerShell on Windows. The script prints the commands;
+  running them is the developer's.
+
 ## 2026-08-19 — The upload routes were the app's most expensive endpoints and had no rate limit (worktree-upload-rate-limit)
 
 > **No schema, API-contract or auth change.** One new helper, a one-line guard

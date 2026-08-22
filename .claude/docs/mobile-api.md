@@ -9,7 +9,31 @@ make setup-supabase   # First-time setup: start Supabase and auto-generate .env
 make run-dev          # Daily dev (starts Supabase + Next.js)
 make stop-db          # Stop Supabase DB only
 make clean            # Full teardown (stops Supabase, deletes .env)
+make check-ports      # WSL2 only: is Windows holding the stack's ports?
 ```
+
+### `ports are not available … /forwards/expose returned unexpected status: 500`
+
+WSL2 only, and neither of the two obvious readings is right: the port is not in
+use and no container holds it. **WinNAT/Hyper-V reserved a ~100-port range at
+boot** and the Supabase ports (54320–54329) fell inside it. The ranges are
+random per boot, which is why the same command worked yesterday.
+
+`make run-dev` now fails this before Docker does and prints the fix;
+`make check-ports` runs the diagnosis on its own. The fix is an administered
+port exclusion, in an **Administrator** PowerShell:
+
+```powershell
+net stop winnat
+netsh int ipv4 add excludedportrange protocol=tcp startport=54320 numberofports=10 store=persistent
+net start winnat
+```
+
+Then restart Docker Desktop — its port-forwarder caches state. Do **not** move
+the ports in `supabase/config.toml` instead: `54321` is hardcoded in
+`next.config.ts` (the CSP `connect-src` and the `img-src` derivation) as well as
+`.env` and `SUPABASE_DB_URL`, so dev images and the CSP would break to work
+around a per-machine Windows quirk.
 
 ## Environment variables
 

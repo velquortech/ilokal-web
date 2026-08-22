@@ -36,6 +36,12 @@
 > column still exist and are still read by the DB contract, but nothing in this
 > app branches on them; see "Schema state" for the dormant booking schema.
 
+> **Active work:** Registration-funnel recovery (49% of owner accounts never
+> produce a business row) — parities, phased action items and the testing plan
+> in [`.claude/REGISTRATION_FUNNEL.md`](.claude/REGISTRATION_FUNNEL.md).
+> Phase 1 and Phase 3 each carry one pending migration. Delete that file and
+> this note when finished.
+
 ## Commands
 
 ```bash

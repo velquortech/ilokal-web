@@ -47,7 +47,7 @@ export const mainNavigation: NavItem[] = [
     flag: 'enable_events',
   },
   {
-    title: 'Menu Follow-up',
+    title: 'Owner Follow-up',
     href: '/admin/menu-follow-up',
     icon: MailWarning,
   },

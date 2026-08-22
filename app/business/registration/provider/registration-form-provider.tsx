@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { FieldPath, useForm, UseFormReturn } from 'react-hook-form';
@@ -33,6 +34,7 @@ import {
   type OfferingVocabulary,
 } from '@/lib/types/offering';
 import { logOwnerEvent } from '../actions/ownerEvents';
+import { collectStepIssues, type StepIssue } from '../validator/stepIssues';
 
 type ContextType = {
   step: number; // 1-based index into `steps`
@@ -41,6 +43,16 @@ type ContextType = {
   nextStep: () => Promise<void>;
   prevStep: () => void;
   canProceed: boolean;
+  /**
+   * What is blocking THIS step, in the owner's words.
+   *
+   * Always computed, but only worth showing once they have asked to continue —
+   * see `showStepIssues`. Scoped to the current step's field group, so a later
+   * step's error can never present as a phantom blocker.
+   */
+  stepIssues: StepIssue[];
+  /** The owner pressed Next and the wizard did not advance. */
+  showStepIssues: boolean;
   form: UseFormReturn<BusinessProps>;
   clearFormCache: () => void;
   cacheFile: (fieldName: string, file: File) => Promise<void>;
@@ -152,6 +164,13 @@ export function MultiStepFormProvider({
 
   const [step, setStep] = useState(1);
   const [canProceed, setCanProceed] = useState(false);
+  // Set when Next is pressed on an invalid step. Gates the error summary, so a
+  // freshly-opened step does not greet an owner with a list of complaints about
+  // fields they have not filled in yet.
+  const [showStepIssues, setShowStepIssues] = useState(false);
+  // Bumped on each failed Next. Reporting is driven off this rather than done
+  // inline, for the reason spelled out at the reporting effect below.
+  const [stallAttempt, setStallAttempt] = useState(0);
 
   const form = useForm<BusinessProps>({
     mode: 'onChange',
@@ -227,6 +246,10 @@ export function MultiStepFormProvider({
     });
   }, [step, steps]);
 
+  useEffect(() => {
+    setShowStepIssues(false);
+  }, [step]);
+
   // Validate current step and update canProceed
   useEffect(() => {
     if (!isHydrated) return;
@@ -268,6 +291,62 @@ export function MultiStepFormProvider({
     [selectedVertical, offeringMode],
   );
 
+  // Reading `errors` during RENDER is what subscribes this provider to error
+  // changes — RHF wraps `formState` in a Proxy and only tracks the keys it has
+  // seen read. Without this line the summary below never updates at all.
+  const { errors } = form.formState;
+
+  // 🔴 NOT memoized on `errors`. RHF MUTATES its error object in place, so the
+  // reference can survive a change — a `useMemo` keyed on it froze the summary
+  // at whatever was wrong when the owner pressed Next, so filling the named
+  // field in left the complaint on screen. That is worse than the dead grey
+  // button it replaced: it tells someone their correct input is still wrong.
+  // Recomputed every render instead; it walks one step's field group, which is
+  // a handful of keys.
+  const stepIssues = collectStepIssues(errors, stepFieldGroups[step - 1] ?? []);
+
+  const stepIssuesRef = useRef<StepIssue[]>([]);
+  stepIssuesRef.current = stepIssues;
+
+  /**
+   * Report the stall — the funnel event, and the focus jump.
+   *
+   * 🔴 Deliberately an EFFECT, not inline in `nextStep`. RHF wraps `formState`
+   * in a Proxy whose values are only guaranteed fresh in RENDER; read from
+   * inside an async callback, `form.formState.errors` comes back EMPTY even
+   * though validation has already failed. That is not hypothetical — the
+   * original inline `Object.keys(form.formState.errors)` at this site would
+   * have logged an empty field list every time, so the event this phase exists
+   * to switch on would have arrived carrying nothing. Driving off a render-
+   * derived ref is what makes the payload match what the owner sees.
+   */
+  useEffect(() => {
+    if (stallAttempt === 0) return;
+    const issues = stepIssuesRef.current;
+
+    void logOwnerEvent('reg_step_error', {
+      step,
+      step_id: steps[step - 1]?.title ?? null,
+      // Top-level field names, preserving the shape already collected in
+      // `owner_events`; `paths` is the precise leaf.
+      fields: [...new Set(issues.map((issue) => issue.path.split('.')[0]))],
+      paths: issues.map((issue) => issue.path),
+    });
+
+    // Put the cursor in the first thing that needs fixing. On the tall steps
+    // the blocker is often scrolled out of view, which is how a summary alone
+    // can still read as "nothing happened".
+    const first = issues[0];
+    if (first) {
+      form.setFocus(first.path as FieldPath<BusinessProps>, {
+        shouldSelect: false,
+      });
+    }
+    // Only a NEW attempt reports. `stepIssues` is read through the ref rather
+    // than listed here on purpose: as a dependency it would re-fire the event on
+    // every keystroke that changes an error.
+  }, [stallAttempt]);
+
   const validateStep = async () => {
     const fields = stepFieldGroups[step - 1] ?? [];
     const result = await form.trigger(fields);
@@ -278,16 +357,17 @@ export function MultiStepFormProvider({
   const nextStep = async () => {
     const valid = await validateStep();
     if (!valid) {
-      // A stall is the most interesting row in the funnel: it marks the step
-      // where owners get stuck (and, with `formState.errors`, what field).
-      void logOwnerEvent('reg_step_error', {
-        step,
-        step_id: steps[step - 1]?.title ?? null,
-        fields: Object.keys(form.formState.errors),
-      });
+      // Reachable at last. Next used to be DISABLED while a step was invalid,
+      // so this branch could never run and `reg_step_error` — the one event
+      // that names the field owners stall on — had zero rows by construction.
+      // See `.claude/REGISTRATION_FUNNEL.md` (P4). The reporting itself is in
+      // the effect above, which is the only place the error list is trustworthy.
+      setShowStepIssues(true);
+      setStallAttempt((prev) => prev + 1);
       return;
     }
 
+    setShowStepIssues(false);
     void logOwnerEvent('reg_step_completed', {
       step,
       step_id: steps[step - 1]?.title ?? null,
@@ -314,6 +394,8 @@ export function MultiStepFormProvider({
         nextStep,
         prevStep,
         canProceed,
+        stepIssues,
+        showStepIssues,
         form,
         clearFormCache,
         cacheFile,

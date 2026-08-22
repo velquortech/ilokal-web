@@ -19,7 +19,7 @@ import {
 } from '../api/register-business';
 import { defaultKindForMode } from '@/lib/types/offering';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, ImageOff } from 'lucide-react';
 import { AxiosError } from 'axios';
 import { cn } from '@/lib/utils';
 import { logOwnerEvent } from '../actions/ownerEvents';
@@ -27,6 +27,43 @@ import type { FieldErrors } from 'react-hook-form';
 import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 const BUSINESS_ID_KEY = 'ilokal-registration-business-id';
+/**
+ * Which uploads already landed, so a retry AFTER A RELOAD does not redo them.
+ *
+ * The business id has always survived a reload; the upload set had not, because
+ * it lived only in a React ref. So a retry on a fresh page re-uploaded the logo
+ * and banner (orphaning a copy of each in the bucket) and re-appended the
+ * interior photos, which the server appends rather than replaces — duplicated
+ * gallery images. Keyed separately from the id so the two are cleared together
+ * by `resetResumeMarkers` and neither can outlive the other.
+ */
+const UPLOADED_KEYS_KEY = 'ilokal-registration-uploaded';
+
+/** Read the persisted upload set. A corrupt value is treated as empty. */
+function readUploadedKeys(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(UPLOADED_KEYS_KEY);
+    if (!raw) return new Set();
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.filter((v): v is string => typeof v === 'string'));
+  } catch {
+    // Never let a bad cache entry break a submission — re-uploading is
+    // recoverable, a thrown parse error at submit time is not.
+    return new Set();
+  }
+}
+
+function writeUploadedKeys(keys: Set<string>) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(UPLOADED_KEYS_KEY, JSON.stringify([...keys]));
+  } catch {
+    // Quota or a privacy mode that refuses writes. Losing the marker only
+    // costs a duplicate upload on retry; it must not fail the registration.
+  }
+}
 
 export function ShopRegistrationContent() {
   const {
@@ -40,6 +77,14 @@ export function ShopRegistrationContent() {
   } = useMultiStepForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  /**
+   * Registration SUCCEEDED but some display files did not store.
+   *
+   * Deliberately separate from `submitError`: it is not a failure and must not
+   * read as one. Telling an owner "failed" when their shop is live is the exact
+   * defect this branch exists to end.
+   */
+  const [uploadWarning, setUploadWarning] = useState<string | null>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   // Survives `resetResumeMarkers()`, which runs before the dialog opens and
   // clears the refs below. The dialog needs both: the id to build its
@@ -53,7 +98,15 @@ export function ShopRegistrationContent() {
   // must reuse the created business (no duplicate row) and skip files that
   // already went through. The id survives a reload via localStorage.
   const businessIdRef = useRef<string | null>(null);
-  const uploadedRef = useRef<Set<string>>(new Set());
+  // Seeded from localStorage so a retry on a FRESH PAGE still skips what
+  // already landed.
+  const uploadedRef = useRef<Set<string>>(readUploadedKeys());
+
+  /** Mark one upload done, in the ref and in the store that survives a reload. */
+  const markUploaded = (key: string) => {
+    uploadedRef.current.add(key);
+    writeUploadedKeys(uploadedRef.current);
+  };
 
   const { component: stepComponent, title, description } = steps[step - 1];
 
@@ -62,10 +115,51 @@ export function ShopRegistrationContent() {
     uploadedRef.current = new Set();
     if (typeof window !== 'undefined') {
       localStorage.removeItem(BUSINESS_ID_KEY);
+      // Must go with the id: an upload set kept against a DIFFERENT business
+      // would make the next submission skip files it never uploaded.
+      localStorage.removeItem(UPLOADED_KEYS_KEY);
     }
   };
 
-  const performSubmission = async (data: BusinessProps) => {
+  /**
+   * A display file that did not make it, named the way the owner would name it.
+   * Collected rather than thrown — see `performSubmission`.
+   */
+  type UploadFailure = { key: string; label: string };
+
+  /**
+   * Create the shop, then fill it in.
+   *
+   * 🔴 ORDER IS LOAD-BEARING, and it was wrong until 2026-08-22. The row used
+   * to be created first and then every file `await`ed in a bare loop with no
+   * per-upload catch — so ONE interior-image failure threw, aborted before the
+   * catalogue was ever written, and left the owner reading "Failed to submit
+   * application" while their shop was already `verified` and public with no
+   * products and no photos. Confirmed in production: an owner completed all six
+   * steps (`reg_step_completed` ×6), never reached `reg_submitted`, and their
+   * empty shop is live. Two owners hold duplicate rows from re-registering
+   * after being told it failed.
+   *
+   * Two changes close that:
+   *
+   *   1. **The catalogue is written BEFORE any display file.** Products are what
+   *      make a shop page worth opening; photos are decoration. If anything
+   *      fails now, the shop still has something to show.
+   *   2. **Display-file uploads are individually NON-FATAL.** The precedent was
+   *      already in this function for offering photos — "the item is the
+   *      required thing and the picture is decoration". The owner attached the
+   *      files; failing to STORE one is our problem to report, not a reason to
+   *      throw away a completed registration.
+   *
+   * What stays fatal: the row itself, the offerings write and the deal write.
+   * Those are the registration; without them there is nothing to report.
+   *
+   * Returns the display files that failed so the caller can tell the owner
+   * exactly what to re-add, instead of a blanket failure.
+   */
+  const performSubmission = async (
+    data: BusinessProps,
+  ): Promise<UploadFailure[]> => {
     // Phase 1 — create the business row from JSON metadata (small payload).
     let businessId =
       businessIdRef.current ??
@@ -102,74 +196,27 @@ export function ShopRegistrationContent() {
       prev?.id === resolvedId ? prev : { id: resolvedId, status: null },
     );
 
-    // Phase 2 — upload files one request at a time so each stays under
-    // Vercel's 4.5 MB body limit (all-in-one multipart 413'd in prod).
-    // Sequential on purpose: interior_images appends server-side.
     const bid = businessId;
-    const uploads: { key: string; run: () => Promise<unknown> }[] = [];
-    if (data.shop_logo) {
-      const file = data.shop_logo;
-      uploads.push({
-        key: 'shop_logo',
-        run: () => uploadRegistrationFile(bid, 'shop_logo', file),
-      });
-    }
-    if (data.shop_banner) {
-      const file = data.shop_banner;
-      uploads.push({
-        key: 'shop_banner',
-        run: () => uploadRegistrationFile(bid, 'shop_banner', file),
-      });
-    }
-    if (requireDocuments && data.business_license) {
-      const file = data.business_license;
-      uploads.push({
-        key: 'business_license',
-        run: () => uploadRegistrationFile(bid, 'business_license', file),
-      });
-    }
-    if (requireDocuments && data.tax_certificate) {
-      const file = data.tax_certificate;
-      uploads.push({
-        key: 'tax_certificate',
-        run: () => uploadRegistrationFile(bid, 'tax_certificate', file),
-      });
-    }
-    (data.interior_images ?? []).forEach((file: File, idx: number) => {
-      uploads.push({
-        key: `interior_image_${idx}`,
-        run: () => uploadRegistrationFile(bid, 'interior_image', file, idx),
-      });
-    });
 
-    for (const upload of uploads) {
-      if (uploadedRef.current.has(upload.key)) continue;
-      await upload.run();
-      uploadedRef.current.add(upload.key);
-    }
-
-    // Phase 3 — the menu. AFTER the draft exists, because there is no
-    // business id to attach items to until `registerBusiness` returns one;
-    // this is why the step holds them in form state rather than writing as
-    // the owner types.
+    // ---------------------------------------------------------------------
+    // Phase 2 — THE CATALOGUE. First, because it is the shop.
     //
-    // Guarded by the same ref as the uploads, and so with the same lifecycle:
-    // a mid-flight failure retries without rewriting them, while a 404 replay
-    // clears the marker along with the stale business id, which is correct —
-    // the items belong to the NEW draft. The server is idempotent by name as
-    // well, so neither guard is load-bearing alone.
+    // It could not run before the row existed (there was no business id to
+    // attach items to), which is why the step holds them in form state rather
+    // than writing as the owner types — but it does not need a single photo to
+    // have landed, and it used to sit behind all of them.
+    //
+    // Guarded by the same ref as the uploads, so a mid-flight failure retries
+    // without rewriting them; the server is idempotent by name as well, so
+    // neither guard is load-bearing alone.
+    // ---------------------------------------------------------------------
     const offerings = data.offerings ?? [];
 
-    // Photos first, one request each — the offerings write carries the paths,
-    // and a single multipart POST with everything is what 413'd in production.
+    // Offering photos, one request each — the offerings write carries the
+    // paths, and a single multipart POST with everything is what 413'd in
+    // production. Keyed per photo so a retry re-uploads none of them.
     //
-    // Keyed per photo in the same ref as the files, so a retry after a
-    // mid-flight failure re-uploads none of them; without that, every retry
-    // would orphan another copy in the bucket.
-    //
-    // A photo that fails does NOT fail the registration: the item is the
-    // required thing and the picture is decoration, so the offering is written
-    // without it and the owner can add it from the dashboard.
+    // Already non-fatal before this change, and the model for the rest.
     const imagePaths = new Map<string, string>();
     for (const [index, item] of offerings.entries()) {
       const file = item.uid ? offeringImages.get(item.uid) : undefined;
@@ -179,7 +226,7 @@ export function ShopRegistrationContent() {
       try {
         const path = await uploadOfferingImage(bid, file, index);
         if (path) imagePaths.set(item.uid, path);
-        uploadedRef.current.add(key);
+        markUploaded(key);
       } catch (error: unknown) {
         console.error(
           '[registration] offering photo upload failed',
@@ -188,6 +235,8 @@ export function ShopRegistrationContent() {
       }
     }
 
+    // FATAL: a shop with no catalogue is the empty page this step exists to
+    // prevent.
     if (offerings.length > 0 && !uploadedRef.current.has('offerings')) {
       await createRegistrationOfferings(
         bid,
@@ -202,10 +251,10 @@ export function ShopRegistrationContent() {
         // products for its own service menu.
         defaultKindForMode(offeringMode),
       );
-      uploadedRef.current.add('offerings');
+      markUploaded('offerings');
     }
 
-    // Phase 4 — the optional deal. `null` means the owner skipped the step,
+    // Phase 3 — the optional deal. `null` means the owner skipped the step,
     // which is a deliberate choice and not a half-filled form, so nothing is
     // written and the submission is unaffected. Same replay guard as above.
     const deal = data.deal;
@@ -221,7 +270,7 @@ export function ShopRegistrationContent() {
       if (dealImage && !uploadedRef.current.has(dealImageKey)) {
         try {
           dealImagePath = await uploadOfferingImage(bid, dealImage, 0);
-          uploadedRef.current.add(dealImageKey);
+          markUploaded(dealImageKey);
         } catch (error: unknown) {
           console.error(
             '[registration] deal photo upload failed',
@@ -245,8 +294,80 @@ export function ShopRegistrationContent() {
         publish: deal.publish,
         image_url: dealImagePath,
       });
-      uploadedRef.current.add('deal');
+      markUploaded('deal');
     }
+
+    // ---------------------------------------------------------------------
+    // Phase 4 — display files, one request at a time so each stays under
+    // Vercel's 4.5 MB body limit (all-in-one multipart 413'd in prod).
+    // Sequential on purpose: interior_images appends server-side.
+    //
+    // Every one is NON-FATAL and reported. Interiors go LAST because there are
+    // at least four of them, which made them by far the likeliest to fail.
+    // ---------------------------------------------------------------------
+    const uploads: {
+      key: string;
+      label: string;
+      run: () => Promise<unknown>;
+    }[] = [];
+    if (data.shop_logo) {
+      const file = data.shop_logo;
+      uploads.push({
+        key: 'shop_logo',
+        label: 'your shop logo',
+        run: () => uploadRegistrationFile(bid, 'shop_logo', file),
+      });
+    }
+    if (data.shop_banner) {
+      const file = data.shop_banner;
+      uploads.push({
+        key: 'shop_banner',
+        label: 'your banner image',
+        run: () => uploadRegistrationFile(bid, 'shop_banner', file),
+      });
+    }
+    if (requireDocuments && data.business_license) {
+      const file = data.business_license;
+      uploads.push({
+        key: 'business_license',
+        label: 'your business license',
+        run: () => uploadRegistrationFile(bid, 'business_license', file),
+      });
+    }
+    if (requireDocuments && data.tax_certificate) {
+      const file = data.tax_certificate;
+      uploads.push({
+        key: 'tax_certificate',
+        label: 'your tax certificate',
+        run: () => uploadRegistrationFile(bid, 'tax_certificate', file),
+      });
+    }
+    (data.interior_images ?? []).forEach((file: File, idx: number) => {
+      uploads.push({
+        key: `interior_image_${idx}`,
+        label: `shop photo ${idx + 1}`,
+        run: () => uploadRegistrationFile(bid, 'interior_image', file, idx),
+      });
+    });
+
+    const failures: UploadFailure[] = [];
+    for (const upload of uploads) {
+      if (uploadedRef.current.has(upload.key)) continue;
+      try {
+        await upload.run();
+        markUploaded(upload.key);
+      } catch (error: unknown) {
+        // NOT rethrown. This is the whole fix: one failed photo used to discard
+        // a completed registration and leave a live, empty shop behind.
+        console.error(
+          `[registration] ${upload.key} upload failed`,
+          formatErrorForLog(error),
+        );
+        failures.push({ key: upload.key, label: upload.label });
+      }
+    }
+
+    return failures;
   };
 
   /**
@@ -308,10 +429,12 @@ export function ShopRegistrationContent() {
     submittingRef.current = true;
     setIsSubmitting(true);
     setSubmitError(null);
+    setUploadWarning(null);
 
     try {
+      let failures: Awaited<ReturnType<typeof performSubmission>> = [];
       try {
-        await performSubmission(data);
+        failures = await performSubmission(data);
       } catch (error: unknown) {
         // 404 = the cached draft id belongs to another account (user switched
         // logins mid-flow) or the draft is gone. Drop the stale markers and
@@ -319,7 +442,21 @@ export function ShopRegistrationContent() {
         const status = (error as { status?: number })?.status;
         if (status !== 404) throw error;
         resetResumeMarkers();
-        await performSubmission(data);
+        failures = await performSubmission(data);
+      }
+
+      if (failures.length > 0) {
+        // The registration is DONE — the shop exists and its catalogue is
+        // written. Name the files so the owner knows exactly what to re-add
+        // from the dashboard, rather than wondering what "some files" means.
+        const names = failures.map((failure) => failure.label);
+        const list =
+          names.length === 1
+            ? names[0]
+            : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+        setUploadWarning(
+          `Your shop is registered, but we couldn't upload ${list}. You can add ${names.length === 1 ? 'it' : 'them'} from your dashboard at any time.`,
+        );
       }
 
       // Grab the id before the markers reset below wipes the ref (and the
@@ -340,6 +477,11 @@ export function ShopRegistrationContent() {
         {
           with_deal: !!data.deal,
           require_documents: requireDocuments,
+          // Which display files failed, if any. This is the signal that was
+          // completely invisible while an upload failure aborted the whole
+          // submission: `reg_submitted` simply never fired, so a partial
+          // registration looked identical to an abandoned one.
+          upload_failures: failures.map((failure) => failure.key),
         },
         submittedBusinessId,
       );
@@ -417,6 +559,16 @@ export function ShopRegistrationContent() {
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Submission Error</AlertTitle>
               <AlertDescription>{submitError}</AlertDescription>
+            </Alert>
+          )}
+
+          {uploadWarning && (
+            <Alert className="mb-6">
+              <ImageOff className="h-4 w-4" />
+              <AlertTitle>
+                Registered — some images didn&apos;t upload
+              </AlertTitle>
+              <AlertDescription>{uploadWarning}</AlertDescription>
             </Alert>
           )}
 

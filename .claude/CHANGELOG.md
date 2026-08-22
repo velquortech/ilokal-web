@@ -34,11 +34,29 @@
   removed and `storage.remove()` was called on it — the exact 2026-08-06
   gallery-delete bug, re-opened through a different door for any filename with
   a space. Pinned by a test that feeds it the real production pair.
+- **⚠️ Correction to the blast radius, found after this branch was opened.**
+  `main` **already carried a read-side decode** in
+  `app/api/helpers/storage.ts` — an independent fix with the same diagnosis,
+  landed in ONE of the four copies. So the public and mobile surfaces were
+  already rendering these photos correctly; the ones still broken were the two
+  copies that did NOT decode, in `lib/api/business/business.ts`
+  (`getMyBusinesses`, `getBusinessById` → the owner's dashboard, `/shop`, and
+  the admin business detail) and `businessQuery.ts` (`getBusinessProfileData` →
+  the profile form and the gallery editor). **The owner's own gallery was
+  broken while their public page was fine.** The earlier claim here — that all
+  four copies lacked it — was read off the wrong branch, and it is corrected
+  rather than quietly dropped because it is the sharpest possible argument for
+  the consolidation below: the bug was fixed for strangers and left live for
+  the person paying us.
 - **Fixed in three places, because one is not enough.** The **read** path
-  normalises before building a url, which is what makes the existing 21 rows
-  render **with no database write**. The **write** path decodes once, so
-  nothing new is stored encoded. The **upload** path (`safeObjectName`)
-  slugifies the object key, so nothing new needs either.
+  normalises before building a url, which is what makes the existing rows
+  render **with no database write** — now in one place instead of one-of-four.
+  The **write** path decodes once, so nothing new is stored encoded; `main`'s
+  read-side decode did nothing about that, so the column kept accumulating
+  encoded values. The **upload** path (`safeObjectName`) slugifies the object
+  key, so nothing new needs either. **And the delete diff is untouched by any
+  read-side fix** — `storagePathsToDelete` compares stored values, so the
+  data-loss path below was live on `main` regardless.
 - **The decode is deliberately one-shot, and the reasoning is in the code.** An
   object whose name genuinely contains the four characters `%20` is
   indistinguishable from an encoded space — and this app's upload path can no
@@ -46,10 +64,11 @@
   nothing here can create", the photo wins.
 - **`resolveStorageUrl` existed in FOUR hand-copied versions** — the API
   helper, two closures in `lib/api/business/business.ts`, one in
-  `businessQuery.ts`. That is precisely how a bug like this survives a fix: it
-  is fixable in one copy and present in the other three. One
-  `publicStorageUrl` now, in `lib/utils/storage.ts` because the write side
-  needs the same normalisation (CLAUDE.md §DRY, paid for again).
+  `businessQuery.ts` — and this branch caught the fourth copy being fixed while
+  the other three stayed broken, in the wild, on `main`. That is not a
+  hypothetical any more. One `publicStorageUrl` now, in `lib/utils/storage.ts`
+  because the write side needs the same normalisation (CLAUDE.md §DRY, paid for
+  twice on the same bug).
 - **`safeObjectName` is the mobile avatar route's own rule, shared.** That
   route already stripped unsafe characters on its own; the other six upload
   routes interpolated the owner's filename verbatim. Now one helper, and a

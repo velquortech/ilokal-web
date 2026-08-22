@@ -6,8 +6,8 @@ import type {
 import { DEFAULT_OFFERING_ATTRIBUTES } from '@/lib/types/offering';
 import { mockCategory, mockCategoryClothing } from './categories.mock';
 
-export const BUSINESS_ID = 'biz-00000000-0000-0000-0000-000000000001';
-export const OTHER_BUSINESS_ID = 'biz-00000000-0000-0000-0000-000000000002';
+export const BUSINESS_ID = '2f9c1d8a-0000-4000-8000-000000000001';
+export const OTHER_BUSINESS_ID = '2f9c1d8a-0000-4000-8000-000000000002';
 
 export const mockProduct: Product = {
   id: 'prod-00000000-0000-0000-0000-000000000001',

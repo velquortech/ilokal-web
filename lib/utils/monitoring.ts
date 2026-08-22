@@ -163,7 +163,66 @@ export function isExpectedError(error: unknown): boolean {
   const name = (error as { name?: unknown }).name;
   if (name === 'AbortError') return true;
 
+  if (isClockSkewError(error)) return true;
+
   return false;
+}
+
+/**
+ * A session token PostgREST refuses because its `iat` is ahead of the
+ * database's clock (`PGRST303`, "JWT issued at future").
+ *
+ * Neither end of that comparison is this app's code: the token is minted by
+ * GoTrue and validated by Postgres. There is nothing to fix here and nothing
+ * to action — but it fires from `readPublicFlags`, i.e. on EVERY page load by
+ * an affected visitor, so it is loud out of all proportion to its meaning
+ * (JAVASCRIPT-NEXTJS-7, JAVASCRIPT-NEXTJS-H).
+ *
+ * Dropped at the REPORTING layer only. The request still fails, and the
+ * feature flags still fail closed — the behaviour deliberately chosen when
+ * `public_feature_flags()` was introduced. Nothing user-visible changes; this
+ * only stops the event.
+ */
+export function isClockSkewError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === 'PGRST303'
+  );
+}
+
+/**
+ * React's streaming-reveal bootstrap reading `parentNode` of a node that is no
+ * longer in the document.
+ *
+ * When a Suspense boundary resolves, React reveals the segment from an inline
+ * script whose helper minifies to `$RS`. If something else has removed the
+ * placeholder comment in between — an in-page translator, an in-app browser's
+ * injected chrome, an extension — that walk dereferences null. Not our code,
+ * not reachable from our code, and not fixable from our code
+ * (JAVASCRIPT-NEXTJS-4 / -G / -A: 8 events, three browsers).
+ *
+ * 🔴 Matched on the FRAME, never on the message. `Cannot read properties of
+ * null (reading 'parentNode')` is far too generic for `ignoreErrors` — a real
+ * null-parent bug in this app's own code would disappear along with it. Every
+ * one of these events has `$RS` on the stack and NO application frame at all,
+ * so that is the whole signal and the whole test.
+ */
+export function isReactStreamingRevealError(event: {
+  exception?: {
+    values?: {
+      stacktrace?: { frames?: { function?: string }[] } | undefined;
+    }[];
+  };
+}): boolean {
+  const frames = event.exception?.values?.flatMap(
+    (value) => value.stacktrace?.frames ?? [],
+  );
+  if (!frames || frames.length === 0) return false;
+  // `$RS` is the reveal helper; `$RC`/`$RM` are its siblings in the same inline
+  // bootstrap and fail the same way for the same reason.
+  return frames.some((frame) => /^\$R[SCM]$/.test(frame.function ?? ''));
 }
 
 /**

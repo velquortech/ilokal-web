@@ -9,6 +9,7 @@ import { createServerSupabaseClient } from '@/supabase/server';
 import { UpdateCurrentUserProfileInput } from '@/lib/validation/auth';
 import { User } from '@/lib/types';
 import type { Profile } from '@/lib/types/user';
+import { logActionError } from '@/lib/utils/captureError';
 
 export type ProfilePageData = User & { status: Profile['status'] };
 
@@ -144,7 +145,15 @@ export async function updateUserProfile(
     .eq('id', userId);
 
   if (updateError) {
-    throw new Error(`Failed to update profile: ${updateError.message}`);
+    // 🔴 Never interpolate the driver message. This threw
+    // `new row for relation "profiles" violates check constraint
+    // "check_phone_format"` straight into the client
+    // (JAVASCRIPT-NEXTJS-8) — a table name, a column's constraint and its
+    // rule, handed to whoever typed a phone number wrong. CLAUDE.md
+    // §"Error leakage". The real cause is now refused by
+    // `optionalPhoneNumberSchema` before it gets here; this is the backstop.
+    logActionError('updateUserProfile', updateError);
+    throw new Error('Failed to update profile');
   }
 
   // Fetch updated profile

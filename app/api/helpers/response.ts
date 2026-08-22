@@ -55,6 +55,29 @@ export function loggedServerError(
   return generalErrorResponse();
 }
 
+/**
+ * Did PostgREST refuse a `.range()` that starts past the end of the result set?
+ *
+ * `PGRST103` — "Requested range not satisfiable", details like *"An offset of
+ * 10 was requested, but there are only 1 rows"*. This is not a fault: it is a
+ * client asking for page 2 of a one-page result, which happens routinely when
+ * rows are removed between two requests, or when a filter narrows the set while
+ * the app is still paging.
+ *
+ * Unhandled it was **197 events on one issue** (JAVASCRIPT-NEXTJS-9) and a 500
+ * on `/api/mobile/businesses/nearby`, which has since moved its paging into the
+ * RPC. The same shape remains anywhere a `.range()` sits on top of a
+ * caller-supplied page number, so callers map it to an EMPTY page instead.
+ */
+export function isRangeNotSatisfiable(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === 'PGRST103'
+  );
+}
+
 export function conflictRequestResponse<T>(data?: T): NextResponse {
   return new NextResponse(
     JSON.stringify(data || { message: 'entry conflict' }),

@@ -5,6 +5,7 @@ import {
   unauthorizedResponse,
   loggedServerError,
 } from '@/app/api/helpers/response';
+import { isValidResourceId } from '@/app/api/helpers/resourceId';
 import { businessIdSchema } from '@/lib/validation/business';
 import { NextRequest } from 'next/server';
 
@@ -50,6 +51,11 @@ export async function POST(req: NextRequest, { params }: Params) {
     userId = auth.user.id;
 
     const { businessId } = await params;
+    // A slug (`bida-ngayon`) reaching PostgREST as a `uuid` is a 22P02 and a
+    // 500 for what is really "no such shop". See app/api/helpers/resourceId.ts.
+    if (!isValidResourceId(businessId)) {
+      return notFoundResponse({ message: 'Business not found' });
+    }
 
     // A malformed id raises 22P02 inside the RPC, which would now be a REPORTED
     // 500 on every such request — against a 200/60s/IP limit and a monthly event

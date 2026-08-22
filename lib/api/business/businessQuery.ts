@@ -9,6 +9,7 @@ import { createServerSupabaseClient } from '@/supabase/server';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { logActionError } from '@/lib/utils/captureError';
 import { isDynamicUsageError } from '@/lib/utils/dynamicUsage';
+import { publicStorageUrl } from '@/lib/utils/storage';
 import {
   Business,
   AdminBusiness,
@@ -403,19 +404,11 @@ export async function getBusinessProfileData(
 
     if (error || !data) return null;
 
-    // Resolve relative storage paths to full public URLs — same pattern as getBusinessById.
-    // The DB may store bare paths (e.g. from the registration flow) or full URLs (from the
-    // upload API). Full URLs are passed through unchanged.
-    const resolve = (
-      bucket: string,
-      pathOrUrl: string | null,
-    ): string | null => {
-      if (!pathOrUrl) return null;
-      if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://'))
-        return pathOrUrl;
-      return supabase.storage.from(bucket).getPublicUrl(pathOrUrl).data
-        .publicUrl;
-    };
+    // The DB may store bare paths (registration) or full URLs (the upload
+    // API). `publicStorageUrl` resolves either and normalises an encoded path
+    // so `getPublicUrl` cannot encode it twice (lib/utils/storage.ts).
+    const resolve = (bucket: string, pathOrUrl: string | null) =>
+      publicStorageUrl(supabase.storage, bucket, pathOrUrl);
 
     return {
       ...data,

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { optionalPhoneNumberSchema } from './phone';
 
 /**
  * Centralized Authentication & User Validation Schemas
@@ -65,7 +66,7 @@ export const signupSchema = z
     role: z.enum(['admin', 'business_owner', 'app_user'], {
       message: 'Please select a role',
     }),
-    phone_number: z.string().optional().or(z.literal('')),
+    phone_number: optionalPhoneNumberSchema.optional(),
     avatar_url: z.string().optional().or(z.literal('')),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -74,6 +75,18 @@ export const signupSchema = z
   });
 
 export type SignupInput = z.infer<typeof signupSchema>;
+
+/**
+ * What the FORM holds, as opposed to what the server receives.
+ *
+ * `phone_number` is normalised by a Zod `transform` (`09171234567` →
+ * `+639171234567`, blank → `null`), so the schema's input and output types
+ * differ — and react-hook-form is typed on the INPUT: the field is a text box
+ * holding whatever the owner typed. `useForm<Input, ctx, Output>` keeps both
+ * ends honest; typing the form on the output makes `zodResolver` unassignable,
+ * which is exactly what the build caught.
+ */
+export type SignupFormValues = z.input<typeof signupSchema>;
 
 // ============================================================================
 // SERVER-SIDE ADMIN CREATE USER
@@ -87,7 +100,7 @@ export const serverSignupSchema = z.object({
   role: z.enum(['admin', 'business_owner', 'app_user'], {
     message: 'Invalid role',
   }),
-  phone_number: z.string().optional().or(z.literal('')),
+  phone_number: optionalPhoneNumberSchema.optional(),
   avatar_url: z.string().optional().or(z.literal('')),
 });
 
@@ -199,11 +212,16 @@ export const updateCurrentUserProfileSchema = z.object({
     .min(2, 'Name must be at least 2 characters')
     .max(100, 'Name is too long')
     .optional(),
-  phone_number: z.string().optional().or(z.literal('')),
+  phone_number: optionalPhoneNumberSchema.optional(),
   avatar_url: z.string().url('Invalid image URL').optional().or(z.literal('')),
 });
 
 export type UpdateCurrentUserProfileInput = z.infer<
+  typeof updateCurrentUserProfileSchema
+>;
+
+/** Form-side counterpart — see `SignupFormValues`. */
+export type UpdateCurrentUserProfileFormValues = z.input<
   typeof updateCurrentUserProfileSchema
 >;
 

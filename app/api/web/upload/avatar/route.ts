@@ -9,6 +9,7 @@ import {
   toWebPFilename,
   IMAGE_PRESETS,
 } from '@/lib/api/helpers/image';
+import { safeObjectName } from '@/lib/utils/storage';
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -50,7 +51,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const fileName = `${Date.now()}-${toWebPFilename(file.name)}`;
+    // `safeObjectName` first: the owner's own filename used to land in the
+    // object key verbatim, so a screenshot became `…-Screenshot 2026-08-08
+    // 095928.webp` and every layer downstream had to agree on how to spell
+    // that space. They did not — see lib/utils/storage.ts.
+    const fileName = `${Date.now()}-${safeObjectName(toWebPFilename(file.name))}`;
     const filePath = `${targetUserId}/${fileName}`;
 
     await uploadWebP(supabase, 'avatars', filePath, file, {

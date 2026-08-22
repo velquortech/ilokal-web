@@ -12,6 +12,7 @@ import {
   toWebPFilename,
   IMAGE_PRESETS,
 } from '@/lib/api/helpers/image';
+import { safeObjectName } from '@/lib/utils/storage';
 import { NextRequest } from 'next/server';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const safeName = toWebPFilename(file.name.replace(/[^a-zA-Z0-9._-]/g, '_'));
+    const safeName = safeObjectName(toWebPFilename(file.name));
     const filePath = `${auth.user.id}/${Date.now()}-${safeName}`;
 
     try {

@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   updateCurrentUserProfileSchema,
   type UpdateCurrentUserProfileInput,
+  type UpdateCurrentUserProfileFormValues,
 } from '@/lib/validation/auth';
 import { updateCurrentUserProfileAction } from '@/app/(auth)/actions';
 import type { User } from '@/lib/types/user';
@@ -33,7 +34,14 @@ export function PersonalInfoForm({ user }: PersonalInfoFormProps) {
     setValue,
     watch,
     formState: { errors },
-  } = useForm<UpdateCurrentUserProfileInput>({
+    // Input type, not output: `phone_number` is normalised by a transform, so
+    // the field holds what the owner typed and the action receives the E.164
+    // form. See UpdateCurrentUserProfileFormValues.
+  } = useForm<
+    UpdateCurrentUserProfileFormValues,
+    undefined,
+    UpdateCurrentUserProfileInput
+  >({
     resolver: zodResolver(updateCurrentUserProfileSchema),
     defaultValues: {
       full_name: user.full_name ?? '',

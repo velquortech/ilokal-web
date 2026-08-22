@@ -56,6 +56,51 @@ describe('GET /api/mobile/businesses/:businessId/products', () => {
     vi.clearAllMocks();
   });
 
+  /** See the coupons suite — same slug, same 22P02, same 500. */
+  it('404s a non-uuid id without touching the database', async () => {
+    const rpcFn = vi.fn();
+    vi.mocked(createBearerClient).mockReturnValue({
+      rpc: rpcFn,
+    } as unknown as ReturnType<typeof createBearerClient>);
+
+    const { req, params } = makeRequest('bida-ngayon');
+    const res = await GET(req, { params });
+
+    expect(res.status).toBe(404);
+    expect(rpcFn).not.toHaveBeenCalled();
+  });
+
+  /**
+   * PGRST103 — "an offset of 10 was requested, but there are only 1 rows".
+   * A client paging a set that shrank underneath it is an empty page, not a
+   * fault. Unhandled on the nearby feed this was 197 Sentry events and a 500
+   * (JAVASCRIPT-NEXTJS-9).
+   */
+  it('treats an out-of-range page as empty rather than a 500', async () => {
+    const chain = buildRpcChain();
+    chain.range = vi.fn().mockResolvedValue({
+      data: null,
+      error: {
+        code: 'PGRST103',
+        details: 'An offset of 10 was requested, but there are only 1 rows.',
+        hint: null,
+        message: 'Requested range not satisfiable',
+      },
+      count: null,
+    });
+    mockBearerClient(chain);
+
+    const { req, params } = makeRequest(BUSINESS_ID);
+    const paged = new NextRequest(`${req.url}?page=2`);
+    const res = await GET(paged, { params });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.products).toEqual([]);
+    expect(body.has_more).toBe(false);
+    expect(body.total).toBe(0);
+  });
+
   it('returns 200 with available products for a business', async () => {
     const chain = buildRpcChain();
     chain.order = vi.fn().mockResolvedValue({

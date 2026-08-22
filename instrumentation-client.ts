@@ -17,7 +17,12 @@
  */
 
 import * as Sentry from '@sentry/nextjs';
-import { isExpectedError, scrubObject, scrubUrl } from '@/lib/utils/monitoring';
+import {
+  isExpectedError,
+  isReactStreamingRevealError,
+  scrubObject,
+  scrubUrl,
+} from '@/lib/utils/monitoring';
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 
@@ -88,6 +93,12 @@ Sentry.init({
 
   beforeSend(event, hint) {
     if (isExpectedError(hint?.originalException)) return null;
+
+    // React's streaming reveal tripping over a node a translator/in-app browser
+    // removed. Checked here rather than in `ignoreErrors` because the only
+    // reliable signal is the FRAME — the message is generic enough that
+    // matching it would swallow real bugs. See monitoring.ts.
+    if (isReactStreamingRevealError(event)) return null;
 
     if (event.request?.url) event.request.url = scrubUrl(event.request.url);
     if (event.request) {

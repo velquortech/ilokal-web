@@ -5,6 +5,7 @@ import { createServerSupabaseClient } from '@/supabase/server';
 import { uploadWebP, IMAGE_PRESETS } from '@/lib/api/helpers/image';
 import { MAX_REGISTRATION_OFFERINGS } from '@/lib/validation/products';
 import { logActionError } from '@/lib/utils/captureError';
+import { publicStorageUrl } from '@/lib/utils/storage';
 import type { DiscountValue } from '@/lib/types';
 
 // Registration is split into two phases so no single request exceeds Vercel's
@@ -302,17 +303,10 @@ export async function getMyBusinesses() {
   if (!data) return null;
 
   // Seeds store full public URLs; real registration stores raw storage paths.
-  // Resolve to a public URL only when the stored value is a path (not already a URL).
-  const resolveUrl = (
-    bucket: string,
-    pathOrUrl: string | null,
-  ): string | null => {
-    if (!pathOrUrl) return null;
-    if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
-      return pathOrUrl;
-    }
-    return supabase.storage.from(bucket).getPublicUrl(pathOrUrl).data.publicUrl;
-  };
+  // `publicStorageUrl` resolves either, and normalises an encoded path so it
+  // does not get encoded a second time (lib/utils/storage.ts).
+  const resolveUrl = (bucket: string, pathOrUrl: string | null) =>
+    publicStorageUrl(supabase.storage, bucket, pathOrUrl);
 
   const logoUrl = resolveUrl('shop-logos', data.logo_url);
   const bannerUrl = resolveUrl('shop-banners', data.banner_url);
@@ -343,15 +337,8 @@ export async function getBusinessById(
 
   if (error || !data) return null;
 
-  const resolveUrl = (
-    bucket: string,
-    pathOrUrl: string | null,
-  ): string | null => {
-    if (!pathOrUrl) return null;
-    if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://'))
-      return pathOrUrl;
-    return supabase.storage.from(bucket).getPublicUrl(pathOrUrl).data.publicUrl;
-  };
+  const resolveUrl = (bucket: string, pathOrUrl: string | null) =>
+    publicStorageUrl(supabase.storage, bucket, pathOrUrl);
 
   return {
     ...data,

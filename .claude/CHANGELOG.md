@@ -1,5 +1,188 @@
 # Changelog
 
+## 2026-08-22 — A gallery photo that 400s, and the second Sentry triage pass (fix/broken-shop-images-sentry-triage-2)
+
+> **No schema migration, no RLS change, no auth change.** One API-contract
+> change: a malformed `[businessId]` segment answers **404** instead of 500.
+> Plan, parity tables and the open questions:
+> [`.claude/SENTRY_TRIAGE_2.md`](.claude/SENTRY_TRIAGE_2.md) (local, not
+> committed). Round 1 was `.claude/SENTRY_TRIAGE.md` / PR #43.
+
+- **🔴 The reported bug: `encodeURI('%20')` is `'%2520'`.**
+  `storage.getPublicUrl()` runs `encodeURI` over the whole url it builds, and
+  `%` is not a character `encodeURI` leaves alone. So a stored path that is
+  ALREADY percent-encoded is encoded a second time on every read and the url
+  400s. Proven against the live bucket rather than reasoned about:
+  `…Screenshot%202026-08-08%20095928.webp` → **200**,
+  `…Screenshot%25202026-08-08%2520095928.webp` → **400**.
+- **The encoded paths got there from our own write path.**
+  `extractStoragePath` sliced a public url as a plain string and stored the
+  remainder as if it were a path — so `%20` (a space, in a url) was written
+  into `interior_images` as three literal characters. Production holds four
+  such rows, all on **JV PEST CONTROL SERVICES**: every gallery photo that shop
+  uploaded, invisible on the page while sitting intact in the bucket.
+- **"Some shops" was not chance.** It is every shop whose uploaded filename
+  contained a character `encodeURI` escapes — in practice a space, in practice
+  a screenshot or a phone photo with a descriptive name. Every other shop's
+  files were seeded or named by the wizard (`logo-<ts>.webp`) and have no such
+  character. 18 of 21 businesses store bucket-relative paths, 3 store absolute
+  urls; only the encoded ones break.
+- **🔴 It is also a DATA-LOSS bug, which is the half that would have been
+  missed.** `storagePathsToDelete` decides what to remove by comparing
+  normalised paths. A registration-written raw path (space intact) never
+  matched the client's encoded form, so the live object was classified as
+  removed and `storage.remove()` was called on it — the exact 2026-08-06
+  gallery-delete bug, re-opened through a different door for any filename with
+  a space. Pinned by a test that feeds it the real production pair.
+- **⚠️ Correction to the blast radius, found after this branch was opened.**
+  `main` **already carried a read-side decode** in
+  `app/api/helpers/storage.ts` — an independent fix with the same diagnosis,
+  landed in ONE of the four copies. So the public and mobile surfaces were
+  already rendering these photos correctly; the ones still broken were the two
+  copies that did NOT decode, in `lib/api/business/business.ts`
+  (`getMyBusinesses`, `getBusinessById` → the owner's dashboard, `/shop`, and
+  the admin business detail) and `businessQuery.ts` (`getBusinessProfileData` →
+  the profile form and the gallery editor). **The owner's own gallery was
+  broken while their public page was fine.** The earlier claim here — that all
+  four copies lacked it — was read off the wrong branch, and it is corrected
+  rather than quietly dropped because it is the sharpest possible argument for
+  the consolidation below: the bug was fixed for strangers and left live for
+  the person paying us.
+- **Fixed in three places, because one is not enough.** The **read** path
+  normalises before building a url, which is what makes the existing rows
+  render **with no database write** — now in one place instead of one-of-four.
+  The **write** path decodes once, so nothing new is stored encoded; `main`'s
+  read-side decode did nothing about that, so the column kept accumulating
+  encoded values. The **upload** path (`safeObjectName`) slugifies the object
+  key, so nothing new needs either. **And the delete diff is untouched by any
+  read-side fix** — `storagePathsToDelete` compares stored values, so the
+  data-loss path below was live on `main` regardless.
+- **The decode is deliberately one-shot, and the reasoning is in the code.** An
+  object whose name genuinely contains the four characters `%20` is
+  indistinguishable from an encoded space — and this app's upload path can no
+  longer produce one. Between "render the owner's photo" and "honour a filename
+  nothing here can create", the photo wins.
+- **`resolveStorageUrl` existed in FOUR hand-copied versions** — the API
+  helper, two closures in `lib/api/business/business.ts`, one in
+  `businessQuery.ts` — and this branch caught the fourth copy being fixed while
+  the other three stayed broken, in the wild, on `main`. That is not a
+  hypothetical any more. One `publicStorageUrl` now, in `lib/utils/storage.ts`
+  because the write side needs the same normalisation (CLAUDE.md §DRY, paid for
+  twice on the same bug).
+- **`safeObjectName` is the mobile avatar route's own rule, shared.** That
+  route already stripped unsafe characters on its own; the other six upload
+  routes interpolated the owner's filename verbatim. Now one helper, and a
+  traversal-shaped or hidden key is unrepresentable rather than merely unlikely.
+- **The 4 encoded rows WERE repaired on production** (approved separately from
+  the code change), guarded so an entry was only rewritten when the decoded name
+  is an object that actually exists — a value we had not proven would have been
+  left alone. Pre-repair values captured first; post-repair audit shows **0**
+  encoded values left in `interior_images`. The statement, the audit query and
+  the inverse live in `supabase/reports/repair_encoded_storage_paths.sql`.
+- **One row still cannot be fixed by code or by decoding.** **Gugma Salon & Spa**
+  has a `banner.webp` in `interior_images` whose object lives in `shop-banners`,
+  so it 404s however it is spelled. Two valid answers — drop the entry, or copy
+  the object across — and neither is ours to pick.
+- **`NEXT_IMAGE_PUBLIC_URL` is a live foot-gun and is left alone on purpose.**
+  It is read at BUILD time to put the Supabase host in `images.remotePatterns`;
+  unset on Vercel, the optimizer answers 400 for every shop image in the app,
+  with no exception anywhere for Sentry to catch. It fails open in the worst
+  direction. It is also **not** what was reported — if it were, every image
+  would be broken rather than four photos on one shop — and a build-time
+  assertion changes the failure mode of every production build, so it belongs
+  in its own change.
+
+### The Sentry pass
+
+- **17 unresolved issues, and 8 of them were already fixed on `main`.** A
+  dashboard whose loudest entry is a fixed bug is a dashboard nobody reads, so
+  the triage is as much housekeeping as repair.
+- **🔴 Three production releases are commits that do not exist in this
+  repository** (`9a15c565`, `7f08416f`, `2244def7`, all tagged
+  `vercel-production`). That is why `nearby_businesses_filtered` reported
+  PGRST202 "function not found" on 2026-08-14 while the function exists on
+  cloud today: production ran app code ahead of the database, from a branch
+  whose commits are gone. Until that is settled a stack trace cannot be trusted
+  to correspond to any code we can read. Recorded, not fixed — it is a process
+  finding.
+- **🔴 22P02 — the mobile app is asking for shops by SLUG.**
+  `GET /api/mobile/businesses/bida-ngayon/products` (and `/coupons`,
+  `/ratings`). Nothing validated the segment, so `bida-ngayon` reached
+  PostgREST as a `uuid`, Postgres raised `invalid input syntax`, and the route
+  answered **500**. Now `z.guid()` at the top of all 8 `[businessId]` routes →
+  404, before any DB call. The third cost is the one that mattered: **a 500 hid
+  the finding.** A 404 says out loud that the app has a deep-link shape this API
+  does not serve, which is a product question nobody could see through a driver
+  error. Asked, not answered.
+- **PGRST103 was 197 events on one issue** — a client asking for page 2 of a
+  one-page result. `/api/mobile/businesses/nearby` no longer has it (paging
+  moved into the RPC), but the same `.range()`-on-a-caller's-page-number shape
+  was still in the products route. An out-of-range page is now an empty page.
+- **`check_phone_format` is E.164 and the app validated nothing.** The
+  constraint is `^\+[1-9]\d{1,14}(\s\d+)?$`; the schema was
+  `z.string().optional()`. So an owner typing their number the way every
+  Filipino writes it — `09171234567` — got a **500 carrying the constraint text
+  back to the browser**: table name, column, and the rule. Blank was the same
+  failure, because `''` is not NULL and does not match, making "clear my phone
+  number" a 500 too.
+- **It normalises rather than rejects, and that is the deliberate half.**
+  `09171234567` is what is printed on the shop's own signage; a field that
+  refuses it is a field nobody can fill. Spaces/dashes/parens are stripped, a
+  leading `0` becomes `+63`, an already-`+` number is left alone so an
+  international owner is not misread as Filipino, and blank parses to `null` —
+  which is what the column wants. A test asserts the invariant that matters:
+  nothing the schema accepts can reach Postgres and violate the CHECK.
+- **The driver text no longer reaches the client** — `userService` logged and
+  re-threw a generic message. CLAUDE.md §"Error leakage"; the validation is the
+  fix, this is the backstop.
+- **PGRST303 "JWT issued at future" is dropped, not fixed.** Neither end of
+  that comparison is our code: the token is minted by GoTrue and validated by
+  Postgres. It fires from `readPublicFlags`, i.e. on every page load by an
+  affected visitor. Dropped at the REPORTING layer only — the request still
+  fails and the flags still fail **closed**, which is the behaviour deliberately
+  chosen when `public_feature_flags()` was introduced.
+- **The React streaming-reveal filter matches the FRAME, never the message.**
+  `Cannot read properties of null (reading 'parentNode')` from React's `$RS`
+  reveal helper, when a translator or an in-app browser removed the placeholder
+  comment first — 8 events across three browsers, unactionable. Putting that
+  message in `ignoreErrors` would have swallowed a real null-parent bug in our
+  own code, so the test asserts a `parentNode` error WITH an application frame
+  is still reported.
+- **Two test fixtures had to become real uuids.** `biz-00000000-…` was fine
+  while nothing validated the segment; the new guard 404s it. Changed only in
+  the two files that drive a guarded route — the other twelve `biz-` constants
+  never reach one — and both suites gained a test asserting the slug 404s
+  without touching the database.
+- **Not done, and it is the interesting one: every server issue is still titled
+  `<anonymous>`.** Round 1's fingerprint fixed the GROUPING and it works — the
+  list has separate issues per context and SQLSTATE. But PostgREST errors are
+  plain objects with no stack, Sentry synthesises one at the capture site, and
+  the capture site is the dynamic `import()` that keeps `@sentry/nextjs` out of
+  an offline suite of 3,287 tests. The fix is a synthetic `Error` carrying the
+  SQLSTATE — which re-opens every existing server issue under a new
+  fingerprint, so it is scheduled rather than bundled with an image fix.
+- **Tests (+77):** the encoding round trip against the exact production values
+  (incl. proof that a raw path and its own url are one file, and that a bare
+  `%` neither throws nor is rewritten), `safeObjectName` (traversal, hidden
+  keys, unicode, the `encodeURI(key) === key` invariant), the phone schema
+  (every accepted value satisfies the DB CHECK), the three drop/empty-page
+  predicates, and a contract sweep asserting all 8 `[businessId]` routes guard
+  **before** their first Supabase call — order being the whole point, since
+  validating after the query validates nothing.
+- **Six Sentry issues were resolved rather than fixed**, each with its reason on
+  the activity feed: NEXTJS-9 (PGRST103), -5 (the view_events FK, PR #43), -2 and
+  -3 (the in-app-browser filters), and -B / -C — which were only ever "app
+  deployed ahead of the database", verified fixed by reading `pg_proc` and
+  `information_schema.columns` on cloud. The 8 this branch fixes are left open
+  until it deploys.
+- Verified: `yarn lint` clean + **3287** tests + a clean `yarn build` (`.next`
+  removed first), plus the 200/400 pair confirmed by hand against the live
+  storage host and every claim in the parity table checked against the live
+  database rather than against a migration file.
+- **Not verified — needs a browser:** the shop gallery itself. These surfaces
+  are behind auth and this environment has no login path, so the fix is pinned
+  by assertions on the url this code builds, not by watching the photo appear.
+
 ## 2026-08-19 — The upload routes were the app's most expensive endpoints and had no rate limit (worktree-upload-rate-limit)
 
 > **No schema, API-contract or auth change.** One new helper, a one-line guard

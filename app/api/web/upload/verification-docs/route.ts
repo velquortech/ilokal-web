@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
 import { checkUploadRateLimit } from '@/app/api/helpers/upload-rate-limit';
 import { formatErrorForLog } from '@/lib/utils/describeDbError';
+import { safeObjectName } from '@/lib/utils/storage';
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB for documents
 const ALLOWED_TYPES = [
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const fileName = `${Date.now()}-${file.name}`;
+    const fileName = `${Date.now()}-${safeObjectName(file.name)}`;
     const filePath = `${businessId}/${fileName}`;
 
     const supabase = await createServerSupabaseClient();

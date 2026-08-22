@@ -3,7 +3,10 @@ import {
   generalErrorResponse,
   successResponse,
   loggedServerError,
+  notFoundResponse,
+  isRangeNotSatisfiable,
 } from '@/app/api/helpers/response';
+import { isValidResourceId } from '@/app/api/helpers/resourceId';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { formatOfferingPrice } from '@/lib/utils/formatOfferingPrice';
 import { NextRequest } from 'next/server';
@@ -13,6 +16,11 @@ type Params = { params: Promise<{ businessId: string }> };
 export async function GET(req: NextRequest, { params }: Params) {
   try {
     const { businessId } = await params;
+    // A slug (`bida-ngayon`) reaching PostgREST as a `uuid` is a 22P02 and a
+    // 500 for what is really "no such shop". See app/api/helpers/resourceId.ts.
+    if (!isValidResourceId(businessId)) {
+      return notFoundResponse({ message: 'Business not found' });
+    }
     const { searchParams } = req.nextUrl;
 
     const search = searchParams.get('q')?.trim();
@@ -113,6 +121,17 @@ export async function GET(req: NextRequest, { params }: Params) {
     const { data, error, count } = await query;
 
     if (error) {
+      // A page that starts past the end of the result set is an empty page, not
+      // a server fault — see isRangeNotSatisfiable. The unhandled version of
+      // this on the nearby feed was 197 Sentry events and a 500.
+      if (paginated && isRangeNotSatisfiable(error)) {
+        return successResponse({
+          products: [],
+          has_more: false,
+          total: 0,
+          categories: [],
+        });
+      }
       return loggedServerError(
         'mobile/businesses/[businessId]/products',
         error,

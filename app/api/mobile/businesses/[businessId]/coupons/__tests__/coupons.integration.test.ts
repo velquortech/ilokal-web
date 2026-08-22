@@ -8,7 +8,7 @@ vi.mock('@/supabase/bearer', () => ({
 
 import { createBearerClient } from '@/supabase/bearer';
 
-const BUSINESS_ID = 'biz-00000000-0000-0000-0000-000000000001';
+const BUSINESS_ID = '2f9c1d8a-0000-4000-8000-000000000001';
 
 function makeRequest(businessId = BUSINESS_ID): NextRequest {
   return new NextRequest(
@@ -38,6 +38,28 @@ function makeSupabaseChain(result: {
 describe('GET /api/mobile/businesses/[businessId]/coupons', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  /**
+   * 🔴 The mobile client requested `/businesses/bida-ngayon/coupons` — a slug.
+   * Unvalidated, that reached PostgREST as a `uuid` and Postgres raised
+   * `22P02`, so the route answered 500 and reported it to Sentry
+   * (JAVASCRIPT-NEXTJS-F). "No such shop" is a 404, and Postgres should never
+   * be asked the question.
+   */
+  it('404s a non-uuid id without touching the database', async () => {
+    const chain = makeSupabaseChain({ data: [], error: null });
+    vi.mocked(createBearerClient).mockReturnValue({
+      from: chain.from,
+    } as unknown as ReturnType<typeof createBearerClient>);
+
+    const res = await GET(
+      makeRequest('bida-ngayon'),
+      makeParams('bida-ngayon'),
+    );
+
+    expect(res.status).toBe(404);
+    expect(chain.from).not.toHaveBeenCalled();
   });
 
   it('returns only published and currently active coupons', async () => {

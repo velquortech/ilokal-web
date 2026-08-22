@@ -9,6 +9,7 @@ import {
   toWebPFilename,
   IMAGE_PRESETS,
 } from '@/lib/api/helpers/image';
+import { safeObjectName } from '@/lib/utils/storage';
 
 // Banners are wide hero photos, so they get more headroom than logos (the
 // client compresses to a WebP well under this before POSTing — the cap only
@@ -116,7 +117,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const fileName = `${Date.now()}-${toWebPFilename(file.name)}`;
+    // `safeObjectName` first: the owner's own filename used to land in the
+    // object key verbatim, so a screenshot became `…-Screenshot 2026-08-08
+    // 095928.webp` and every layer downstream had to agree on how to spell
+    // that space. They did not — see lib/utils/storage.ts.
+    const fileName = `${Date.now()}-${safeObjectName(toWebPFilename(file.name))}`;
     const filePath = `${businessId}/${fileName}`;
 
     await uploadWebP(supabase, 'shop-banners', filePath, file, {

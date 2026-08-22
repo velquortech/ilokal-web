@@ -1,28 +1,23 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { publicStorageUrl } from '@/lib/utils/storage';
 
-// Seeds store full public URLs; real registrations store raw storage paths.
-// This resolves either form to a full public URL without double-encoding.
+/**
+ * Resolve a stored image value to a public URL.
+ *
+ * Seeds store full public URLs; real registrations store raw storage paths.
+ * This resolves either form without double-encoding — which is not a
+ * theoretical concern: `getPublicUrl` runs `encodeURI` over the whole URL, so
+ * handing it an already-encoded path yields `%2520` and a 400. See
+ * `lib/utils/storage.ts`.
+ *
+ * The logic lives in `lib/utils/storage.ts` because the WRITE side needs the
+ * same normalisation, and four hand-copied versions of this function is how the
+ * encoding bug survived a fix.
+ */
 export function resolveStorageUrl(
   supabase: SupabaseClient,
   bucket: string,
   pathOrUrl: string | null | undefined,
 ): string | null {
-  if (!pathOrUrl) return null;
-  if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
-    return pathOrUrl;
-  }
-  // Uploads can persist their paths percent-encoded ("Screenshot%202026-…")
-  // while the storage object itself keeps the raw name ("Screenshot 2026-…").
-  // getPublicUrl re-encodes whatever it's given, so passing the encoded form
-  // through would double-encode the "%" (…%2520…) and the URL 404s. Decode the
-  // stored path once so getPublicUrl applies exactly one layer of encoding and
-  // the URL matches the real object key.
-  let path = pathOrUrl;
-  try {
-    path = decodeURIComponent(pathOrUrl);
-  } catch {
-    // Not valid percent-encoding (e.g. a literal "%" in a filename) — pass
-    // through untouched rather than crashing the request.
-  }
-  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+  return publicStorageUrl(supabase.storage, bucket, pathOrUrl);
 }

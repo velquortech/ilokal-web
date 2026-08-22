@@ -4,6 +4,7 @@ import {
   notFoundResponse,
   successResponse,
 } from '@/app/api/helpers/response';
+import { isValidResourceId } from '@/app/api/helpers/resourceId';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
 import { NextRequest } from 'next/server';
 
@@ -16,6 +17,11 @@ export const revalidate = 120;
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { businessId } = await params;
+    // A slug (`bida-ngayon`) reaching PostgREST as a `uuid` is a 22P02 and a
+    // 500 for what is really "no such shop". See app/api/helpers/resourceId.ts.
+    if (!isValidResourceId(businessId)) {
+      return notFoundResponse({ message: 'Business not found' });
+    }
     const supabase = createBearerClient();
 
     const { data, error } = await supabase

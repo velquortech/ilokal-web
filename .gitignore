@@ -84,6 +84,7 @@ supabase/reports/pull-live.log
 # are never the file to commit. Static cuts only.
 assets/fonts/*-Variable.ttf
 .claude/SENTRY_TRIAGE.md
+.claude/SENTRY_TRIAGE_2.md
 
 # Local dev artifacts (Freebuff desktop state + one-off viewport screenshots)
 .freebuff/

@@ -7,7 +7,11 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { signupSchema, SignupInput } from '@/lib/validation/auth';
+import {
+  signupSchema,
+  type SignupInput,
+  type SignupFormValues,
+} from '@/lib/validation/auth';
 import { signupFormAction } from '@/app/(auth)/actions';
 import { ROUTES } from '@/config/routeConfig';
 import { safeNext } from '@/lib/utils/safeNext';
@@ -84,7 +88,9 @@ function SignupFormContent({ isMobile = false, initialNext }: SignupFormProps) {
     handleSubmit,
     formState: { errors },
     watch,
-  } = useForm<SignupInput>({
+    // Input type — `phone_number` is normalised by a transform, so the field
+    // and the parsed value are different shapes. See SignupFormValues.
+  } = useForm<SignupFormValues, undefined, SignupInput>({
     resolver: zodResolver(signupSchema),
     // Business Owner, not Customer. Signup is reached almost entirely from the
     // "List your business" CTAs — a shopper can browse, search, and read every

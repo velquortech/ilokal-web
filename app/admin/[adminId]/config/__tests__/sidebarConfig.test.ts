@@ -56,8 +56,11 @@ describe('SIDEBAR_SECTIONS', () => {
     expect(adminSection?.items).toBe(administrationNavigation);
   });
 
-  it('includes the menu follow-up entry with its base href', () => {
-    const item = mainNavigation.find((i) => i.title === 'Menu Follow-up');
+  it('includes the owner follow-up entry with its base href', () => {
+    // Renamed from "Menu Follow-up" when the page gained the incomplete-
+    // registration tab. The ROUTE deliberately did not move — a redirect and a
+    // sidebar-href change would have been churn for a label.
+    const item = mainNavigation.find((i) => i.title === 'Owner Follow-up');
     expect(item?.href).toBe('/admin/menu-follow-up');
     // Same base the route helper and the actions' revalidate use.
     expect(injectAdminId(item!.href!, ADMIN_ID)).toBe(

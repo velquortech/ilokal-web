@@ -1,5 +1,256 @@
 # Changelog
 
+## 2026-08-22 — Fix: the step summary went stale, insisting a filled-in field was still empty (feat/registration-funnel-recovery)
+
+> One line in the registration provider. A **self-inflicted regression from the
+> Phase 0 work earlier the same day**, reported from a browser with the fields
+> visibly filled and the summary still demanding them.
+
+- **Symptom.** Owner presses Next on Shop Information, gets "2 things still need
+  your attention — Shop name is required / Description is required", types both,
+  and the complaint stays on screen unchanged. Worse than the dead grey Next it
+  replaced: that said nothing, this asserted their correct input was wrong.
+- **Cause.** `stepIssues` was `useMemo`'d on `form.formState.errors`.
+  **React Hook Form MUTATES its error object in place**, so the reference can
+  survive a change — the memo never recomputed and the list froze at whatever
+  was wrong the moment Next was pressed. Now recomputed every render; it walks
+  one step's field group, a handful of keys.
+- **The form was never the problem.** The values were in RHF the whole time —
+  the "15 / 500" counter reads `form.watch('description')` — which is what ruled
+  out the field wiring and pointed at the memo.
+- **Why the existing tests missed it:** the Phase 0 suite asserted the summary
+  cleared only AFTER a second Next press, which recomputes for other reasons.
+  Nothing covered the live case, which is the only one an owner experiences.
+- **Tests (+2), and they were verified to actually catch it:** with the `useMemo`
+  restored both fail; without it both pass. One asserts a single issue disappears
+  as soon as its field is filled **while the others remain listed**, so the owner
+  still knows what is left; the other asserts the whole summary unmounts once
+  nothing is outstanding — neither pressing Next again.
+- Verified: `yarn lint` + `yarn build` green, **3362** tests pass — including the
+  three `business_products.integration.test.ts` local-DB cases that had been
+  failing all session, so the local database has since been migrated.
+
+## 2026-08-22 — Fix: a partial registration no longer publishes a live, empty shop (feat/registration-funnel-recovery)
+
+> No schema, API or auth change — one component. **This is a production bug fix,
+> not an optimisation**; it outranks the rest of the funnel work it was found
+> during. Full evidence in `.claude/REGISTRATION_FUNNEL.md` §3.
+
+- **What was happening.** `performSubmission` created the business row FIRST,
+  then `await`ed every file in a bare loop with no per-upload catch. One
+  interior-image failure threw, aborted before the catalogue was written, and
+  left the owner reading **"Failed to submit application"** while their shop was
+  already `verified` and public with **no products and no photos**. Confirmed on
+  production: the 2026-08-18 shop recorded `reg_step_completed` ×6 (the owner
+  walked the entire wizard), `reg_submitted` **0**, and it is live and empty
+  right now. Two owners hold duplicate business rows, consistent with
+  re-registering after being told it failed.
+- **The catalogue is now written BEFORE any display file.** Products are what
+  make a shop page worth opening; photos are decoration. It only ever sat behind
+  the uploads because it needs a business id — not because it needs a photo.
+- **Display-file uploads are individually NON-FATAL and reported.** The
+  precedent was already in the same function for offering photos ("the item is
+  the required thing and the picture is decoration"). The owner attached the
+  files; failing to STORE one is ours to report, not a reason to discard a
+  completed registration. Interiors go last, being the four-plus most likely to
+  fail. Still fatal: the row, the offerings write, the deal write — without
+  those there is no shop to report on.
+- **The owner is told the truth.** A new non-destructive alert — "Your shop is
+  registered, but we couldn't upload your banner image. You can add it from your
+  dashboard at any time" — naming each file. Deliberately separate state from
+  `submitError`: telling someone "failed" while their shop is live is the whole
+  defect.
+- **`reg_submitted` now carries `upload_failures`.** Previously a partial
+  submission fired NO completion event at all, so it was indistinguishable from
+  an abandonment in the funnel — the reason this went unnoticed.
+- **Upload progress survives a reload** (`ilokal-registration-uploaded`, written
+  with the same lifecycle as the cached business id and cleared with it).
+  `uploadedRef` was a React ref, so a retry on a fresh page re-uploaded the logo
+  and banner (orphaning a copy of each in the bucket) and re-appended the
+  interior photos — the server appends rather than replaces, so it duplicated
+  gallery images. A corrupt cache entry is treated as empty; re-uploading is
+  recoverable, a parse error at submit time is not.
+- **Tests (+12)** `__tests__/submit-resilience.test.tsx` — real component over
+  the real provider, API layer mocked with an ordered call log: catalogue before
+  any file, business row first, catalogue still written when the first upload
+  throws, remaining uploads continue past a failure, the success-with-caveat copy
+  (asserting it does NOT say "Failed to submit"), `reg_submitted` naming the
+  failed keys, empty `upload_failures` on a clean run, catalogue failure still
+  fatal and firing no `reg_submitted`, persistence across an interruption,
+  cleared on success, corrupt-cache tolerance.
+  **The suite earned its keep immediately:** the first implementation had a
+  self-recursive `markUploaded` (a blanket rename rewrote the `add()` call
+  inside the helper into a self-call), which surfaced as
+  `RangeError: Maximum call stack size exceeded` rendered to the owner as a
+  submission error. Static checks and a type-check both passed it.
+- Verified: `yarn lint` + `yarn build` green, **3357** tests pass.
+  ⚠️ Same 3 pre-existing `business_products.integration.test.ts` failures —
+  local-DB drift from the `main` reset; needs `make migrate-up`.
+- **Deliberately NOT done, with reasons recorded in the plan:**
+  - **"Do not publish until complete"** (the belt-and-braces version) needs a
+    BEFORE INSERT trigger change on every business insert, and this branch cannot
+    verify it — the migration would be unapplied and the local DB is 44
+    migrations behind. Shipping an unverifiable HIGH-risk trigger change to look
+    complete is how a fix becomes an incident. Its own branch, against a
+    migrated DB. The design decision it needs is already settled: drafts stay
+    `pending`, which every public read already filters out.
+  - **Reconciling the existing rows** (1 live empty shop, 2 duplicates) is a
+    production data write and needs explicit approval.
+  - **The map-pin fallback** turns out not to be implementable on the frozen
+    stack: `lib/ph-locations.ts` carries names only, no coordinates, so a "use my
+    barangay centre" button has nothing to derive a point from. Needs a
+    coordinate dataset or a geocoding service — both new dependencies. No
+    half-measure shipped.
+  - **Cutting the 4-photo gallery minimum** is the one remaining pure product
+    call, and it is deliberately waiting on a week of the `reg_step_error` data
+    Phase 0 just switched on. It is also no longer urgent: a failed gallery
+    upload no longer costs the whole registration.
+
+## 2026-08-22 — Registration funnel phase 3: admin nudge for the owners who never listed a shop (feat/registration-funnel-recovery)
+
+> **ONE new migration — `20260822000000_registration_followup.sql`. Applied
+> NOWHERE (not local, not cloud).** Needs human approval, then `make migrate-up`
+> + `make migrate-cloud` + a ledger reconcile. Until then the new admin tab
+> renders an outage state, not zeros. Plan: `.claude/REGISTRATION_FUNNEL.md`.
+
+- **The cohort nothing could reach.** 41 live `business_owner` accounts, 21
+  businesses: 20 owners (49%) signed up and never listed a shop. Because the
+  wizard keeps everything in `localStorage` until the final submit, they leave
+  no server-side trace — so there was no list, no progress, and no way to
+  follow up. This is the read + send side of that.
+- **No twelfth admin page.** `/admin/[adminId]/menu-follow-up` became a
+  two-tab **"Owner Follow-up"**: *Incomplete registration* (new, leads — it is
+  the earlier and larger leak) and *Missing menu* (unchanged). Same job, same
+  affordances, so a separate route would have duplicated the shell and crowded
+  the sidebar. Route deliberately did NOT move — a redirect plus a sidebar href
+  change would have been churn for a label. The active tab lives in the URL:
+  both tables write page/search into the query string, so an uncontrolled
+  `Tabs` would have snapped back the moment an admin paged the second tab. The
+  registration table's URL keys are PREFIXED (`rSearch`, `rPage`, `rPerPage`)
+  so paging one tab can't page the other.
+- **Migration** — `profiles.registration_reminder_sent_at` (nullable, no
+  backfill: a `DEFAULT now()` would claim everyone had been nudged) plus three
+  SECURITY DEFINER RPCs mirroring the menu trio: one page / uncapped stats /
+  `uuid[]` for "send to all". Pinned `search_path`, REVOKE'd from
+  PUBLIC/anon/authenticated, GRANTed to `service_role` only.
+  🔴 **The marker is on `profiles`, not `businesses`** — the whole cohort has no
+  business row, and hanging it there would have made this depend on the
+  server-side-draft phase landing first. `furthest_step` comes from
+  `owner_events` via a LATERAL (one indexed pass per candidate, not an
+  aggregate over the whole event table).
+  The cohort SQL was **dry-run read-only against cloud before the migration was
+  written**: exactly 20 rows, matching the funnel number.
+- **`furthest_step` NULL is not step 0.** `owner_events` only began recording
+  2026-08-15, so NULL means "we never saw them", and the query maps it through
+  as null rather than `Number(null)`. The table renders "Unknown" and the email
+  omits the progress line entirely — inventing progress would be a false
+  statement to a real person. Out-of-range steps are ignored too, so a stale
+  cached step can't render "step 9 of 6".
+- **Send path mirrors the menu twin's guarantees**: admin proven before the
+  service-role client, send-time RE-VERIFY (an owner who registered since the
+  list was rendered is skipped — the list is a hint, not a gate), per-admin rate
+  limit (Server-Action POSTs never reach the proxy limiter), an ATOMIC
+  conditional-UPDATE claim before sending so two tabs can't both email, and a
+  restore of the PRIOR marker when the send fails so a failed email doesn't
+  silence an owner for a whole cooldown. Never throws; each target yields an
+  outcome so a batch survives one bad row. **Every failure path calls
+  `logActionError`** — the menu twin logs three of its failures without
+  capturing them, which is a real gap and NOT something to mirror.
+- **🔴 Extracted `app/api/emails/templates/shell.ts`.** The new email would have
+  been the third copy of the ~130-line table-based, mso-conditional email
+  markup, and a mail shell drifts invisibly — you find out when someone opens
+  the odd one out in Outlook. `menuFollowUp.ts` now renders through it and its
+  7 existing tests pass unchanged, so the output is byte-compatible. The shell
+  documents an explicit escaping contract: `*Html` fields are trusted
+  pre-escaped fragments, everything else is escaped by the shell.
+  `resetPassword.ts` is deliberately NOT migrated — security-specific furniture,
+  and it is the one email whose delivery is load-bearing for account recovery.
+- **New `TabbedTablePageSkeleton`** (header + tab strip + stat cards + table).
+  The existing `TabsPageSkeleton` puts a FORM card under its tabs, which is the
+  same skeleton/content mismatch the 2026-07-24 pass had to go back and fix on
+  three routes.
+- **The email is honest about what it can promise.** The CTA is the wizard's
+  entry point, NOT a resume deep link — there is no server-side draft to resume
+  (that is Phase 1). So it says "pick up where you left off" only when a real
+  step was recorded, because on the owner's original device the cache genuinely
+  does restore.
+- **Tests (+33):** query (10 — admin gate, page/stats split, blank search,
+  NULL-step passthrough, `failed` on either RPC erroring), actions (23 — the
+  full re-check matrix, claim-before-send, restore-to-prior and restore-to-null,
+  advisory step lookup failing without blocking the send, batch dedupe,
+  send-to-all deriving ids server-side) and the template (11 — subject/heading
+  variants, singular "1 step", no step line when unknown, out-of-range rejected,
+  escaping incl. the ampersand-first ordering).
+- Verified: `yarn lint` + `yarn build` green, **3345** tests pass (3301 → 3345).
+  ⚠️ The same 3 `business_products.integration.test.ts` failures persist —
+  local-DB drift from the `main` reset, unrelated; needs `make migrate-up`.
+- **Cannot be exercised end-to-end yet:** the migration is unapplied, so the tab
+  currently shows its outage state. Also unverified — whether a Resend sending
+  domain is configured for this template; a missing `RESEND_API_KEY`/`EMAIL_FROM`
+  silently falls back to logging, which in production logs an error and sends
+  nothing.
+
+## 2026-08-22 — Registration funnel phase 0: the stall is finally visible (feat/registration-funnel-recovery)
+
+> No schema, API or auth change — two component files plus a pure helper.
+> Plan, parities and the remaining phases: `.claude/REGISTRATION_FUNNEL.md`.
+
+- **The measured problem.** 41 live `business_owner` accounts, 21 businesses —
+  **49% of owners never produce a business row**. The decay continues past
+  "success": 10 of 23 shops have zero products, 18 of 23 zero coupons. Approval
+  is NOT the bottleneck (all 23 are `verified`; `auto_verify_businesses` is on).
+- **Fixed: Next was disabled instead of clickable-with-errors.**
+  `register-nav.tsx` gated the button on `!canProceed`. RHF only surfaces an
+  error once its field is TOUCHED, so an owner who never focused a required
+  field saw a dead grey button and no statement of what was missing. Next is now
+  always clickable (still `disabled` while submitting); `canProceed` survives
+  as a `variant` hint rather than a block. The final step's Submit was ungated
+  too — its `handleInvalidSubmit` already raises a step-naming alert, so the
+  click now reveals the reason instead of swallowing it.
+- **New `validator/stepIssues.ts`** — pure `collectStepIssues(errors, fields)`
+  walking RHF's recursive error tree into `{path, message}` leaves, scoped to
+  the current step's field group so a later step's error can't present as a
+  phantom blocker. Built from the ZOD MESSAGES, not a field→label map: those
+  strings are already written for owners and live next to the rule they
+  describe, so there is no second copy to drift. Never walks `ref` (it holds a
+  DOM node), collapses RHF's field-array `root` container out of the path so
+  `setFocus` gets something real, and dedupes `path+message`.
+- **The summary renders in the sticky nav, directly above the button pressed** —
+  `role="alert"`, count-aware title, one line per issue — and the first
+  offending field is `setFocus`ed, because on the tall steps the blocker is
+  often scrolled out of view and a summary alone still reads as "nothing
+  happened".
+- **`reg_step_error` fires for the first time.** It was written at
+  `registration-form-provider.tsx:283` but sat behind `nextStep()`, which the
+  disabled button made unreachable — 0 rows, permanently, for the one event
+  built to name the stalling field. It now carries `paths` (exact leaves)
+  alongside the original `fields`.
+- **🔴 Found while testing: the original payload would have been empty anyway.**
+  RHF wraps `formState` in a Proxy whose values are only fresh in RENDER; read
+  from inside the async `nextStep` callback, `form.formState.errors` comes back
+  EMPTY even though validation has already failed. The first version of this
+  work reproduced that faithfully (rendered summary correct, logged `paths`
+  `[]`) and a test caught it. Reporting now runs in an effect keyed on a
+  `stallAttempt` counter, reading a render-derived ref — so the payload always
+  matches what the owner is looking at. Had this shipped inline, the event would
+  have switched on and still told us nothing.
+- **Tests (+17):** `stepIssues` unit suite (11 — nesting, array-root vs
+  per-item, group scoping, `root` collapsing, `ref` never walked, dedupe) and
+  `step-issues-reveal.test.tsx` (6 — real provider mounted against the real nav,
+  because the defect lived in the interaction between them; a test of either
+  alone would have passed throughout). Verified: `yarn lint` + `yarn build`
+  green, **3301** tests pass.
+- ⚠️ **3 pre-existing failures in `business_products.integration.test.ts`** are
+  local-DB drift, not this change: the local `business_products` function
+  predates `weekly_view_count`. The local stack is behind the 44 migrations that
+  arrived with the `main` reset — needs `make migrate-up`.
+- **Not done, deliberately:** phases 1–6. Phase 2 (cutting the 4-photo gallery
+  minimum, the mandatory map pin) is held until this phase has produced a week
+  of real `reg_step_error` data — cutting gates now would destroy the baseline
+  the decision should be made against. Phase 1 (server-side draft) and Phase 3
+  (admin nudge for the 20) each need one migration and a human decision first;
+  see the plan's §6.
+
 ## 2026-08-22 — A gallery photo that 400s, and the second Sentry triage pass (fix/broken-shop-images-sentry-triage-2)
 
 > **No schema migration, no RLS change, no auth change.** One API-contract

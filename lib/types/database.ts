@@ -1382,6 +1382,7 @@ export type Database = {
           full_name: string | null
           id: string
           phone_number: string | null
+          registration_reminder_sent_at: string | null
           role: string
           status: string
           updated_at: string | null
@@ -1394,6 +1395,7 @@ export type Database = {
           full_name?: string | null
           id: string
           phone_number?: string | null
+          registration_reminder_sent_at?: string | null
           role: string
           status?: string
           updated_at?: string | null
@@ -1406,6 +1408,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone_number?: string | null
+          registration_reminder_sent_at?: string | null
           role?: string
           status?: string
           updated_at?: string | null
@@ -1900,6 +1903,36 @@ export type Database = {
         Returns: {
           no_promo: number
           reminded: number
+          total: number
+        }[]
+      }
+      admin_owners_missing_business: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_only_started?: boolean
+          p_search?: string
+        }
+        Returns: {
+          furthest_step: number
+          had_business: boolean
+          id: string
+          last_activity_at: string
+          owner_email: string
+          owner_name: string
+          registration_reminder_sent_at: string
+          signed_up_at: string
+        }[]
+      }
+      admin_owners_missing_business_ids: {
+        Args: { p_only_started?: boolean; p_search?: string }
+        Returns: string[]
+      }
+      admin_owners_missing_business_stats: {
+        Args: { p_only_started?: boolean; p_search?: string }
+        Returns: {
+          reminded: number
+          started: number
           total: number
         }[]
       }

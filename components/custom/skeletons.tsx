@@ -124,6 +124,46 @@ export function TablePageSkeleton({
   );
 }
 
+/**
+ * Header + tab strip + stat cards + table — for a tabbed LIST route.
+ *
+ * Distinct from `TabsPageSkeleton`, which puts a FORM card under its tabs: a
+ * form-shaped placeholder over a table is the mismatch the 2026-07-24 skeleton
+ * pass had to go back and fix on three routes, and it reads as a layout jump the
+ * moment real rows arrive.
+ */
+export function TabbedTablePageSkeleton({
+  tabs = 2,
+  stats = 3,
+  rows = 6,
+  cols = 6,
+}: {
+  tabs?: number;
+  stats?: number;
+  rows?: number;
+  cols?: number;
+}) {
+  return (
+    <StatusRegion>
+      <PageHeaderSkeleton action={false} />
+      <div className="flex items-center gap-2">
+        {Array.from({ length: tabs }).map((_, i) => (
+          <Skeleton key={i} className="h-9 w-44 rounded-md" />
+        ))}
+      </div>
+      <StatCardsSkeleton
+        count={stats}
+        className="grid grid-cols-1 gap-4 sm:grid-cols-3"
+      />
+      <div className="flex items-center justify-between gap-3">
+        <Skeleton className="h-9 w-56" />
+        <Skeleton className="h-9 w-64" />
+      </div>
+      <TableSkeleton rows={rows} cols={cols} />
+    </StatusRegion>
+  );
+}
+
 /** Header + stat cards + two content blocks — for dashboard routes. */
 export function DashboardSkeleton() {
   return (

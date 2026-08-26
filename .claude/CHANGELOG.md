@@ -1,189 +1,70 @@
 # Changelog
 
-## 2026-08-26 — A gym, a court, a billiards hall and a computer shop were four unrelated rows (feat/sports-recreation-vertical)
+## 2026-08-26 — pull-live could not reach its own verification, and quietly changed how triggers fire (fix/pull-live-snapshot-fidelity)
 
-> **ONE migration (`20260826000000_sports_recreation_vertical.sql`) — HIGH risk:
-> it re-pins LIVE taxonomy rows, backfills a denormalized column on real
-> businesses, and replaces a trigger function.** Applied to LOCAL only.
-> ⚠️ **Needs human approval before merge, then a cloud apply.** Rollback artifact
-> checked in at `supabase/reports/rollback_sync_business_type_id_20260826.sql`.
+> **No schema, API-contract or auth change. One file: `supabase/scripts/pull-live.sh`.**
+> Every live access stays READ-ONLY. Found while auditing the Sports & Recreation
+> migration against a live snapshot — none of these are caused by that work.
 
-- **Sports was unfindable as a group because it was filed as four separate
-  trades.** Gyms sat under Services, billiards halls and arcades under
-  Entertainment & Events, gear under Retail — and court rental existed
-  **nowhere at all**. Explore's category filter groups by vertical, so a
-  shopper looking for somewhere to play could not.
-- **New `Sports & Recreation` vertical**, holding seven shop types: the
-  **five** re-pinned (the four above plus `Computer / Internet Shop`), the
-  net-new **`Sports Court / Facility Rental`**, and the `General` fallback.
-- **Named `Sports & Recreation`, not `Sports`, and the name is load-bearing.**
-  `sync_business_type_id` matches the vertical NAME in a `CASE` to stamp
-  `offering_mode`, so renaming it later silently stops it stamping anything. It
-  also has to describe a billiards hall and an arcade honestly, or their owners
-  keep picking Entertainment and the move buys nothing.
-- **eSports is a shop type, not a vertical — deliberately.** A vertical stamps
-  `offering_mode` on every shop that registers under it, owns a vocabulary,
-  adds a registration tab and defines the offering-category pinning scope. The
-  existing verticals are industries, not trades. Promoting a shop type to a
-  vertical later is exactly this migration; demoting one means unwinding
-  `offering_mode` values already written to real shops.
-- **🔴 An earlier draft added an `eSports / Computer Gaming Café` row, and it
-  was a duplicate.** The justification — "the PH computer-shop trade has no
-  home" — was true of `supabase/seeds/` and **false of production**, where
-  `Computer / Internet Shop` already exists under Services with a real
-  business on it (an iCafe whose offerings include `PC_USE_20/hr`). The
-  existing row is adopted in step 3 instead; shipping both would have
-  fragmented one trade across two verticals and made the owner guess. **Found
-  only by testing against a live snapshot** — the seeded database is far
-  smaller, and the first sweep's regex did not even include `comput|internet`.
-  The standing lesson: the seeds are not the taxonomy, so a "nothing covers
-  this" claim has to be checked against live data.
-- **One court row, not one per sport.** The sport is the OFFERING ("Badminton
-  Court — ₱250/hr", which `price_type='per_hour'` + `duration_minutes` +
-  `capacity` already express); one card per sport would inflate the picker with
-  near-identical tiles.
-- **Ships `is_active = true`, unlike Tourism & Leisure.** Tourism is disabled
-  pending its booking flow; these trades degrade honestly without one — a court
-  lists its hourly rate and takes the booking by phone.
-- **🔴 The backfill is the whole reason this is not a data-only seed.**
-  `businesses.business_type_id` is denormalized and `sync_business_type_id`
-  fires only on INSERT or an `UPDATE OF category_id` — neither of which a
-  re-pin performs. Without step 4, every shop already on a moved category keeps
-  pointing at its OLD vertical and `getCategoryDivergence` starts showing its
-  owner a banner. Four businesses were rewritten.
-- **`offering_mode` is deliberately NOT rewritten.** The four affected shops
-  hold a MIX — `services` for the two gyms, `both` for the arcade and the
-  billiards hall — and each is correct for that shop. The trigger is
-  INSERT-only precisely so a settled choice is never overwritten; a test
-  asserts at least one `services` survivor, so a future "tidy-up" that forces
-  them all to `both` fails.
-- **Every number was measured against a LIVE SNAPSHOT (`make pull-live`), not
-  against the seeds.** On production the blast radius is **2 businesses**, both
-  `verified` — a martial-arts gym (`offering_mode='services'`) and an iCafe
-  (`'products'`), each correct for its shop, which is why step 4 leaves the
-  column alone. Between them they have 3 offerings, all on the **global**
-  `Other` category, so step 6 puts nothing out of scope. Global divergence was
-  0 beforehand, which is what makes the test's global assertion meaningful
-  rather than scoped. The seeded database gave a different answer to every one
-  of those questions.
-- **🔴 Copying the trigger body from its original migration would have silently
-  deleted four `CASE` arms.** `20260727000000` has only `Services` and
-  `Tourism & Leisure`; the LIVE function had gained
-  `Entertainment & Events`, `Health & Wellness`, `Education & Learning` and
-  `Home & Property Services` from later migrations. The body was taken from
-  `pg_get_functiondef` against the running database instead, and saved as the
-  rollback artifact first.
-- **🔴 A neighbouring test suite caught a regression the design missed.**
-  `20260819010000` gives every ACTIVE vertical exactly one `General` shop type
-  — but it selected `WHERE is_active = true` at ITS runtime, so a vertical
-  added afterwards silently has none, and `general_categories.test.sql` failed
-  with "an active vertical does not have exactly one live General category".
-  Step 7 adds it. Found by running the adjacent suites, not by reading the
-  migration.
-- **The offering-category picker was re-scoped, or the move would have emptied
-  it.** The picker reads "my vertical OR global", so a gym moved out of
-  Services would see only the 3 globals — a picker that size is not a choice,
-  it is a required field with a default. `Sports & Outdoor` and
-  `Fitness & Classes` were **moved** rather than copied (verified first:
-  neither is referenced by a single product, so nothing was stranded), joined
-  by four new service categories — Court & Facility Time, Coaching & Lessons,
-  Gaming & Console Time, Equipment Rental. Picker: 6 own + 3 global.
-- **`Bike Shop` was deliberately left under Retail** — its trade is goods, the
-  same shape as Auto Supply / Motor Parts. Pinned by a test, so a later
-  over-eager sweep has to argue with an assertion. It was also a row the seed
-  files did not reveal; a live sweep found it.
-- **🔴 The seed mirror is not optional, and the trap is subtle.** On a fresh
-  database the migration's re-pin matches ZERO rows — `business_types` and
-  `business_categories` are created by the SEED, which runs AFTER migrations —
-  and the seed's per-vertical blocks then recreate all four rows under their
-  old verticals, silently undoing the move on every `migrate-reset`. A trailing
-  seed block re-pins them. It is its OWN block rather than an append to the
-  Retail/Services/Entertainment blocks, because those are wrapped in
-  `IF NOT EXISTS (… WHERE business_type_id = X)` and anything added inside them
-  is a no-op on every database that has ever been seeded.
-- **Only the re-pin is mirrored, on purpose.** The vertical, the two new shop
-  types and the General row are inserted unconditionally by the migration so
-  they survive a fresh run unaided; and the offering-category pins stick
-  because the seed pins with `COALESCE(business_type_id, …)`, which cannot move
-  an already-pinned row — re-pinning them in the seed would instead overwrite
-  an admin's reassignment, which is what that idiom exists to prevent.
-- **`iconMap` gained `Dumbbell`.** An icon string with no entry there does not
-  fail loudly — it resolves to `Coffee`, so the sports tab would have rendered
-  a coffee cup.
-- **Both images were verified as stored** — 200, **zero redirects**,
-  `image/jpeg` — and then looked at rather than chosen by alt text. An
-  allowlisted host is not sufficient on its own, because CSP re-checks every
-  redirect hop. The eSports candidate with a legible Razer logo was rejected in
-  favour of one with no brand mark.
-- **Every image in the vertical uses one URL shape, and the odd one out was
-  fixed rather than tolerated.** The two new tiles were written in the current
-  form (`q=80&w=1600&h=1200&fit=crop&auto=format` — 80 of the 96 shop-type
-  images repo-wide); `Fitness Studio / Gym`, inherited from the original 2026
-  seed, still carried the legacy shape (`w=2340`, **no `h=`**, plus dead
-  `ixlib`/`ixid` tracking params) and was normalised in both the migration and
-  the seed. Not cosmetic: the cards render into a fixed `h-36`/`h-52` box with
-  **no `object-cover`**, so they top-crop, and `h=1200` is what forces the 4:3
-  crop that makes the result predictable. Same photo, re-fetched as stored.
-  Scoped to this vertical deliberately — the other 15 legacy URLs live in
-  verticals this migration does not touch, and sweeping them is its own change.
-  A test now asserts the parameter string on every Sports image.
-- **Tests (+1 SQL suite, +1 vitest):** `supabase/tests/sports_vertical.test.sql`
-  — 6 blocks covering the vertical and its full `offering_profile` (including
-  `per_hour`, without which no court, gym pass or PC hour is expressible), all
-  seven shop types present with nothing left behind under the old verticals,
-  the `General` row, no NULL/blank image and no CSP-blocked host, **zero global
-  divergence**, `offering_mode` not flattened, the trigger returning `'both'`
-  for a rolled-back INSERT, and the picker's size. Plus a `fetchCategories`
-  case pinning the Dumbbell mapping.
-- **Both guards were proven by breaking them:** the SQL suite was run before
-  the migration existed (fails at "Sports & Recreation vertical does not
-  exist"), and removing `Dumbbell` from `iconMap` fails exactly one vitest case.
-  The migration was re-run end to end to prove idempotency (every step reports
-  0 rows), and the seed block was proven by putting the four rows back under
-  their old verticals and watching it restore them — inside a rolled-back
-  transaction, so the dev database was never altered.
-- Verified: `yarn lint` clean, the full vitest suite, a clean `yarn build`, and
-  the `sports_vertical`, `general_categories`, `category_scoping`,
-  `offerings_discriminators` and `audit_business_taxonomy` SQL suites all green
-  against the local stack.
-- **The whole thing was rehearsed against production-shaped data**, not merely
-  unit-tested: `make pull-live` restores a live snapshot into local Docker, and
-  the migration was applied on top of it — which is exactly what the cloud
-  apply will do. That run is what produced the numbers above, caught the
-  duplicate eSports row, and confirmed the backfill touches the rows predicted
-  and no others.
-- **⚠️ One suite goes from red to green for a reason that is NOT a fix, and
-  that is worth stating plainly.** Against a live snapshot,
-  `offerings_discriminators.test.sql` fails *before* this migration with
-  "businesses whose offering_mode does not match their type: 1" — the iCafe,
-  filed under Services while carrying `offering_mode='products'`. It passes
-  afterwards **only because that row moves to Sports & Recreation, and the
-  assertion covers just Services / Tourism / Retail / F&B.** The underlying
-  oddity is untouched: the shop still reads `'products'` while its new
-  vertical maps to `'both'`. Nothing was repaired and nothing was swept in —
-  the row simply left the checked set. Correcting production data is its own
-  decision.
-- **🔴 `make pull-live` cannot currently reach its own verification step, and
-  it went unnoticed because it looks like success.** Its storage-sync helper
-  calls `process.exit(1)` when ANY object fails, under `set -euo pipefail`, so
-  the script dies before step 9 — the row-count/auth-user/storage comparison
-  against live, and the dated report. Two runs here died that way and wrote no
-  report. Compounding it, the GET sends only `Authorization: Bearer` with no
-  `apikey` header: public buckets do not care (309 objects synced fine) but the
-  private `business-docs` bucket does, so its 4 PDFs 400 — the same objects
-  return 200 when fetched with both headers, which points at the newer
-  `sb_secret_…` key format rather than at missing files. Alignment with live
-  was therefore verified by hand here (all 7 key tables matched). Not fixed in
-  this branch — it is unrelated to the taxonomy — but it means every pull-live
-  run to date has skipped its own verification whenever a single file failed.
-- **Not done:** the cloud apply (needs approval). **Part B — admin CRUD for
-  business types and shop types, merged into the Categories nav — is not in
-  this branch**; today an admin still cannot create a vertical or a shop type
-  without SQL, which is the follow-up this work was scoped alongside.
-- **Not verified — needs a browser:** the registration category step has not
-  been clicked through. It is behind auth, and the two things worth looking at
-  are exactly the ones a test cannot see — how the two new tiles top-crop in
-  the card, and whether the Dumbbell tab reads correctly beside the other eight.
+- **🔴 A single failed storage object aborted the run BEFORE step 9.** The sync
+  helper calls `process.exit(1)` when any object fails, and the script runs under
+  `set -euo pipefail` — so the row-count / auth-user / storage comparison against
+  live, and the dated report, were skipped **exactly when a run had gone wrong**.
+  Two runs died that way and wrote no report at all. The failure is now
+  remembered and folded into the verification verdict, so the run still ends
+  non-zero, but only after saying what actually drifted. Proven by running both
+  shapes: the old one exits 1 without reaching the checks, the new one runs them,
+  writes the report, and still exits 1.
+- **🔴 The storage GET sent `Authorization: Bearer` with no `apikey` header, and
+  that is why 4 objects "went missing".** A service key sent as a bearer token
+  alone is accepted for PUBLIC buckets and rejected with **400** for private
+  ones — so the five public buckets synced fine (309 objects) while every
+  `business-docs` file failed, which reads as "those files are gone" rather than
+  "this request is malformed". **Measured against live production storage:**
+  `shop-logos` returns 200 either way; `business-docs` returns **400** with the
+  bearer alone and **200** with both headers.
+- **The same header is now sent on the upload too.** Fixing only the GET would
+  have moved the failure one line down: the local stack has private buckets as
+  well, and the PUT was `apikey`-only — untested, because the GET had always
+  failed first on exactly those objects.
+- **🔴 The restore silently downgraded every ENABLE ALWAYS trigger, so the
+  snapshot fired triggers differently from production.** `pg_restore
+  --disable-triggers` ends with `ALTER TABLE … ENABLE TRIGGER ALL`, which resets
+  `tgenabled` from `'A'` (always) to `'O'` (origin only). After a pull, all four
+  of the repo's ALWAYS triggers were origin-only:
+  `trg_businesses_sync_business_type`, `trg_set_redemption_code`,
+  `trg_set_event_initial_status`, `trg_guard_event_review_columns`.
+- **That is not cosmetic.** Seeds run under `session_replication_role = replica`,
+  which SKIPS origin-only triggers — so on a pulled database `make seed` fails on
+  the NOT NULL column `trg_set_redemption_code` exists to populate, and
+  `trg_businesses_sync_business_type` stops resolving `business_type_id`. Both
+  are the exact failures those triggers were made ALWAYS to prevent, and the
+  cause would look like a seed bug rather than a snapshot artefact.
+- **The flags are captured before the restore and replayed after**, read from
+  `pg_trigger` rather than a hardcoded list, so a newly added ALWAYS trigger is
+  preserved without editing this script. Proven end to end against the local
+  database: capture emits exactly the four statements, the downgrade is
+  reproduced, the replay returns all four to `'A'`.
+- **Step 9 now asserts the trigger count too.** A snapshot whose firing rules
+  differ from production is not a faithful snapshot, and the difference is
+  invisible until something unrelated-looking breaks much later.
+- **✅ Verified end to end against LIVE**, through the IPv4 **session pooler**
+  (`aws-1-ap-southeast-1.pooler.supabase.com:5432`) — the direct host is
+  IPv6-only and this machine has no IPv6 route, which is exactly the fallback
+  `.env.cloud.example` documents. One run exercised all three fixes at once:
+  `storage: 313 uploaded, 0 failed (catalog 313)` (was 309 with 4 failures),
+  `restored ENABLE ALWAYS on 4 trigger(s)`, and — for the first time — the
+  verification step RAN and **`supabase/reports/pull-live.log` was written**.
+  All four triggers read `'A'` afterwards.
+- **⚠️ Known limitation, not introduced here: on a production database with live
+  traffic, MISMATCH is the expected verdict.** The verification compares local
+  against live *as it is now*, not against the instant the dump was taken — so
+  any row written during the pull window counts as drift. This run reported
+  `view_events: live 58 vs local 57`, and the newest live row (`12:09:47Z`)
+  landed while the storage sync was still running, ~24 minutes after the last
+  row the dump captured. Harmless, and the report makes it legible rather than
+  silent — but it does mean a clean OK is only likely on a quiet database.
+  Comparing against the dump's snapshot point instead would be a larger change.
 
 ## 2026-08-22 — A gallery photo that 400s, and the second Sentry triage pass (fix/broken-shop-images-sentry-triage-2)
 

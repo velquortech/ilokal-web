@@ -3,30 +3,36 @@
 -- trades that were scattered across three others
 -- ------------------------------------------------------------
 -- A gym, a badminton court, a billiards hall and a computer shop are one
--- industry to a shopper and were four unrelated rows to this schema: gyms
--- under Services, billiards and arcades under Entertainment & Events, gear
--- under Retail, and court rental nowhere at all. Explore's category filter
--- groups by vertical, so the trade was unfindable as a group.
+-- industry to a shopper and were five unrelated rows to this schema: gyms
+-- and computer shops under Services, billiards and arcades under
+-- Entertainment & Events, gear under Retail, and court rental nowhere at
+-- all. Explore's category filter groups by vertical, so the trade was
+-- unfindable as a group.
 --
 -- RISK: HIGH. This is not a data-only seed like 20260807000000 — it
 -- re-pins LIVE taxonomy rows, backfills a denormalized column on real
 -- businesses, and replaces a trigger function. Applied to LOCAL only;
 -- cloud apply needs human approval per the Workflow section of CLAUDE.md.
 --
--- Measured against the local database before writing (not estimated):
---   • 4 businesses sit on the four moved shop types, all `verified`
---   • their offering_mode is MIXED — 'both' and 'services' — and each is
---     correct, which is why step 4 does not touch it
---   • all 43 of their products carry category_id IS NULL, so step 6
---     invalidates no existing offering
---   • global category/vertical divergence was 0 before this ran
+-- Measured against a LIVE SNAPSHOT (make pull-live), not against the seeds —
+-- the seeded database is much smaller and does not even contain
+-- 'Computer / Internet Shop'. On production:
+--   • 2 businesses sit on the five moved shop types, both `verified`
+--     (a martial-arts gym and an iCafe)
+--   • their offering_mode is MIXED — 'services' and 'products' — and each is
+--     correct for its shop, which is why step 4 does not touch it
+--   • between them they have 3 offerings, all on the GLOBAL 'Other'
+--     category, so step 6 puts nothing out of scope
+--   • global category/vertical divergence was 0 before this ran, so the
+--     test's global assertion is meaningful rather than scoped
 --
 -- Rollback: the pre-change trigger body is saved verbatim at
 -- supabase/reports/rollback_sync_business_type_id_20260826.sql. To undo the
--- taxonomy, re-pin the four shop types to their original verticals (Retail,
--- Services, Entertainment & Events ×2), re-run step 4's backfill, re-pin
+-- taxonomy, re-pin the five shop types to their original verticals (Retail,
+-- Services ×2, Entertainment & Events ×2), re-run step 4's backfill, re-pin
 -- 'sports-outdoor' to Retail and 'fitness-classes' to Services, then delete
--- the two new shop types and four new categories and the vertical.
+-- the new shop type, the General row, the four new categories and the
+-- vertical.
 -- ============================================================
 
 -- ─── 1. the vertical ──────────────────────────────────────
@@ -74,12 +80,20 @@ VALUES (
 )
 ON CONFLICT (name) DO NOTHING;
 
--- ─── 2. two net-new shop types ────────────────────────────
+-- ─── 2. the one net-new shop type ─────────────────────────
 --
--- Neither trade had anywhere to register. A badminton court owner had to
--- pick 'Fitness Studio / Gym' or a generic 'Rentals' row described as
--- "Cars, bikes, equipment, and gear for hire"; the PH computer-shop trade
--- had no row at all.
+-- Court rental had nowhere to register: an owner had to pick
+-- 'Fitness Studio / Gym' or a generic 'Rentals' row described as
+-- "Cars, bikes, equipment, and gear for hire".
+--
+-- 🔴 There is deliberately NO eSports row here. An earlier draft added
+-- 'eSports / Computer Gaming Café' on the grounds that the PH computer-shop
+-- trade had no home — which is true of the SEED files and false of
+-- production, where 'Computer / Internet Shop' already exists under Services
+-- and carries a real business. That row is re-pinned in step 3 instead. The
+-- seeds are not the taxonomy: live carries 93 shop types, well beyond what
+-- the seeds create, so a "nothing covers this" claim has to be checked
+-- against live data, not against supabase/seeds.
 --
 -- One court row, not one per sport: the sport is the OFFERING
 -- ("Badminton Court — ₱250/hr"), not the shop type. Splitting it would
@@ -102,10 +116,7 @@ FROM (SELECT id FROM public.business_types WHERE name = 'Sports & Recreation') A
 CROSS JOIN (VALUES
   ('Sports Court / Facility Rental',
    'Badminton, basketball, futsal, volleyball and tennis courts for hourly hire.',
-   'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=1600&h=1200&fit=crop&auto=format'),
-  ('eSports / Computer Gaming Café',
-   'Pay-per-hour PC and console gaming, LAN sessions, and tournament nights.',
-   'https://images.unsplash.com/photo-1758410473607-e78a23fd6e57?q=80&w=1600&h=1200&fit=crop&auto=format')
+   'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=1600&h=1200&fit=crop&auto=format')
 ) AS v(name, description, image_url)
 WHERE NOT EXISTS (
   SELECT 1 FROM public.business_categories existing
@@ -128,7 +139,12 @@ UPDATE public.business_categories bc
      ('Sports / Outdoor Shop',        'Retail'),
      ('Fitness Studio / Gym',         'Services'),
      ('Billiards / Recreation Hall',  'Entertainment & Events'),
-     ('Game Center / Arcade',         'Entertainment & Events')
+     ('Game Center / Arcade',         'Entertainment & Events'),
+     -- The PH computer-shop trade, which already existed on production under
+     -- Services. Adopted rather than duplicated: it has a real business behind
+     -- it, so a parallel eSports card would fragment one trade across two
+     -- verticals and make the owner guess which to pick.
+     ('Computer / Internet Shop',     'Services')
    );
 
 -- ─── 3b. normalise the one legacy image ───────────────────
@@ -252,7 +268,11 @@ REVOKE ALL ON FUNCTION public.sync_business_type_id() FROM PUBLIC, anon, authent
 UPDATE public.categories
    SET business_type_id = (
          SELECT id FROM public.business_types WHERE name = 'Sports & Recreation')
- WHERE slug IN ('sports-outdoor', 'fitness-classes');
+ WHERE slug IN ('sports-outdoor', 'fitness-classes')
+   -- Guarded so a re-run reports 0 rows like every other step, rather than
+   -- rewriting the same value and looking like it did work.
+   AND business_type_id IS DISTINCT FROM (
+         SELECT id FROM public.business_types WHERE name = 'Sports & Recreation');
 
 -- The four new ones cover what the moved trades actually sell and the old
 -- verticals had no word for. All kind='service': the goods side is already

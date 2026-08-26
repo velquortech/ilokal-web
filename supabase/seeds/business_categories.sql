@@ -703,7 +703,8 @@ BEGIN
        ('Sports / Outdoor Shop',       'Retail'),
        ('Fitness Studio / Gym',        'Services'),
        ('Billiards / Recreation Hall', 'Entertainment & Events'),
-       ('Game Center / Arcade',        'Entertainment & Events')
+       ('Game Center / Arcade',        'Entertainment & Events'),
+       ('Computer / Internet Shop',    'Services')
      );
 
   -- 'Fitness Studio / Gym' is seeded above with the legacy URL shape (w=2340,

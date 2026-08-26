@@ -76,11 +76,13 @@ DECLARE
 BEGIN
   SELECT id INTO v_sports FROM business_types WHERE name = 'Sports & Recreation';
 
-  -- All six live under Sports: four re-pinned, two net-new.
+  -- All six live under Sports: five re-pinned, one net-new. There is no
+  -- eSports row: 'Computer / Internet Shop' already existed on production and
+  -- was adopted instead of duplicated.
   FOREACH v_name IN ARRAY ARRAY[
     'Sports / Outdoor Shop', 'Fitness Studio / Gym',
     'Billiards / Recreation Hall', 'Game Center / Arcade',
-    'Sports Court / Facility Rental', 'eSports / Computer Gaming Café'
+    'Sports Court / Facility Rental', 'Computer / Internet Shop'
   ] LOOP
     SELECT count(*) INTO v_count
       FROM business_categories
@@ -98,7 +100,8 @@ BEGIN
     FROM business_categories bc
     JOIN business_types bt ON bt.id = bc.business_type_id
    WHERE bc.name IN ('Sports / Outdoor Shop', 'Fitness Studio / Gym',
-                     'Billiards / Recreation Hall', 'Game Center / Arcade')
+                     'Billiards / Recreation Hall', 'Game Center / Arcade',
+                     'Computer / Internet Shop')
      AND bt.name <> 'Sports & Recreation'
      AND bc.deleted_at IS NULL;
   ASSERT v_count = 0,
@@ -200,12 +203,18 @@ BEGIN
   -- of 'services' (gyms) and 'both' (arcade, billiards) and each is correct;
   -- the trigger is INSERT-only precisely so a settled choice is never
   -- overwritten. At least one survivor proves the backfill left it alone.
+  -- Asserted as "something is NOT the vertical default" rather than "something
+  -- is 'services'": the vertical maps to 'both', so if the backfill had
+  -- stamped the mapping onto the moved shops, every row here would read
+  -- 'both'. On production the two survivors are 'services' (a gym) and
+  -- 'products' (an iCafe) — both correct, and neither is what the trigger
+  -- would have written.
   SELECT count(*) INTO v_services
     FROM businesses b
     JOIN business_types bt ON bt.id = b.business_type_id
-   WHERE bt.name = 'Sports & Recreation' AND b.offering_mode = 'services';
+   WHERE bt.name = 'Sports & Recreation' AND b.offering_mode <> 'both';
   ASSERT v_services > 0,
-    'every Sports business is on the same offering_mode — the backfill '
+    'every Sports business reads the vertical default — the backfill '
     'overwrote a settled owner choice';
 
   RAISE NOTICE '4. backfill OK';

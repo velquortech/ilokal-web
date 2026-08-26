@@ -13,10 +13,9 @@
   Entertainment & Events, gear under Retail — and court rental existed
   **nowhere at all**. Explore's category filter groups by vertical, so a
   shopper looking for somewhere to play could not.
-- **New `Sports & Recreation` vertical**, holding seven shop types: the four
-  re-pinned above, plus **`Sports Court / Facility Rental`** and
-  **`eSports / Computer Gaming Café`** (both net-new coverage — the PH
-  computer-shop trade had no row), plus the `General` fallback.
+- **New `Sports & Recreation` vertical**, holding seven shop types: the
+  **five** re-pinned (the four above plus `Computer / Internet Shop`), the
+  net-new **`Sports Court / Facility Rental`**, and the `General` fallback.
 - **Named `Sports & Recreation`, not `Sports`, and the name is load-bearing.**
   `sync_business_type_id` matches the vertical NAME in a `CASE` to stamp
   `offering_mode`, so renaming it later silently stops it stamping anything. It
@@ -28,6 +27,17 @@
   existing verticals are industries, not trades. Promoting a shop type to a
   vertical later is exactly this migration; demoting one means unwinding
   `offering_mode` values already written to real shops.
+- **🔴 An earlier draft added an `eSports / Computer Gaming Café` row, and it
+  was a duplicate.** The justification — "the PH computer-shop trade has no
+  home" — was true of `supabase/seeds/` and **false of production**, where
+  `Computer / Internet Shop` already exists under Services with a real
+  business on it (an iCafe whose offerings include `PC_USE_20/hr`). The
+  existing row is adopted in step 3 instead; shipping both would have
+  fragmented one trade across two verticals and made the owner guess. **Found
+  only by testing against a live snapshot** — the seeded database is far
+  smaller, and the first sweep's regex did not even include `comput|internet`.
+  The standing lesson: the seeds are not the taxonomy, so a "nothing covers
+  this" claim has to be checked against live data.
 - **One court row, not one per sport.** The sport is the OFFERING ("Badminton
   Court — ₱250/hr", which `price_type='per_hour'` + `duration_minutes` +
   `capacity` already express); one card per sport would inflate the picker with
@@ -47,12 +57,15 @@
   INSERT-only precisely so a settled choice is never overwritten; a test
   asserts at least one `services` survivor, so a future "tidy-up" that forces
   them all to `both` fails.
-- **Every number above was measured against the live database before the
-  migration was written**, not estimated: 4 affected businesses (all
-  `verified`), their mixed modes, **all 43 of their products carrying
-  `category_id IS NULL`** — so the picker-scope shift invalidated nothing — and
-  global divergence sitting at 0 beforehand, which is what makes the test's
-  global assertion meaningful rather than scoped.
+- **Every number was measured against a LIVE SNAPSHOT (`make pull-live`), not
+  against the seeds.** On production the blast radius is **2 businesses**, both
+  `verified` — a martial-arts gym (`offering_mode='services'`) and an iCafe
+  (`'products'`), each correct for its shop, which is why step 4 leaves the
+  column alone. Between them they have 3 offerings, all on the **global**
+  `Other` category, so step 6 puts nothing out of scope. Global divergence was
+  0 beforehand, which is what makes the test's global assertion meaningful
+  rather than scoped. The seeded database gave a different answer to every one
+  of those questions.
 - **🔴 Copying the trigger body from its original migration would have silently
   deleted four `CASE` arms.** `20260727000000` has only `Services` and
   `Tourism & Leisure`; the LIVE function had gained
@@ -133,6 +146,36 @@
   the `sports_vertical`, `general_categories`, `category_scoping`,
   `offerings_discriminators` and `audit_business_taxonomy` SQL suites all green
   against the local stack.
+- **The whole thing was rehearsed against production-shaped data**, not merely
+  unit-tested: `make pull-live` restores a live snapshot into local Docker, and
+  the migration was applied on top of it — which is exactly what the cloud
+  apply will do. That run is what produced the numbers above, caught the
+  duplicate eSports row, and confirmed the backfill touches the rows predicted
+  and no others.
+- **⚠️ One suite goes from red to green for a reason that is NOT a fix, and
+  that is worth stating plainly.** Against a live snapshot,
+  `offerings_discriminators.test.sql` fails *before* this migration with
+  "businesses whose offering_mode does not match their type: 1" — the iCafe,
+  filed under Services while carrying `offering_mode='products'`. It passes
+  afterwards **only because that row moves to Sports & Recreation, and the
+  assertion covers just Services / Tourism / Retail / F&B.** The underlying
+  oddity is untouched: the shop still reads `'products'` while its new
+  vertical maps to `'both'`. Nothing was repaired and nothing was swept in —
+  the row simply left the checked set. Correcting production data is its own
+  decision.
+- **🔴 `make pull-live` cannot currently reach its own verification step, and
+  it went unnoticed because it looks like success.** Its storage-sync helper
+  calls `process.exit(1)` when ANY object fails, under `set -euo pipefail`, so
+  the script dies before step 9 — the row-count/auth-user/storage comparison
+  against live, and the dated report. Two runs here died that way and wrote no
+  report. Compounding it, the GET sends only `Authorization: Bearer` with no
+  `apikey` header: public buckets do not care (309 objects synced fine) but the
+  private `business-docs` bucket does, so its 4 PDFs 400 — the same objects
+  return 200 when fetched with both headers, which points at the newer
+  `sb_secret_…` key format rather than at missing files. Alignment with live
+  was therefore verified by hand here (all 7 key tables matched). Not fixed in
+  this branch — it is unrelated to the taxonomy — but it means every pull-live
+  run to date has skipped its own verification whenever a single file failed.
 - **Not done:** the cloud apply (needs approval). **Part B — admin CRUD for
   business types and shop types, merged into the Categories nav — is not in
   this branch**; today an admin still cannot create a vertical or a shop type

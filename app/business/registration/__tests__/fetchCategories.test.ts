@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Coffee } from 'lucide-react';
+import { Coffee, Dumbbell } from 'lucide-react';
 import {
   transformBusinessTypes,
   type RawBusinessType,
@@ -35,6 +35,17 @@ describe('transformBusinessTypes', () => {
   it('falls back to Coffee icon for an unknown icon name', () => {
     const [result] = transformBusinessTypes([makeRaw({ icon: 'Unknown' })]);
     expect(result.icon).toBe(Coffee);
+  });
+
+  // The Sports & Recreation vertical (20260826000000) stores icon='Dumbbell'.
+  // An icon string with no iconMap entry does not fail loudly — it silently
+  // resolves to Coffee, so the sports tab would render a coffee cup. Asserted
+  // as "is Dumbbell AND is not the fallback" so deleting the map entry fails
+  // here rather than in a screenshot.
+  it('maps the Sports & Recreation Dumbbell icon rather than falling back', () => {
+    const [result] = transformBusinessTypes([makeRaw({ icon: 'Dumbbell' })]);
+    expect(result.icon).toBe(Dumbbell);
+    expect(result.icon).not.toBe(Coffee);
   });
 
   it('renames image_url to imageURL in items', () => {

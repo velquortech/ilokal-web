@@ -1,5 +1,147 @@
 # Changelog
 
+## 2026-08-26 — A gym, a court, a billiards hall and a computer shop were four unrelated rows (feat/sports-recreation-vertical)
+
+> **ONE migration (`20260826000000_sports_recreation_vertical.sql`) — HIGH risk:
+> it re-pins LIVE taxonomy rows, backfills a denormalized column on real
+> businesses, and replaces a trigger function.** Applied to LOCAL only.
+> ⚠️ **Needs human approval before merge, then a cloud apply.** Rollback artifact
+> checked in at `supabase/reports/rollback_sync_business_type_id_20260826.sql`.
+
+- **Sports was unfindable as a group because it was filed as four separate
+  trades.** Gyms sat under Services, billiards halls and arcades under
+  Entertainment & Events, gear under Retail — and court rental existed
+  **nowhere at all**. Explore's category filter groups by vertical, so a
+  shopper looking for somewhere to play could not.
+- **New `Sports & Recreation` vertical**, holding seven shop types: the four
+  re-pinned above, plus **`Sports Court / Facility Rental`** and
+  **`eSports / Computer Gaming Café`** (both net-new coverage — the PH
+  computer-shop trade had no row), plus the `General` fallback.
+- **Named `Sports & Recreation`, not `Sports`, and the name is load-bearing.**
+  `sync_business_type_id` matches the vertical NAME in a `CASE` to stamp
+  `offering_mode`, so renaming it later silently stops it stamping anything. It
+  also has to describe a billiards hall and an arcade honestly, or their owners
+  keep picking Entertainment and the move buys nothing.
+- **eSports is a shop type, not a vertical — deliberately.** A vertical stamps
+  `offering_mode` on every shop that registers under it, owns a vocabulary,
+  adds a registration tab and defines the offering-category pinning scope. The
+  existing verticals are industries, not trades. Promoting a shop type to a
+  vertical later is exactly this migration; demoting one means unwinding
+  `offering_mode` values already written to real shops.
+- **One court row, not one per sport.** The sport is the OFFERING ("Badminton
+  Court — ₱250/hr", which `price_type='per_hour'` + `duration_minutes` +
+  `capacity` already express); one card per sport would inflate the picker with
+  near-identical tiles.
+- **Ships `is_active = true`, unlike Tourism & Leisure.** Tourism is disabled
+  pending its booking flow; these trades degrade honestly without one — a court
+  lists its hourly rate and takes the booking by phone.
+- **🔴 The backfill is the whole reason this is not a data-only seed.**
+  `businesses.business_type_id` is denormalized and `sync_business_type_id`
+  fires only on INSERT or an `UPDATE OF category_id` — neither of which a
+  re-pin performs. Without step 4, every shop already on a moved category keeps
+  pointing at its OLD vertical and `getCategoryDivergence` starts showing its
+  owner a banner. Four businesses were rewritten.
+- **`offering_mode` is deliberately NOT rewritten.** The four affected shops
+  hold a MIX — `services` for the two gyms, `both` for the arcade and the
+  billiards hall — and each is correct for that shop. The trigger is
+  INSERT-only precisely so a settled choice is never overwritten; a test
+  asserts at least one `services` survivor, so a future "tidy-up" that forces
+  them all to `both` fails.
+- **Every number above was measured against the live database before the
+  migration was written**, not estimated: 4 affected businesses (all
+  `verified`), their mixed modes, **all 43 of their products carrying
+  `category_id IS NULL`** — so the picker-scope shift invalidated nothing — and
+  global divergence sitting at 0 beforehand, which is what makes the test's
+  global assertion meaningful rather than scoped.
+- **🔴 Copying the trigger body from its original migration would have silently
+  deleted four `CASE` arms.** `20260727000000` has only `Services` and
+  `Tourism & Leisure`; the LIVE function had gained
+  `Entertainment & Events`, `Health & Wellness`, `Education & Learning` and
+  `Home & Property Services` from later migrations. The body was taken from
+  `pg_get_functiondef` against the running database instead, and saved as the
+  rollback artifact first.
+- **🔴 A neighbouring test suite caught a regression the design missed.**
+  `20260819010000` gives every ACTIVE vertical exactly one `General` shop type
+  — but it selected `WHERE is_active = true` at ITS runtime, so a vertical
+  added afterwards silently has none, and `general_categories.test.sql` failed
+  with "an active vertical does not have exactly one live General category".
+  Step 7 adds it. Found by running the adjacent suites, not by reading the
+  migration.
+- **The offering-category picker was re-scoped, or the move would have emptied
+  it.** The picker reads "my vertical OR global", so a gym moved out of
+  Services would see only the 3 globals — a picker that size is not a choice,
+  it is a required field with a default. `Sports & Outdoor` and
+  `Fitness & Classes` were **moved** rather than copied (verified first:
+  neither is referenced by a single product, so nothing was stranded), joined
+  by four new service categories — Court & Facility Time, Coaching & Lessons,
+  Gaming & Console Time, Equipment Rental. Picker: 6 own + 3 global.
+- **`Bike Shop` was deliberately left under Retail** — its trade is goods, the
+  same shape as Auto Supply / Motor Parts. Pinned by a test, so a later
+  over-eager sweep has to argue with an assertion. It was also a row the seed
+  files did not reveal; a live sweep found it.
+- **🔴 The seed mirror is not optional, and the trap is subtle.** On a fresh
+  database the migration's re-pin matches ZERO rows — `business_types` and
+  `business_categories` are created by the SEED, which runs AFTER migrations —
+  and the seed's per-vertical blocks then recreate all four rows under their
+  old verticals, silently undoing the move on every `migrate-reset`. A trailing
+  seed block re-pins them. It is its OWN block rather than an append to the
+  Retail/Services/Entertainment blocks, because those are wrapped in
+  `IF NOT EXISTS (… WHERE business_type_id = X)` and anything added inside them
+  is a no-op on every database that has ever been seeded.
+- **Only the re-pin is mirrored, on purpose.** The vertical, the two new shop
+  types and the General row are inserted unconditionally by the migration so
+  they survive a fresh run unaided; and the offering-category pins stick
+  because the seed pins with `COALESCE(business_type_id, …)`, which cannot move
+  an already-pinned row — re-pinning them in the seed would instead overwrite
+  an admin's reassignment, which is what that idiom exists to prevent.
+- **`iconMap` gained `Dumbbell`.** An icon string with no entry there does not
+  fail loudly — it resolves to `Coffee`, so the sports tab would have rendered
+  a coffee cup.
+- **Both images were verified as stored** — 200, **zero redirects**,
+  `image/jpeg` — and then looked at rather than chosen by alt text. An
+  allowlisted host is not sufficient on its own, because CSP re-checks every
+  redirect hop. The eSports candidate with a legible Razer logo was rejected in
+  favour of one with no brand mark.
+- **Every image in the vertical uses one URL shape, and the odd one out was
+  fixed rather than tolerated.** The two new tiles were written in the current
+  form (`q=80&w=1600&h=1200&fit=crop&auto=format` — 80 of the 96 shop-type
+  images repo-wide); `Fitness Studio / Gym`, inherited from the original 2026
+  seed, still carried the legacy shape (`w=2340`, **no `h=`**, plus dead
+  `ixlib`/`ixid` tracking params) and was normalised in both the migration and
+  the seed. Not cosmetic: the cards render into a fixed `h-36`/`h-52` box with
+  **no `object-cover`**, so they top-crop, and `h=1200` is what forces the 4:3
+  crop that makes the result predictable. Same photo, re-fetched as stored.
+  Scoped to this vertical deliberately — the other 15 legacy URLs live in
+  verticals this migration does not touch, and sweeping them is its own change.
+  A test now asserts the parameter string on every Sports image.
+- **Tests (+1 SQL suite, +1 vitest):** `supabase/tests/sports_vertical.test.sql`
+  — 6 blocks covering the vertical and its full `offering_profile` (including
+  `per_hour`, without which no court, gym pass or PC hour is expressible), all
+  seven shop types present with nothing left behind under the old verticals,
+  the `General` row, no NULL/blank image and no CSP-blocked host, **zero global
+  divergence**, `offering_mode` not flattened, the trigger returning `'both'`
+  for a rolled-back INSERT, and the picker's size. Plus a `fetchCategories`
+  case pinning the Dumbbell mapping.
+- **Both guards were proven by breaking them:** the SQL suite was run before
+  the migration existed (fails at "Sports & Recreation vertical does not
+  exist"), and removing `Dumbbell` from `iconMap` fails exactly one vitest case.
+  The migration was re-run end to end to prove idempotency (every step reports
+  0 rows), and the seed block was proven by putting the four rows back under
+  their old verticals and watching it restore them — inside a rolled-back
+  transaction, so the dev database was never altered.
+- Verified: `yarn lint` clean, the full vitest suite, a clean `yarn build`, and
+  the `sports_vertical`, `general_categories`, `category_scoping`,
+  `offerings_discriminators` and `audit_business_taxonomy` SQL suites all green
+  against the local stack.
+- **Not done:** the cloud apply (needs approval). **Part B — admin CRUD for
+  business types and shop types, merged into the Categories nav — is not in
+  this branch**; today an admin still cannot create a vertical or a shop type
+  without SQL, which is the follow-up this work was scoped alongside.
+- **Not verified — needs a browser:** the registration category step has not
+  been clicked through. It is behind auth, and the two things worth looking at
+  are exactly the ones a test cannot see — how the two new tiles top-crop in
+  the card, and whether the Dumbbell tab reads correctly beside the other eight.
+
 ## 2026-08-22 — A gallery photo that 400s, and the second Sentry triage pass (fix/broken-shop-images-sentry-triage-2)
 
 > **No schema migration, no RLS change, no auth change.** One API-contract

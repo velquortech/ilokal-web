@@ -7,6 +7,7 @@ import {
   HeartPulse,
   GraduationCap,
   Hammer,
+  Dumbbell,
   LucideIcon,
 } from 'lucide-react';
 
@@ -19,6 +20,7 @@ export const iconMap: Record<string, LucideIcon> = {
   HeartPulse,
   GraduationCap,
   Hammer,
+  Dumbbell,
 };
 
 export type BusinessCategory = {

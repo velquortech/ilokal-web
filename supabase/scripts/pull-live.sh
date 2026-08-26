@@ -37,7 +37,10 @@
 #      with --disable-triggers — the on_auth_user_created trigger would
 #      otherwise pre-create profiles rows that collide with the dump's own
 #      profiles data. (local `postgres` is NOT superuser, so it can't do
-#      either of these.)
+#      either of these.) The ENABLE ALWAYS flag is captured before the restore
+#      and re-applied after it: --disable-triggers ends with
+#      `ENABLE TRIGGER ALL`, which resets 'A' back to 'O' and would leave the
+#      snapshot firing triggers differently from production.
 #   5. spatial_ref_sys — pg_dump skips extension-member data, so the PostGIS
 #      SRID rows are piped COPY live→local directly.
 #   6. Restart kong (the reset recreates db/storage/auth but leaves kong
@@ -45,8 +48,10 @@
 #   7. Storage FILES — every object in the live storage.objects catalog is
 #      downloaded (read-only) and uploaded into LOCAL storage. The SQL catalog
 #      is the source of truth (the list API returns stale/partial entries).
-#   8. Verify — public row counts, auth.users and storage object counts must
-#      match live, or the script exits non-zero. Every run's outcome (and any
+#   8. Verify — public row counts, auth.users, storage object counts and the
+#      ENABLE ALWAYS trigger count must match, or the script exits non-zero.
+#      A failed storage object is reported HERE rather than aborting step 7,
+#      so a partial sync can no longer skip the checks that would explain it. Every run's outcome (and any
 #      drifted rows) is appended to REPORT_FILE
 #      (default supabase/reports/pull-live.log, git-ignored) with a timestamp,
 #      so drift from live is visible over time.
@@ -77,6 +82,11 @@ DUMP_FILE="${DUMP_FILE:-/tmp/ilokal-live-data.dump}"
 # Where each run's dated verification report is APPENDED (git-ignored — it is
 # a runtime artifact, unlike the checked-in SQL probes in supabase/reports/).
 REPORT_FILE="${REPORT_FILE:-supabase/reports/pull-live.log}"
+# Set when the storage sync reports any failed object. Deliberately does not
+# abort the run — see step 7.
+STORAGE_FAILED=0
+# How many ENABLE ALWAYS triggers existed before the restore — see step 4.
+ALWAYS_COUNT=0
 
 # ─────────────────────────────── args ──────────────────────────────────────
 # --dry-run / -n: print every step and the exact commands (secrets masked)
@@ -337,10 +347,38 @@ if [ "$DRY_RUN" = 1 ]; then
   echo "            (grep 'pg_restore: error' → benign: realtime partitions / storage internals / auth dupes)"
   echo "  [dry-run] docker exec $CONTAINER rm -f /tmp/live-data.dump"
 else
+  # ── Remember which triggers are ENABLE ALWAYS, BEFORE the restore ────────
+  # `--disable-triggers` wraps the load in `ALTER TABLE … DISABLE TRIGGER ALL`
+  # / `… ENABLE TRIGGER ALL`, and that re-enable resets tgenabled from 'A'
+  # (ALWAYS) back to 'O' (origin only) on EVERY trigger it touches.
+  #
+  # That silently makes local behave differently from production. The seeds run
+  # under `session_replication_role = replica`, which SKIPS origin-only
+  # triggers — so after a pull, `make seed` fails on the NOT NULL column
+  # trg_set_redemption_code exists to populate, and trg_businesses_sync_business_type
+  # stops resolving business_type_id. Both are the exact failures those triggers
+  # were made ALWAYS to prevent.
+  #
+  # Step 1 rebuilt the database from the repo's migrations, so the flags are
+  # correct at this point. Read from pg_trigger rather than a hardcoded list, so
+  # a newly added ENABLE ALWAYS trigger is preserved without editing this file.
+  ALWAYS_SQL="$(docker exec "$CONTAINER" psql -U postgres -d postgres -tA -c \
+    "SELECT format('ALTER TABLE %s ENABLE ALWAYS TRIGGER %I;', tgrelid::regclass, tgname)
+       FROM pg_trigger WHERE tgenabled = 'A' AND NOT tgisinternal;")"
+  ALWAYS_COUNT="$(printf '%s' "$ALWAYS_SQL" | grep -c ';' || true)"
+
   docker cp "$DUMP_FILE" "$CONTAINER:/tmp/live-data.dump"
   docker exec -e PGPASSWORD="$DB_PW" "$CONTAINER" pg_restore -U supabase_admin -d postgres \
     --data-only --no-owner --no-privileges --disable-triggers /tmp/live-data.dump \
     > /tmp/pull-live-restore.log 2>&1 || true
+
+  # ── …and put them back ───────────────────────────────────────────────────
+  if [ "$ALWAYS_COUNT" -gt 0 ]; then
+    printf '%s\n' "$ALWAYS_SQL" \
+      | docker exec -i -e PGPASSWORD="$DB_PW" "$CONTAINER" \
+          psql -U supabase_admin -d postgres -q -v ON_ERROR_STOP=1
+    echo "  restored ENABLE ALWAYS on $ALWAYS_COUNT trigger(s)"
+  fi
   RESTORE_ERRORS="$(grep -c 'pg_restore: error' /tmp/pull-live-restore.log || true)"
   echo "  pg_restore errors: ${RESTORE_ERRORS} (benign: realtime partitions / storage internals / auth dupes)"
   if [ "$RESTORE_ERRORS" -gt 0 ]; then
@@ -417,8 +455,13 @@ let ok = 0, fail = 0;
 const failures = [];
 for (const [bucket, name] of entries) {
   const enc = name.split('/').map(encodeURIComponent).join('/');
+  // BOTH headers, deliberately. A service key sent only as a Bearer token is
+  // accepted for PUBLIC buckets and REJECTED (400) for private ones, so
+  // `business-docs` failed while the other five buckets synced fine — which
+  // reads as "those files are missing" rather than "this request is malformed".
+  // The Supabase clients always send `apikey` alongside the bearer token.
   const get = await fetch(`${LIVE}/storage/v1/object/${encodeURIComponent(bucket)}/${enc}`, {
-    headers: { Authorization: `Bearer ${liveKey}` },
+    headers: { apikey: liveKey, Authorization: `Bearer ${liveKey}` },
   });
   if (!get.ok) {
     failures.push(`GET ${bucket}/${name}: ${get.status}`);
@@ -429,7 +472,15 @@ for (const [bucket, name] of entries) {
   const ctype = get.headers.get('content-type') || 'application/octet-stream';
   const put = await fetch(`${LOCAL}/storage/v1/object/${encodeURIComponent(bucket)}/${enc}`, {
     method: 'POST',
-    headers: { apikey: localKey, 'Content-Type': ctype, 'x-upsert': 'true' },
+    // Same reasoning as the GET above: the local stack has private buckets too,
+    // so an apikey-only write would fail on exactly the objects the GET fix
+    // just made reachable.
+    headers: {
+      apikey: localKey,
+      Authorization: `Bearer ${localKey}`,
+      'Content-Type': ctype,
+      'x-upsert': 'true',
+    },
     body: new Uint8Array(buf),
   });
   if (put.ok) ok++;
@@ -444,9 +495,17 @@ if (failures.length) {
   process.exit(1);
 }
 NODE_EOF
-    LIVE_HOST="$LIVE_HOST" LOCAL_HOST="$LOCAL_HOST" \
-    LIVE_KEY="$LIVE_KEY" LOCAL_KEY="$LOCAL_KEY" \
-    LIVE_CATALOG="$LIVE_CATALOG" node "$SYNC_JS"
+    # NOT allowed to abort the run. The helper exits 1 when any object fails,
+    # and under `set -e` that killed the script BEFORE step 9 — so the one part
+    # that checks the snapshot against live, and writes the report, was skipped
+    # exactly when something had gone wrong. The failure is remembered and
+    # folded into the verification verdict instead, so the run still ends
+    # non-zero but only after it has said what actually drifted.
+    if ! LIVE_HOST="$LIVE_HOST" LOCAL_HOST="$LOCAL_HOST" \
+         LIVE_KEY="$LIVE_KEY" LOCAL_KEY="$LOCAL_KEY" \
+         LIVE_CATALOG="$LIVE_CATALOG" node "$SYNC_JS"; then
+      STORAGE_FAILED=1
+    fi
     rm -f "$SYNC_JS"
   fi
 fi
@@ -540,6 +599,25 @@ if [ "$DO_STORAGE" = 1 ]; then
     diff /tmp/pull-live-live-objs.txt /tmp/pull-live-local-objs.txt >&2 || true
     FAIL=1
   fi
+fi
+
+# The restore downgrades ENABLE ALWAYS triggers and step 4 puts them back.
+# Asserted rather than assumed: a local database whose trigger firing rules
+# differ from production is not a faithful snapshot, and the difference is
+# invisible until `make seed` fails much later for an unrelated-looking reason.
+ALWAYS_NOW="$(docker exec "$CONTAINER" psql -U postgres -d postgres -tA \
+  -c "SELECT count(*) FROM pg_trigger WHERE tgenabled = 'A' AND NOT tgisinternal;")"
+if [ "$ALWAYS_NOW" != "$ALWAYS_COUNT" ]; then
+  echo "  FAIL: ENABLE ALWAYS triggers — $ALWAYS_COUNT before the restore, $ALWAYS_NOW after." >&2
+  echo "        Local trigger semantics no longer match production; seeds will skip them." >&2
+  FAIL=1
+fi
+
+# A storage object that never transferred is a real mismatch, reported here
+# rather than as an early exit that skips every check above.
+if [ "$STORAGE_FAILED" = 1 ]; then
+  echo "  FAIL: the storage sync reported failed objects (see above)." >&2
+  FAIL=1
 fi
 
 if [ "$FAIL" = 1 ]; then

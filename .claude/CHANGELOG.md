@@ -1,5 +1,61 @@
 # Changelog
 
+## 2026-08-26 — pull-live could not reach its own verification, and quietly changed how triggers fire (fix/pull-live-snapshot-fidelity)
+
+> **No schema, API-contract or auth change. One file: `supabase/scripts/pull-live.sh`.**
+> Every live access stays READ-ONLY. Found while auditing the Sports & Recreation
+> migration against a live snapshot — none of these are caused by that work.
+
+- **🔴 A single failed storage object aborted the run BEFORE step 9.** The sync
+  helper calls `process.exit(1)` when any object fails, and the script runs under
+  `set -euo pipefail` — so the row-count / auth-user / storage comparison against
+  live, and the dated report, were skipped **exactly when a run had gone wrong**.
+  Two runs died that way and wrote no report at all. The failure is now
+  remembered and folded into the verification verdict, so the run still ends
+  non-zero, but only after saying what actually drifted. Proven by running both
+  shapes: the old one exits 1 without reaching the checks, the new one runs them,
+  writes the report, and still exits 1.
+- **🔴 The storage GET sent `Authorization: Bearer` with no `apikey` header, and
+  that is why 4 objects "went missing".** A service key sent as a bearer token
+  alone is accepted for PUBLIC buckets and rejected with **400** for private
+  ones — so the five public buckets synced fine (309 objects) while every
+  `business-docs` file failed, which reads as "those files are gone" rather than
+  "this request is malformed". **Measured against live production storage:**
+  `shop-logos` returns 200 either way; `business-docs` returns **400** with the
+  bearer alone and **200** with both headers.
+- **The same header is now sent on the upload too.** Fixing only the GET would
+  have moved the failure one line down: the local stack has private buckets as
+  well, and the PUT was `apikey`-only — untested, because the GET had always
+  failed first on exactly those objects.
+- **🔴 The restore silently downgraded every ENABLE ALWAYS trigger, so the
+  snapshot fired triggers differently from production.** `pg_restore
+  --disable-triggers` ends with `ALTER TABLE … ENABLE TRIGGER ALL`, which resets
+  `tgenabled` from `'A'` (always) to `'O'` (origin only). After a pull, all four
+  of the repo's ALWAYS triggers were origin-only:
+  `trg_businesses_sync_business_type`, `trg_set_redemption_code`,
+  `trg_set_event_initial_status`, `trg_guard_event_review_columns`.
+- **That is not cosmetic.** Seeds run under `session_replication_role = replica`,
+  which SKIPS origin-only triggers — so on a pulled database `make seed` fails on
+  the NOT NULL column `trg_set_redemption_code` exists to populate, and
+  `trg_businesses_sync_business_type` stops resolving `business_type_id`. Both
+  are the exact failures those triggers were made ALWAYS to prevent, and the
+  cause would look like a seed bug rather than a snapshot artefact.
+- **The flags are captured before the restore and replayed after**, read from
+  `pg_trigger` rather than a hardcoded list, so a newly added ALWAYS trigger is
+  preserved without editing this script. Proven end to end against the local
+  database: capture emits exactly the four statements, the downgrade is
+  reproduced, the replay returns all four to `'A'`.
+- **Step 9 now asserts the trigger count too.** A snapshot whose firing rules
+  differ from production is not a faithful snapshot, and the difference is
+  invisible until something unrelated-looking breaks much later.
+- **Not verified end to end:** the full `pull-live` run could not be repeated —
+  IPv6 egress from this machine is down (`no default IPv6 route`), and the direct
+  Postgres host `db.<ref>.supabase.co` is IPv6-only. The storage fix WAS proven
+  against live over IPv4 (the API host is Cloudflare-fronted); the other two were
+  proven locally and in isolation. A run against live should confirm the report
+  file finally appears — that is the single observable that has never once been
+  produced.
+
 ## 2026-08-22 — A gallery photo that 400s, and the second Sentry triage pass (fix/broken-shop-images-sentry-triage-2)
 
 > **No schema migration, no RLS change, no auth change.** One API-contract

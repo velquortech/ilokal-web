@@ -35,6 +35,7 @@ yarn-error.log*
 # ...except the documented template, which holds names and comments only and
 # must never hold a value.
 !.env.example
+!.env.cloud.example
 
 # Claude Code MCP server config. Local-only because the useful form of it is
 # per-developer: the URL carries `project_ref`, which pins WHICH Supabase

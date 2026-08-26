@@ -702,10 +702,12 @@ BEGIN
      AND (bc.name, old.name) IN (
        ('Sports / Outdoor Shop',       'Retail'),
        ('Fitness Studio / Gym',        'Services'),
-       ('Billiards / Recreation Hall', 'Entertainment & Events'),
-       ('Game Center / Arcade',        'Entertainment & Events'),
-       ('Computer / Internet Shop',    'Services')
+       ('Billiards / Recreation Hall', 'Entertainment & Events')
      );
+  -- 'Game Center / Arcade' and 'Computer / Internet Shop' are deliberately NOT
+  -- here (20260827000000): the arcade belongs to Entertainment & Events and the
+  -- iCafe to Services, which is where the blocks above already leave them. This
+  -- block only has to move what the seed puts in the WRONG place.
 
   -- 'Fitness Studio / Gym' is seeded above with the legacy URL shape (w=2340,
   -- no h=, dead ixlib/ixid params). Without h= the card's top-crop is

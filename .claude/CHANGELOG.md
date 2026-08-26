@@ -1,5 +1,71 @@
 # Changelog
 
+## 2026-08-26 — the arcade and the iCafe go back where they came from (fix/sports-scope-gaming-trades)
+
+> **ONE migration (`20260827000000_sports_scope_gaming_trades.sql`) — MEDIUM risk:
+> re-pins live taxonomy rows and backfills the denormalized column on one real
+> business. No DDL — no table, column, policy, index or function change.**
+> Applied to LOCAL only. ⚠️ **`20260826000000` has NOT been applied to cloud
+> either, so both land together and production only ever sees the final shape.**
+
+- **Two of the five trades 20260826000000 pulled into Sports & Recreation were
+  the wrong call.** `Computer / Internet Shop` goes back to **Services** and
+  `Game Center / Arcade` back to **Entertainment & Events**. Both are TRUE
+  reverts — each row returns to the vertical it was in beforehand, so for these
+  two trades the previous migration becomes a no-op.
+- **The live data is what settles the iCafe.** The business on that row is named
+  *"iCafe & Services"*, carries `offering_mode='products'`, and its offerings are
+  `RJ45/100pcs`, `RJ45/10pcs` and `PC_USE_20/hr` — it sells network parts and
+  does print/encode/scan work alongside the gaming rigs. That is a Services shop.
+  The earlier reasoning ("computer shops are a gaming trade") described half of
+  the business and filed it on that half. **Third time this one row has been
+  re-thought** — first an invented `eSports / Computer Gaming Café` duplicate,
+  then adoption into Sports, now back to Services — and each correction came
+  from looking at what the shop actually sells rather than at what its name
+  suggests.
+- **`Billiards / Recreation Hall` deliberately STAYS in Sports.** A cue sport
+  with leagues whose business model — renting a table by the hour — is the same
+  shape as the badminton court the vertical is built around. Sports & Recreation
+  is left coherent: Sports / Outdoor Shop, Fitness Studio / Gym, Billiards /
+  Recreation Hall, Sports Court / Facility Rental, General.
+- **The backfill is the same load-bearing step as before.**
+  `businesses.business_type_id` is denormalized and `sync_business_type_id` fires
+  only on INSERT or an `UPDATE OF category_id`, so without it the iCafe keeps
+  pointing at Sports & Recreation and `getCategoryDivergence` shows its owner a
+  banner. `offering_mode` is again NOT rewritten: `'products'` is correct for a
+  shop selling cables, and the trigger is INSERT-only precisely so a settled
+  value is never overwritten.
+- **`Gaming & Console Time` follows the arcade to Entertainment & Events.** It
+  was created pinned to Sports by the previous migration; with both gaming
+  trades gone it would sit in a vertical with nothing to use it, while the
+  arcade — whose picker reads "my vertical OR global" — could no longer see it
+  at all. The other three new categories stay: Court & Facility Time, Coaching &
+  Lessons and Equipment Rental all describe what the remaining shop types sell.
+- **The seed mirror shrinks rather than grows.** Its re-pin block now moves only
+  the three rows the seed puts in the wrong place; the arcade and the iCafe are
+  left exactly where the per-vertical blocks already create them. Without this a
+  `migrate-reset` would silently re-apply the placement this migration exists to
+  undo.
+- **⚠️ This revert RESTORES a pre-existing production defect that
+  `20260826000000` had accidentally masked.** `offerings_discriminators.test.sql`
+  fails against live data with "businesses whose offering_mode does not match
+  their type: 1" — the iCafe, under Services while carrying
+  `offering_mode='products'`. It failed that way BEFORE the Sports work and
+  passed only while the row was temporarily in a vertical the assertion does not
+  cover (it checks Services / Tourism / Retail / F&B only). Nothing here caused
+  it and nothing here hides it again; correcting a real business's
+  `offering_mode` is a product decision, not a migration's.
+- **Verified against a live snapshot** (the local database was a `make pull-live`
+  copy with `20260826000000` already applied — exactly the state production will
+  be in): `UPDATE 2` re-pin, `UPDATE 1` backfill, `UPDATE 1` category move, then
+  a re-run reporting **0 rows on every step**. Final placement confirmed row by
+  row, global divergence **0**, and four of the five SQL suites green — the fifth
+  being the pre-existing failure above.
+- **Found while writing it:** the first draft used a `LATERAL` subquery
+  referencing the UPDATE's target alias, which Postgres rejects outright
+  (`invalid reference to FROM-clause entry`). Rewritten as a `VALUES` mapping
+  joined to `business_types`.
+
 ## 2026-08-26 — A gym, a court, a billiards hall and a computer shop were four unrelated rows (feat/sports-recreation-vertical)
 
 > **ONE migration (`20260826000000_sports_recreation_vertical.sql`) — HIGH risk:

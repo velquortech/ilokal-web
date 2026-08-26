@@ -76,13 +76,13 @@ DECLARE
 BEGIN
   SELECT id INTO v_sports FROM business_types WHERE name = 'Sports & Recreation';
 
-  -- All six live under Sports: five re-pinned, one net-new. There is no
-  -- eSports row: 'Computer / Internet Shop' already existed on production and
-  -- was adopted instead of duplicated.
+  -- Five live under Sports: three re-pinned, one net-new, plus General.
+  -- 'Game Center / Arcade' and 'Computer / Internet Shop' were handed back by
+  -- 20260827000000 — an iCafe selling cables and per-hour PC time is a Services
+  -- shop, and the arcade belongs to Entertainment & Events.
   FOREACH v_name IN ARRAY ARRAY[
     'Sports / Outdoor Shop', 'Fitness Studio / Gym',
-    'Billiards / Recreation Hall', 'Game Center / Arcade',
-    'Sports Court / Facility Rental', 'Computer / Internet Shop'
+    'Billiards / Recreation Hall', 'Sports Court / Facility Rental'
   ] LOOP
     SELECT count(*) INTO v_count
       FROM business_categories
@@ -100,8 +100,7 @@ BEGIN
     FROM business_categories bc
     JOIN business_types bt ON bt.id = bc.business_type_id
    WHERE bc.name IN ('Sports / Outdoor Shop', 'Fitness Studio / Gym',
-                     'Billiards / Recreation Hall', 'Game Center / Arcade',
-                     'Computer / Internet Shop')
+                     'Billiards / Recreation Hall')
      AND bt.name <> 'Sports & Recreation'
      AND bc.deleted_at IS NULL;
   ASSERT v_count = 0,
@@ -116,6 +115,18 @@ BEGIN
     JOIN business_types bt ON bt.id = bc.business_type_id
    WHERE bc.name = 'Bike Shop' AND bt.name = 'Retail';
   ASSERT v_count = 1, 'Bike Shop must stay under Retail';
+
+  -- Handed back by 20260827000000. Asserted by DESTINATION, so a future sweep
+  -- cannot quietly pull either back into Sports.
+  SELECT count(*) INTO v_count
+    FROM business_categories bc JOIN business_types bt ON bt.id = bc.business_type_id
+   WHERE bc.name = 'Computer / Internet Shop' AND bt.name = 'Services';
+  ASSERT v_count = 1, 'Computer / Internet Shop must sit under Services';
+
+  SELECT count(*) INTO v_count
+    FROM business_categories bc JOIN business_types bt ON bt.id = bc.business_type_id
+   WHERE bc.name = 'Game Center / Arcade' AND bt.name = 'Entertainment & Events';
+  ASSERT v_count = 1, 'Game Center / Arcade must sit under Entertainment & Events';
 
   -- 20260819010000 gives every ACTIVE vertical exactly one 'General' row —
   -- the last resort for a shop no specific card describes. It selected on
@@ -270,9 +281,9 @@ BEGIN
   -- The picker reads "my vertical OR global". A moved gym whose vertical has
   -- nothing pinned to it sees only the globals — and a picker with one or two
   -- entries is not a choice, it is a required field with a default.
-  ASSERT v_own >= 6,
+  ASSERT v_own >= 5,
     format('Sports has only %s offering categories of its own', v_own);
-  ASSERT v_own + v_global >= 9,
+  ASSERT v_own + v_global >= 8,
     format('Sports picker is %s entries — too thin to be a real choice',
            v_own + v_global);
 

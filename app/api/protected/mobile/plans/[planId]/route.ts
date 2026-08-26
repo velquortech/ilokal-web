@@ -20,21 +20,42 @@ const STOP_SELECT = `
   businesses(id, shop_name, logo_url, business_settings(operating_hours))
 `;
 
+type EmbeddedSettings = { operating_hours: unknown };
+
+type EmbeddedBusiness = {
+  id: string;
+  shop_name: string;
+  logo_url: string | null;
+  // PostgREST models a to-one embed as an ARRAY in the generated types.
+  business_settings: EmbeddedSettings | EmbeddedSettings[] | null;
+};
+
 type StopRow = {
   id: string;
   stop_time: string | null;
   position: number;
-  businesses: {
-    id: string;
-    shop_name: string;
-    logo_url: string | null;
-    business_settings: { operating_hours: unknown } | null;
-  } | null;
+  businesses: EmbeddedBusiness | EmbeddedBusiness[] | null;
 };
+
+/**
+ * Collapse a PostgREST to-one embed to a single row.
+ *
+ * The generated types model a to-one embed as an ARRAY, and reading a field
+ * straight off it yields `undefined` — silently. That is what made
+ * `business_settings?.operating_hours` resolve to null for EVERY stop while
+ * still type-checking as an object, which is the same defect the offering
+ * vocabulary lookup had to fix. Both shapes are accepted here so neither the
+ * generated type nor the runtime payload can reintroduce it.
+ */
+function one<T>(value: T | T[] | null | undefined): T | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
 
 /** Flatten the Supabase join into the mobile PlanStop.business shape. */
 function flattenStop(row: StopRow) {
-  const biz = row.businesses;
+  const biz = one(row.businesses);
+  const settings = biz ? one(biz.business_settings) : null;
   return {
     id: row.id,
     stop_time: row.stop_time,
@@ -44,7 +65,7 @@ function flattenStop(row: StopRow) {
           id: biz.id,
           shop_name: biz.shop_name,
           logo_url: biz.logo_url,
-          operating_hours: biz.business_settings?.operating_hours ?? null,
+          operating_hours: settings?.operating_hours ?? null,
         }
       : null,
   };

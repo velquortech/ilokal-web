@@ -219,19 +219,55 @@ jobs:
       # nominatim.openstreetmap.org in connect-src, and the app must answer
       # with its own HTML (not a Vercel error page).
       - name: Smoke test the deployed app (CSP + render)
+        env:
+          # Preview deployments on a team project sit behind Vercel Deployment
+          # Protection, which 302s every unauthenticated request to
+          # vercel.com/sso-api. curl follows that redirect and inspects
+          # VERCEL'S login page, whose CSP naturally never names nominatim —
+          # so this step failed on EVERY merge while the app was perfectly
+          # fine, and blamed "the build is stale", which is the opposite of
+          # what was happening. Set this secret to let automation through:
+          # Vercel → Project → Settings → Deployment Protection →
+          # Protection Bypass for Automation.
+          BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
           set -euo pipefail
           if [ -z "$DEPLOY_URL" ]; then
             echo "::error::vercel deploy returned no URL to smoke-test"
             exit 1
           fi
-          if ! curl -sIL --max-time 30 "$DEPLOY_URL" \
-            | grep -qiE 'content-security-policy: .*nominatim\.openstreetmap\.org'; then
+
+          # Sent as a header AND a query param: the header covers the document
+          # request, the param survives the redirect chain.
+          if [ -n "$BYPASS" ]; then
+            AUTH=(-H "x-vercel-protection-bypass: $BYPASS"
+                  -H "x-vercel-set-bypass-cookie: samesitenone")
+            PROBE_URL="${DEPLOY_URL}?x-vercel-protection-bypass=${BYPASS}"
+          else
+            AUTH=()
+            PROBE_URL="$DEPLOY_URL"
+          fi
+
+          HEADERS="$(curl -sIL --max-time 30 "${AUTH[@]}" "$PROBE_URL" || true)"
+
+          # Distinguish "protected" from "broken" BEFORE judging the CSP.
+          # Without this the failure is indistinguishable from a genuine
+          # stale-config bug — which is exactly how it went unread for weeks.
+          if grep -qiE 'location: https://vercel\.com/sso-api' <<<"$HEADERS"; then
+            if [ -z "$BYPASS" ]; then
+              echo "::error::The preview is behind Vercel Deployment Protection and no VERCEL_AUTOMATION_BYPASS_SECRET is set, so this step can only ever see Vercel's login page. Add the secret (Vercel → Project → Settings → Deployment Protection → Protection Bypass for Automation) or disable protection for previews. The app's CSP is NOT implicated."
+            else
+              echo "::error::VERCEL_AUTOMATION_BYPASS_SECRET is set but the deployment still redirected to Vercel SSO — the secret is stale or does not match this project."
+            fi
+            exit 1
+          fi
+
+          if ! grep -qiE 'content-security-policy: .*nominatim\.openstreetmap\.org' <<<"$HEADERS"; then
             echo "::error::Deployed app's CSP is missing nominatim.openstreetmap.org in connect-src — the build is stale or the config was not picked up. Rebuild/restart before shipping."
             exit 1
           fi
-          if ! curl -sL --max-time 30 "$DEPLOY_URL" | grep -qi 'iLokal'; then
+          if ! curl -sL --max-time 30 "${AUTH[@]}" "$PROBE_URL" | grep -qi 'iLokal'; then
             echo "::error::Deployed app did not render its own HTML at $DEPLOY_URL"
             exit 1
           fi
-          echo "CSP smoke check passed for $DEPLOY_URL (nominatim allowed, page renders)."
+          echo "CSP smoke check passed for $DEPLOY_URL (nominatim allowed, page renders).

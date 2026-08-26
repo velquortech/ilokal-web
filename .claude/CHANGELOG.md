@@ -48,13 +48,23 @@
 - **Step 9 now asserts the trigger count too.** A snapshot whose firing rules
   differ from production is not a faithful snapshot, and the difference is
   invisible until something unrelated-looking breaks much later.
-- **Not verified end to end:** the full `pull-live` run could not be repeated —
-  IPv6 egress from this machine is down (`no default IPv6 route`), and the direct
-  Postgres host `db.<ref>.supabase.co` is IPv6-only. The storage fix WAS proven
-  against live over IPv4 (the API host is Cloudflare-fronted); the other two were
-  proven locally and in isolation. A run against live should confirm the report
-  file finally appears — that is the single observable that has never once been
-  produced.
+- **✅ Verified end to end against LIVE**, through the IPv4 **session pooler**
+  (`aws-1-ap-southeast-1.pooler.supabase.com:5432`) — the direct host is
+  IPv6-only and this machine has no IPv6 route, which is exactly the fallback
+  `.env.cloud.example` documents. One run exercised all three fixes at once:
+  `storage: 313 uploaded, 0 failed (catalog 313)` (was 309 with 4 failures),
+  `restored ENABLE ALWAYS on 4 trigger(s)`, and — for the first time — the
+  verification step RAN and **`supabase/reports/pull-live.log` was written**.
+  All four triggers read `'A'` afterwards.
+- **⚠️ Known limitation, not introduced here: on a production database with live
+  traffic, MISMATCH is the expected verdict.** The verification compares local
+  against live *as it is now*, not against the instant the dump was taken — so
+  any row written during the pull window counts as drift. This run reported
+  `view_events: live 58 vs local 57`, and the newest live row (`12:09:47Z`)
+  landed while the storage sync was still running, ~24 minutes after the last
+  row the dump captured. Harmless, and the report makes it legible rather than
+  silent — but it does mean a clean OK is only likely on a quiet database.
+  Comparing against the dump's snapshot point instead would be a larger change.
 
 ## 2026-08-22 — A gallery photo that 400s, and the second Sentry triage pass (fix/broken-shop-images-sentry-triage-2)
 

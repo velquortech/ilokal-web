@@ -652,3 +652,68 @@ BEGIN
     );
 
 END $$;
+
+-- ============================================================
+-- 12. Sports & Recreation — mirrors migration 20260826000000
+-- ------------------------------------------------------------
+-- Only the RE-PIN is mirrored here, and it is not optional.
+--
+-- On a fresh database the migration's step 3 matches zero rows: business_types
+-- and business_categories are created by THIS seed, which runs AFTER
+-- migrations. The seed's per-vertical blocks then create 'Sports / Outdoor
+-- Shop' under Retail, 'Fitness Studio / Gym' under Services and the two
+-- Entertainment rows — silently undoing the move on every `migrate-reset`.
+--
+-- Everything else the migration does survives a fresh run unaided and is
+-- deliberately NOT repeated:
+--   • the vertical, the two new shop types and the General row are inserted
+--     unconditionally by the migration, so they exist before this file runs;
+--   • the offering-category re-pin sticks because the pins above are
+--     COALESCE(business_type_id, …), which cannot move an already-pinned row.
+--     Re-pinning them here would instead overwrite an admin's reassignment,
+--     which is exactly what the COALESCE idiom exists to prevent.
+--
+-- Its own block rather than an append to the Retail/Services/Entertainment
+-- blocks: those are wrapped in `IF NOT EXISTS (… WHERE business_type_id = X)`,
+-- so anything added there is a no-op on every database that has ever been
+-- seeded.
+-- ============================================================
+DO $$
+DECLARE
+  v_sports UUID;
+BEGIN
+  -- Normally already present from 20260826000000. Guarded so this file stays
+  -- runnable against a database whose migration history predates it.
+  INSERT INTO business_types (name, description, icon, is_active)
+  VALUES ('Sports & Recreation',
+          'Gyms, courts and sports facilities, recreation halls, gaming cafés, and sports gear.',
+          'Dumbbell', true)
+  ON CONFLICT (name) DO NOTHING;
+
+  SELECT id INTO v_sports FROM business_types WHERE name = 'Sports & Recreation';
+
+  -- Matched on (name, CURRENT vertical) so a re-run is a no-op and a
+  -- same-named row belonging elsewhere is never captured. 'Bike Shop' is
+  -- deliberately absent — its trade is goods, and it stays under Retail.
+  UPDATE business_categories bc
+     SET business_type_id = v_sports
+    FROM business_types old
+   WHERE old.id = bc.business_type_id
+     AND (bc.name, old.name) IN (
+       ('Sports / Outdoor Shop',       'Retail'),
+       ('Fitness Studio / Gym',        'Services'),
+       ('Billiards / Recreation Hall', 'Entertainment & Events'),
+       ('Game Center / Arcade',        'Entertainment & Events'),
+       ('Computer / Internet Shop',    'Services')
+     );
+
+  -- 'Fitness Studio / Gym' is seeded above with the legacy URL shape (w=2340,
+  -- no h=, dead ixlib/ixid params). Without h= the card's top-crop is
+  -- unpredictable, and it would be the only odd image in the vertical.
+  UPDATE business_categories bc
+     SET image_url = split_part(bc.image_url, '?', 1)
+                     || '?q=80&w=1600&h=1200&fit=crop&auto=format'
+   WHERE bc.business_type_id = v_sports
+     AND bc.image_url LIKE 'https://images.unsplash.com/%'
+     AND split_part(bc.image_url, '?', 2) <> 'q=80&w=1600&h=1200&fit=crop&auto=format';
+END $$;

@@ -96,6 +96,55 @@ export type Database = {
           },
         ]
       }
+      bida_of_the_day: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          note: string | null
+          pick_date: string
+          product_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          pick_date: string
+          product_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          pick_date?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bida_of_the_day_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_dashboard_stats"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "bida_of_the_day_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bida_of_the_day_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_requests: {
         Row: {
           branch_id: string | null
@@ -1132,6 +1181,55 @@ export type Database = {
           },
         ]
       }
+      owner_events: {
+        Row: {
+          business_id: string | null
+          created_at: string
+          event: string
+          id: string
+          owner_id: string
+          payload: Json
+        }
+        Insert: {
+          business_id?: string | null
+          created_at?: string
+          event: string
+          id?: string
+          owner_id: string
+          payload?: Json
+        }
+        Update: {
+          business_id?: string | null
+          created_at?: string
+          event?: string
+          id?: string
+          owner_id?: string
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "owner_events_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_dashboard_stats"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "owner_events_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "owner_events_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -1192,6 +1290,82 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      plan_stops: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          plan_id: string
+          position: number
+          stop_time: string | null
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          plan_id: string
+          position: number
+          stop_time?: string | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          plan_id?: string
+          position?: number
+          stop_time?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_stops_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_dashboard_stats"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "plan_stops_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_stops_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plans: {
+        Row: {
+          created_at: string
+          id: string
+          target_date: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          target_date: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          target_date?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       product_sections: {
         Row: {
@@ -1595,6 +1769,55 @@ export type Database = {
           },
         ]
       }
+      view_count_history: {
+        Row: {
+          business_id: string
+          global_rank: number | null
+          product_id: string
+          snapshot_date: string
+          trend_score: number
+          weekly_view_count: number
+        }
+        Insert: {
+          business_id: string
+          global_rank?: number | null
+          product_id: string
+          snapshot_date: string
+          trend_score: number
+          weekly_view_count: number
+        }
+        Update: {
+          business_id?: string
+          global_rank?: number | null
+          product_id?: string
+          snapshot_date?: string
+          trend_score?: number
+          weekly_view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "view_count_history_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_dashboard_stats"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "view_count_history_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "view_count_history_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       view_events: {
         Row: {
           business_id: string | null
@@ -1973,6 +2196,33 @@ export type Database = {
           unique_visitors: number
         }[]
       }
+      bida_of_the_day: {
+        Args: {
+          filter_business_type?: string
+          filter_category_name?: string
+          lat: number
+          lng: number
+          radius_meters?: number
+          search?: string
+        }
+        Returns: {
+          average_rating: number
+          business_banner_url: string
+          business_id: string
+          business_logo_url: string
+          business_name: string
+          distance_meters: number
+          is_new: boolean
+          price: number
+          price_type: string
+          price_unit: string
+          product_id: string
+          product_image_url: string
+          product_name: string
+          rating_count: number
+          weekly_view_count: number
+        }[]
+      }
       business_branches: {
         Args: { p_business_id: string }
         Returns: {
@@ -2017,6 +2267,7 @@ export type Database = {
           rating_count: number
           sale_price: number
           service_location: string
+          weekly_view_count: number
         }[]
       }
       cancel_booking: {
@@ -2285,11 +2536,20 @@ export type Database = {
         }
         Returns: Json
       }
+      nearby_business_type_counts: {
+        Args: { lat: number; lng: number; radius_meters?: number }
+        Returns: {
+          business_type: string
+          category_name: string
+          count: number
+        }[]
+      }
       nearby_businesses: {
         Args: { lat: number; lng: number; radius_meters?: number }
         Returns: {
           address: string
           average_rating: number
+          banner_url: string
           branch_id: string
           branch_lat: number
           branch_lng: number
@@ -2302,9 +2562,46 @@ export type Database = {
           distance_meters: number
           interior_images: string[]
           is_featured: boolean
+          is_new: boolean
           is_trending: boolean
           logo_url: string
           rating_count: number
+          weekly_view_count: number
+        }[]
+      }
+      nearby_businesses_filtered: {
+        Args: {
+          filter_business_type?: string
+          filter_category_name?: string
+          lat: number
+          lng: number
+          page_offset?: number
+          page_size?: number
+          radius_meters?: number
+          search?: string
+          sort_featured_first?: boolean
+        }
+        Returns: {
+          address: string
+          average_rating: number
+          banner_url: string
+          branch_id: string
+          branch_lat: number
+          branch_lng: number
+          branch_name: string
+          business_description: string
+          business_id: string
+          business_name: string
+          business_type: string
+          category_name: string
+          distance_meters: number
+          interior_images: string[]
+          is_featured: boolean
+          is_new: boolean
+          is_trending: boolean
+          logo_url: string
+          rating_count: number
+          total_count: number
           weekly_view_count: number
         }[]
       }
@@ -2325,6 +2622,77 @@ export type Database = {
           p_type: string
         }
         Returns: undefined
+      }
+      popular_fresh_products: {
+        Args: {
+          filter_business_type?: string
+          filter_category_name?: string
+          lat: number
+          limit_count?: number
+          lng: number
+          radius_meters?: number
+          search?: string
+        }
+        Returns: {
+          average_rating: number
+          business_banner_url: string
+          business_id: string
+          business_logo_url: string
+          business_name: string
+          distance_meters: number
+          is_new: boolean
+          price: number
+          price_type: string
+          price_unit: string
+          product_id: string
+          product_image_url: string
+          product_name: string
+          rating_count: number
+          weekly_view_count: number
+        }[]
+      }
+      popular_products_facets: {
+        Args: {
+          filter_business_type?: string
+          lat: number
+          lng: number
+          radius_meters?: number
+          search?: string
+        }
+        Returns: {
+          category_name: string
+          product_count: number
+        }[]
+      }
+      popular_products_feed: {
+        Args: {
+          filter_business_type?: string
+          filter_category_name?: string
+          lat: number
+          lng: number
+          page_offset?: number
+          page_size?: number
+          radius_meters?: number
+          search?: string
+        }
+        Returns: {
+          average_rating: number
+          business_banner_url: string
+          business_id: string
+          business_logo_url: string
+          business_name: string
+          distance_meters: number
+          is_new: boolean
+          price: number
+          price_type: string
+          price_unit: string
+          product_id: string
+          product_image_url: string
+          product_name: string
+          rating_count: number
+          total_count: number
+          weekly_view_count: number
+        }[]
       }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
@@ -2374,6 +2742,34 @@ export type Database = {
         }
         Returns: number
       }
+      product_search: {
+        Args: { limit_count?: number; search: string }
+        Returns: {
+          average_rating: number
+          business_banner_url: string
+          business_id: string
+          business_logo_url: string
+          business_name: string
+          distance_meters: number
+          is_new: boolean
+          price: number
+          price_type: string
+          price_unit: string
+          product_id: string
+          product_image_url: string
+          product_name: string
+          rating_count: number
+          weekly_view_count: number
+        }[]
+      }
+      product_trend_score: {
+        Args: {
+          p_average_rating: number
+          p_rating_count: number
+          p_weekly_view_count: number
+        }
+        Returns: number
+      }
       prune_notification_outbox: { Args: never; Returns: number }
       public_feature_flags: {
         Args: never
@@ -2383,6 +2779,10 @@ export type Database = {
           enable_events: boolean
           require_business_documents: boolean
         }[]
+      }
+      purge_archived_profiles: {
+        Args: { p_limit?: number; p_retention_days?: number }
+        Returns: number
       }
       record_view: {
         Args: { p_business_id?: string; p_product_id?: string }
@@ -2431,6 +2831,7 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      snapshot_weekly_view_history: { Args: never; Returns: undefined }
       st_3dclosestpoint: {
         Args: { geom1: unknown; geom2: unknown }
         Returns: unknown

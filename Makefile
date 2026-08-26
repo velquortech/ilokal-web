@@ -9,7 +9,7 @@ init-log:
 	fi
 	@echo "[$(TIMESTAMP)] Supabase config found, proceeding with setup" | tee -a $(LOG_FILE)
 
-setup-supabase: init-log
+setup-supabase: init-log start-docker
 	@echo "[$(TIMESTAMP)] Starting Supabase setup..." | tee -a $(LOG_FILE)
 	@if ! command -v docker >/dev/null 2>&1; then \
 		echo "[$(TIMESTAMP)] Error: Docker is not installed or not running." | tee -a $(LOG_FILE); \
@@ -41,7 +41,14 @@ setup-supabase: init-log
 	@rm -f supabase_output.txt
 	@echo "[$(TIMESTAMP)] Temporary output file cleaned up" | tee -a $(LOG_FILE)
 
-run-dev:
+# Make sure the Docker daemon is up before anything that needs it.
+# Starts it when it is installed but stopped, and explains the situation when
+# it cannot be reached (notably from inside a Flatpak sandbox, where the
+# Supabase CLI has no route to the socket). Safe to run any time.
+start-docker:
+	@./scripts/start-docker.sh
+
+run-dev: start-docker
 	@conflict=$$(docker ps --format '{{.Names}}\t{{.Ports}}' 2>/dev/null | grep ':54322->' | grep -v 'supabase_db_ilokal-web' | cut -f1 | head -1); \
 	if [ -n "$$conflict" ]; then \
 		project=$${conflict#supabase_db_}; \
@@ -135,7 +142,7 @@ seed-storage:
 	@bash supabase/seeds/seed-storage.sh
 
 seed-db:
-	@for f in supabase/seeds/users.sql supabase/seeds/subscription_plans.sql supabase/seeds/business_categories.sql supabase/seeds/businesses.sql supabase/seeds/freshness_tiers.sql supabase/seeds/products.sql supabase/seeds/bida_of_the_day.sql supabase/seeds/coupons.sql supabase/seeds/ratings.sql supabase/seeds/bida_analytics.sql supabase/seeds/business_subscriptions.sql supabase/seeds/business_posts.sql supabase/seeds/events.sql supabase/seeds/events_enable.sql supabase/seeds/follows.sql supabase/seeds/bulk_seed.sql supabase/seeds/view_counts.sql supabase/seeds/real_world_gaps.sql; do \
+	@for f in supabase/seeds/users.sql supabase/seeds/subscription_plans.sql supabase/seeds/business_categories.sql supabase/seeds/businesses.sql supabase/seeds/freshness_tiers.sql supabase/seeds/products.sql supabase/seeds/bida_of_the_day.sql supabase/seeds/coupons.sql supabase/seeds/ratings.sql supabase/seeds/bida_analytics.sql supabase/seeds/business_subscriptions.sql supabase/seeds/business_posts.sql supabase/seeds/events.sql supabase/seeds/events_enable.sql supabase/seeds/follows.sql supabase/seeds/bulk_seed.sql supabase/seeds/view_counts.sql supabase/seeds/real_world_gaps.sql supabase/seeds/20260825000000_plans_seed.sql; do \
 		echo "  seeding $$f..."; \
 		docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < $$f; \
 	done
@@ -243,4 +250,4 @@ review:
 	yarn test:run
 	@echo "Review complete: lint, build, and tests passed"
 
-.PHONY: all init-log setup-supabase clean report-backlog migrate-new migrate-up migrate-diff migrate-reset stop-db run-dev dev-cloud slim-supabase run-start start-app build-app test test-run test-ui test-coverage review seed-storage seed-db seed pull-live pull-live-check seed-cloud migrate-cloud deploy-cloud
+.PHONY: all init-log setup-supabase clean report-backlog migrate-new migrate-up migrate-diff migrate-reset stop-db start-docker run-dev dev-cloud slim-supabase run-start start-app build-app test test-run test-ui test-coverage review seed-storage seed-db seed pull-live pull-live-check seed-cloud migrate-cloud deploy-cloud

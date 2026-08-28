@@ -2788,6 +2788,15 @@ export type Database = {
         Args: { p_business_id?: string; p_product_id?: string }
         Returns: undefined
       }
+      replace_plan_stops: {
+        Args: {
+          p_plan_id: string
+          p_stops: Json
+          p_target_date: string
+          p_title: string
+        }
+        Returns: undefined
+      }
       request_booking: {
         Args: {
           p_branch_id?: string

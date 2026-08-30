@@ -412,6 +412,41 @@ describe('icon-only actions are reachable with a thumb', () => {
   });
 });
 
+describe('a long shop name cannot overflow the sidebar', () => {
+  /**
+   * `SidebarLogo` prints a name the OWNER typed, so its length is not ours to
+   * assume — "Stanley Pro Events and Management Services" pushed the header
+   * row wider than the sidebar and spilled over the page behind it, on top of
+   * the header's own notification and theme controls.
+   *
+   * The cause is the flexbox default nobody remembers: a flex item is
+   * `min-width: auto`, i.e. it refuses to shrink below its content's intrinsic
+   * width. `truncate` was already on the name and could not do anything,
+   * because the column it lives in never got narrow enough to clip. `UserMenu`
+   * never had the bug only because its text column is a GRID item, where the
+   * default is `min-width: 0` — which is why one truncated correctly and the
+   * other did not, in the same sidebar.
+   *
+   * Both `min-w-0`s are asserted: the row and the column. Either one alone
+   * leaves the overflow in place.
+   */
+  it('lets the name column shrink and clamps the name', () => {
+    const nav = blankComments(read('components/custom/Nav.tsx'));
+    const logo = nav.slice(
+      nav.indexOf('export function SidebarLogo'),
+      nav.indexOf('function isSubItemActive'),
+    );
+    expect(logo, 'SidebarLogo not found').toBeTruthy();
+
+    expect(logo).toMatch(/className="flex min-w-0 items-center/);
+    expect(logo).toMatch(/className="flex min-w-0 flex-col/);
+    // Two lines then an ellipsis, not one: a single truncated line cuts a real
+    // shop name at about fifteen characters, which identifies nobody.
+    expect(logo).toMatch(/line-clamp-2/);
+    expect(logo).toMatch(/break-words/);
+  });
+});
+
 describe('the sweep is actually looking at something', () => {
   /**
    * A sweep that matches nothing passes silently, which is the failure mode a

@@ -119,7 +119,14 @@ export function SidebarLogo({
   const initial = shopName?.trim()[0]?.toUpperCase();
 
   return (
-    <div className="flex items-center gap-3">
+    // `min-w-0` on BOTH this row and the text column below is what makes the
+    // name shrink instead of overflowing. A flex item defaults to
+    // `min-width: auto`, i.e. it refuses to get narrower than its content's
+    // intrinsic width — so a long shop name pushed this row wider than the
+    // sidebar and spilled over the page behind it, on top of the header's own
+    // controls. `UserMenu` never had this bug because its text column is a
+    // GRID item, where the default is `min-width: 0`.
+    <div className="flex min-w-0 items-center gap-3">
       {logo ? (
         <div className="relative size-8 shrink-0 overflow-hidden rounded-lg group-data-[collapsible=icon]:size-7">
           {/* SafeImage: unoptimized storage WebP + broken-image fallback (a
@@ -149,10 +156,20 @@ export function SidebarLogo({
           <AlertTriangle className="size-4" />
         </div>
       )}
-      <div className="flex flex-col group-data-[collapsible=icon]:hidden">
+      <div className="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
         <span
+          // The full name, for the case two lines still cannot hold it.
+          title={shopName}
           className={cn(
-            'font-display truncate leading-tight font-bold tracking-tight',
+            // Two lines, not one. `truncate` was the original intent and it
+            // could not work without the `min-w-0` above — but once it does,
+            // it cuts "Stanley Pro Events and Management Services" at about
+            // fifteen characters, which identifies nobody. The sidebar is
+            // 18rem wide and the header has the vertical room, so two lines
+            // then an ellipsis shows roughly forty. `break-words` covers the
+            // other shape: one unbroken string longer than the column.
+            'font-display leading-tight font-bold tracking-tight',
+            'line-clamp-2 break-words',
             !shopName && 'text-muted-foreground font-normal',
           )}
         >

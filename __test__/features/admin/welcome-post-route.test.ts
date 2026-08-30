@@ -4,7 +4,7 @@ import type { TestNextRequest } from '@/lib/types';
 /**
  * The route's guards.
  *
- * `.claude/WELCOME_POSTS.md` claimed a test asserting the route refuses a
+ * The plan for this feature claimed a test asserting the route refuses a
  * non-admin and there wasn't one — the only suites covered pure helpers and the
  * composer. These are the assertions that claim was describing, plus the two
  * the PR review turned up: an admin-derived image must not advertise itself as

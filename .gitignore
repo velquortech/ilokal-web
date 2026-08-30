@@ -71,6 +71,8 @@ claude.md
 .claude/EVENTS_TABLE.md
 .claude/ERROR_HANDLING.md
 .claude/SHOP_GALLERY.md
+.claude/ADMIN_ANALYTICS.md
+.claude/WELCOME_POSTS.md
 
 # Live git worktrees of this same repo. Each is a full second checkout with its
 # own node_modules, so `git add -A` in the parent would stage two entire copies

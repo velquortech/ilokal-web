@@ -75,7 +75,12 @@ export function BusinessHeader({ branches = [] }: BusinessHeaderProps) {
     <header className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky top-0 z-40 w-full border-b backdrop-blur">
       <div className="flex h-16 items-center gap-4 px-4">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <SidebarTrigger className="h-11 w-11 md:h-9 md:w-9" />
+          {/* 🔴 Hidden ONLY where the tab bar replaces it — the same
+              `standalone:` condition, deliberately, because drift between the
+              two yields either two controls doing one job or, far worse, none
+              at all. In a normal mobile browser tab there IS no tab bar and
+              this is the only route to navigation, so it stays. */}
+          <SidebarTrigger className="standalone:hidden standalone:md:inline-flex h-11 w-11 md:h-9 md:w-9" />
           {/* Shop identity: printed by the sidebar header when it is OPEN on
               desktop, so this block appears only when the sidebar is collapsed
               (hydration-safe — the state is seeded from the sidebar cookie on

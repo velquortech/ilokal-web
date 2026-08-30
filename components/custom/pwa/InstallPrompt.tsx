@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Download, Share, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 /**
  * Not in `lib/types` because it exists nowhere else and is not part of any
@@ -135,7 +136,15 @@ export function InstallPrompt() {
     <div
       // `pb-[env(safe-area-inset-bottom)]` keeps the bar clear of the iPhone
       // home indicator, which otherwise sits over the buttons.
-      className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      className={cn(
+        'fixed inset-x-0 bottom-0 z-50 px-3',
+        'pb-[max(0.75rem,env(safe-area-inset-bottom))]',
+        // Above the tab bar rather than under it. The two rarely coexist —
+        // this prompt's whole job is to get the app installed, and once
+        // installed it stops rendering — but "rarely" is not "never": a
+        // dismissed install and the standalone check are different signals.
+        'standalone:bottom-14 standalone:md:bottom-0',
+      )}
       role="region"
       aria-label="Install iLokal"
     >

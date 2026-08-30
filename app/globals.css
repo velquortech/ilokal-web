@@ -42,6 +42,34 @@ html {
 @custom-variant dark (&:where(.dark, .dark *));
 
 /**
+ * Installed-app (PWA) detection, in CSS.
+ *
+ * 🔴 This is deliberately NOT JavaScript, and that is the whole design of the
+ * mobile tab bar. `navigator.standalone` and `matchMedia('(display-mode:
+ * standalone)')` are client-only, so a JS gate renders the wrong thing during
+ * SSR and corrects after hydration — a visible jump on every cold launch of
+ * the installed app, and exactly the trap CLAUDE.md names ("any state seeded
+ * from a client-only value is false/unset during SSR"). A media query has no
+ * hydration step at all: the server ships the same HTML either way and the
+ * browser decides what paints.
+ *
+ * `[data-standalone]` is the iOS escape hatch. Older iOS home-screen apps do
+ * not match `display-mode: standalone` and expose `navigator.standalone`
+ * instead; a tiny effect sets the attribute there. It only ever ADDS the bar
+ * on a device that would otherwise not show it, so the no-mismatch property
+ * survives — the server never emits the attribute, and gaining it after mount
+ * cannot hide something that was already painted.
+ */
+@custom-variant standalone {
+  @media (display-mode: standalone) {
+    @slot;
+  }
+  &:where([data-standalone] *) {
+    @slot;
+  }
+}
+
+/**
  * Type tokens. `--font-display` (Pally) and `--font-sans-brand` (Inter) are
  * emitted by `app/fonts.ts`.
  *

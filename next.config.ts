@@ -230,6 +230,29 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        /**
+         * 🔴 The service worker must never be cached.
+         *
+         * A browser checks for a worker update by byte-comparing the script at
+         * this URL — but it fetches it through the HTTP cache, so a plain
+         * cacheable response means an update can be **up to 24 hours late**,
+         * and a long `max-age` means effectively never. That is the failure
+         * mode where a fix ships and installed users keep running the old
+         * worker, which is indistinguishable from the fix not working.
+         *
+         * Declared BEFORE the catch-all below so it is not competing with a
+         * broader `Cache-Control` on the same path.
+         */
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, must-revalidate' },
+          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+          // The worker's scope. Registration already asks for '/', and this
+          // header is what lets a worker served from any path claim it.
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
+      },
+      {
         source: '/:path*',
         headers: [
           {

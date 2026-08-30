@@ -500,7 +500,13 @@ export function PromoFormDialog({
             {/* ── When ──────────────────────────────────────────────── */}
             <div className="space-y-4">
               <p className="text-sm font-medium">When</p>
-              <div className="grid grid-cols-2 gap-4">
+              {/* One column until `sm`. A datetime-local renders a wide
+                  native control — "MM/DD/YYYY, --:-- --" — and two of them
+                  side by side inside a dialog leave ~120px each at 320px,
+                  where the value is truncated to nothing usable. The same
+                  pair in `apply-sale.tsx` and `EventFormDialog` already
+                  stacks for this reason; this was the last one that did not. */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field>
                   <FieldLabel
                     className={errors.start_date ? 'text-destructive' : ''}

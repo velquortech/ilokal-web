@@ -1,6 +1,7 @@
 import { getBusinessesMissingMenu } from '@/lib/api/admin/menuFollowUpQuery';
 import { MenuFollowUpStats } from './components/menu-follow-up-stats';
 import { MenuFollowUpContent } from './components/menu-follow-up-content';
+import { PageHeader } from '@/components/custom/PageHeader';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,13 +46,10 @@ export default async function MenuFollowUpPage({
 
   return (
     <div className="flex min-w-0 flex-1 flex-col space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Menu Follow-up</h1>
-        <p className="text-muted-foreground mt-2">
-          Verified shops with no menu yet. Send the owner a reminder to add
-          their listings — shoppers open these to an empty page.
-        </p>
-      </div>
+      <PageHeader
+        title="Menu Follow-up"
+        lede="Verified shops with no menu yet. Send the owner a reminder to add their listings — shoppers open these to an empty page."
+      />
 
       <MenuFollowUpStats
         total={total}

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import { SearchBar } from '@/components/custom/Searchbar';
 import { DataTable } from '@/components/custom/data-table/DataTable';
+import { MobileFollowUpCardList } from './mobile-follow-up-card-list';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -185,6 +186,7 @@ export function MenuFollowUpContent({
         }}
         sorting={sorting}
         onSortingChange={setSorting}
+        renderMobile={(table) => <MobileFollowUpCardList table={table} />}
         emptyState={
           failed ? (
             <div className="flex flex-col items-center gap-2 py-8 text-center">

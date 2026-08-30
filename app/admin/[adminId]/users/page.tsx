@@ -10,6 +10,7 @@ import { ROUTES } from '@/config/routeConfig';
 import { Button } from '@/components/ui/button';
 import { AdminTabFilterState } from '@/lib/types/admin';
 import { UserRole } from '@/lib/types/user';
+import { PageHeader } from '@/components/custom/PageHeader';
 
 type TabId = 'admins' | 'business-owners' | 'consumers';
 
@@ -72,13 +73,10 @@ export default function UserManagementHub() {
 
   return (
     <div className="flex min-w-0 flex-1 flex-col space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage admins, business owners, and user accounts
-        </p>
-      </div>
+      <PageHeader
+        title="User Management"
+        lede="Manage admins, business owners, and user accounts"
+      />
       {/* Tabs */}
       <div>
         <div className="border-border flex w-full max-w-2xl overflow-x-auto border-b">

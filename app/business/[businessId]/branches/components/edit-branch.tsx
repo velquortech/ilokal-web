@@ -299,18 +299,16 @@ export function EditBranchDialog({
                   <div className="absolute top-2 right-2 flex gap-1">
                     <Button
                       type="button"
-                      size="icon"
+                      size="icon-touch"
                       variant="secondary"
-                      className="size-7"
                       onClick={() => coverInputRef.current?.click()}
                     >
                       <Upload className="size-3" />
                     </Button>
                     <Button
                       type="button"
-                      size="icon"
+                      size="icon-touch"
                       variant="destructive"
-                      className="size-7"
                       onClick={() => setCoverUrl(null)}
                     >
                       <X className="size-3" />

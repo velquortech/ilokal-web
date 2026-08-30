@@ -4,6 +4,7 @@ import {
 } from '../actions/businessActions';
 import { BusinessDocumentsContent } from './components/business-documents-content';
 import { BusinessDocumentStats } from './components/business-document-stats';
+import { PageHeader } from '@/components/custom/PageHeader';
 import type { AdminBusinessWithMeta } from '@/lib/types/business';
 
 export const dynamic = 'force-dynamic';
@@ -63,15 +64,10 @@ export default async function AdminBusinessesPage({
 
   return (
     <div className="flex min-w-0 flex-1 flex-col space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">
-          Business Documents
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Review submitted documents and approve or disapprove business
-          verification. Owners are notified of every decision.
-        </p>
-      </div>
+      <PageHeader
+        title="Business Documents"
+        lede="Review submitted documents and approve or disapprove business verification. Owners are notified of every decision."
+      />
       <BusinessDocumentStats counts={counts} />
       <BusinessDocumentsContent businesses={businesses} metadata={metadata} />
     </div>

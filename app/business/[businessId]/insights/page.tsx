@@ -5,6 +5,7 @@ import { BarChart3, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { businessPath } from '@/config/routeConfig';
+import { PageHeader } from '@/components/custom/PageHeader';
 import { getBidaAnalyticsAction } from '../actions/analyticsActions';
 import { BidaAnalyticsDashboard } from './components/BidaAnalyticsDashboard';
 
@@ -16,26 +17,22 @@ export default async function InsightsPage({ params }: { params: Params }) {
 
   return (
     <div className="w-full space-y-6">
-      {/* Section header — the page owns its own heading (the shell provides
-          the layout's title chrome for the section as a whole). The
-          back-to-dashboard link keeps the page tethered to the main
-          analytics (§6.5). */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight">
-            Bida Ngayon Insights
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            How your items are trending on the Bida Ngayon board this week
-          </p>
-        </div>
-        <Button variant="outline" size="sm" asChild>
-          <Link href={businessPath(businessId)}>
-            <BarChart3 className="size-4" />
-            Back to dashboard
-          </Link>
-        </Button>
-      </div>
+      {/* The back-to-dashboard link keeps the page tethered to the main
+          analytics (§6.5). It rides `PageHeader`'s `action` slot, which wraps
+          and shrinks with the title rather than being a second hand-rolled
+          flex row that has to be kept in step with every other page's. */}
+      <PageHeader
+        title="Bida Ngayon Insights"
+        lede="How your items are trending on the Bida Ngayon board this week"
+        action={
+          <Button variant="outline" size="sm" asChild>
+            <Link href={businessPath(businessId)}>
+              <BarChart3 className="size-4" />
+              Back to dashboard
+            </Link>
+          </Button>
+        }
+      />
 
       {/* §6.5: "Bida Ngayon" is a marketing concept with no primer — one line
           explaining what the board is, so the numbers have a home. */}

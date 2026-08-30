@@ -18,6 +18,7 @@ import {
   SuspendedUsersTab,
   InactiveUsersTab,
 } from './components';
+import { PageHeader } from '@/components/custom/PageHeader';
 
 /**
  * Account Status Page
@@ -79,13 +80,10 @@ export default function AccountStatusPage() {
 
   return (
     <div className="flex flex-1 flex-col space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Account Status</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage archived, suspended, and inactive user accounts
-        </p>
-      </div>
+      <PageHeader
+        title="Account Status"
+        lede="Manage archived, suspended, and inactive user accounts"
+      />
 
       {/* Role Filter */}
       <div className="flex items-center gap-3">

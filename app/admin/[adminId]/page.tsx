@@ -20,6 +20,7 @@ import { WELCOME_POST_NEW_DAYS } from '@/lib/types';
 import { adminWelcomePostsPath } from '@/config/routeConfig';
 import { Button } from '@/components/ui/button';
 import { GrowthCharts } from './components/GrowthChart';
+import { PageHeader } from '@/components/custom/PageHeader';
 
 /**
  * The admin dashboard.
@@ -129,12 +130,7 @@ export default async function DashboardPage({
 
   return (
     <div className="flex flex-1 flex-col space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground mt-2">
-          Welcome back to iLokal Admin Panel
-        </p>
-      </div>
+      <PageHeader title="Dashboard" lede="Welcome back to iLokal Admin Panel" />
 
       {showWelcomePrompt && (
         <Card className="border-primary/40 bg-primary/5">

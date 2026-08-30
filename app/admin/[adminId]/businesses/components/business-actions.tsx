@@ -39,7 +39,7 @@ export function BusinessActions({
     <div className="flex justify-end">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
+          <Button variant="ghost" size="icon-touch" className="p-0">
             <span className="sr-only">Open menu</span>
             <Ellipsis className="h-4 w-4" />
           </Button>

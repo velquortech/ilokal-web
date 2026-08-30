@@ -35,7 +35,12 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div className="bg-muted/30 flex flex-1 flex-col items-center justify-center py-12 text-center">
-      <Card className="w-full max-w-5xl border-dashed p-20">
+      {/* `p-20` is 160px of horizontal padding. On a 320px viewport the
+          shell already spends 32px, so a flat p-20 leaves 128px for the
+          icon stack, the heading and two buttons — the buttons wrap to one
+          word per line. The inset only earns its keep once there is room
+          for it. */}
+      <Card className="w-full max-w-5xl border-dashed p-8 sm:p-12 lg:p-20">
         <CardHeader>
           <div className="mx-auto flex -space-x-4">
             <div className="bg-background -rotate-6 rounded-2xl border p-4 shadow-sm">

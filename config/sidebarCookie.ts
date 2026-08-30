@@ -19,3 +19,24 @@ export const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 export function sidebarDefaultOpen(cookieValue: string | undefined): boolean {
   return cookieValue !== 'false';
 }
+
+/**
+ * The admin variant: CLOSED unless the admin has explicitly opened it.
+ *
+ * The two shells disagree on the default and that is deliberate, not an
+ * oversight. The business sidebar is the owner's primary navigation and
+ * defaults open (nav they can read beats nav they must decode); the admin
+ * shell fronts wide data tables that want the horizontal room, and has shipped
+ * collapsed since it was written. Encoding the difference here — rather than
+ * passing a `fallback` argument each caller could get backwards — means the
+ * default lives beside the cookie it reads, and neither shell can silently
+ * inherit the other's.
+ *
+ * Absent cookie ⇒ today's behaviour, so this cannot change what an admin who
+ * has never touched the rail sees.
+ */
+export function sidebarDefaultOpenClosedFirst(
+  cookieValue: string | undefined,
+): boolean {
+  return cookieValue === 'true';
+}

@@ -104,6 +104,10 @@ function ShopLogo() {
                       />
                     </div>
 
+                    {/* Stays `icon` (36px), not `icon-touch`: a corner badge absolutely
+                        positioned over the thumbnail it removes. At 44px the circle covers
+                        a visible share of the image it is attached to, and the tile itself
+                        is already the large target. */}
                     <Button
                       variant="destructive"
                       size="icon"

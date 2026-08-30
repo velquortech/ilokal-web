@@ -17,10 +17,19 @@ import {
 
 interface DataTablePaginationProps<TData> {
   table: Table<TData>;
+  /**
+   * Whether to offer a rows-per-page control. Default true.
+   *
+   * Off where the page size is fixed by the data source: a selector that
+   * cannot change what is fetched is the "Rows per page does nothing" defect
+   * the 2026-07-25 pass had to fix, and an inert control reads as a broken one.
+   */
+  showPageSize?: boolean;
 }
 
 export function DataTablePagination<TData>({
   table,
+  showPageSize = true,
 }: DataTablePaginationProps<TData>) {
   /**
    * Only tables that actually render a checkbox column can have a selection.
@@ -43,26 +52,30 @@ export function DataTablePagination<TData>({
         <div />
       )}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 lg:gap-x-8">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-medium">Rows per page</p>
-          <Select
-            value={`${table.getState().pagination.pageSize}`}
-            onValueChange={(value) => {
-              table.setPageSize(Number(value));
-            }}
-          >
-            <SelectTrigger className="h-11 w-17.5 md:h-8">
-              <SelectValue placeholder={table.getState().pagination.pageSize} />
-            </SelectTrigger>
-            <SelectContent side="top">
-              {[10, 20, 30, 40, 50].map((pageSize) => (
-                <SelectItem key={pageSize} value={`${pageSize}`}>
-                  {pageSize}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {showPageSize && (
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium">Rows per page</p>
+            <Select
+              value={`${table.getState().pagination.pageSize}`}
+              onValueChange={(value) => {
+                table.setPageSize(Number(value));
+              }}
+            >
+              <SelectTrigger className="h-11 w-17.5 md:h-8">
+                <SelectValue
+                  placeholder={table.getState().pagination.pageSize}
+                />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[10, 20, 30, 40, 50].map((pageSize) => (
+                  <SelectItem key={pageSize} value={`${pageSize}`}>
+                    {pageSize}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div className="flex w-25 items-center justify-center text-sm font-medium">
           Page {table.getState().pagination.pageIndex + 1} of{' '}
           {table.getPageCount()}

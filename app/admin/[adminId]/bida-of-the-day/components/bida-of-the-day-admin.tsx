@@ -283,7 +283,7 @@ export function BidaOfTheDayAdmin({
                     </div>
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="icon-touch"
                       aria-label={`Remove pick for ${pick.pick_date}`}
                       disabled={removing === pick.pick_date}
                       onClick={() => handleRemove(pick.pick_date)}

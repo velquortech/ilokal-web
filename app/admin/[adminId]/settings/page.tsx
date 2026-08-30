@@ -5,6 +5,7 @@ import {
 } from '@/lib/api/appSettings';
 import { RegistrationSettingsCard } from './components/registration-settings-card';
 import { FeatureFlagsCard } from './components/feature-flags-card';
+import { PageHeader } from '@/components/custom/PageHeader';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,15 +22,10 @@ export default async function AdminSettingsPage() {
 
   return (
     <div className="flex flex-1 flex-col space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Platform Settings
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          Feature flags that control how businesses join the platform and what
-          the app exposes.
-        </p>
-      </div>
+      <PageHeader
+        title="Platform Settings"
+        lede="Feature flags that control how businesses join the platform and what the app exposes."
+      />
       <FeatureFlagsCard
         initial={{
           enable_events: eventsEnabled,

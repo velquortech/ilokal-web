@@ -26,6 +26,22 @@ const buttonVariants = cva(
         sm: 'h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5',
         lg: 'h-10 rounded-md px-6 has-[>svg]:px-4',
         icon: 'size-9',
+        /**
+         * A row/card ACTION that is icon-only: 44px on touch, 36px from `md`.
+         *
+         * `icon` (36px) is fine for a pointer and too small for a thumb, and
+         * this matters more since the dashboards grew mobile card lists — the
+         * kebab that approves a shop or deletes a branch is now a primary
+         * control on a phone rather than something off the right edge of a
+         * table.
+         *
+         * Deliberately a NAMED size rather than a change to `icon` itself:
+         * several icon buttons are corner badges absolutely positioned over a
+         * thumbnail (the registration gallery's remove buttons), where 44px
+         * would cover the image it is attached to. Those stay `icon`, and the
+         * difference is now something the call site states.
+         */
+        'icon-touch': 'size-11 md:size-9',
         'icon-xs': "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
         'icon-sm': 'size-8',
         'icon-lg': 'size-10',

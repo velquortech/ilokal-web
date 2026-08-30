@@ -14,7 +14,7 @@ export interface QuickAction extends ComponentProps<'button'> {
 
 export function ActionButton({ action }: { action: QuickAction }) {
   return (
-    <Button variant="ghost" size="icon" className="relative h-9 w-9" asChild>
+    <Button variant="ghost" size="icon-touch" className="relative" asChild>
       <Link href={action.href} aria-label={action.label}>
         <action.icon className="h-5 w-5" />
         {action.badge && (

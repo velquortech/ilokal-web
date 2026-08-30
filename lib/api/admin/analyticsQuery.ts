@@ -351,7 +351,7 @@ export async function getAdminDashboardSummary(
  * "not yet posted about". That means a shop can be posted twice if an admin is
  * not paying attention — the honest trade for shipping without touching a
  * migration backlog that is already 23 deep. A `welcome_post_generated_at`
- * column is the durable answer (see `.claude/WELCOME_POSTS.md`).
+ * column is the durable answer.
  *
  * **Verified shops only.** A `pending` or `rejected` registration is not
  * something to announce on iLokal's own accounts, and `suspended` is the

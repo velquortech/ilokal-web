@@ -13,6 +13,67 @@ type Params = { params: Promise<{ businessId: string }> };
 // revalidate every 2 min so repeat opens don't re-query PostgREST. (P10)
 export const revalidate = 120;
 
+/**
+ * Compute whether a business is currently open based on its operating_hours.
+ * Uses the server's local time (Asia/Manila, UTC+8) to determine the current
+ * day and time, then checks against the relevant day's window.
+ *
+ * Rules mirror the client-side `stopAvailability` heuristic:
+ * - Null hours → unknown (return null)
+ * - Closed day → closed
+ * - Overnight windows (close < open) are handled
+ */
+function computeOpenState(
+  operating_hours: Record<
+    string,
+    { open: string; close: string; closed: boolean }
+  > | null,
+): { is_open_now: boolean | null; closes_at: string | null } {
+  if (!operating_hours) return { is_open_now: null, closes_at: null };
+
+  const now = new Date();
+  // Use UTC to derive the weekday, then offset to Manila (UTC+8) for wall time
+  const manilaMs = now.getTime() + 8 * 60 * 60 * 1000;
+  const manilaDate = new Date(manilaMs);
+  const dayIndex = manilaDate.getUTCDay(); // 0=Sun
+  const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  const todayKey = dayKeys[dayIndex];
+
+  const todayHours = operating_hours[todayKey];
+  if (!todayHours || todayHours.closed) {
+    return { is_open_now: false, closes_at: null };
+  }
+
+  // Parse current time and open/close as minutes
+  const currentMinutes =
+    manilaDate.getUTCHours() * 60 + manilaDate.getUTCMinutes();
+  const parseTime = (t: string) => {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(t);
+    if (!m) return null;
+    return Number(m[1]) * 60 + Number(m[2]);
+  };
+
+  const openMin = parseTime(todayHours.open);
+  const closeMin = parseTime(todayHours.close);
+  if (openMin == null || closeMin == null) {
+    return { is_open_now: null, closes_at: null };
+  }
+
+  let isOpen: boolean;
+  if (closeMin < openMin) {
+    // Overnight window (e.g. 18:00–02:00)
+    isOpen = currentMinutes >= openMin || currentMinutes < closeMin;
+  } else {
+    isOpen = currentMinutes >= openMin && currentMinutes < closeMin;
+  }
+
+  return {
+    is_open_now: isOpen,
+    // closes_at is the close time in HH:mm format (only meaningful when open)
+    closes_at: isOpen ? todayHours.close : null,
+  };
+}
+
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { businessId } = await params;
@@ -41,9 +102,16 @@ export async function GET(_req: NextRequest, { params }: Params) {
     // (the nested PostgREST select above can't expose geometry coordinates).
     // Follower count comes from the get_follower_counts RPC (counts only — the
     // follow graph stays private); independent of the branches RPC, so parallel.
-    const [{ data: branchRows }, { data: followerRows }] = await Promise.all([
+    // operating_hours comes from get_business_public_info which reads
+    // business_settings (owner-only RLS), so we need the RPC for the public API.
+    const [
+      { data: branchRows },
+      { data: followerRows },
+      { data: publicInfoRows },
+    ] = await Promise.all([
       supabase.rpc('business_branches', { p_business_id: businessId }),
       supabase.rpc('get_follower_counts', { p_business_ids: [businessId] }),
+      supabase.rpc('get_business_public_info', { p_business_id: businessId }),
     ]);
     const followerCount = Number(
       (
@@ -65,6 +133,19 @@ export async function GET(_req: NextRequest, { params }: Params) {
       latitude: b.latitude,
       longitude: b.longitude,
     }));
+
+    // Extract operating_hours from the public info RPC result
+    const publicInfo = (
+      publicInfoRows as Record<string, unknown>[] | null
+    )?.[0];
+    const operatingHours =
+      (publicInfo?.operating_hours as Record<
+        string,
+        { open: string; close: string; closed: boolean }
+      > | null) ?? null;
+
+    // Compute live open state from the operating_hours
+    const { is_open_now, closes_at } = computeOpenState(operatingHours);
 
     const owner =
       (data.profiles as unknown as {
@@ -113,6 +194,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
       category,
       branches,
       total_followers: followerCount ?? 0,
+      operating_hours: operatingHours,
+      is_open_now,
+      closes_at,
     };
 
     return successResponse({ business });

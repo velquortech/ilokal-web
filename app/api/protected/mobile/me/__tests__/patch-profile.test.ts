@@ -65,7 +65,11 @@ import { PATCH } from '../route';
 const mockAuth = (authed: boolean) => {
   vi.mocked(getMobileUser).mockResolvedValueOnce(
     authed
-      ? ({ user: { id: USER_ID }, token: 't', supabase: stubSupabase() } as never)
+      ? ({
+          user: { id: USER_ID },
+          token: 't',
+          supabase: stubSupabase(),
+        } as never)
       : (null as never),
   );
 };

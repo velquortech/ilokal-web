@@ -56,7 +56,9 @@ export async function PATCH(req: NextRequest) {
       // with Zod and every key of userProfileSchema must be present (a missing
       // `archived_at` failed *every* save client-side while the server had
       // already persisted — 2026-09-06).
-      .select('id, email, full_name, phone_number, avatar_url, role, status, archived_at')
+      .select(
+        'id, email, full_name, phone_number, avatar_url, role, status, archived_at',
+      )
       .single();
 
     if (error) return loggedServerError('protected/mobile/me', error);

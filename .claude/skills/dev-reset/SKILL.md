@@ -1,3 +1,8 @@
+---
+name: dev-reset
+description: Use when resetting the local dev environment - runs make migrate-reset, applies seeds, and starts the dev server, with error detection and a user checkpoint at each step.
+---
+
 # Dev Reset Skill
 
 Reset the local database, apply seeds, and start the dev server. Follow the steps below exactly. Each step has error detection and a user checkpoint before proceeding.

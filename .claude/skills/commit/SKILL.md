@@ -1,3 +1,8 @@
+---
+name: commit
+description: Use when committing changes - runs lint and the build smoke check first, groups changes by concern, stages files by name, and writes a conventional commit message.
+---
+
 # Commit Skill
 
 Run `git status`, `git diff --staged`, and `git diff` (unstaged), then:

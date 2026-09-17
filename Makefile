@@ -1,4 +1,9 @@
 LOG_FILE=supabase_setup.log
+
+# 1 when make runs inside a Flatpak sandbox (no Docker socket there): run-dev
+# and stop-dev then delegate to the host instead of failing inside
+# scripts/start-docker.sh. Evaluated once at parse time.
+IN_FLATPAK := $(shell test -f /.flatpak-info -o -n "$$FLATPAK_ID" && echo 1)
 TIMESTAMP=$(shell date +"%Y-%m-%d %H:%M:%S")
 
 init-log:
@@ -48,7 +53,46 @@ setup-supabase: init-log start-docker
 start-docker:
 	@./scripts/start-docker.sh
 
-run-dev: start-docker
+# `run-dev` from inside a Flatpak sandbox (e.g. an IDE's integrated terminal):
+# that shell never receives /var/run/docker.sock, so `start-docker` would bail
+# even with the daemon healthy on the host, and nothing here can run the
+# Supabase CLI. Instead of failing, re-run this target on the HOST, detached,
+# then wait here until the dev server answers (sandbox and host share the
+# network, so localhost:3000 is visible from in here).
+#
+# Why detached instead of streamed: a foreground `flatpak-spawn` child is not
+# a child of the sandbox terminal, so Ctrl-C would kill the local `make` and
+# leave the host server running with no way to stop it from in here. Detached
+# + `stop-dev` keeps the off-switch reachable. Output goes to the HOST's
+# /tmp/ilokal-web-dev.log (the sandbox /tmp is private — read it via
+# `flatpak-spawn --host tail`, as printed below).
+#
+# Plain `make run-dev` from a host terminal is unchanged: no /.flatpak-info
+# and no FLATPAK_ID there, so the guard never fires (and never re-triggers on
+# the host — no recursion).
+ifeq ($(IN_FLATPAK),1)
+run-dev:
+	@echo "Flatpak sandbox: no Docker socket here — delegating 'run-dev' to the host..."
+	@flatpak-spawn --host bash -c 'export NVM_DIR="$$HOME/.nvm"; [ -s "$$NVM_DIR/nvm.sh" ] && . "$$NVM_DIR/nvm.sh" >/dev/null 2>&1; cd "$(CURDIR)" || exit 1; if curl -s -o /dev/null --max-time 2 http://127.0.0.1:3000; then if pgrep -f "next dev" >/dev/null 2>&1 || pgrep -f next-server >/dev/null 2>&1; then echo "  Dev server already running on :3000 — nothing to do (stop it with: make stop-dev)."; exit 0; fi; echo "  Port 3000 is held by another process — free it first, then retry." >&2; exit 3; fi; setsid nohup make run-dev > /tmp/ilokal-web-dev.log 2>&1 < /dev/null & echo "  Host job started (host log: /tmp/ilokal-web-dev.log)."'
+	@echo "Waiting for the dev server on http://localhost:3000 (a cold 'supabase start' can take a minute)..."
+	@ok=0; for i in $$(seq 1 24); do \
+		sleep 5; \
+		if curl -s -o /dev/null --max-time 2 http://127.0.0.1:3000; then ok=1; break; fi; \
+		printf '.'; \
+	done; \
+	echo; \
+	if [ $$ok -eq 1 ]; then \
+		echo "Dev server is up: http://localhost:3000"; \
+		echo "  host log:  flatpak-spawn --host tail -40 /tmp/ilokal-web-dev.log"; \
+		echo "  stop it:   make stop-dev   (the Supabase stack stays up; make stop-db stops that)"; \
+		exit 0; \
+	fi; \
+	echo "Not answering after 2 minutes — check the host log:" >&2; \
+	echo "  flatpak-spawn --host tail -40 /tmp/ilokal-web-dev.log" >&2; \
+	exit 1
+else
+run-dev:
+	@./scripts/start-docker.sh
 	@conflict=$$(docker ps --format '{{.Names}}\t{{.Ports}}' 2>/dev/null | grep ':54322->' | grep -v 'supabase_db_ilokal-web' | cut -f1 | head -1); \
 	if [ -n "$$conflict" ]; then \
 		project=$${conflict#supabase_db_}; \
@@ -61,6 +105,7 @@ run-dev: start-docker
 	@./scripts/slim-supabase.sh
 	yarn dev
 	@echo "running dev with supabase"
+endif
 
 # Run the app against the CLOUD project — no Docker, no local Supabase.
 #
@@ -108,6 +153,19 @@ build-app:
 stop-db:
 	@yarn supabase stop
 	@echo "stopping supabase db"
+
+# Stop the dev server that a sandboxed `make run-dev` left running on the host
+# (see run-dev). Delegates to scripts/stop-dev.sh on the HOST, which kills the
+# PID that owns port 3000 — by owner, not by name pattern, so it never touches
+# another project's dev server. The Supabase stack is left up; `make stop-db`
+# stops that separately. Idempotent: port already free → exit 0.
+stop-dev:
+	@if [ -f /.flatpak-info ] || [ -n "$${FLATPAK_ID:-}" ]; then \
+		echo "Flatpak sandbox: delegating 'stop-dev' to the host..."; \
+		flatpak-spawn --host bash -lc 'cd "$(CURDIR)" && bash scripts/stop-dev.sh'; \
+	else \
+		bash scripts/stop-dev.sh; \
+	fi
 
 clean:
 	@echo "[$(TIMESTAMP)] Stopping Supabase and cleaning up..." | tee -a $(LOG_FILE)
@@ -250,4 +308,4 @@ review:
 	yarn test:run
 	@echo "Review complete: lint, build, and tests passed"
 
-.PHONY: all init-log setup-supabase clean report-backlog migrate-new migrate-up migrate-diff migrate-reset stop-db start-docker run-dev dev-cloud slim-supabase run-start start-app build-app test test-run test-ui test-coverage review seed-storage seed-db seed pull-live pull-live-check seed-cloud migrate-cloud deploy-cloud
+.PHONY: all init-log setup-supabase clean report-backlog migrate-new migrate-up migrate-diff migrate-reset stop-db stop-dev start-docker run-dev dev-cloud slim-supabase run-start start-app build-app test test-run test-ui test-coverage review seed-storage seed-db seed pull-live pull-live-check seed-cloud migrate-cloud deploy-cloud

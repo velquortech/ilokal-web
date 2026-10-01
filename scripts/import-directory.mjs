@@ -104,6 +104,111 @@ const BACKDATE_ISO = '2026-01-01T00:00:00.000Z';
 const DATA_DIR = 'data/directory';
 
 /**
+ * Per-category import caps.
+ *
+ * Sari-sari stores genuinely dominate the Iloilo extract — 339 of 1,641, five
+ * times the next-largest category — because they genuinely dominate the city.
+ * Importing all of them is accurate, but it makes Explore look like one
+ * category with a few others attached, and the convenience shop two doors down
+ * is rarely what someone opens a discovery app to find.
+ *
+ * Capping needs a ranking, and the obvious one is unavailable: seeded listings
+ * have no ratings. Ratings come from `business_ratings`, written by our own
+ * users, and importing third-party ratings is excluded on licensing grounds —
+ * so every seeded row sits at 0 and ranking by it would rank by a constant.
+ *
+ * So the cap selects for COVERAGE instead: one store per neighbourhood before
+ * any second store, which is also the more useful answer for a map. See
+ * `spatiallySpread`.
+ */
+const CATEGORY_CAPS = {
+  // ~Restaurant's count (183), so it reads as a peer category rather than
+  // swamping the feed.
+  'Sari-sari / Convenience Store': 180,
+};
+
+/** Grid cell size in degrees for the spread, ≈600 m at this latitude. */
+const SPREAD_CELL_DEG = 0.0055;
+
+/**
+ * Trim a category to `cap` while keeping it spread across the city.
+ *
+ * Bins records into a coarse grid and takes round-robin across cells: every
+ * occupied cell contributes its first record before any cell contributes a
+ * second. With ~600 m cells the first pass alone usually exceeds the cap, so in
+ * practice this yields at most one store per neighbourhood — maximum spread,
+ * and deterministic.
+ *
+ * Within a cell, records carrying a street address sort first: a better-mapped
+ * node is more likely to be a real, established shop than a bare pin.
+ */
+function spatiallySpread(records, cap) {
+  if (records.length <= cap) return records;
+
+  const cells = new Map();
+  for (const r of records) {
+    const key = `${Math.floor(r.lat / SPREAD_CELL_DEG)}:${Math.floor(r.lng / SPREAD_CELL_DEG)}`;
+    if (!cells.has(key)) cells.set(key, []);
+    cells.get(key).push(r);
+  }
+
+  for (const list of cells.values()) {
+    list.sort((a, b) => {
+      const byAddr = Number(Boolean(b.street)) - Number(Boolean(a.street));
+      // `ref` breaks ties so the selection is stable across runs.
+      return byAddr !== 0 ? byAddr : a.ref.localeCompare(b.ref);
+    });
+  }
+
+  const ordered = [...cells.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  const kept = [];
+  for (let depth = 0; kept.length < cap; depth++) {
+    let placedAny = false;
+    for (const [, list] of ordered) {
+      if (depth >= list.length) continue;
+      kept.push(list[depth]);
+      placedAny = true;
+      if (kept.length >= cap) break;
+    }
+    if (!placedAny) break;
+  }
+  return kept;
+}
+
+/** Apply every configured cap, reporting what was trimmed. */
+function applyCategoryCaps(records) {
+  const caps = Object.entries(CATEGORY_CAPS);
+  if (!caps.length) return records;
+
+  const out = [];
+  const byCategory = new Map();
+  for (const r of records) {
+    if (!byCategory.has(r.category)) byCategory.set(r.category, []);
+    byCategory.get(r.category).push(r);
+  }
+
+  for (const [category, list] of byCategory) {
+    const cap = CATEGORY_CAPS[category];
+    if (cap == null || list.length <= cap) {
+      out.push(...list);
+      continue;
+    }
+    const kept = spatiallySpread(list, cap);
+    const cells = new Set(
+      kept.map(
+        (r) =>
+          `${Math.floor(r.lat / SPREAD_CELL_DEG)}:${Math.floor(r.lng / SPREAD_CELL_DEG)}`,
+      ),
+    ).size;
+    log(
+      `  cap: ${category} ${list.length} → ${kept.length}, spread over ${cells} grid cells`,
+    );
+    out.push(...kept);
+  }
+  return out;
+}
+
+/**
  * The only OSM tags this importer reads. Everything else is dropped the moment
  * an extract is fetched, before it is cached or passed downstream.
  *
@@ -487,11 +592,25 @@ async function reverseGeocode(records) {
  * name within ~150 m avoids seeding a twin of a real, claimed listing.
  */
 async function dedupe(db, records) {
-  const { data, error } = await db
-    .from('businesses')
-    .select('shop_name, source, source_ref, location')
-    .is('archived_at', null);
-  if (error) fail(`Could not read existing businesses: ${error.message}`);
+  // PostgREST caps a request at 1000 rows, so this MUST paginate — the same
+  // reason `scripts/export-user-emails.mjs` does. Without it the read silently
+  // truncates and dedupe only compares against the first 1000 businesses: a
+  // seeded listing could then duplicate an owner-registered shop that happened
+  // to sort past the cap. The idempotency re-run exposed this (it reported
+  // "979 already imported" out of 1482; only the unique index prevented harm).
+  const data = [];
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data: rows, error } = await db
+      .from('businesses')
+      .select('shop_name, source, source_ref, location')
+      .is('archived_at', null)
+      .order('id', { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) fail(`Could not read existing businesses: ${error.message}`);
+    data.push(...rows);
+    if (rows.length < PAGE) break;
+  }
 
   const norm = (s) =>
     s
@@ -538,8 +657,19 @@ async function dedupe(db, records) {
 /** Insert businesses and their branch pins. */
 async function insert(db, records, ownerId) {
   const CHUNK = 200;
-  let businesses = 0;
   let branches = 0;
+
+  // Count before and after rather than trusting the row count we sent: the
+  // upsert ignores duplicates, so "1482 sent" is not "1482 added". A re-run
+  // should honestly report zero.
+  const countSeeded = async () => {
+    const { count } = await db
+      .from('businesses')
+      .select('id', { count: 'exact', head: true })
+      .eq('source', 'osm');
+    return count ?? 0;
+  };
+  const before = await countSeeded();
 
   for (let i = 0; i < records.length; i += CHUNK) {
     const slice = records.slice(i, i + CHUNK);
@@ -592,7 +722,6 @@ async function insert(db, records, ownerId) {
       ignoreDuplicates: true,
     });
     if (bizErr) fail(`Business insert failed at offset ${i}: ${bizErr.message}`);
-    businesses += bizRows.length;
 
     // A listing with no branch pin is invisible: nearby_businesses_filtered
     // INNER JOINs branches and requires a non-null location.
@@ -621,9 +750,9 @@ async function insert(db, records, ownerId) {
     if (brErr) fail(`Branch insert failed at offset ${i}: ${brErr.message}`);
     branches += branchRows.length;
 
-    log(`  inserted ${Math.min(i + CHUNK, records.length)}/${records.length}`);
+    log(`  processed ${Math.min(i + CHUNK, records.length)}/${records.length}`);
   }
-  return { businesses, branches };
+  return { businesses: (await countSeeded()) - before, branches, sent: records.length };
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────
@@ -684,6 +813,9 @@ if (GEOCODE) {
   await reverseGeocode(records);
 }
 
+log('');
+records = applyCategoryCaps(records);
+
 if (db) {
   log('');
   records = await dedupe(db, records);
@@ -710,6 +842,9 @@ if (DRY) {
 
 const ownerId = await ensureDirectoryOwner(db);
 log('');
-const { businesses, branches } = await insert(db, records, ownerId);
-log(`\n✓ ${businesses} businesses, ${branches} branch pins. All unclaimed, image-less, ODbL-attributed.`);
+const { businesses, branches, sent } = await insert(db, records, ownerId);
+log(
+  `\n✓ ${businesses} businesses added (${sent} sent, ${sent - businesses} already present), ` +
+    `${branches} branch rows processed. All unclaimed, image-less, ODbL-attributed.`,
+);
 log(`  Attribution obligation: © OpenStreetMap contributors (ODbL).`);

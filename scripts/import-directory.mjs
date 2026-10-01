@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* global console, process, fetch, URLSearchParams, setTimeout */
+/* global console, process, fetch, URLSearchParams, setTimeout, URL */
 /**
  * Seed the business directory for Iloilo City from OpenStreetMap.
  *
@@ -16,6 +16,7 @@
  *   node scripts/import-directory.mjs --limit 50          # cap, for a smoke test
  *   node scripts/import-directory.mjs --no-geocode        # skip address backfill
  *   node scripts/import-directory.mjs --refetch           # ignore the Overpass cache
+ *   node scripts/import-directory.mjs --extract f.json    # use a pre-fetched Overpass JSON
  *
  * Env: .env for the local stack (the Makefile writes it from `supabase start`
  *      output), .env.cloud for --cloud. Needs NEXT_PUBLIC_SUPABASE_URL and
@@ -69,7 +70,16 @@ const CITY_NAME = 'Iloilo City';
 const PROVINCE = 'Iloilo';
 const ZIP = '5000';
 
-const OVERPASS = 'https://overpass-api.de/api/interpreter';
+/**
+ * Overpass endpoints, tried in order. The main instance rate-limits per IP and
+ * 504s under load — repeatedly, if you have been iterating on the query — so a
+ * mirror is not a luxury. Both are public and ODbL-licensed alike.
+ */
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+];
 const NOMINATIM = 'https://nominatim.openstreetmap.org/reverse';
 /** Nominatim's usage policy: max 1 request/second, and a real User-Agent. */
 const GEOCODE_INTERVAL_MS = 1100;
@@ -92,6 +102,54 @@ const DIRECTORY_NAME = 'iLokal Directory';
 const BACKDATE_ISO = '2026-01-01T00:00:00.000Z';
 
 const DATA_DIR = 'data/directory';
+
+/**
+ * The only OSM tags this importer reads. Everything else is dropped the moment
+ * an extract is fetched, before it is cached or passed downstream.
+ *
+ * This is data minimisation, and it is not cosmetic. An unfiltered Iloilo
+ * extract carries 226 distinct tag keys including 84 `phone`, 23 `email`, 11
+ * `contact:email` and assorted social handles — real contact details for real
+ * small businesses. None of it is imported (the DB only ever receives name,
+ * coordinates, category and address), so holding it in a cache on disk would be
+ * keeping personal data for no purpose, which is the thing RA 10173 is
+ * pointedly about. The repo's own `check:pii` pre-commit hook flags the
+ * unfiltered cache, correctly.
+ *
+ * Add a key here only when the code genuinely consumes it.
+ */
+const KEEP_TAGS = new Set([
+  'name',
+  // chain detection
+  'brand',
+  'brand:wikidata',
+  // classification
+  'amenity',
+  'shop',
+  'leisure',
+  'healthcare',
+  'craft',
+  // food refinement
+  'cuisine',
+  // address
+  'addr:street',
+  'addr:suburb',
+  'addr:village',
+  'addr:neighbourhood',
+]);
+
+/** Reduce an Overpass element to its identity, position and allowed tags. */
+function minimize(el) {
+  const tags = {};
+  for (const [k, v] of Object.entries(el.tags ?? {})) {
+    if (KEEP_TAGS.has(k)) tags[k] = v;
+  }
+  const out = { type: el.type, id: el.id, tags };
+  if (el.lat != null) out.lat = el.lat;
+  if (el.lon != null) out.lon = el.lon;
+  if (el.center) out.center = { lat: el.center.lat, lon: el.center.lon };
+  return out;
+}
 
 // ── CLI ────────────────────────────────────────────────────────────────────
 
@@ -254,35 +312,50 @@ out tags center;`;
     }
   }
 
-  // Transient 429/504 from a shared service is normal under load, so back off
-  // rather than failing the whole run.
-  const BACKOFF_MS = [0, 15000, 45000];
-  for (let attempt = 0; attempt < BACKOFF_MS.length; attempt++) {
-    if (BACKOFF_MS[attempt]) {
-      log(`  retrying in ${BACKOFF_MS[attempt] / 1000}s…`);
-      await new Promise((r) => setTimeout(r, BACKOFF_MS[attempt]));
+  // Every endpoint, then a backoff round, then every endpoint again. Transient
+  // 429/504 is normal for a free shared service under load.
+  const BACKOFF_MS = [0, 20000, 60000];
+  for (let round = 0; round < BACKOFF_MS.length; round++) {
+    if (BACKOFF_MS[round]) {
+      log(`  all endpoints failed; waiting ${BACKOFF_MS[round] / 1000}s…`);
+      await new Promise((r) => setTimeout(r, BACKOFF_MS[round]));
     }
-    const res = await fetch(OVERPASS, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': UA },
-      body: new URLSearchParams({ data: query }),
-    });
-    if (res.ok) {
-      const json = await res.json();
-      const elements = json.elements ?? [];
-      mkdirSync(DATA_DIR, { recursive: true });
-      writeFileSync(
-        cacheFile,
-        JSON.stringify({ queryHash, fetchedAt: new Date().toISOString(), elements }),
-      );
-      log(`  fetched ${elements.length} elements, cached for re-runs`);
-      return elements;
+    for (const endpoint of OVERPASS_ENDPOINTS) {
+      const host = new URL(endpoint).host;
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': UA,
+          },
+          body: new URLSearchParams({ data: query }),
+        });
+        if (res.ok) {
+          const json = await res.json();
+          // Minimize BEFORE caching: the discarded tags never touch disk.
+          const elements = (json.elements ?? []).map(minimize);
+          cacheExtract(cacheFile, queryHash, elements, host);
+          log(`  fetched ${elements.length} elements from ${host}, cached for re-runs`);
+          return elements;
+        }
+        log(`  ${host} → ${res.status}`);
+      } catch (e) {
+        log(`  ${host} → unreachable (${e.cause?.code ?? e.message})`);
+      }
     }
-    log(`  Overpass returned ${res.status} (attempt ${attempt + 1}/${BACKOFF_MS.length})`);
   }
   fail(
-    'Overpass kept failing. It rate-limits per IP; wait a few minutes and retry, ' +
-      'or run against a mirror by editing OVERPASS.',
+    'Every Overpass endpoint failed. They rate-limit per IP, so wait and retry — ' +
+      'or pass --extract <file> with a JSON response fetched elsewhere.',
+  );
+}
+
+function cacheExtract(cacheFile, queryHash, elements, source) {
+  mkdirSync(DATA_DIR, { recursive: true });
+  writeFileSync(
+    cacheFile,
+    JSON.stringify({ queryHash, fetchedAt: new Date().toISOString(), source, elements }),
   );
 }
 
@@ -567,9 +640,21 @@ if (db) {
   log('  categories: dry run, not resolved against the DB');
 }
 
-log('\nfetching from Overpass…');
-const elements = await fetchOverpass();
-log(`  ${elements.length} named POIs inside the city polygon`);
+let elements;
+const extractFile = value('--extract', null);
+if (extractFile) {
+  // A response fetched elsewhere. The query lives in this file, so an extract
+  // from a DIFFERENT query would silently change what gets imported — hence the
+  // loud banner rather than a quiet flag.
+  log(`\nloading a pre-fetched extract: ${extractFile}`);
+  log('  NOTE: not verified against this script\'s query. Confirm it is the right extract.');
+  elements = (JSON.parse(readFileSync(extractFile, 'utf8')).elements ?? []).map(minimize);
+  log(`  ${elements.length} elements`);
+} else {
+  log('\nfetching from Overpass…');
+  elements = await fetchOverpass();
+  log(`  ${elements.length} named POIs inside the city polygon`);
+}
 
 const drops = new Map();
 let records = [];

@@ -5,7 +5,13 @@ import { describe, expect, it } from 'vitest';
 // exports from the source, so no declaration file is needed.
 import * as map from '../category-map.mjs';
 
-const { classify, refineFood, isInstitutional, referencedCategories } = map;
+const {
+  classify,
+  refineFood,
+  isInstitutional,
+  isKnownChain,
+  referencedCategories,
+} = map;
 
 describe('classify', () => {
   it('maps the common OSM keys to Philippine category names', () => {
@@ -216,6 +222,60 @@ describe('isInstitutional', () => {
       'Hall of Beauty Salon',
     ]) {
       expect(isInstitutional(name), name).toBe(false);
+    }
+  });
+});
+
+describe('isKnownChain', () => {
+  it('catches national chains that OSM left without a brand tag', () => {
+    // The importer's primary test is OSM's `brand` tag, which caught 327
+    // records. These 31 slipped through it on the first dry run — ten of them
+    // SM properties. A directory whose Welcome screen says "support your local
+    // heroes" should not open with ten SM branches.
+    for (const name of [
+      'SM Savemore Jaro',
+      'SM Hypermarket',
+      'Gaisano Capital Iloilo',
+      'Robinsons Supermarket',
+      "Robinson's Builders",
+      'Jollibee',
+      'Chowking',
+      'Mang inasal',
+      '7-Eleven',
+      'Chooks to Go',
+      'Mercury Drug',
+      'Watsons',
+      'Rose Pharmacy',
+      'TGP',
+      'National Book Store',
+      'M. Lhuillier - Ilonga',
+      'Dunkin Donuts',
+    ]) {
+      expect(isKnownChain(name), name).toBe(true);
+    }
+  });
+
+  it('does NOT drop independents whose names contain a brand word', () => {
+    // Regression: `\bshell\b` dropped "Shell Cottage Cafe", a perfectly
+    // plausible independent name. The fuel brands were removed entirely —
+    // `amenity=fuel` is not in the category map, so a petrol station is already
+    // dropped as unmapped and the patterns could never add a catch.
+    //
+    // The same reasoning keeps 'Metro', 'Total', 'Smart', 'Globe' and 'Phoenix'
+    // off the list: dropping a real local business costs more than letting one
+    // chain through.
+    for (const name of [
+      'Shell Cottage Cafe',
+      'Metro Grill',
+      'Smart Choice Hardware',
+      'Globe Cafe',
+      'Total Fitness Gym',
+      'Phoenix Bakery',
+      'SMD Enterprises',
+      'Cosmos Store',
+      'Bank of Pancakes',
+    ]) {
+      expect(isKnownChain(name), name).toBe(false);
     }
   });
 });

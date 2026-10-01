@@ -393,6 +393,106 @@ export function isInstitutional(name) {
 }
 
 /**
+ * National chains, recognised by name.
+ *
+ * The importer's primary chain test is OSM's `brand` / `brand:wikidata` tag,
+ * which catches 327 records in the Iloilo extract. It is not reliable though —
+ * mappers often omit it — and 31 more slipped through on the first dry run,
+ * including ten SM properties, Robinsons and Gaisano. A directory meant to
+ * "support your local heroes" (the Welcome screen's words) should not open with
+ * ten SM branches.
+ *
+ * Patterns are word-anchored and require a distinctive brand token. Generic
+ * words that happen to be brands are deliberately EXCLUDED, because the cost of
+ * a false positive — dropping a real independent business — is higher than
+ * letting one chain through:
+ *   - 'Metro'   → a Metro Grill is not Metrobank. Only the bank spelling is listed.
+ *   - 'Total'   → a fuel brand and an ordinary English word.
+ *   - 'Smart' / 'Globe' → telcos, but also 'Smart Choice Hardware', 'Globe Cafe'.
+ *   - 'Phoenix' → a fuel brand, but equally a plausible independent name.
+ */
+const CHAINS = [
+  // Malls, department stores and groceries
+  /\bsm\b/i,
+  /\bsavemore\b/i,
+  /\bgaisano\b/i,
+  /\brobinsons?\b/i,
+  /\bpuregold\b/i,
+  /\bshopwise\b/i,
+  /\bwaltermart\b/i,
+  /\bmetro\s+(department|supermarket)\b/i,
+  // Convenience
+  /\b7[-\s]?eleven\b/i,
+  /\bseven\s?eleven\b/i,
+  /\balfamart\b/i,
+  /\bmini\s?stop\b/i,
+  // Fast food and bakery chains
+  /\bjollibee\b/i,
+  /\bchowking\b/i,
+  /\bmang\s+inasal\b/i,
+  /\bmcdonald'?s?\b/i,
+  /\bkfc\b/i,
+  /\bgreenwich\b/i,
+  /\bred\s+ribbon\b/i,
+  /\bgoldilocks\b/i,
+  /\bdunkin'?\b/i,
+  /\bshakey'?s\b/i,
+  /\bpizza\s+hut\b/i,
+  /\byellow\s+cab\b/i,
+  /\barmy\s+navy\b/i,
+  /\bbonchon\b/i,
+  /\bpotato\s+corner\b/i,
+  /\bzagu\b/i,
+  /\bchooks[-\s]?to[-\s]?go\b/i,
+  // Coffee
+  /\bstarbucks\b/i,
+  /\bbo'?s\s+coffee\b/i,
+  /\bcoffee\s+bean\s+&?\s*tea\s+leaf\b/i,
+  /\btim\s+hortons\b/i,
+  // Pharmacy
+  /\bmercury\s+drug\b/i,
+  /\bwatsons\b/i,
+  /\brose\s+pharmacy\b/i,
+  /\bgenerika\b/i,
+  /\bsouth\s?star\s+drug\b/i,
+  /\bthe\s+generics\s+pharmacy\b/i,
+  /\btgp\b/i,
+  // Banks
+  /\bbdo\b/i,
+  /\bbpi\b/i,
+  /\bmetrobank\b/i,
+  /\blandbank\b/i,
+  /\bpnb\b/i,
+  /\brcbc\b/i,
+  /\bsecurity\s+bank\b/i,
+  /\bunionbank\b/i,
+  /\bchina\s?bank\b/i,
+  /\beastwest\b/i,
+  // Pawnshops and remittance
+  /\bcebuana\s+lhuillier\b/i,
+  /\bm\.?\s?lhuillier\b/i,
+  /\blhuillier\b/i,
+  /\bpalawan\s+(pawnshop|express)\b/i,
+  /\bwestern\s+union\b/i,
+  /\btambunting\b/i,
+  // No fuel brands. `amenity=fuel` is not in the category map at all, so a
+  // petrol station is already dropped as unmapped — the patterns could never
+  // add a catch. And `\bshell\b` actively misfires: it drops "Shell Cottage
+  // Cafe", a perfectly plausible independent name. Same reasoning keeps
+  // 'Metro', 'Total', 'Smart', 'Globe' and 'Phoenix' off this list.
+  // Other
+  /\bnational\s+book\s?store\b/i,
+];
+
+/**
+ * True when the name belongs to a national chain. Used as a fallback after
+ * OSM's `brand` tag, which mappers frequently omit.
+ */
+export function isKnownChain(name) {
+  return CHAINS.some((re) => re.test(name));
+}
+
+/**
  * Resolve an OSM element's tags to a category name.
  *
  * Returns `{ category, via }` on a hit, or `{ category: null, via }` where

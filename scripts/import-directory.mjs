@@ -700,6 +700,12 @@ async function insert(db, records, ownerId) {
       // (auth.uid() IS NULL). Without 'verified' the row is invisible to the
       // app, since both the RPC and RLS gate on it.
       status: 'verified',
+      // WHO listed it. Must be set explicitly: `origin` defaults to 'owner',
+      // and the no-images guardrail exempts owner rows — so an import that
+      // omitted this would both mislabel the listing and slip past the
+      // copyright check it is meant to be held to.
+      origin: 'admin',
+      // WHERE the data came from. Separate fact; see 20261003000000.
       source: 'osm',
       source_ref: r.ref,
       source_license: 'ODbL',

@@ -6,7 +6,7 @@
 --   2. the `source` CHECK rejects an unknown provenance,
 --   3. the PARTIAL unique index makes re-imports idempotent while still
 --      allowing many owner/manual rows to share a NULL source_ref,
---   4. `businesses_seeded_no_images` blocks third-party imagery on seeded rows
+--   4. `businesses_admin_listed_no_images` blocks third-party imagery on admin rows
 --      but exempts owner rows — the copyright guardrail,
 --   5. the backfill left every pre-existing owner row marked as claimed,
 --   6. claim bookkeeping (claimed_at/claimed_by) behaves, and `source_ref`
@@ -36,7 +36,7 @@ DECLARE
 BEGIN
   SELECT string_agg(c, ', ')
     INTO v_missing
-    FROM unnest(ARRAY['source','source_ref','source_license','claimed_at','claimed_by']) AS c
+    FROM unnest(ARRAY['origin','source','source_ref','source_license','claimed_at','claimed_by']) AS c
    WHERE NOT EXISTS (
      SELECT 1 FROM information_schema.columns
       WHERE table_schema = 'public' AND table_name = 'businesses' AND column_name = c
@@ -77,14 +77,14 @@ DECLARE
 BEGIN
   SELECT owner_id INTO v_owner FROM businesses LIMIT 1;
 
-  INSERT INTO businesses (owner_id, shop_name, source, source_ref, source_license, status)
-  VALUES (v_owner, 'test-osm-a', 'osm', 'node/900000001', 'ODbL', 'verified');
+  INSERT INTO businesses (owner_id, shop_name, origin, source, source_ref, source_license, status)
+  VALUES (v_owner, 'test-osm-a', 'admin', 'osm', 'node/900000001', 'ODbL', 'verified');
 
   -- A re-import must be a no-op, not a duplicate listing. This is what lets the
   -- importer be re-run safely against upstream corrections.
   BEGIN
-    INSERT INTO businesses (owner_id, shop_name, source, source_ref, source_license, status)
-    VALUES (v_owner, 'test-osm-a-again', 'osm', 'node/900000001', 'ODbL', 'verified');
+    INSERT INTO businesses (owner_id, shop_name, origin, source, source_ref, source_license, status)
+    VALUES (v_owner, 'test-osm-a-again', 'admin', 'osm', 'node/900000001', 'ODbL', 'verified');
     ASSERT false, 'unique index allowed a duplicate (source, source_ref)';
   EXCEPTION WHEN unique_violation THEN
     NULL;  -- expected
@@ -114,8 +114,8 @@ BEGIN
   -- boundary. Place photos belong to their contributors and are not
   -- sublicensed to us.
   BEGIN
-    INSERT INTO businesses (owner_id, shop_name, source, source_ref, logo_url, status)
-    VALUES (v_owner, 'test-scraped-logo', 'osm', 'node/900000002',
+    INSERT INTO businesses (owner_id, shop_name, origin, source, source_ref, logo_url, status)
+    VALUES (v_owner, 'test-scraped-logo', 'admin', 'osm', 'node/900000002',
             'https://lh3.googleusercontent.com/p/example', 'verified');
     ASSERT false, 'seeded row accepted a third-party logo_url';
   EXCEPTION WHEN check_violation THEN
@@ -125,8 +125,8 @@ BEGIN
   -- banner_url and interior_images are equally reachable from a read path, so
   -- the constraint must cover all three, not just the logo.
   BEGIN
-    INSERT INTO businesses (owner_id, shop_name, source, source_ref, banner_url, status)
-    VALUES (v_owner, 'test-scraped-banner', 'osm', 'node/900000003',
+    INSERT INTO businesses (owner_id, shop_name, origin, source, source_ref, banner_url, status)
+    VALUES (v_owner, 'test-scraped-banner', 'admin', 'osm', 'node/900000003',
             'https://example.com/banner.jpg', 'verified');
     ASSERT false, 'seeded row accepted a third-party banner_url';
   EXCEPTION WHEN check_violation THEN
@@ -134,8 +134,8 @@ BEGIN
   END;
 
   BEGIN
-    INSERT INTO businesses (owner_id, shop_name, source, source_ref, interior_images, status)
-    VALUES (v_owner, 'test-scraped-gallery', 'osm', 'node/900000004',
+    INSERT INTO businesses (owner_id, shop_name, origin, source, source_ref, interior_images, status)
+    VALUES (v_owner, 'test-scraped-gallery', 'admin', 'osm', 'node/900000004',
             ARRAY['https://example.com/1.jpg'], 'verified');
     ASSERT false, 'seeded row accepted third-party interior_images';
   EXCEPTION WHEN check_violation THEN
@@ -144,8 +144,8 @@ BEGIN
 
   -- An EMPTY array is not imagery and must pass — otherwise an importer that
   -- writes `ARRAY[]::text[]` rather than NULL would fail for no good reason.
-  INSERT INTO businesses (owner_id, shop_name, source, source_ref, interior_images, status)
-  VALUES (v_owner, 'test-seeded-empty-gallery', 'osm', 'node/900000005',
+  INSERT INTO businesses (owner_id, shop_name, origin, source, source_ref, interior_images, status)
+  VALUES (v_owner, 'test-seeded-empty-gallery', 'admin', 'osm', 'node/900000005',
           ARRAY[]::text[], 'verified');
 
   -- Owner rows are exempt: an owner uploading their own photo is the whole
@@ -154,12 +154,14 @@ BEGIN
   VALUES (v_owner, 'test-owner-with-images', 'owner',
           'some-business-id/logo.webp', 'some-business-id/banner.webp', 'verified');
 
-  -- A 'manual' row is staff-entered from a public record; staff may legitimately
-  -- have taken the photo themselves, so manual is NOT exempt by design — it must
-  -- still be rejected, keeping the exemption narrow to 'owner'.
+  -- A staff-entered row (origin 'admin', source 'manual') is NOT exempt: staff
+  -- may legitimately have taken a photo themselves, but the exemption stays
+  -- narrow to listings the OWNER created. Note this is now keyed on `origin`,
+  -- so the row must say who entered it — under the old `source`-keyed rule a
+  -- bare source='manual' insert defaulted into the exemption silently.
   BEGIN
-    INSERT INTO businesses (owner_id, shop_name, source, logo_url, status)
-    VALUES (v_owner, 'test-manual-with-image', 'manual', 'https://example.com/x.jpg', 'verified');
+    INSERT INTO businesses (owner_id, shop_name, origin, source, logo_url, status)
+    VALUES (v_owner, 'test-manual-with-image', 'admin', 'manual', 'https://example.com/x.jpg', 'verified');
     ASSERT false, 'manual row accepted a third-party image — exemption is too wide';
   EXCEPTION WHEN check_violation THEN
     NULL;  -- expected
@@ -212,8 +214,8 @@ BEGIN
     RETURN;
   END IF;
 
-  INSERT INTO businesses (owner_id, shop_name, source, source_ref, source_license, status)
-  VALUES (v_directory, 'test-claimable', 'osm', 'node/900000006', 'ODbL', 'verified')
+  INSERT INTO businesses (owner_id, shop_name, origin, source, source_ref, source_license, status)
+  VALUES (v_directory, 'test-claimable', 'admin', 'osm', 'node/900000006', 'ODbL', 'verified')
   RETURNING id INTO v_id;
 
   -- Unclaimed on arrival — this is what the app badges on.
@@ -263,6 +265,57 @@ BEGIN
      SELECT 1 FROM pg_indexes WHERE tablename = 'businesses' AND indexname = i
    );
   ASSERT v_missing IS NULL, format('indexes missing: %s', v_missing);
+END $$;
+
+-- ─────────────────── 8. origin: WHO listed the business ───────────────────
+-- `source` records where the DATA came from; `origin` records WHO created the
+-- listing. Any "is this ours?" predicate must use `origin` — keyed on `source`
+-- it stays correct only while every non-owner source happens to be
+-- admin-created, so adding one data feed would silently reclassify the whole
+-- directory as owner-claimed.
+DO $$
+DECLARE
+  v_default TEXT;
+  v_notnull BOOLEAN;
+  v_owner   UUID;
+BEGIN
+  SELECT column_default, is_nullable = 'NO'
+    INTO v_default, v_notnull
+    FROM information_schema.columns
+   WHERE table_schema = 'public' AND table_name = 'businesses' AND column_name = 'origin';
+  ASSERT v_default LIKE '%owner%', format('origin should default to owner, got %L', v_default);
+  ASSERT v_notnull, 'origin must be NOT NULL — an unknown party is not a valid state';
+
+  SELECT owner_id INTO v_owner FROM businesses LIMIT 1;
+
+  -- The CHECK admits exactly two parties.
+  BEGIN
+    INSERT INTO businesses (owner_id, shop_name, origin, status)
+    VALUES (v_owner, 'test-bad-origin', 'partner', 'verified');
+    ASSERT false, 'origin CHECK accepted a party outside (owner, admin)';
+  EXCEPTION WHEN check_violation THEN
+    NULL;  -- expected
+  END;
+
+  -- The no-images guardrail keys on origin, not source: an admin listing whose
+  -- source is something new must still be blocked.
+  BEGIN
+    INSERT INTO businesses (owner_id, shop_name, origin, source, logo_url, status)
+    VALUES (v_owner, 'test-admin-image', 'admin', 'manual', 'https://x.test/a.png', 'verified');
+    ASSERT false, 'an admin-listed row accepted third-party imagery';
+  EXCEPTION WHEN check_violation THEN
+    NULL;  -- expected
+  END;
+
+  -- An owner-listed row is unaffected by that rule.
+  INSERT INTO businesses (owner_id, shop_name, origin, logo_url, status)
+  VALUES (v_owner, 'test-owner-image', 'owner', 'https://x.test/b.png', 'verified');
+
+  -- Every admin listing in the live table is one the importer created.
+  ASSERT (SELECT COUNT(*) FROM businesses WHERE origin = 'admin' AND source = 'owner') = 0,
+    'an admin-listed row claims owner-supplied data';
+
+  RAISE NOTICE 'origin: default, CHECK and image guardrail all hold';
 END $$;
 
 DO $$ BEGIN RAISE NOTICE 'ALL BUSINESS PROVENANCE TESTS PASSED'; END $$;

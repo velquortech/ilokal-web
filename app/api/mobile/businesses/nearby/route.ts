@@ -40,6 +40,14 @@ export async function GET(req: NextRequest) {
     const category = searchParams.get('category'); // mobile key: Food | Retail | …
     const subcategory = searchParams.get('subcategory'); // business_categories.name
     const search = searchParams.get('q')?.trim();
+    // Home's curated rows ask for claimed listings only — the seeded directory
+    // would otherwise fill them, since unclaimed outnumbers claimed ~70:1 and
+    // the rows show only the nearest handful.
+    const claimedOnly = searchParams.get('claimed_only') === 'true';
+    // Explore stays exhaustive but ranks claimed businesses first, so an owner
+    // who has vouched for their listing is seen before a seeded placeholder.
+    // Defaults ON for the browse surface; pass `sort_claimed_first=false` to opt out.
+    const sortClaimedFirst = searchParams.get('sort_claimed_first') !== 'false';
 
     // Page-based browse (Explore). When `page` is absent the response is the
     // legacy single-batch shape (Home's nearest-few preview, via `limit`).
@@ -92,6 +100,8 @@ export async function GET(req: NextRequest) {
       page_size: paginated ? perPage : limit,
       page_offset: paginated ? from : 0,
       sort_featured_first: !paginated && limit != null,
+      claimed_only: claimedOnly,
+      sort_claimed_first: sortClaimedFirst,
     });
 
     if (error) {

@@ -155,9 +155,9 @@ Two things make that position defensible rather than merely asserted:
 - **A removal route exists and is published.** The Terms tell an owner they can
   claim a listing *or ask for it to be taken down*, via support@ilokal.shop.
 
-Still outstanding, and tracked as a follow-up rather than done: a written
-legitimate-interest assessment, and a removal flow with a UI rather than only an
-email address.
+The full balancing test is written up in `directory-privacy-assessment.md`.
+Still outstanding: counsel review of it, and a removal flow with a UI rather
+than only an email address.
 
 ---
 
@@ -232,7 +232,8 @@ directory's main quality weakness.
 ## 6. Open items
 
 - Periodic re-sync against OSM so closed businesses age out.
-- A written RA 10173 legitimate-interest assessment.
+- ~~A written RA 10173 legitimate-interest assessment.~~ Written:
+  `directory-privacy-assessment.md`. Still needs counsel review.
 - A removal flow with a UI, not only the support email.
 - Counsel review of the collective-vs-derived database reading in §2, before any
   bulk export.

@@ -17,11 +17,20 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Building2, CheckCircle2, Clock, Ban, XCircle } from 'lucide-react';
+import {
+  Building2,
+  CheckCircle2,
+  Clock,
+  Ban,
+  XCircle,
+  Database,
+  UserRound,
+} from 'lucide-react';
 import { DataTablePagination } from '@/components/custom/data-table/DataTablePagination';
 import { BUSINESS_TIME_ZONE } from '@/lib/utils/operatingHours';
 import type {
   AdminBusinessWithMeta,
+  BusinessOrigin,
   BusinessVerificationStatus,
 } from '@/lib/types/business';
 import { BusinessActions } from './business-actions';
@@ -38,6 +47,36 @@ interface BusinessDocumentsTableProps {
 function shopNameOf(b: AdminBusinessWithMeta): string {
   return (
     (b as { shop_name?: string }).shop_name ?? b.name ?? 'Unnamed business'
+  );
+}
+
+/**
+ * Who listed this business. Worth its own column because admin-seeded listings
+ * outnumber owner-registered ones roughly 70:1 — without it an admin reviewing
+ * documents cannot tell a real submission from a directory row we imported, and
+ * every count on this screen reads as though all of them are real businesses.
+ *
+ * The owner badge is the one that stands out: it marks the minority that
+ * actually needs review.
+ */
+function OriginBadge({ origin }: { origin?: BusinessOrigin }) {
+  // Older rows predate the column; the DB default is 'owner'.
+  if (origin !== 'admin') {
+    return (
+      <Badge
+        variant="secondary"
+        className="gap-1 text-blue-700 dark:text-blue-400"
+      >
+        <UserRound className="size-3" />
+        Owner
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="text-muted-foreground gap-1">
+      <Database className="size-3" />
+      Admin-seeded
+    </Badge>
   );
 }
 
@@ -118,6 +157,11 @@ export function BusinessDocumentsTable({
         cell: ({ row }) => (
           <VerificationStatusBadge status={row.original.status} />
         ),
+      },
+      {
+        id: 'origin',
+        header: 'Listed by',
+        cell: ({ row }) => <OriginBadge origin={row.original.origin} />,
       },
       {
         accessorKey: 'created_at',

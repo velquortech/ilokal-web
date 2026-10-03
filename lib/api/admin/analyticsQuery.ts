@@ -318,27 +318,39 @@ export async function getAdminDashboardSummary(
     now.getTime() - 1000 * 60 * 60 * 24 * 30,
   ).toISOString();
 
-  const [total, recent, businesses, verified, pending] = await Promise.all([
-    countRows(supabase, 'profiles', (q) => q.is('archived_at', null)),
-    countRows(supabase, 'profiles', (q) =>
-      q.is('archived_at', null).gte('created_at', thirtyDaysAgo),
-    ),
-    countRows(supabase, 'businesses', (q) => q.is('archived_at', null)),
-    countRows(supabase, 'businesses', (q) =>
-      q.eq('status', 'verified').is('archived_at', null),
-    ),
-    countRows(supabase, 'businesses', (q) =>
-      q.eq('status', 'pending').is('archived_at', null),
-    ),
-  ]);
+  const [total, recent, businesses, owned, seeded, verified, pending] =
+    await Promise.all([
+      countRows(supabase, 'profiles', (q) => q.is('archived_at', null)),
+      countRows(supabase, 'profiles', (q) =>
+        q.is('archived_at', null).gte('created_at', thirtyDaysAgo),
+      ),
+      countRows(supabase, 'businesses', (q) => q.is('archived_at', null)),
+      // Split by who listed it. The imported directory outnumbers real
+      // registrations ~70:1, so one total is not a figure anyone can act on
+      // — see `docs/directory-provenance.md`.
+      countRows(supabase, 'businesses', (q) =>
+        q.eq('origin', 'owner').is('archived_at', null),
+      ),
+      countRows(supabase, 'businesses', (q) =>
+        q.eq('origin', 'admin').is('archived_at', null),
+      ),
+      countRows(supabase, 'businesses', (q) =>
+        q.eq('status', 'verified').is('archived_at', null),
+      ),
+      countRows(supabase, 'businesses', (q) =>
+        q.eq('status', 'pending').is('archived_at', null),
+      ),
+    ]);
 
   return {
     total_users: total.count,
     new_users_last_30_days: recent.count,
     total_businesses: businesses.count,
+    owner_businesses: owned.count,
+    seeded_businesses: seeded.count,
     verified_businesses: verified.count,
     pending_businesses: pending.count,
-    failed: [total, recent, businesses, verified, pending].some(
+    failed: [total, recent, businesses, owned, seeded, verified, pending].some(
       (read) => read.failed,
     ),
   };

@@ -1,4 +1,5 @@
 import { createBearerClient } from '@/supabase/bearer';
+import { getAdminSeededVisible } from '@/lib/api/appSettings';
 import {
   loggedServerError,
   notFoundResponse,
@@ -23,13 +24,20 @@ export async function GET(req: NextRequest, { params }: Params) {
 
     const { data, error } = await supabase
       .from('businesses')
-      .select('id, shop_name, description, logo_url')
+      .select('id, shop_name, description, logo_url, origin')
       .eq('id', businessId)
       .eq('status', 'verified')
       .is('archived_at', null)
       .single();
 
     if (error || !data) {
+      return notFoundResponse({ message: 'Business not found' });
+    }
+
+    // The admin-seeded kill switch. The share link is the surface most likely to
+    // outlive a takedown request — it gets posted, forwarded and cached — so it
+    // has to honour the switch exactly as the feed does.
+    if (data.origin === 'admin' && !(await getAdminSeededVisible())) {
       return notFoundResponse({ message: 'Business not found' });
     }
 

@@ -318,6 +318,62 @@ BEGIN
   RAISE NOTICE 'origin: default, CHECK and image guardrail all hold';
 END $$;
 
+-- ─────────────────── 9. the admin-seeded kill switch ───────────────────
+-- Flipping one setting must remove admin-listed businesses from the feed AND
+-- the category counts, leave owner-registered ones untouched, and be fully
+-- reversible. Enforced in the database rather than the route so it holds for
+-- every caller, including ones added later that forget to ask.
+DO $$
+DECLARE
+  v_all     BIGINT;
+  v_hidden  BIGINT;
+  v_owner   BIGINT;
+  v_chips   BIGINT;
+BEGIN
+  SELECT COUNT(*) INTO v_all
+    FROM public.nearby_businesses_filtered(10.72, 122.56, 200000,
+         NULL, NULL, NULL, NULL, 0, false, false, true);
+  SELECT COUNT(*) INTO v_owner FROM public.businesses
+   WHERE origin = 'owner' AND status = 'verified' AND archived_at IS NULL;
+
+  ASSERT v_all > v_owner,
+    'fixture is useless: no admin-listed businesses in range to hide';
+
+  UPDATE public.app_settings SET value = 'false'::jsonb
+   WHERE key = 'show_admin_seeded_businesses';
+
+  SELECT COUNT(*) INTO v_hidden
+    FROM public.nearby_businesses_filtered(10.72, 122.56, 200000,
+         NULL, NULL, NULL, NULL, 0, false, false, true);
+  ASSERT v_hidden < v_all,
+    format('kill switch did not hide anything (%s of %s)', v_hidden, v_all);
+
+  -- Every surviving row must be owner-listed.
+  ASSERT NOT EXISTS (
+    SELECT 1
+      FROM public.nearby_businesses_filtered(10.72, 122.56, 200000,
+           NULL, NULL, NULL, NULL, 0, false, false, true) f
+      JOIN public.businesses b ON b.id = f.business_id
+     WHERE b.origin = 'admin'
+  ), 'an admin-listed business survived the kill switch';
+
+  -- The chips must agree, or a filter offers a category that returns nothing.
+  SELECT COALESCE(SUM(count), 0) INTO v_chips
+    FROM public.nearby_business_type_counts(10.72, 122.56, 200000);
+  ASSERT v_chips = v_hidden,
+    format('category counts (%s) disagree with the feed (%s)', v_chips, v_hidden);
+
+  UPDATE public.app_settings SET value = 'true'::jsonb
+   WHERE key = 'show_admin_seeded_businesses';
+
+  SELECT COUNT(*) INTO v_hidden
+    FROM public.nearby_businesses_filtered(10.72, 122.56, 200000,
+         NULL, NULL, NULL, NULL, 0, false, false, true);
+  ASSERT v_hidden = v_all, 'kill switch is not reversible';
+
+  RAISE NOTICE 'kill switch: hides admin listings, counts agree, reversible';
+END $$;
+
 DO $$ BEGIN RAISE NOTICE 'ALL BUSINESS PROVENANCE TESTS PASSED'; END $$;
 
 ROLLBACK;

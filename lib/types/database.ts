@@ -2806,6 +2806,7 @@ export type Database = {
           enable_bookings: boolean
           enable_events: boolean
           require_business_documents: boolean
+          show_admin_seeded_businesses: boolean
         }[]
       }
       purge_archived_profiles: {

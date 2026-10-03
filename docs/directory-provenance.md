@@ -190,7 +190,38 @@ true.
 
 ---
 
-## 5. Re-running, correcting, removing
+## 5. Hiding the whole directory
+
+`app_settings.show_admin_seeded_businesses` (default `true`) is the kill switch.
+Turn it off and every admin-listed business disappears: the nearby feed and the
+category counts drop them in the database, and the public detail and share
+routes 404 them. Explore goes from ~1,500 businesses to the ~20 that registered
+themselves.
+
+```sql
+UPDATE public.app_settings SET value = 'false'::jsonb
+ WHERE key = 'show_admin_seeded_businesses';
+```
+
+Or flip the **Show admin-seeded listings** switch in `/admin/<id>/settings`. No
+deploy, no app rebuild — the predicate is evaluated per query.
+
+Three design notes worth keeping:
+
+- **Enforced in the database, not the route.** The predicate lives inside
+  `nearby_businesses_filtered` and `nearby_business_type_counts`, so it holds for
+  every caller, including ones added later that forget to ask.
+- **The share route is gated too.** A shared link is the surface most likely to
+  outlive a takedown request, and a kill switch with a hole is not a kill switch.
+- **It fails OPEN.** If the flag cannot be read, listings stay visible. The
+  registration flags fail closed on purpose; this one is the reverse, because
+  hiding ~1,480 listings on a transient read error is a much louder failure than
+  briefly serving listings that were already public.
+
+It is a compliance and emergency lever, not a normal operating mode — the
+directory is what makes the app useful before owners arrive.
+
+## 6. Re-running, correcting, removing
 
 The importer is `scripts/import-directory.mjs`; the OSM-tag → category mapping
 is `scripts/directory/category-map.mjs`.
@@ -229,7 +260,7 @@ directory's main quality weakness.
 
 ---
 
-## 6. Open items
+## 7. Open items
 
 - Periodic re-sync against OSM so closed businesses age out.
 - ~~A written RA 10173 legitimate-interest assessment.~~ Written:

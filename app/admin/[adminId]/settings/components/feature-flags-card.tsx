@@ -28,6 +28,12 @@ const TOGGLES: {
       'When on, shops can propose events, this queue accepts them, and approved events appear on Explore. While off every events route 404s and no nav entry advertises it.',
   },
   {
+    key: 'show_admin_seeded_businesses',
+    label: 'Show admin-seeded listings',
+    description:
+      'The business directory iLokal compiled from open data, held unclaimed until an owner claims it. Switch this OFF and Explore drops from roughly 1,500 businesses to the ~20 that registered themselves — their detail and share links 404 as well, so a shared link cannot outlive the switch. This is a compliance and emergency lever, not a normal operating mode: the directory is what makes the app useful before owners arrive.',
+  },
+  {
     key: 'enable_onboarding_tour',
     label: 'Onboarding tour',
     description:

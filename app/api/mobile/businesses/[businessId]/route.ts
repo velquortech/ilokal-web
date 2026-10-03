@@ -1,4 +1,5 @@
 import { createBearerClient } from '@/supabase/bearer';
+import { getAdminSeededVisible } from '@/lib/api/appSettings';
 import {
   loggedServerError,
   notFoundResponse,
@@ -108,6 +109,14 @@ export async function GET(_req: NextRequest, { params }: Params) {
     // Destructured only to EXCLUDE them from `rest`: the nested relations are
     // reshaped into `category` above, and origin/claimed_at are inputs to
     // `is_claimed` below rather than fields the app should receive.
+    // The admin-seeded kill switch. A shared link is the hole an owner who
+    // objects would find first, so hiding a listing from the feed is not enough
+    // — the direct route has to 404 it too. 404, not 403: the listing simply
+    // does not exist as far as this caller is concerned.
+    if (data.origin === 'admin' && !(await getAdminSeededVisible())) {
+      return notFoundResponse({ message: 'Business not found' });
+    }
+
     /* eslint-disable @typescript-eslint/no-unused-vars */
     const {
       profiles,

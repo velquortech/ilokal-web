@@ -12,6 +12,7 @@ import {
   updateBusinessProfile,
   archiveBusinessById,
   deleteBusinessById,
+  REGISTRATION_UNFINISHED_MESSAGE,
 } from './businessQuery';
 import {
   AdminUpdateBusinessInput,
@@ -39,7 +40,11 @@ export async function verifyBusiness(
     if (error) {
       return {
         success: false,
-        error: `Failed to verify business: ${error}`,
+        // Already a full sentence for the admin; don't wrap it in a prefix.
+        error:
+          error === REGISTRATION_UNFINISHED_MESSAGE
+            ? error
+            : `Failed to verify business: ${error}`,
       };
     }
 

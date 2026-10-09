@@ -209,7 +209,12 @@ export async function getBusinessesByStatus(
 }
 
 /**
- * Count businesses by status
+ * Count businesses by status.
+ *
+ * Head-only counts, computed by the database. This used to download every
+ * row's status and count in JS, but PostgREST returns at most 1,000 rows — so
+ * with the ~1,500-listing directory import the admin cards froze at
+ * "Total 1000", silently dropping a third of the platform.
  */
 export async function countBusinessesByStatus(): Promise<{
   counts: Record<string, number>;
@@ -217,28 +222,32 @@ export async function countBusinessesByStatus(): Promise<{
 }> {
   try {
     const supabase = await createServerSupabaseClient();
+    const count = () =>
+      supabase.from('businesses').select('id', { count: 'exact', head: true });
 
-    const { data, error } = await supabase.from('businesses').select('status');
+    const results = await Promise.all([
+      count(),
+      // Awaiting REVIEW: a shop still in the wizard is `pending` too, but
+      // there is nothing for an admin to act on until registration finishes.
+      count()
+        .eq('status', 'pending')
+        .not('registration_completed_at', 'is', null),
+      count().eq('status', 'verified'),
+      count().eq('status', 'suspended'),
+      count().eq('status', 'rejected'),
+    ]);
 
-    if (error) {
+    if (results.some((result) => result.error)) {
       return { counts: {}, error: 'Failed to count businesses' };
     }
 
-    const counts = {
-      pending: 0,
-      verified: 0,
-      suspended: 0,
-      rejected: 0,
-      total: data.length,
+    const [total, pending, verified, suspended, rejected] = results.map(
+      (result) => result.count ?? 0,
+    );
+    return {
+      counts: { total, pending, verified, suspended, rejected },
+      error: null as string | null,
     };
-
-    (data as { status: string }[]).forEach((record) => {
-      if (record.status in counts) {
-        counts[record.status as keyof typeof counts]++;
-      }
-    });
-
-    return { counts, error: null as string | null };
   } catch (err) {
     if (isDynamicUsageError(err)) throw err;
     logActionError('countBusinessesByStatus', err);
@@ -256,6 +265,10 @@ export async function countBusinessesByStatus(): Promise<{
 /**
  * Update business status
  */
+/** Shown to an admin who tries to verify a shop still in the wizard. */
+export const REGISTRATION_UNFINISHED_MESSAGE =
+  "This shop hasn't finished registering yet. It can be verified once the owner completes registration.";
+
 export async function updateBusinessStatus(
   businessId: string,
   status: 'pending' | 'verified' | 'suspended' | 'rejected',
@@ -271,6 +284,12 @@ export async function updateBusinessStatus(
       .single();
 
     if (error) {
+      // `businesses_verified_requires_registration`: the owner never finished
+      // the wizard's last step, so the shop is incomplete and stays hidden.
+      // Said plainly — the raw CHECK text means nothing to an admin.
+      if (error.code === '23514') {
+        return { business: null, error: REGISTRATION_UNFINISHED_MESSAGE };
+      }
       return { business: null, error: 'Failed to update business' };
     }
 

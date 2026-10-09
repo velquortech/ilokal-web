@@ -34,6 +34,7 @@ import type {
   BusinessVerificationStatus,
 } from '@/lib/types/business';
 import { BusinessActions } from './business-actions';
+import { isRegistrationUnfinished } from '@/lib/utils/registration';
 
 interface BusinessDocumentsTableProps {
   businesses: AdminBusinessWithMeta[];
@@ -82,9 +83,21 @@ function OriginBadge({ origin }: { origin?: BusinessOrigin }) {
 
 function VerificationStatusBadge({
   status,
+  registering,
 }: {
   status: BusinessVerificationStatus;
+  registering: boolean;
 }) {
+  // Before the status itself: an unfinished registration is `pending` in the
+  // database but is not awaiting review — there is nothing to approve yet.
+  if (registering) {
+    return (
+      <Badge variant="outline" className="text-muted-foreground gap-1">
+        <Clock className="size-3" />
+        Still registering
+      </Badge>
+    );
+  }
   if (status === 'verified') {
     return (
       <Badge
@@ -155,7 +168,10 @@ export function BusinessDocumentsTable({
         id: 'status',
         header: 'Status',
         cell: ({ row }) => (
-          <VerificationStatusBadge status={row.original.status} />
+          <VerificationStatusBadge
+            status={row.original.status}
+            registering={isRegistrationUnfinished(row.original)}
+          />
         ),
       },
       {
@@ -188,6 +204,7 @@ export function BusinessDocumentsTable({
             businessId={row.original.id}
             businessName={shopNameOf(row.original)}
             status={row.original.status}
+            registering={isRegistrationUnfinished(row.original)}
           />
         ),
       },

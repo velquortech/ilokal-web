@@ -326,6 +326,7 @@ describe('getAdminDashboardSummary — business counts by origin', () => {
       is: Mock;
       eq: Mock;
       gte: Mock;
+      not: Mock;
     };
     const node = (filters: string[]): Node => {
       const key = filters.length ? filters.join('+') : 'all';
@@ -337,6 +338,8 @@ describe('getAdminDashboardSummary — business counts by origin', () => {
           node([...filters, `${col}:${val}`]),
         ),
         gte: vi.fn(() => node([...filters, 'recent'])),
+        // registration_completed_at IS NOT NULL — scopes, no bucket of its own
+        not: vi.fn(() => node(filters)),
       };
     };
     return {

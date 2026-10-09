@@ -57,6 +57,8 @@ export type Business = {
    * question answers to this column.
    */
   origin: BusinessOrigin;
+  /** NULL while the owner is still registering — see `isRegistrationUnfinished`. */
+  registration_completed_at?: string | null;
   verification_docs_url: string[] | null;
   created_at: string | null;
   updated_at: string | null;

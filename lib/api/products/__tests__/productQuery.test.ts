@@ -425,6 +425,36 @@ describe('productQuery', () => {
       }
     });
 
+    it('resolves a registration photo path to a public url, leaving full urls alone', async () => {
+      const full =
+        'https://cdn.example/storage/v1/object/public/product-images/a.webp';
+      chainedMock.order.mockResolvedValueOnce({
+        data: [
+          { id: 'p1', image_url: 'biz-1/offering-1-0.webp' },
+          { id: 'p2', image_url: full },
+          { id: 'p3', image_url: null },
+        ],
+        error: null,
+      });
+      const getPublicUrl = vi.fn((path: string) => ({
+        data: {
+          publicUrl: `https://cdn.example/public/product-images/${path}`,
+        },
+      }));
+      Object.assign(mockSupabase, {
+        storage: { from: vi.fn(() => ({ getPublicUrl })) },
+      });
+
+      const result = await productQuery.getProductsByBusinessId('biz-1');
+
+      const products = 'products' in result ? (result.products ?? []) : [];
+      expect(products.map((p) => p.image_url)).toEqual([
+        'https://cdn.example/public/product-images/biz-1/offering-1-0.webp',
+        full,
+        null,
+      ]);
+    });
+
     it('should filter by status when provided', async () => {
       chainedMock.order.mockResolvedValueOnce({ data: [], error: null });
 

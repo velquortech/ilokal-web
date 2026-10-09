@@ -7,6 +7,7 @@ import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import { cache } from 'react';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { normalizeProductSale } from '@/lib/product-helper';
+import { publicStorageUrl } from '@/lib/utils/storage';
 import type {
   Product,
   ProductResponse,
@@ -22,6 +23,24 @@ import type {
 /**
  * Get paginated categories with optional search
  */
+/**
+ * `products.image_url` holds two shapes: the dashboard's upload action stores
+ * a full public url, while the registration wizard stores a bucket-relative
+ * path (like every current business write). The owner dashboard put the value
+ * straight into `<img src>`, so a registration photo became a RELATIVE url and
+ * 404'd. Resolved here, once, for every reader in this module.
+ */
+function withPublicImage<T extends { image_url?: string | null }>(
+  storage: Parameters<typeof publicStorageUrl>[0],
+  product: T,
+): T {
+  if (!product.image_url) return product;
+  return {
+    ...product,
+    image_url: publicStorageUrl(storage, 'product-images', product.image_url),
+  };
+}
+
 export async function getCategoriesPaginated(filters: CategoryFilters) {
   try {
     const {
@@ -407,7 +426,9 @@ export async function getProductsPaginated(
     }
 
     return {
-      products: ((data || []) as ProductResponse[]).map(normalizeProductSale),
+      products: ((data || []) as ProductResponse[]).map((product) =>
+        withPublicImage(supabase.storage, normalizeProductSale(product)),
+      ),
       total: count || 0,
       page,
       per_page,
@@ -440,7 +461,12 @@ export async function getProductById(id: string) {
       return { error: 'Product not found' as const };
     }
 
-    return { product: normalizeProductSale(data as ProductResponse) };
+    return {
+      product: withPublicImage(
+        supabase.storage,
+        normalizeProductSale(data as ProductResponse),
+      ),
+    };
   } catch (err) {
     console.error('[getProductById]', formatErrorForLog(err));
     return { error: 'Failed to fetch product' as const };
@@ -518,7 +544,11 @@ export const getProductsByBusinessId = cache(
         return { error: 'Failed to fetch business products' as const };
       }
 
-      return { products: (data || []) as typeof data };
+      return {
+        products: (data || []).map((product) =>
+          withPublicImage(supabase.storage, product),
+        ),
+      };
     } catch (err) {
       console.error('[getProductsByBusinessId]', formatErrorForLog(err));
       return { error: 'Failed to fetch business products' as const };

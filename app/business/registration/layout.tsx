@@ -4,6 +4,7 @@ import { getRegistrationSettings } from '@/lib/api/appSettings';
 import { MultiStepFormProvider } from './provider/registration-form-provider';
 import type { RawBusinessType } from './api/fetchCategories';
 import { redirect } from 'next/navigation';
+import { isRegistrationUnfinished } from '@/lib/utils/registration';
 
 export default async function RegistrationLayout({
   children,
@@ -12,7 +13,10 @@ export default async function RegistrationLayout({
 }) {
   const business = await getMyBusinesses();
 
-  if (business) {
+  // An owner whose submission failed part-way already HAS a business row, so
+  // only a FINISHED registration redirects; an unfinished one comes back here
+  // to complete it, from any device.
+  if (business && !isRegistrationUnfinished(business)) {
     redirect('/business');
   }
 

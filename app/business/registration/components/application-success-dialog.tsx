@@ -151,7 +151,8 @@ export function ApplicationSuccessDialog({
               <CardContent>
                 <ul className="text-muted-foreground list-inside list-disc space-y-1">
                   <li>Add opening hours and a contact number</li>
-                  <li>Put your first offering on the shop page</li>
+                  {/* Not "your first offering": the wizard just required one. */}
+                  <li>Fill out the rest of your catalogue</li>
                   <li>Publish a deal so you appear in the Deals feed</li>
                 </ul>
               </CardContent>

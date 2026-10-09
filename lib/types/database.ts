@@ -678,6 +678,7 @@ export type Database = {
           offering_mode: string
           origin: string
           owner_id: string
+          registration_completed_at: string | null
           shop_name: string
           source: string
           source_license: string | null
@@ -705,6 +706,7 @@ export type Database = {
           offering_mode?: string
           origin?: string
           owner_id: string
+          registration_completed_at?: string | null
           shop_name: string
           source?: string
           source_license?: string | null
@@ -732,6 +734,7 @@ export type Database = {
           offering_mode?: string
           origin?: string
           owner_id?: string
+          registration_completed_at?: string | null
           shop_name?: string
           source?: string
           source_license?: string | null
@@ -2320,6 +2323,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      complete_business_registration: {
+        Args: { p_business_id: string }
+        Returns: Database["public"]["Enums"]["verification_status"]
       }
       create_notification: {
         Args: {

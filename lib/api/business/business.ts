@@ -47,23 +47,41 @@ export async function createBusinessDraft(meta: BusinessDraftMeta) {
   const { shop_name, description, business_category, category_id, location } =
     meta;
 
-  // Insert the business row first so storage RLS policies can verify that the
-  // uploading user owns the business matching the folder name. File URL
-  // columns are nullable — they get filled by the per-file upload requests.
-  const { data: business, error: insertError } = await supabase
+  // An owner who already started registering (a submit failed part-way, on
+  // this device or another) gets that draft back, updated with what they just
+  // entered — never a second shop. `registration_completed_at` is the record
+  // of "unfinished" (see isRegistrationUnfinished); the client holds nothing.
+  const { data: draft, error: draftError } = await supabase
     .from('businesses')
-    .insert([
-      {
-        owner_id: user.id,
-        shop_name,
-        description,
-        business_category,
-        category_id,
-        location,
-      },
-    ])
-    .select()
-    .single();
+    .select('id')
+    .eq('owner_id', user.id)
+    .is('archived_at', null)
+    .is('registration_completed_at', null)
+    .maybeSingle();
+  if (draftError) throw draftError;
+
+  // Write the business row before any file, so storage RLS policies can verify
+  // that the uploading user owns the business matching the folder name. File URL
+  // columns are nullable — they get filled by the per-file upload requests.
+  const fields = {
+    shop_name,
+    description,
+    business_category,
+    category_id,
+    location,
+  };
+  const { data: business, error: insertError } = draft
+    ? await supabase
+        .from('businesses')
+        .update(fields)
+        .eq('id', draft.id)
+        .select()
+        .single()
+    : await supabase
+        .from('businesses')
+        .insert([{ owner_id: user.id, ...fields }])
+        .select()
+        .single();
   if (insertError) throw insertError;
 
   // Create a branch so the business appears in nearby searches.
@@ -95,7 +113,16 @@ export async function createBusinessDraft(meta: BusinessDraftMeta) {
     branchPayload.location = `POINT(${lng} ${lat})`;
   }
 
-  await supabase.from('branches').insert(branchPayload);
+  // The draft already has its registration branch; keep it in step with the
+  // address the owner just re-entered rather than adding another.
+  if (draft) {
+    await supabase
+      .from('branches')
+      .update(branchPayload)
+      .eq('business_id', business.id);
+  } else {
+    await supabase.from('branches').insert(branchPayload);
+  }
 
   return business;
 }
@@ -189,9 +216,12 @@ export async function uploadBusinessRegistrationFile(
         `${businessId}/interior-${ts}-${index}.webp`,
         IMAGE_PRESETS.hero,
       );
-      // Client uploads sequentially, so read-modify-write is race-free here.
+      // Written to slot `index`, dropping everything after it, rather than
+      // appended: a submission resumed after a reload re-sends every photo
+      // from index 0, and appending turned that into a doubled gallery. The
+      // client uploads sequentially, so read-modify-write is race-free here.
       const existing: string[] = business.interior_images ?? [];
-      update = { interior_images: [...existing, path] };
+      update = { interior_images: [...existing.slice(0, index), path] };
       break;
     }
     case 'business_license': {

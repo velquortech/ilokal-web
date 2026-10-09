@@ -59,7 +59,10 @@ export function RegistrationNav({
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.replace(ROUTES.BUSINESS.home)}
+            // The site's landing page, not the business dashboard: an owner on
+            // step 1 has no finished shop yet, so /business would send them
+            // straight back here and the button would look dead.
+            onClick={() => router.replace(ROUTES.DASHBOARD.HOME)}
             disabled={isSubmitting}
           >
             <ChevronLeft className="mr-2 h-4 w-4" />

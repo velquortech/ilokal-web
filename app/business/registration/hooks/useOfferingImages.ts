@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { getFiles, putFiles, removeFiles, MAX_CACHE_BYTES } from './fileCache';
 
 /**
@@ -41,6 +41,10 @@ export interface OfferingImages {
 export function useOfferingImages(): OfferingImages {
   const filesRef = useRef<Map<string, File>>(new Map());
   const [cached, setCached] = useState(true);
+  // The Map is a ref, so filling it re-renders nothing. `hydrate` resolves
+  // after the menu step has drawn its rows, and without this bump every
+  // restored photo stayed blank until some unrelated keystroke re-rendered.
+  const [, setVersion] = useState(0);
 
   /**
    * IMG4 — the cache's own 25 MB ceiling is measured PER FIELD KEY, and each
@@ -102,6 +106,7 @@ export function useOfferingImages(): OfferingImages {
         }),
       );
       recomputeCacheHealth();
+      setVersion((v) => v + 1);
     },
     [recomputeCacheHealth],
   );
@@ -109,7 +114,6 @@ export function useOfferingImages(): OfferingImages {
   // Nothing to clean up on unmount: the blobs are the owner's work in progress
   // and the wizard remounts across steps. `clearCache()` on a completed
   // registration is what clears the store.
-  useEffect(() => undefined, []);
 
   return { set, get, remove, hydrate, cached };
 }

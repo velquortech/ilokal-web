@@ -121,7 +121,15 @@ VALUES
                WHERE name='Tourism & Leisure' AND NOT is_active)),
 
   ('20260814000000','taxonomy_cleanup','DATA-ONLY','business_categories has ''Sari-sari / Convenience Store''',
-   EXISTS (SELECT 1 FROM public.business_categories WHERE name='Sari-sari / Convenience Store'))
+   EXISTS (SELECT 1 FROM public.business_categories WHERE name='Sari-sari / Convenience Store')),
+
+  -- The column alone is not enough: the app needs the RPC to finish a
+  -- registration, and without the CHECK a half-saved shop can still be verified.
+  ('20261009000000','registration_completion','column+fn','businesses.registration_completed_at + complete_business_registration() + verify CHECK',
+   EXISTS (SELECT 1 FROM information_schema.columns
+           WHERE table_schema='public' AND table_name='businesses' AND column_name='registration_completed_at')
+   AND EXISTS (SELECT 1 FROM pg_proc WHERE proname='complete_business_registration')
+   AND EXISTS (SELECT 1 FROM pg_constraint WHERE conname='businesses_verified_requires_registration'))
 )
 SELECT
   p.version,

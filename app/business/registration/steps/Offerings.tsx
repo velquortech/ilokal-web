@@ -108,21 +108,6 @@ export function ShopOfferings() {
   const atCap = fields.length >= MAX_REGISTRATION_OFFERINGS;
   const singular = vocabulary.singular.toLowerCase();
 
-  // A reload restores the rows from localStorage but not the photo blobs —
-  // those live in IndexedDB, keyed per row. Pull them back for the rows that
-  // still exist.
-  useEffect(() => {
-    const uids = form
-      .getValues('offerings')
-      ?.map((item) => item?.uid)
-      .filter((uid): uid is string => Boolean(uid));
-    if (uids?.length) void offeringImages.hydrate(uids);
-    // Deliberately mount-only: this restores what the cache already holds for
-    // the rows the form was rehydrated with. Re-running it on every change
-    // would re-read IndexedDB on every keystroke and could resurrect a photo
-    // the owner just removed.
-  }, [form, offeringImages]);
-
   const addDraft = () => {
     const name = draftName.trim();
     if (!name) {

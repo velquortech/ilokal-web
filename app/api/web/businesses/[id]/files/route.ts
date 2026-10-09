@@ -24,7 +24,8 @@ const kindSchema = z.enum([
 ]);
 
 // POST: /api/web/businesses/[id]/files — multipart with `kind`, `file`, and
-// (for interior_image) an optional `index` used only for filename uniqueness.
+// (for interior_image) an optional `index`: the photo's slot in the gallery,
+// so a resumed submission overwrites instead of appending a second copy.
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -54,7 +55,7 @@ export async function POST(
       );
     }
 
-    const index = Number(formData.get('index') ?? 0) || 0;
+    const index = Math.max(0, Math.trunc(Number(formData.get('index')) || 0));
     const business = await uploadBusinessRegistrationFile(
       id,
       kindResult.data as RegistrationFileKind,

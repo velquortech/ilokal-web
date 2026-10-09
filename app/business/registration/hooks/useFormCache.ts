@@ -50,6 +50,8 @@ interface CachedData {
      * quota.
      */
     offerings?: BusinessProps['offerings'];
+    /** Small JSON like the menu; its optional photo is keyed by `deal.uid`. */
+    deal?: BusinessProps['deal'];
     fileMetadata?: {
       [K in keyof Pick<
         BusinessProps,
@@ -97,6 +99,7 @@ export function useFormCache(form: UseFormReturn<BusinessProps>) {
         description: values.description,
         location: values.location,
         offerings: values.offerings,
+        deal: values.deal,
       };
 
       // Store file metadata (names, sizes) but not the actual file content
@@ -312,6 +315,9 @@ export function useFormCache(form: UseFormReturn<BusinessProps>) {
           }
           if (Array.isArray(data.offerings)) {
             form.setValue('offerings', data.offerings);
+          }
+          if (data.deal) {
+            form.setValue('deal', data.deal);
           }
 
           // Restore files if metadata exists

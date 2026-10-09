@@ -38,6 +38,7 @@ export function ShopGallery() {
           Banner Guidelines:
         </p>
         <ul className="text-foreground list-inside list-disc space-y-1 text-sm">
+          <li>Skip this upload to use the iLokal banner design</li>
           <li>Use a wide landscape photo — banners are shown full-width</li>
           <li>Minimum dimensions: 1200x400 pixels (or wider)</li>
           <li>Keep important content away from the top and bottom edges</li>
@@ -219,7 +220,7 @@ function ShopBanner() {
       render={({ fieldState }) => (
         <Field data-invalid={fieldState.invalid}>
           <div className="h-max flex-col">
-            <h2 className="mb-6 font-semibold">Shop Banner</h2>
+            <h2 className="mb-6 font-semibold">Shop Banner (Optional)</h2>
 
             <div
               className="border-border hover:border-primary hover:bg-muted/50 cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors sm:p-12"
@@ -280,9 +281,12 @@ function ShopBanner() {
                   </div>
 
                   <div>
-                    <p className="mb-1 font-medium">Upload your banner</p>
+                    <p className="mb-1 font-medium">
+                      Upload your banner (optional)
+                    </p>
                     <p className="text-muted-foreground text-sm">
-                      PNG, JPG or SVG (max. 2MB) — wide landscape works best
+                      Leave empty to use the iLokal banner design. PNG, JPG or
+                      SVG (max. 2MB).
                     </p>
                   </div>
 
@@ -338,6 +342,8 @@ function ShopBanner() {
     />
   );
 }
+
+const photoKey = (file: File) => `${file.name}:${file.size}`;
 
 function InteriorImageItem({
   file,
@@ -410,9 +416,9 @@ function InteriorImages() {
     setSizeError(null);
     setBusy(true);
 
-    // Compressed BEFORE the size filter. This step asks for at least FOUR
-    // photos of the shop, and a phone takes 3–6 MB pictures — so the filter
-    // used to drop most of what an owner selected and report a count, which is
+    // Compressed BEFORE the size filter. A phone takes 3–6 MB pictures, and
+    // without compression the filter used to drop most selections and report a
+    // count, which is
     // the least useful thing it could say at the moment it happens.
     const processed = await Promise.all(
       allFiles.map((file) =>
@@ -431,21 +437,42 @@ function InteriorImages() {
       (result) => result.file.size > MAX_FILE_SIZE,
     );
 
+    // The same photo picked twice used to count twice toward the photo
+    // minimum — and its two previews shared a React key, so one could vanish.
+    // Name + size identifies it: compression is deterministic per input.
+    const currentFiles = form.getValues('interior_images') || [];
+    const seen = new Set(currentFiles.map(photoKey));
+    const freshFiles = validFiles.filter((file) => {
+      const key = photoKey(file);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    const duplicates = validFiles.length - freshFiles.length;
+
+    const problems: string[] = [];
     if (rejected.length > 0) {
       // Names the actual reason for the first failure rather than restating
       // the rule: HEIC and animation are unfixable by trying again, and the
       // owner cannot tell which they hit from a size message.
       const reason = describeCompression(rejected[0], '2 MB');
-      setSizeError(
+      problems.push(
         rejected.length === 1
           ? (reason ?? 'That image could not be added.')
           : `${rejected.length} images could not be added. ${reason ?? ''}`.trim(),
       );
     }
+    if (duplicates > 0) {
+      problems.push(
+        duplicates === 1
+          ? 'That photo is already added.'
+          : `${duplicates} photos were already added.`,
+      );
+    }
+    if (problems.length > 0) setSizeError(problems.join(' '));
 
-    if (validFiles.length > 0) {
-      const currentFiles = form.getValues('interior_images') || [];
-      const newFiles = [...currentFiles, ...validFiles];
+    if (freshFiles.length > 0) {
+      const newFiles = [...currentFiles, ...freshFiles];
       form.setValue('interior_images', newFiles, { shouldValidate: true });
       cacheFiles('interior_images', newFiles);
     }
@@ -488,7 +515,7 @@ function InteriorImages() {
               {interiorImages.length > 0 ? (
                 interiorImages.map((file: File, index: number) => (
                   <InteriorImageItem
-                    key={`${file.name}-${file.size}-${file.lastModified}`}
+                    key={photoKey(file)}
                     file={file}
                     index={index}
                     onRemove={handleRemoveImage}
@@ -503,7 +530,7 @@ function InteriorImages() {
                   <div>
                     <p className="mb-1 font-medium">Add Interior Images</p>
                     <p className="text-muted-foreground text-sm">
-                      PNG, JPG or SVG (max. 2MB)
+                      Add at least one shop photo · PNG, JPG or SVG (max. 2MB)
                     </p>
                   </div>
 

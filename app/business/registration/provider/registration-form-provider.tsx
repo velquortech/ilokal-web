@@ -42,6 +42,7 @@ type ContextType = {
   prevStep: () => void;
   canProceed: boolean;
   form: UseFormReturn<BusinessProps>;
+  /** Forget the whole draft — field values, files AND the saved step. */
   clearFormCache: () => void;
   cacheFile: (fieldName: string, file: File) => Promise<void>;
   cacheFiles: (fieldName: string, files: File[]) => Promise<void>;
@@ -72,6 +73,8 @@ type ContextType = {
    */
   offeringImages: OfferingImages;
 };
+
+const STEP_CACHE_KEY = 'ilokal-registration-step';
 
 const multiStepFormContext = createContext<ContextType | null>(null);
 
@@ -187,21 +190,42 @@ export function MultiStepFormProvider({
   });
 
   const offeringImages = useOfferingImages();
+  const hydrateOfferingImages = offeringImages.hydrate;
 
   const {
-    clearCache: clearFormCache,
+    clearCache: clearFieldCache,
     cacheFile,
     cacheFiles,
     clearFileCache,
     isHydrated,
   } = useFormCache(form);
 
+  // A reload restores the offering and deal rows from localStorage, but their
+  // photos live in IndexedDB keyed by each row's uid. Pulled back once, here
+  // rather than in a step: the draft can be restored straight onto Review, and
+  // Submit uploads whatever this map holds — a step-level restore meant those
+  // photos were silently dropped unless the owner happened to revisit the step.
+  useEffect(() => {
+    if (!isHydrated) return;
+    const { offerings, deal } = form.getValues();
+    const uids = [
+      ...(offerings ?? []).map((item) => item?.uid),
+      deal?.uid,
+    ].filter((uid): uid is string => Boolean(uid));
+    if (uids.length) void hydrateOfferingImages(uids);
+  }, [isHydrated, form, hydrateOfferingImages]);
+
+  const clearFormCache = () => {
+    clearFieldCache();
+    if (typeof window !== 'undefined') localStorage.removeItem(STEP_CACHE_KEY);
+  };
+
   // Restore step from cache on mount (synchronously before paint). Clamp to
   // the current step count — a cached step 5 from the docs-required flow must
   // not overshoot when the flag turns documents off (4 steps).
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
-    const savedStep = localStorage.getItem('ilokal-registration-step');
+    const savedStep = localStorage.getItem(STEP_CACHE_KEY);
     if (savedStep) {
       const stepNum = parseInt(savedStep, 10);
       if (Number.isInteger(stepNum) && stepNum >= 1) {
@@ -213,7 +237,7 @@ export function MultiStepFormProvider({
   // Persist step to cache
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    localStorage.setItem('ilokal-registration-step', step.toString());
+    localStorage.setItem(STEP_CACHE_KEY, step.toString());
   }, [step]);
 
   // Funnel: which step is on screen. Fired on mount (with the restored step)

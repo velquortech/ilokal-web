@@ -1,5 +1,16 @@
 # CLAUDE.md — iLokal Web
 
+> **Ledger re-checked 2026-10-10** (`supabase_migrations.schema_migrations` on
+> cloud vs `supabase/migrations/`, both directions): cloud has every local
+> version EXCEPT these 8, and nothing cloud-only. **They must ship with the
+> code that needs them, in one release, never before it:** the 7
+> directory-provenance migrations `20261001000000`–`20261003030000`
+> (`businesses.origin` etc.) and `20261009000000_registration_completion`.
+> The registration code reads `origin` and calls
+> `complete_business_registration()`. Pushing early would also strand new
+> owner signups as hidden drafts under the old wizard. This is a LEDGER
+> check; the object-level caveats below still apply to older versions.
+>
 > **⚠️ Cloud sync was VERIFIED on 2026-08-10 through `20260808090000` ONLY.**
 > At that date every migration after `20260717082537` was confirmed applied to
 > `ilokal-database` by object existence, cross-checked with

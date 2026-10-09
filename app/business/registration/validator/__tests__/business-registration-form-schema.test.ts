@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   locationSchema,
+  step1Schema,
   step2Schema,
+  step3Schema,
 } from '../business-registration-form-schema';
 
 const validLocation = {
@@ -184,5 +186,62 @@ describe('step2Schema (shop info fields)', () => {
       location: { ...validLocation, zip_code: 'not-a-zip' },
     });
     expect(result.success).toBe(false);
+  });
+});
+
+const image = (name: string) =>
+  new File(['bytes'], name, { type: 'image/png' });
+
+describe('step3Schema (gallery is gated on its own step)', () => {
+  it('accepts a logo, no uploaded banner, and one interior photo', () => {
+    const result = step3Schema.safeParse({
+      shop_logo: image('logo.png'),
+      shop_banner: undefined,
+      interior_images: [image('inside.png')],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a missing logo instead of deferring it to Submit', () => {
+    const result = step3Schema.safeParse({
+      shop_logo: undefined,
+      shop_banner: undefined,
+      interior_images: [image('inside.png')],
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].path).toEqual(['shop_logo']);
+  });
+
+  it('rejects an empty interior gallery', () => {
+    const result = step3Schema.safeParse({
+      shop_logo: image('logo.png'),
+      shop_banner: undefined,
+      interior_images: [],
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].path).toEqual(['interior_images']);
+  });
+});
+
+// Existing submit tests continue to pin all related behavior.
+
+describe('step1Schema (business category)', () => {
+  it('rejects a restored custom category on step 1, not at Submit', () => {
+    const result = step1Schema.safeParse({
+      business_category: { type: 'custom', name: 'Weird', description: 'x' },
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].path).toEqual(['business_category']);
+  });
+
+  it('accepts a predefined category', () => {
+    const result = step1Schema.safeParse({
+      business_category: {
+        id: '1c772728-189e-4eac-a61a-029382a396aa',
+        type: 'predefined',
+        name: 'Café',
+      },
+    });
+    expect(result.success).toBe(true);
   });
 });

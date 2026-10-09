@@ -33,6 +33,16 @@ export async function registerBusiness(
   return await apiClient.post('/api/web/businesses', meta);
 }
 
+/** Final phase — ask the DB to validate and persist completion/status. */
+export async function completeRegistration(
+  businessId: string,
+): Promise<{ status: string }> {
+  return await apiClient.post(
+    `/api/web/businesses/${businessId}/complete-registration`,
+    {},
+  );
+}
+
 /**
  * Phase 3 — the menu entered in the wizard.
  *

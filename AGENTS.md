@@ -31,10 +31,15 @@ hard-won, non-obvious ones.
   servers. Recipe: `docs/runbooks/worktree-cleanup.md`.
 - Local DB: `docker exec supabase_db_ilokal-web psql -U postgres -d postgres`.
   Delete throwaway signups with `DELETE FROM auth.users WHERE email LIKE ...`
-  (cascades to businesses).
-- Test owner: `mobilecheck@ilokal.dev` / `MobileCheck123`, business
-  `a0f4ecae-a200-48e3-b860-017075930936`. Sign-in URL is `/sign-in` (NOT
-  `/signin`); fields `#email` / `#password` + `button[type=submit]`.
+  — but only after deleting their `businesses` rows; it does NOT cascade.
+- Test owner `mobilecheck@ilokal.dev` is GONE from the local DB (checked
+  2026-10-09). Make a throwaway owner instead: `POST /api/auth/signup` forces
+  role `app_user` whatever you send, so follow it with
+  `UPDATE profiles SET role='business_owner' WHERE id=…` before
+  `/business/registration` will admit it. Clean up by deleting its
+  `businesses` rows FIRST — `businesses_owner_id_fkey` blocks the user delete.
+  Sign-in URL is `/sign-in` (NOT `/signin`); fields `#email` / `#password` +
+  `button[type=submit]`.
 - `yarn tsc --noEmit 2>&1 | tail -5; echo $?` reports TAIL's exit — use
   `echo ${PIPESTATUS[0]}` or type errors hide behind a false green.
 

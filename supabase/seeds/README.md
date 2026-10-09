@@ -21,7 +21,12 @@ make seed            # = seed-storage (storage objects) + seed-db (SQL rows)
 - `make seed-db` runs the **full** list in order — curated files, then
   `events.sql`, `follows.sql`, `bulk_seed.sql`, `view_counts.sql`, and finally
   `real_world_gaps.sql` (the gaps file must run **last**: it nulls images, and
-  `bulk_seed`'s migration UPDATEs re-point rows before it).
+  `bulk_seed`'s migration UPDATEs re-point rows before it), then
+  `refresh_freshness.sql` — the seed-freshness pass: any seed-family coupon
+  whose promo window has slid into the past is re-dated relative to `NOW()` so
+  a dev DB applied a month ago still has a live Promos feed. Idempotent,
+  `published`-only, and scoped to the seed UUID families (`44444444…`,
+  `f2000000…`) so hand-created rows are never re-dated.
 - `make seed-storage` uploads storage objects **before** `seed-db` so every
   path the SQL rows reference already exists.
 

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { DEFAULT_SHOP_BANNER_SRC } from '@/config/defaultBanner';
 import { notFound } from 'next/navigation';
 import { MapPin, Star, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -125,16 +126,29 @@ export default async function PublicBusinessPage({
 
   return (
     <div className="flex flex-1 flex-col space-y-6">
-      {/* Hero. A shop with no banner gets the SAME id-derived brand tone it had
-          in the directory grid — colour is this shop's identity, so it has to
-          survive the click. The washed `bg-primary/10` block with a faint mark
-          floating in it that used to live here read as a broken image. */}
+      {/* Hero. Its own banner first. Without one, an OWNER-registered shop
+          shows the default iLokal cover — the same one its owner previews on
+          "Your shop page", so what they were told customers see is what
+          customers see. An admin-seeded directory listing instead keeps the
+          id-derived brand tone it had in the grid: colour is that listing's
+          identity, and it has to survive the click. */}
       <div className="relative h-40 w-full overflow-hidden rounded-2xl sm:h-56">
         {business.banner_url ? (
           // SafeImage: unoptimized storage WebP + broken-image fallback (a
           // deleted banner shows the placeholder instead of the broken glyph).
           <SafeImage
             src={business.banner_url}
+            alt=""
+            fill
+            sizes="(max-width: 1152px) 100vw, 1152px"
+            className="object-cover"
+            priority
+          />
+        ) : business.origin === 'owner' ? (
+          // A static asset shipped with the app — SafeImage anyway, so even a
+          // bad deploy shows the fallback rather than a broken-image glyph.
+          <SafeImage
+            src={DEFAULT_SHOP_BANNER_SRC}
             alt=""
             fill
             sizes="(max-width: 1152px) 100vw, 1152px"

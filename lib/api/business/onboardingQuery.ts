@@ -205,8 +205,12 @@ export async function getOnboardingProgress(
       {
         id: 'profile',
         label: 'Complete your shop profile',
+        // The banner is optional at registration (the shop shows the default
+        // iLokal cover), so it stays here as the one nudge to replace that
+        // shared placeholder — and the copy says so, rather than reading as
+        // a step the owner skipped by mistake.
         detail:
-          'Logo, banner and a description — the first thing a shopper sees.',
+          'Your logo, a description, and your own banner in place of the iLokal placeholder — the first thing a shopper sees.',
         done:
           isFilled(business.logo_url) &&
           isFilled(business.banner_url) &&

@@ -1,3 +1,4 @@
+import type { BusinessOrigin } from './business';
 /**
  * Customer-portal domain types (public /explore + protected /customer).
  * All shapes are what the customer queries return AFTER storage-URL
@@ -100,6 +101,12 @@ export interface PublicBusinessProfile {
   description: string | null;
   logo_url: string | null;
   banner_url: string | null;
+  /**
+   * Who listed it. An owner-registered shop with no banner shows the default
+   * iLokal cover (what its owner previews); an admin-seeded directory listing
+   * keeps its id-derived brand tone, matching its grid card.
+   */
+  origin: BusinessOrigin;
   interior_images: string[];
   category_name: string | null;
   branches: PublicBranch[];

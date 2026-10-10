@@ -7,6 +7,7 @@ import { buildPromoRequest } from './promo-templates';
 import { updateCouponAction } from '../../actions/couponActions';
 import { uploadProductImageAction } from '../../actions/productActions';
 import type { Coupon, ProductResponse } from '@/lib/types';
+import { useBusinessId } from '@/providers/BusinessProvider';
 
 interface UpdateCouponDialogProps {
   coupon: Coupon;
@@ -19,6 +20,7 @@ export function UpdateCouponDialog({
   products,
   children,
 }: UpdateCouponDialogProps) {
+  const businessId = useBusinessId();
   const filteredProducts = coupon.branch_id
     ? products.filter((p) => p.branch_id === coupon.branch_id)
     : products;
@@ -40,7 +42,7 @@ export function UpdateCouponDialog({
           if (image instanceof File) {
             const fd = new FormData();
             fd.append('file', image);
-            const uploadResult = await uploadProductImageAction(fd);
+            const uploadResult = await uploadProductImageAction(businessId, fd);
             if (!uploadResult.success) {
               return {
                 ok: false,
@@ -57,7 +59,11 @@ export function UpdateCouponDialog({
           // did not pick a new one.
           if (!(image instanceof File)) delete request.image_url;
 
-          const result = await updateCouponAction(coupon.id, request);
+          const result = await updateCouponAction(
+            businessId,
+            coupon.id,
+            request,
+          );
           if (!result.success) {
             return {
               ok: false,

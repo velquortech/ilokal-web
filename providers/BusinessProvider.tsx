@@ -79,3 +79,14 @@ export const useBusinessShop = () => {
   }
   return context;
 };
+
+/**
+ * The id of the shop this dashboard is showing — the one the layout verified
+ * from the `/business/[businessId]` route. Pass it to every business Server
+ * Action; they no longer guess at "the owner's shop", which for an owner of two
+ * shops was an arbitrary one.
+ *
+ * '' when no shop is loaded (pre-registration) rather than a throw: the actions
+ * reject an empty id with a VALIDATION_ERROR, never fall back to another shop.
+ */
+export const useBusinessId = (): string => useBusinessShop().business?.id ?? '';

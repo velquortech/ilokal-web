@@ -7,7 +7,7 @@ import { PromoFormDialog } from './promo-form-dialog';
 import { buildPromoRequest } from './promo-templates';
 import { createCouponAction } from '../../actions/couponActions';
 import { uploadProductImageAction } from '../../actions/productActions';
-import { useBusinessShop } from '@/providers/BusinessProvider';
+import { useBusinessShop, useBusinessId } from '@/providers/BusinessProvider';
 import type { Coupon, ProductResponse } from '@/lib/types';
 
 interface AddCouponDialogProps {
@@ -28,6 +28,7 @@ export function AddCouponDialog({
   initial = null,
   onSuccess,
 }: AddCouponDialogProps) {
+  const businessId = useBusinessId();
   const { selectedBranchId } = useBusinessShop();
   const celebrate = useCelebrate();
 
@@ -54,7 +55,7 @@ export function AddCouponDialog({
           if (image instanceof File) {
             const fd = new FormData();
             fd.append('file', image);
-            const uploadResult = await uploadProductImageAction(fd);
+            const uploadResult = await uploadProductImageAction(businessId, fd);
             if (!uploadResult.success) {
               return {
                 ok: false,
@@ -65,6 +66,7 @@ export function AddCouponDialog({
           }
 
           const result = await createCouponAction(
+            businessId,
             buildPromoRequest(values, {
               imageUrl: image_url,
               branchId: selectedBranchId ?? null,

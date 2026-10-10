@@ -36,6 +36,7 @@ vi.mock('@/app/business/[businessId]/actions/productActions', () => actions);
 
 vi.mock('@/providers/BusinessProvider', () => ({
   useBusinessShop: () => ({ selectedBranchId: null }),
+  useBusinessId: () => '11111111-1111-4111-8111-111111111111',
 }));
 
 vi.mock('sonner', () => ({
@@ -214,6 +215,7 @@ describe('AddProductDialog category picker', () => {
       await Promise.resolve();
     });
     expect(actions.createProductAction).toHaveBeenCalledWith(
+      '11111111-1111-4111-8111-111111111111',
       expect.objectContaining({ category_id: null }),
     );
   });

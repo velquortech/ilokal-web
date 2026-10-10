@@ -64,7 +64,10 @@ beforeEach(() => {
 });
 
 function params(sp: Record<string, string | string[] | undefined>) {
-  return { searchParams: Promise.resolve(sp) };
+  return {
+    params: Promise.resolve({ businessId: BUSINESS_ID }),
+    searchParams: Promise.resolve(sp),
+  };
 }
 
 describe('ProductCataloguesPage searchParams passthrough', () => {

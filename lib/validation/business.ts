@@ -239,10 +239,11 @@ export const uuidSchema = z.object({
 /**
  * A bare business id, for callers that hold the value rather than an object.
  *
- * Worth its own export because `verifyBusinessOwner(businessId?)` treats a
- * FALSY id as "no argument" and falls back to whichever shop `.limit(1)`
- * returns — so an unvalidated `''` reaching it authorizes against the wrong
- * shop for an owner who holds two. Validate before the call, not after.
+ * Worth its own export because `verifyBusinessOwner` used to treat a FALSY id
+ * as "no argument" and fall back to whichever shop `.limit(1)` returned — so
+ * an unvalidated `''` authorized against the wrong shop for an owner who held
+ * two. The helper now rejects one itself; validating first still gives the
+ * caller a clean error before any lookup.
  */
 export const businessIdSchema = z.guid('Invalid business ID format');
 

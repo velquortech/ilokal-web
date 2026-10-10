@@ -8,15 +8,22 @@ type AuthContext = {
 };
 
 /**
- * Verify the current session (or provided auth context) is a business owner for the
- * given `businessId`. If `businessId` is omitted the function falls back to
- * locating the business owned by the current session user (legacy behavior).
+ * Verify the current session (or provided auth context) is a business owner for
+ * the given `businessId` — that shop, and no other.
+ *
+ * `businessId` is required. It used to be optional, with a missing or falsy id
+ * meaning "find the caller's shop" via `.eq('owner_id', …).limit(1)` and no
+ * ORDER BY: for an owner with two shops that authorized an arbitrary one, and
+ * every caller that forgot the id (or passed '') acted on the wrong shop —
+ * coupons, branches and products filed under the other shop's name. A missing
+ * id is now a VALIDATION_ERROR, so the only way to be authorized is to name
+ * the shop; callers take it from the route segment.
  *
  * Returns { authorized: true, user, business } on success or an error payload
  * suitable for returning from a route handler on failure.
  */
 export async function verifyBusinessOwner(
-  businessId?: string,
+  businessId: string,
   auth?: AuthContext,
 ): Promise<{
   authorized: boolean;
@@ -27,75 +34,12 @@ export async function verifyBusinessOwner(
   business?: { id: string };
 }> {
   try {
-    const supabase = await createServerSupabaseClient();
-
-    // If no businessId provided, keep legacy behavior: find business by current session user
-    if (!businessId) {
-      // If auth context isn't provided, fetch session user
-      if (!auth) {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          return {
-            authorized: false,
-            error: {
-              code: 'AUTHENTICATION_ERROR',
-              message: 'You must be logged in',
-            },
-          };
-        }
-
-        const { data: business } = await supabase
-          .from('businesses')
-          .select('id')
-          .eq('owner_id', user.id)
-          .is('archived_at', null)
-          .limit(1)
-          .maybeSingle();
-
-        if (!business) {
-          return {
-            authorized: false,
-            error: { code: 'NOT_FOUND', message: 'Business not found' },
-          };
-        }
-
-        return {
-          authorized: true,
-          user: { id: user.id },
-          business: { id: business.id },
-        };
-      }
-
-      // auth provided, find business owned by auth.user
-      const { data: business } = await supabase
-        .from('businesses')
-        .select('id')
-        .eq('owner_id', auth.user.id)
-        .is('archived_at', null)
-        .limit(1)
-        .maybeSingle();
-
-      if (!business) {
-        return {
-          authorized: false,
-          error: { code: 'NOT_FOUND', message: 'Business not found' },
-        };
-      }
-
-      return {
-        authorized: true,
-        user: { id: auth.user.id },
-        business: { id: business.id },
-      };
-    }
-
     // Validate UUID format for businessId
     const uuidRegex =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(businessId)) {
+    // Also the gate for a missing id: '' and undefined fail it, so neither can
+    // reach a query that is not scoped to one shop.
+    if (typeof businessId !== 'string' || !uuidRegex.test(businessId)) {
       return {
         authorized: false,
         error: {
@@ -104,6 +48,8 @@ export async function verifyBusinessOwner(
         },
       };
     }
+
+    const supabase = await createServerSupabaseClient();
 
     const { data: business, error } = await supabase
       .from('businesses')

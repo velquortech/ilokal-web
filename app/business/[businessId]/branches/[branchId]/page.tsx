@@ -7,7 +7,7 @@ type Params = Promise<{ businessId: string; branchId: string }>;
 export default async function BranchDetailPage({ params }: { params: Params }) {
   const { businessId, branchId } = await params;
 
-  const result = await getBusinessBranchByIdAction(branchId);
+  const result = await getBusinessBranchByIdAction(businessId, branchId);
 
   if (!result.success || !result.data) {
     notFound();

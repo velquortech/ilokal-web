@@ -13,11 +13,17 @@ type SearchParams = Promise<{
 }>;
 
 export default async function BranchesPage({
+  params: routeParams,
   searchParams,
 }: {
+  params: Promise<{ businessId: string }>;
   searchParams: SearchParams;
 }) {
-  const params = await searchParams;
+  // The shop is the one in the URL — the layout has already verified it.
+  const [{ businessId }, params] = await Promise.all([
+    routeParams,
+    searchParams,
+  ]);
 
   const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1);
   const perPage = Math.min(
@@ -36,8 +42,8 @@ export default async function BranchesPage({
   };
 
   const [branchesResult, statsResult] = await Promise.all([
-    getBusinessBranchesAction(filters),
-    getBusinessBranchStatsAction(),
+    getBusinessBranchesAction(businessId, filters),
+    getBusinessBranchStatsAction(businessId),
   ]);
 
   const paginatedData = branchesResult.success

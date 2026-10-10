@@ -4,11 +4,11 @@
  * Onboarding state — business-owner Server Actions.
  *
  * Both exports are publicly invocable endpoints, so each one validates the id's
- * shape, proves ownership of THAT shop with the **route segment's** id (never a
- * `verifyBusinessOwner()` with no argument, which falls back to whichever shop
- * `.limit(1)` returns and files a two-shop owner's answer against the wrong
- * one), and passes a per-user flood guard — Server-Action POSTs never reach the
- * proxy's rate limiter.
+ * shape, proves ownership of THAT shop with the **route segment's** id (the
+ * helper used to accept no id and fall back to whichever shop `.limit(1)`
+ * returned, filing a two-shop owner's answer against the wrong one), and
+ * passes a per-user flood guard — Server-Action POSTs never reach the proxy's
+ * rate limiter.
  *
  * Deliberately NOT behind `enable_onboarding_tour`: a shop that answered the
  * tour while the flag was on must still be able to record a dismissal if an
@@ -47,11 +47,10 @@ function fail(code: string, message: string): ApiResponse<never> {
 }
 
 async function guard(businessId: string): Promise<Guard> {
-  // BEFORE `verifyBusinessOwner`, not inside it: that helper treats a FALSY id
-  // as "no argument" and falls back to whichever shop `.limit(1)` returns, so
-  // an empty string from a caller would authorize — and then stamp — the wrong
-  // shop for an owner who holds two. Exactly the multi-shop bug the event
-  // actions shipped with, reachable here through a publicly invocable endpoint.
+  // BEFORE `verifyBusinessOwner`, so a bad id is a clean VALIDATION_ERROR with
+  // no lookup at all. The helper rejects one too now; it used to read a FALSY
+  // id as "no argument" and authorize whichever shop `.limit(1)` returned —
+  // the multi-shop bug the event actions shipped with.
   if (!businessIdSchema.safeParse(businessId).success) {
     return {
       ok: false,

@@ -17,6 +17,7 @@ import type { ProductResponse } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { deleteProductAction } from '../../actions/productActions';
+import { useBusinessId } from '@/providers/BusinessProvider';
 
 interface DeleteProductDialogProps {
   product: ProductResponse;
@@ -27,6 +28,7 @@ export function DeleteProductDialog({
   product,
   children,
 }: DeleteProductDialogProps) {
+  const businessId = useBusinessId();
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
@@ -36,7 +38,7 @@ export function DeleteProductDialog({
     setIsDeleting(true);
     setServerError(null);
     try {
-      const result = await deleteProductAction(product.id);
+      const result = await deleteProductAction(businessId, product.id);
       if (!result.success) {
         const msg = result.error?.message ?? 'Failed to delete product';
         setServerError(msg);

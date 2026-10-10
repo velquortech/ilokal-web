@@ -40,10 +40,11 @@ const ALLOWED_DOC_TYPES = [
 const MAX_DOC_SIZE = 2 * 1024 * 1024; // 2 MB
 
 export async function uploadBranchDocumentAction(
+  businessId: string,
   formData: FormData,
 ): Promise<ApiResponse<{ url: string }>> {
   try {
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized) {
       return { success: false, error: verify.error as ApiError };
     }
@@ -77,9 +78,9 @@ export async function uploadBranchDocumentAction(
     }
 
     const supabase = await createServerSupabaseClient();
-    const businessId = verify.business!.id;
+    const verifiedBusinessId = verify.business!.id;
     const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
-    const filePath = `${businessId}/${fileName}`;
+    const filePath = `${verifiedBusinessId}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from('branch-documents')
@@ -119,10 +120,11 @@ const ALLOWED_IMAGE_TYPES = [
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2 MB
 
 export async function uploadBranchImageAction(
+  businessId: string,
   formData: FormData,
 ): Promise<ApiResponse<{ url: string }>> {
   try {
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized) {
       return { success: false, error: verify.error as ApiError };
     }
@@ -156,9 +158,9 @@ export async function uploadBranchImageAction(
     }
 
     const supabase = await createServerSupabaseClient();
-    const businessId = verify.business!.id;
+    const verifiedBusinessId = verify.business!.id;
     const fileName = `${Date.now()}-${toWebPFilename(file.name.replace(/\s+/g, '-'))}`;
-    const filePath = `${businessId}/${fileName}`;
+    const filePath = `${verifiedBusinessId}/${fileName}`;
 
     try {
       await uploadWebP(supabase, 'branch-images', filePath, file, {
@@ -196,10 +198,11 @@ export async function uploadBranchImageAction(
 // ===== Branch Read Actions =====
 
 export async function getBusinessBranchesAction(
+  businessId: string,
   filters: Omit<BranchFilters, 'latitude' | 'longitude' | 'radius_km'> = {},
 ): Promise<ApiResponse<PaginatedBranchesResponse>> {
   try {
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -225,11 +228,11 @@ export async function getBusinessBranchesAction(
   }
 }
 
-export async function getBusinessBranchStatsAction(): Promise<
-  ApiResponse<BranchStats>
-> {
+export async function getBusinessBranchStatsAction(
+  businessId: string,
+): Promise<ApiResponse<BranchStats>> {
   try {
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -269,10 +272,11 @@ export async function getBusinessBranchStatsAction(): Promise<
 }
 
 export async function getBusinessBranchByIdAction(
+  businessId: string,
   branchId: string,
 ): Promise<ApiResponse<Branch>> {
   try {
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -307,6 +311,7 @@ export async function getBusinessBranchByIdAction(
  * Create a new branch for the user's business
  */
 export async function createBranchAction(
+  businessId: string,
   input: CreateBranchRequest,
 ): Promise<ApiResponse<Branch>> {
   try {
@@ -323,7 +328,7 @@ export async function createBranchAction(
       };
     }
 
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -350,6 +355,7 @@ export async function createBranchAction(
  * Update a branch
  */
 export async function updateBranchAction(
+  businessId: string,
   id: string,
   input: UpdateBranchRequest,
 ): Promise<ApiResponse<Branch>> {
@@ -367,7 +373,7 @@ export async function updateBranchAction(
       };
     }
 
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -408,10 +414,11 @@ export async function updateBranchAction(
  * Delete a branch
  */
 export async function deleteBranchAction(
+  businessId: string,
   id: string,
 ): Promise<ApiResponse<null>> {
   try {
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 

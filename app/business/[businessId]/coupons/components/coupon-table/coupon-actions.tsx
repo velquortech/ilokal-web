@@ -17,6 +17,7 @@ import { AddCouponDialog } from '../add-coupon';
 import { DeleteCouponDialog } from '../delete-coupon';
 import { updateCouponAction } from '../../../actions/couponActions';
 import type { Coupon, CouponStatus, ProductResponse } from '@/lib/types';
+import { useBusinessId } from '@/providers/BusinessProvider';
 
 interface CouponActionsProps {
   coupon: Coupon;
@@ -24,6 +25,7 @@ interface CouponActionsProps {
 }
 
 export function CouponActions({ coupon, products }: CouponActionsProps) {
+  const businessId = useBusinessId();
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
 
@@ -37,7 +39,9 @@ export function CouponActions({ coupon, products }: CouponActionsProps) {
       id: toastId,
     });
     try {
-      const result = await updateCouponAction(coupon.id, { status: next });
+      const result = await updateCouponAction(businessId, coupon.id, {
+        status: next,
+      });
       if (result.success) {
         toast.success(
           next === 'published'

@@ -26,6 +26,7 @@ import {
   removeSaleAction,
 } from '../../actions/productActions';
 import type { ProductResponse } from '@/lib/types';
+import { useBusinessId } from '@/providers/BusinessProvider';
 
 interface ApplySaleProps {
   product: ProductResponse;
@@ -43,6 +44,7 @@ type SaleFormValues = {
 const QUICK_DISCOUNTS = [10, 25, 50, 70];
 
 export function ApplySale({ product, children }: ApplySaleProps) {
+  const businessId = useBusinessId();
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [isPending, setIsPending] = React.useState(false);
@@ -109,7 +111,7 @@ export function ApplySale({ product, children }: ApplySaleProps) {
     setIsPending(true);
     setServerError(null);
     try {
-      const result = await applySaleAction(product.id, {
+      const result = await applySaleAction(businessId, product.id, {
         sale_price: data.salePrice,
         // A `datetime-local` value has no zone; read it as Manila so the
         // instant stored round-trips to the same wall-clock the owner typed.
@@ -138,7 +140,7 @@ export function ApplySale({ product, children }: ApplySaleProps) {
     setIsRemoving(true);
     setServerError(null);
     try {
-      const result = await removeSaleAction(product.id);
+      const result = await removeSaleAction(businessId, product.id);
       if (!result.success) {
         const msg = result.error?.message ?? 'Failed to remove sale';
         setServerError(msg);

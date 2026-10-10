@@ -40,10 +40,11 @@ import {
 // ===== Coupon Read Actions =====
 
 export async function getBusinessCouponsPaginatedAction(
+  businessId: string,
   filters: Omit<CouponFilters, 'business_id'>,
 ): Promise<ApiResponse<PaginatedCouponsResponse>> {
   try {
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -69,7 +70,10 @@ export async function getBusinessCouponsPaginatedAction(
   }
 }
 
-export async function getBusinessCouponStatsAction(branchId?: string): Promise<
+export async function getBusinessCouponStatsAction(
+  businessId: string,
+  branchId?: string,
+): Promise<
   ApiResponse<{
     total: number;
     published: number;
@@ -77,7 +81,7 @@ export async function getBusinessCouponStatsAction(branchId?: string): Promise<
   }>
 > {
   try {
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -101,6 +105,7 @@ export async function getBusinessCouponStatsAction(branchId?: string): Promise<
  * Create a new coupon for the business
  */
 export async function createCouponAction(
+  businessId: string,
   input: CreateCouponRequest,
 ): Promise<ApiResponse<Coupon>> {
   try {
@@ -117,7 +122,7 @@ export async function createCouponAction(
       };
     }
 
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -144,6 +149,7 @@ export async function createCouponAction(
  * Update a coupon
  */
 export async function updateCouponAction(
+  businessId: string,
   id: string,
   input: UpdateCouponRequest,
 ): Promise<ApiResponse<Coupon>> {
@@ -161,7 +167,7 @@ export async function updateCouponAction(
       };
     }
 
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -209,10 +215,11 @@ export async function updateCouponAction(
  * Delete a coupon
  */
 export async function deleteCouponAction(
+  businessId: string,
   id: string,
 ): Promise<ApiResponse<null>> {
   try {
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -295,6 +302,7 @@ export async function redeemCouponAction(
  * Create a featured deal for the business
  */
 export async function createFeaturedDealAction(
+  businessId: string,
   input: CreateFeaturedDealRequest,
 ): Promise<ApiResponse<FeaturedDeal>> {
   try {
@@ -311,7 +319,7 @@ export async function createFeaturedDealAction(
       };
     }
 
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -338,6 +346,7 @@ export async function createFeaturedDealAction(
  * Update a featured deal
  */
 export async function updateFeaturedDealAction(
+  businessId: string,
   id: string,
   input: UpdateFeaturedDealRequest,
 ): Promise<ApiResponse<FeaturedDeal>> {
@@ -355,7 +364,7 @@ export async function updateFeaturedDealAction(
       };
     }
 
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -403,10 +412,11 @@ export async function updateFeaturedDealAction(
  * Delete a featured deal
  */
 export async function deleteFeaturedDealAction(
+  businessId: string,
   id: string,
 ): Promise<ApiResponse<null>> {
   try {
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -452,10 +462,11 @@ export async function deleteFeaturedDealAction(
 // ===== Redeemed Coupons Actions =====
 
 export async function getRedeemedCouponsAction(
+  businessId: string,
   filters: RedemptionRecordFilters,
 ): Promise<ApiResponse<PaginatedRedemptionRecordsResponse>> {
   try {
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 
@@ -491,10 +502,11 @@ export async function getRedeemedCouponsAction(
 }
 
 export async function getRedemptionSummaryStatsAction(
+  businessId: string,
   branchId?: string,
 ): Promise<ApiResponse<RedemptionSummaryStats>> {
   try {
-    const verify = await verifyBusinessOwner();
+    const verify = await verifyBusinessOwner(businessId);
     if (!verify.authorized)
       return { success: false, error: verify.error as ApiError };
 

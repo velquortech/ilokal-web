@@ -168,6 +168,7 @@ interface CountFilter {
   eq: (column: string, value: string) => CountFilter;
   is: (column: string, value: null) => CountFilter;
   gte: (column: string, value: string) => CountFilter;
+  not: (column: string, operator: string, value: null) => CountFilter;
 }
 
 /**
@@ -337,8 +338,13 @@ export async function getAdminDashboardSummary(
       countRows(supabase, 'businesses', (q) =>
         q.eq('status', 'verified').is('archived_at', null),
       ),
+      // Awaiting REVIEW: a shop still in the wizard is `pending` too, but
+      // there is nothing for an admin to review yet.
       countRows(supabase, 'businesses', (q) =>
-        q.eq('status', 'pending').is('archived_at', null),
+        q
+          .eq('status', 'pending')
+          .is('archived_at', null)
+          .not('registration_completed_at', 'is', null),
       ),
     ]);
 

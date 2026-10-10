@@ -25,14 +25,19 @@ interface BusinessActionsProps {
   businessId: string;
   businessName: string;
   status: BusinessVerificationStatus;
+  /** The owner hasn't finished the wizard — nothing to approve yet. */
+  registering?: boolean;
 }
 
 export function BusinessActions({
   businessId,
   businessName,
   status,
+  registering = false,
 }: BusinessActionsProps) {
-  const canApprove = status !== 'verified';
+  // The database refuses to verify an unfinished registration, so don't offer
+  // an action that can only fail.
+  const canApprove = status !== 'verified' && !registering;
   const canDisapprove = status !== 'rejected';
 
   return (

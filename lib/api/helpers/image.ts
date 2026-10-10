@@ -1,5 +1,6 @@
 import sharp from 'sharp';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { saveBlurhash } from '@/lib/api/helpers/blurhash';
 
 /**
  * Thrown when an upload that passed the MIME allowlist still can't be decoded as
@@ -110,5 +111,9 @@ export async function uploadWebP(
     });
 
   if (error) throw error;
+  // Every image this app stores passes through here, so this is the one place
+  // its BlurHash placeholder is recorded. Awaited (a serverless function may be
+  // frozen after it returns) but best-effort: it never fails the upload.
+  await saveBlurhash(supabase, bucket, data.path, buffer);
   return data.path;
 }

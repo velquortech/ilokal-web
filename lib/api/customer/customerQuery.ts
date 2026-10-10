@@ -31,6 +31,7 @@ import type {
   WalletFilter,
   WalletRedemption,
 } from '@/lib/types/customer';
+import type { BusinessOrigin } from '@/lib/types/business';
 
 const DIRECTORY_DEFAULT_PER_PAGE = 12;
 const DIRECTORY_MAX_PER_PAGE = 24;
@@ -201,7 +202,7 @@ export const getPublicBusinessProfile = cache(
         .from('businesses')
         .select(
           `id, shop_name, description, logo_url, banner_url, interior_images,
-         business_categories!category_id (name)`,
+         origin, business_categories!category_id (name)`,
         )
         .eq('id', businessId)
         .eq('status', 'verified')
@@ -222,6 +223,7 @@ export const getPublicBusinessProfile = cache(
         logo_url: string | null;
         banner_url: string | null;
         interior_images: string[] | null;
+        origin: BusinessOrigin;
         business_categories: { name: string } | null;
       };
 
@@ -300,6 +302,7 @@ export const getPublicBusinessProfile = cache(
         description: row.description,
         logo_url: resolveStorageUrl(supabase, 'shop-logos', row.logo_url),
         banner_url: resolveStorageUrl(supabase, 'shop-banners', row.banner_url),
+        origin: row.origin,
         interior_images: (row.interior_images ?? [])
           .map((url) => resolveStorageUrl(supabase, 'interior-images', url))
           .filter((u): u is string => Boolean(u)),

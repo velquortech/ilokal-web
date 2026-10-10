@@ -11,6 +11,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import Image from 'next/image';
+import { DEFAULT_SHOP_BANNER_SRC } from '@/config/defaultBanner';
+import { SafeImage } from '@/components/custom/SafeImage';
 import { FileText, HandCoins } from 'lucide-react';
 import { Controller, useWatch } from 'react-hook-form';
 import { useEffect, useState } from 'react';
@@ -170,7 +172,23 @@ export function ShopReview() {
                 />
               </div>
             ) : (
-              <p className="text-muted-foreground">No banner uploaded</p>
+              // The banner is optional: show the cover the shop will actually
+              // get, not "No banner uploaded", which reads as a missing step.
+              <>
+                <div className="relative aspect-[3/1] w-full overflow-hidden rounded-lg border">
+                  <SafeImage
+                    src={DEFAULT_SHOP_BANNER_SRC}
+                    alt="Default iLokal banner"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 60vw"
+                    className="object-cover"
+                  />
+                </div>
+                <p className="text-muted-foreground mt-1.5 text-xs">
+                  No banner uploaded — your shop will use the iLokal banner
+                  until you add one from your dashboard.
+                </p>
+              </>
             )}
           </div>
 

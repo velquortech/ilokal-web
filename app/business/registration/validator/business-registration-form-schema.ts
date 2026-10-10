@@ -5,6 +5,13 @@ export { MAX_REGISTRATION_OFFERINGS };
 
 export const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
 
+/**
+ * `custom` stays in the enum so a draft cached before the Custom option was
+ * removed still PARSES — but it fails here, on step 1, where the owner can
+ * pick a real type. Accepting it let the draft reach Submit and die on the
+ * server's rejection (POST /api/web/businesses refuses custom types) with
+ * nothing on screen pointing back at the category.
+ */
 export const businessCategorySchema = z
   .object({
     id: z.guid().optional(),
@@ -12,17 +19,12 @@ export const businessCategorySchema = z
     name: z.string().min(1, 'Category is required'),
     description: z.string().optional(),
   })
-  .superRefine((val, ctx) => {
-    if (val.type === 'custom') {
-      if (!val.description || val.description.trim().length === 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Description is required',
-          path: ['description'],
-        });
-      }
-    }
-  });
+  // No `path`: the issue lands on `business_category` itself, which is the
+  // field the step's Controller renders errors for.
+  .refine(
+    (val) => val.type !== 'custom',
+    'Pick a business type and category from the list',
+  );
 
 export const step1Schema = z.object({
   business_category: businessCategorySchema,
@@ -92,22 +94,41 @@ const fileArraySchema = z.custom<File[]>(
   (val) => Array.isArray(val) && val.every((item) => item instanceof File),
 );
 
-export const step3Schema = z.object({
-  shop_logo: fileSchema
-    .refine((file) => file && file.size > 0, 'Logo is required')
-    .refine((file) => file.size <= MAX_FILE_SIZE, 'Image must be 2MB or less')
-    .optional(),
-  shop_banner: fileSchema
-    .refine((file) => file && file.size > 0, 'Banner is required')
-    .refine((file) => file.size <= MAX_FILE_SIZE, 'Image must be 2MB or less')
-    .optional(),
-  interior_images: fileArraySchema
-    .refine((files) => files && files.length >= 4, 'At least 4 images required')
+/**
+ * A logo and at least one interior photo are required. The banner is optional:
+ * a static iLokal default is displayed whenever no custom banner is uploaded.
+ * Validation lives here so Gallery's Next stays disabled only for the required
+ * image fields.
+ */
+const requiredImageSchema = (label: string) =>
+  z
+    .custom<
+      File | undefined
+    >((val) => val instanceof File && val.size > 0, `${label} is required`)
     .refine(
-      (files) => files.every((f) => f.size <= MAX_FILE_SIZE),
-      'Each image must be 2MB or less',
-    )
-    .optional(),
+      (file) => !file || file.size <= MAX_FILE_SIZE,
+      'Image must be 2MB or less',
+    );
+
+const optionalImageSchema = z
+  .custom<File | undefined>((val) => val === undefined || val instanceof File)
+  .refine((file) => !file || file.size > 0, 'Image must not be empty')
+  .refine(
+    (file) => !file || file.size <= MAX_FILE_SIZE,
+    'Image must be 2MB or less',
+  );
+
+const interiorImagesSchema = fileArraySchema
+  .refine((files) => files.length >= 1, 'Add at least one interior photo')
+  .refine(
+    (files) => files.every((file) => file.size <= MAX_FILE_SIZE),
+    'Each image must be 2MB or less',
+  );
+
+export const step3Schema = z.object({
+  shop_logo: requiredImageSchema('Logo'),
+  shop_banner: optionalImageSchema,
+  interior_images: interiorImagesSchema,
 });
 
 export const step4Schema = z.object({

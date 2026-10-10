@@ -338,6 +338,10 @@ export function ShopDeal() {
           <Label>Photo (optional)</Label>
           <div className="relative min-h-32">
             <ImageUploadField
+              // The field keeps its own preview, so without this it remounts
+              // blank on Back→Next (or a reload) while the photo is still
+              // attached and still uploads on Submit.
+              defaultValue={offeringImages.get(deal.uid) ?? null}
               onChange={(image) =>
                 offeringImages.set(
                   deal.uid,

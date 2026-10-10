@@ -15,6 +15,8 @@ export interface BusinessShop {
   created_at: string;
   updated_at: string;
   archived_at: string | null;
+  /** NULL while the owner is still registering — see `isRegistrationUnfinished`. */
+  registration_completed_at?: string | null;
   business_category: {
     name: string;
     type: 'predefined' | 'custom';

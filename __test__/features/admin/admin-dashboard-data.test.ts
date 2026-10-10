@@ -50,6 +50,8 @@ function makeSupabase() {
           call.is.push([c, v]);
           return builder;
         },
+        // registration_completed_at IS NOT NULL on the pending count
+        not: () => builder,
         then: (resolve: (value: unknown) => void) =>
           resolve(
             failTables.has(table)

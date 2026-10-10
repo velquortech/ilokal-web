@@ -16,6 +16,8 @@ import {
   getOnboardingTourEnabled,
 } from '@/lib/api/appSettings';
 import type { Branch } from '@/lib/types';
+import { ROUTES } from '@/config/routeConfig';
+import { isRegistrationUnfinished } from '@/lib/utils/registration';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,6 +66,14 @@ export default async function BusinessIdLayout({
     getOnboardingTourEnabled(),
     getOnboardingState(businessId),
   ]);
+
+  // A shop whose registration never finished is hidden and cannot be
+  // verified (not even by an admin) until the wizard's last step runs. Send
+  // the owner back there — from any device — rather than to a dashboard that
+  // says "Awaiting Verification" for a shop nothing will ever verify.
+  if (isRegistrationUnfinished(business_shop)) {
+    redirect(ROUTES.BUSINESS.registration);
+  }
 
   const branches = (branchesResult.branches ?? []) as Branch[];
 

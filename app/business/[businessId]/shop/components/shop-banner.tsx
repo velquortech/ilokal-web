@@ -1,8 +1,15 @@
+import { DEFAULT_SHOP_BANNER_SRC } from '@/config/defaultBanner';
 import { Check, MapPin } from 'lucide-react';
 import { SafeImage } from '@/components/custom/SafeImage';
 import { BusinessShop } from '@/providers/BusinessProvider';
 import type { Branch } from '@/lib/types';
 
+/**
+ * With no cover/banner of its own, the shop shows `DEFAULT_SHOP_BANNER_SRC`.
+ * Through SafeImage like every other image here: it ships with the app, but
+ * the fallback still covers a bad deploy instead of a broken-image glyph.
+ * See `public/brand/README.md`.
+ */
 interface ShopBannerProps {
   business?: BusinessShop | null;
   branch?: Branch | null;
@@ -39,7 +46,18 @@ export function ShopBanner({ business, branch }: ShopBannerProps) {
           sizes="100vw"
         />
       ) : (
-        <div className="from-primary/20 via-primary/10 to-background absolute inset-0 bg-linear-to-br" />
+        // No banner yet — the branded default instead of a plain tint block,
+        // so a shop that hasn't uploaded one still reads as a finished page.
+        // Mirrors the explore grid card's reasoning for bannerless shops: an
+        // empty/washed block reads as broken, not as an intentional state.
+        <SafeImage
+          alt=""
+          src={DEFAULT_SHOP_BANNER_SRC}
+          fill
+          priority
+          sizes="100vw"
+          className="absolute top-0 left-0 h-full w-full object-cover"
+        />
       )}
 
       {/* 2. Glossy Gradient Overlay (The Blur Effect) */}

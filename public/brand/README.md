@@ -21,6 +21,9 @@ lockup/     Wordmark on a Brick Ember field, with clearspace baked in.
 icon/       Store icons + favicons.
 ```
 
+`public/banner/` is a separate top-level static-asset directory; it contains the
+1600×600 cover art used when a shop has no banner of its own.
+
 ## Which file
 
 | Use | File |
@@ -33,6 +36,7 @@ icon/       Store icons + favicons.
 | On a Brick Ember field | `wordmark/ilokal-wordmark-jasmine.png` |
 | Social / OG card | `lockup/ilokal-lockup-on-brick.png` |
 | Browser tab | `app/favicon.ico`, `app/icon.png` (Next.js app dir) |
+| Shop has no `banner_url` yet | `public/banner/ilokal-banner-default.png` |
 
 In the app, do not reference these paths directly — use
 `components/custom/BrandLogo.tsx` (`BrandMark`, `BrandWordmark`, `BrandLogo`).
@@ -81,6 +85,24 @@ the two-people `ilo` ligature, the 350° `a`. Never re-set it as text.
 - Minimum: mark 20px, wordmark 96px wide.
 - Never rotate, stretch, skew, add a gradient, or place the Brick Ember cut on
   a dark surface.
+
+## Default banner
+
+`public/banner/ilokal-banner-default.png` — 1600×600, a Brick Ember field with
+the `BACKDROP_CIRCLES` pattern from `lib/og/welcomePost.tsx`, and **no text**.
+It sits behind the shop's own name and logo, and the earlier wordmark-and-
+tagline version collided with both on a phone. Reference it through
+`DEFAULT_SHOP_BANNER_SRC` (`config/defaultBanner.ts`), never by path.
+
+Shown, never stored: rendered whenever an owner-registered shop has no
+`banner_url` — the owner's "Your shop page" (`shop-banner.tsx`), the public
+shop page (`app/explore/[businessId]/page.tsx`) and the registration Review
+step. Not written into `businesses.banner_url` for any row, so the setup
+checklist can still tell the owner to replace it, and the art can change
+without a data migration. Admin-seeded directory listings keep their
+id-derived brand tone + initial instead (grid card and detail page alike):
+`businesses_seeded_no_images` (migration `20261001000000`) keeps their image
+columns empty by design, and the tone is their identity across the click.
 
 ## Known gap
 

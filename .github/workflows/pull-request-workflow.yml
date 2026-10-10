@@ -150,6 +150,37 @@ jobs:
       - name: Run pull-live regression check
         run: make pull-live-check
 
+  # Freshness invariant regression check: a scratch-stack `db reset` with the
+  # configured [db.seed] list must leave ZERO published seed-family coupons
+  # expired (the invariant from the refresh_freshness seed pass + the
+  # playtest fixtures — see supabase/scripts/check-seed-freshness.sh).
+  # Docker-gated: on runners without docker the job is SKIPPED (a visible
+  # skipped check), never a green pass that never ran. No live credentials
+  # needed — the invariant lives entirely in this repo's migrations + seeds.
+  Seed-freshness-check:
+    runs-on: ubuntu-latest
+    needs: Setup
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check docker availability
+        id: docker
+        run: |
+          if docker info >/dev/null 2>&1; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.docker.outputs.available == 'true'
+        with:
+          node-version: 22.x
+          cache: 'yarn'
+      - run: yarn install
+        if: steps.docker.outputs.available == 'true'
+      - name: Run seed-freshness regression check
+        if: steps.docker.outputs.available == 'true'
+        run: make seed-freshness-check
+
   # Deploy-preview:
   #   runs-on: ${{ matrix.os }}
   #   needs: [Setup, Unit-tests, Integration-tests]

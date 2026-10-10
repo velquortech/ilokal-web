@@ -13,6 +13,7 @@ import { rateLimit, clientIp } from '@/app/api/helpers/rateLimit';
 import { ROUTES, businessPath } from '@/config/routeConfig';
 import { User } from '@/lib/types/user';
 import { SignupInput } from '@/lib/validation/auth';
+import { SIGNUP_REF_COOKIE, parseSignupRef } from '@/lib/utils/signupRef';
 import {
   isAuthFailure,
   type AuthErrorCode,
@@ -204,6 +205,18 @@ export async function loginAction(
   }
 }
 
+/** The funnel ref remembered by /for-business/go, or null. Attribution is
+ *  best-effort: failing to read it must never fail a signup. */
+async function readSignupRef(): Promise<string | null> {
+  try {
+    return parseSignupRef((await cookies()).get(SIGNUP_REF_COOKIE)?.value);
+  } catch {
+    // sentry-opt-out: an unreadable attribution cookie is not an error — the
+    // signup proceeds unattributed, which is exactly the fallback we want.
+    return null;
+  }
+}
+
 /**
  * Server Action: Handle user signup
  *
@@ -247,6 +260,12 @@ export async function signupAction(
     // allowlist ('app_user' | 'business_owner' — never 'admin') and inserts
     // the profile with the correct role in a privileged path. A client-session
     // role write would be reverted by the SEC-1 privilege trigger.
+    //
+    // `signup_ref` is the registration-funnel attribution remembered by
+    // /for-business/go. It goes into the account, not a cookie, because email
+    // confirmation often finishes in another browser; the shop-insert trigger
+    // reads it back from auth.users.
+    const signupRef = await readSignupRef();
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: data.email.trim(),
       password: data.password.trim(),
@@ -254,6 +273,7 @@ export async function signupAction(
         data: {
           full_name: data.name.trim(),
           role: data.role,
+          ...(signupRef ? { signup_ref: signupRef } : {}),
         },
       },
     });

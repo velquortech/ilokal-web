@@ -121,7 +121,12 @@ VALUES
                WHERE name='Tourism & Leisure' AND NOT is_active)),
 
   ('20260814000000','taxonomy_cleanup','DATA-ONLY','business_categories has ''Sari-sari / Convenience Store''',
-   EXISTS (SELECT 1 FROM public.business_categories WHERE name='Sari-sari / Convenience Store'))
+   EXISTS (SELECT 1 FROM public.business_categories WHERE name='Sari-sari / Convenience Store')),
+
+  ('20260901000000','image_blurhashes','table','public.image_blurhashes + owner write policy',
+   to_regclass('public.image_blurhashes') IS NOT NULL
+   AND EXISTS (SELECT 1 FROM pg_policies WHERE tablename='image_blurhashes'
+               AND policyname='Owners write image blurhashes'))
 )
 SELECT
   p.version,

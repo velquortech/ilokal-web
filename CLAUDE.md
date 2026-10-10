@@ -1,5 +1,12 @@
 # CLAUDE.md — iLokal Web
 
+> **Release note — `20260901000000_image_blurhashes`** (branch
+> `feat/blurhash-placeholders-main`): the only migration this release adds.
+> After pushing it, run `node scripts/backfill-blurhashes.mjs --cloud` once so
+> images uploaded before it get placeholders (idempotent; reads storage only).
+> It is self-contained and safe to ship before or after the directory /
+> registration stack (#87/#89), whose migrations are all newer.
+>
 > **⚠️ Cloud sync was VERIFIED on 2026-08-10 through `20260808090000` ONLY.**
 > At that date every migration after `20260717082537` was confirmed applied to
 > `ilokal-database` by object existence, cross-checked with

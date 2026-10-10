@@ -1,5 +1,6 @@
 import { getPendingBranchesAction } from '../actions/branchActions';
 import { AdminBranchesClient } from './components/admin-branches-client';
+import { PageHeader } from '@/components/custom/PageHeader';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,14 +11,10 @@ export default async function AdminBranchesPage() {
 
   return (
     <div className="flex min-w-0 flex-1 flex-col space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">
-          Branch Applications
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Review and approve new branch location requests from business owners.
-        </p>
-      </div>
+      <PageHeader
+        title="Branch Applications"
+        lede="Review and approve new branch location requests from business owners."
+      />
       <AdminBranchesClient branches={branches} />
     </div>
   );

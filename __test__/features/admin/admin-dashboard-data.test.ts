@@ -1,5 +1,5 @@
 /**
- * The admin dashboard's data layer (`.claude/ADMIN_ANALYTICS.md`).
+ * The admin dashboard's data layer.
  *
  * The page these back used to hardcode every number it displayed, so the risk
  * now is the opposite one: a query that looks plausible and is quietly wrong.

@@ -106,7 +106,7 @@ function DocumentFileUpload(props: {
 
                   <Button
                     variant="destructive"
-                    size="icon"
+                    size="icon-touch"
                     className="ml-auto rounded-full"
                     onClick={(event: MouseEvent<HTMLButtonElement>) => {
                       event.preventDefault();

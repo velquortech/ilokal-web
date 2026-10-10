@@ -105,7 +105,7 @@ function DocumentFileUpload({
 
                   <Button
                     variant="destructive"
-                    size="icon"
+                    size="icon-touch"
                     className="ml-auto rounded-full"
                     onClick={(e: MouseEvent<HTMLButtonElement>) => {
                       e.preventDefault();

@@ -1,6 +1,7 @@
 import { getCategoriesPaginated } from '@/lib/api/products/productQuery';
 import { businessService } from '@/lib/api/business-categories/businessCategoriesService';
 import { AdminCategoriesContent } from './components/admin-categories-content';
+import { PageHeader } from '@/components/custom/PageHeader';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,16 +30,10 @@ export default async function AdminCategoriesPage() {
 
   return (
     <div className="flex min-w-0 flex-1 flex-col space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Categories</h1>
-          <p className="text-muted-foreground mt-2 max-w-2xl">
-            The offering taxonomy shoppers filter by. Kind scopes a category to
-            products, services, or both — a service-only category never appears
-            in a shop&apos;s product picker.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Categories"
+        lede="The offering taxonomy shoppers filter by. Kind scopes a category to products, services, or both — a service-only category never appears in a shop's product picker."
+      />
 
       <AdminCategoriesContent
         categories={result.categories}

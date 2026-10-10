@@ -93,6 +93,47 @@ flips it on — but **local-only**: it runs in the Makefile `seed-db` loop and
 `CLOUD_SEED_FILES`**, so `make seed-cloud` keeps the public events surface dark
 in production.
 
+## Seed-home id families
+
+Every dev-DB row MUST belong to a seed-home id family — a stable UUID prefix
+that exactly one seed file owns. **A row outside a documented family WILL be
+silently dropped by the next `db reset`** (the Aug-2026 playtest fixtures died
+exactly this way; see decision note `2026-10-10-seed-freshness-fixture-seeds`
+in the mobile repo's brain). The rule is simple:
+
+> Create the row IN A SEED FILE FIRST, then apply it to the live DB. Never
+> hand-INSERT rows straight into the dev database.
+
+| Family (id prefix) | Seed file | Rows it owns |
+|---|---|---|
+| `11111111-…` | `businesses.sql` | hero businesses (+ their branches/posts) |
+| `22222222-…` / `33333333-…` | `products.sql` / `bida_of_the_day.sql` | curated products / bida picks |
+| `44444444-444x…` | `coupons.sql` | curated coupons |
+| `44444444-800x…` | `playtest_fixtures.sql` | named playtest fixture coupons |
+| `55555555-…` | `users.sql` | seeded follows |
+| `88x…` (`88888888-…`) | `business_posts.sql` | hero business posts |
+| `99999999-…` | `events.sql` | curated events |
+| `aaaaaaaa-…` / `00000000-0000-…0001` / `ffffffff-…` | `users.sql` | admin@ilokal.dev / owner@ilokal.dev / testuser@ilokal.dev |
+| `cc0…` | `events.sql` | platform (admin-authored) events |
+| `dddddddd-…` | `users.sql` + `follows.sql` | the 90-account follower pool |
+| `f0…` / `f1…` / `f2…` / `f3…` / `f4…` / `f6…` | `bulk_seed.sql` | filler shops / products / coupons / posts / redemptions |
+| `ca0…` | `users.sql` (analytics seed) | test-cafe analytics coupons |
+
+Two standing guards derived from the families (keep them in sync when adding
+one):
+
+- `refresh_freshness.sql`'s `NOW()`-relative re-dating covers exactly these
+  families (currently `44444444%` + `f2000000%`). Its contract test pins the
+  pairing.
+- `supabase/scripts/check-seed-freshness.sh` runs the FULL seed list against a
+  scratch stack in CI and fails if any published family row is expired.
+
+If you need a *new* fixture that doesn't fit an existing family's semantic
+scope, add its prefix to BOTH the owning seed file AND
+`refresh_freshness.sql` (then to the contract test) rather than inventing an
+undocumented prefix — rows outside the families are invisible to every guard
+and won't survive a reset.
+
 ## Idempotency
 
 - **SQL:** deterministic UUIDs + `ON CONFLICT (id) DO NOTHING`; migration

@@ -164,6 +164,14 @@ pull-live:
 pull-live-check:
 	@bash supabase/scripts/check-pull-live.sh
 
+# Freshness invariant regression check: scratch-stack `db reset` with the
+# configured seed list, then assert ZERO published seed-family coupons are
+# expired — the invariant PR #88 established and PR #90 extends to the
+# playtest fixtures. Needs docker but NO live credentials (unlike
+# pull-live-check, which needs .env.cloud).
+seed-freshness-check:
+	@bash supabase/scripts/check-seed-freshness.sh
+
 # ── Cloud deploy (APK preview build) ──────────────────────────────────────────
 # Full flow: `make deploy-cloud` = migrate-cloud (schema + buckets) then seed-cloud
 # (data + login lockdown + storage). Or run either step on its own.

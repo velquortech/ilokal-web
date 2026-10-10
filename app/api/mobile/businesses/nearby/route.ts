@@ -6,6 +6,7 @@ import {
   loggedServerError,
 } from '@/app/api/helpers/response';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
+import { getBlurhashes } from '@/lib/api/helpers/blurhash';
 import { NextRequest } from 'next/server';
 
 // Maps the mobile category key → business_types.name in the DB (mirror of the
@@ -139,8 +140,26 @@ export async function GET(req: NextRequest) {
       followersMap.set(f.business_id, Number(f.follower_count));
     }
 
+    // BlurHash placeholders for the two images a card shows first — the logo
+    // and the hero (first interior photo). The app has always read these keys;
+    // `null` (no hash yet) renders exactly as before.
+    const logoRef = (b: Record<string, unknown>) => ({
+      bucket: 'shop-logos',
+      pathOrUrl: b.logo_url as string | null,
+    });
+    const heroRef = (b: Record<string, unknown>) => ({
+      bucket: 'interior-images',
+      pathOrUrl: (b.interior_images as string[] | null)?.[0] ?? null,
+    });
+    const blurhashOf = await getBlurhashes(
+      supabase,
+      rows.flatMap((b) => [logoRef(b), heroRef(b)]),
+    );
+
     const businesses = rows.map((b) => ({
       ...b,
+      blur_hash: blurhashOf(logoRef(b)),
+      hero_blur_hash: blurhashOf(heroRef(b)),
       logo_url: resolveStorageUrl(
         supabase,
         'shop-logos',

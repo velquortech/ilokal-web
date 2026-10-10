@@ -14,11 +14,17 @@ type SearchParams = Promise<{
 }>;
 
 export default async function RedeemedCouponsPage({
+  params: routeParams,
   searchParams,
 }: {
+  params: Promise<{ businessId: string }>;
   searchParams: SearchParams;
 }) {
-  const params = await searchParams;
+  // The shop is the one in the URL — the layout has already verified it.
+  const [{ businessId }, params] = await Promise.all([
+    routeParams,
+    searchParams,
+  ]);
 
   const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1);
   const perPage = Math.min(
@@ -41,8 +47,8 @@ export default async function RedeemedCouponsPage({
   };
 
   const [redemptionsResult, statsResult] = await Promise.all([
-    getRedeemedCouponsAction(filters),
-    getRedemptionSummaryStatsAction(branchId),
+    getRedeemedCouponsAction(businessId, filters),
+    getRedemptionSummaryStatsAction(businessId, branchId),
   ]);
 
   const paginatedData = redemptionsResult.success

@@ -15,6 +15,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { deleteBranchAction } from '../../actions/branchActions';
 import type { Branch } from '@/lib/types';
+import { useBusinessId } from '@/providers/BusinessProvider';
 
 interface DeleteBranchDialogProps {
   children: React.ReactNode;
@@ -27,13 +28,14 @@ export function DeleteBranchDialog({
   branch,
   onSuccess,
 }: DeleteBranchDialogProps) {
+  const businessId = useBusinessId();
   const [open, setOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
 
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const result = await deleteBranchAction(branch.id);
+      const result = await deleteBranchAction(businessId, branch.id);
       if (!result.success) {
         toast.error(result.error?.message ?? 'Failed to delete branch');
         return;

@@ -47,6 +47,7 @@ vi.mock('@/providers/BusinessProvider', () => ({
     // A business id is required for the per-business draft key.
     business: { id: 'biz-1' },
   }),
+  useBusinessId: () => 'biz-1',
 }));
 
 vi.mock('sonner', () => ({
@@ -181,6 +182,7 @@ describe('AddProductDialog draft persistence', () => {
 
     await flushSubmit();
     expect(actions.createProductAction).toHaveBeenCalledWith(
+      'biz-1',
       expect.objectContaining({ name: 'Draft Item', price: 5 }),
     );
 

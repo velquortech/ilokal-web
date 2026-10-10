@@ -40,6 +40,11 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn() }),
 }));
 
+// The dialog acts on the shop in the URL, read from the dashboard's provider.
+vi.mock('@/providers/BusinessProvider', () => ({
+  useBusinessId: () => '11111111-1111-4111-8111-111111111111',
+}));
+
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
@@ -249,6 +254,7 @@ describe('UpdateProductDialog category picker', () => {
       await Promise.resolve();
     });
     expect(actions.updateProductAction).toHaveBeenCalledWith(
+      '11111111-1111-4111-8111-111111111111',
       'product-1',
       expect.objectContaining({ category_id: null }),
     );

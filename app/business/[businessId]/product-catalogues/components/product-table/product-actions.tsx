@@ -30,6 +30,7 @@ import { DeleteProductDialog } from '../delete-product';
 import { ViewProduct } from '../view-product';
 import { ApplySale } from '../apply-sale';
 import { updateProductStatusAction } from '@/app/business/[businessId]/actions/productActions';
+import { useBusinessId } from '@/providers/BusinessProvider';
 
 /**
  * Row actions. Takes the product plus the shop's sections and categories, so
@@ -45,6 +46,7 @@ export function ProductActions({
   sections?: ProductSectionWithCount[];
   categories?: Category[];
 }) {
+  const businessId = useBusinessId();
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
 
@@ -57,6 +59,7 @@ export function ProductActions({
     toast.loading('Updating status…', { id: toastId });
     try {
       const result = await updateProductStatusAction(
+        businessId,
         product.id,
         status as ProductStatus,
       );

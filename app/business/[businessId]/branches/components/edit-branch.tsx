@@ -28,6 +28,7 @@ import {
 } from '../../actions/branchActions';
 import type { Branch, UpdateBranchRequest } from '@/lib/types';
 import { compressImage, COMPRESSION_PRESETS } from '@/lib/utils/compressImage';
+import { useBusinessId } from '@/providers/BusinessProvider';
 
 interface EditBranchDialogProps {
   children: React.ReactNode;
@@ -40,6 +41,7 @@ export function EditBranchDialog({
   branch,
   onSuccess,
 }: EditBranchDialogProps) {
+  const businessId = useBusinessId();
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
@@ -111,7 +113,7 @@ export function EditBranchDialog({
       });
       const fd = new FormData();
       fd.append('file', file);
-      const res = await uploadBranchImageAction(fd);
+      const res = await uploadBranchImageAction(businessId, fd);
       if (!res.success) {
         toast.error(res.error?.message ?? 'Cover upload failed');
         return;
@@ -137,7 +139,7 @@ export function EditBranchDialog({
         });
         const fd = new FormData();
         fd.append('file', file);
-        const res = await uploadBranchImageAction(fd);
+        const res = await uploadBranchImageAction(businessId, fd);
         if (res.success && res.data?.url) newUrls.push(res.data.url);
       }
       setGalleryUrls((prev) => [...prev, ...newUrls].slice(0, 10));
@@ -151,7 +153,7 @@ export function EditBranchDialog({
     setIsSubmitting(true);
     setServerError(null);
     try {
-      const result = await updateBranchAction(branch.id, {
+      const result = await updateBranchAction(businessId, branch.id, {
         ...data,
         cover_image_url: coverUrl,
         gallery_images: galleryUrls,

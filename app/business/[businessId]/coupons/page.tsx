@@ -15,11 +15,17 @@ type SearchParams = Promise<{
 }>;
 
 export default async function CouponsPage({
+  params: routeParams,
   searchParams,
 }: {
+  params: Promise<{ businessId: string }>;
   searchParams: SearchParams;
 }) {
-  const params = await searchParams;
+  // The shop is the one in the URL — the layout has already verified it.
+  const [{ businessId }, params] = await Promise.all([
+    routeParams,
+    searchParams,
+  ]);
 
   const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1);
   const perPage = Math.min(
@@ -40,9 +46,9 @@ export default async function CouponsPage({
   };
 
   const [couponsResult, statsResult, productsResult] = await Promise.all([
-    getBusinessCouponsPaginatedAction(filters),
-    getBusinessCouponStatsAction(branchId),
-    getBusinessProductsAction(),
+    getBusinessCouponsPaginatedAction(businessId, filters),
+    getBusinessCouponStatsAction(businessId, branchId),
+    getBusinessProductsAction(businessId),
   ]);
 
   const paginatedData = couponsResult.success

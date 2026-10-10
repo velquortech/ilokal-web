@@ -93,7 +93,17 @@ describe('upload rate-limit contract', () => {
 
     expect(calls.length).toBeGreaterThan(0);
     for (const call of calls) {
-      expect(call).toMatch(/checkUploadRateLimit\(\s*auth\.user\??\.id\s*\)/);
+      expect(call).toMatch(
+        /checkUploadRateLimit\(\s*(auth\.user\??\.id|session\.userId)\s*\)/,
+      );
+    }
+    // `session` must be the helper's verified user, and its refusal returned —
+    // not some local that happens to share the name.
+    if (/checkUploadRateLimit\(\s*session\.userId/.test(src)) {
+      expect(src).toMatch(/const session = await requireUploadUser\(/);
+      expect(src).toMatch(
+        /if\s*\(\s*session instanceof NextResponse\s*\)\s*return\s+session\s*;/,
+      );
     }
   });
 
@@ -112,7 +122,14 @@ describe('upload rate-limit contract', () => {
     // route gates on `assertAuthorized` and also calls `verifyBusinessOwner`
     // for per-bucket ownership, so filtering on the call alone wrongly demands
     // a check it does not need.
-    routes.filter((f) => !readFileSync(f, 'utf8').includes('assertAuthorized')),
+    // Routes on `requireUploadUser` get the check from the helper itself
+    // (pinned in upload-auth.test.ts), not from a line of their own.
+    routes.filter((f) => {
+      const src = readFileSync(f, 'utf8');
+      return (
+        !src.includes('assertAuthorized') && !src.includes('requireUploadUser')
+      );
+    }),
   )('%s refuses an authorized result with no user id', (file) => {
     const src = stripComments(readFileSync(file, 'utf8'));
     expect(src).toMatch(/if\s*\(\s*!auth\??\.user\?\.id\s*\)/);

@@ -15,26 +15,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const verify = await verifyBusinessOwner();
-    if (!verify.authorized) {
-      const isUnauthenticated =
-        verify.error &&
-        typeof verify.error === 'object' &&
-        'code' in verify.error &&
-        (verify.error as { code: string }).code === 'AUTHENTICATION_ERROR';
-
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: isUnauthenticated ? 'AUTHENTICATION_ERROR' : 'FORBIDDEN',
-            message: 'Unauthorized',
-          },
-        } as ApiResponse<null>,
-        { status: isUnauthenticated ? 401 : 403 },
-      );
-    }
-
     const { id } = await params;
 
     if (!id) {
@@ -58,16 +38,26 @@ export async function GET(
       );
     }
 
-    if (couponResult.coupon.business_id !== verify.business!.id) {
+    // Ownership of the COUPON'S shop. This used to compare against "the
+    // caller's shop" (`verifyBusinessOwner()` with no id), which for an owner of
+    // two shops was an arbitrary one — a 403 on their own coupon half the time.
+    const verify = await verifyBusinessOwner(couponResult.coupon.business_id);
+    if (!verify.authorized) {
+      const isUnauthenticated =
+        verify.error &&
+        typeof verify.error === 'object' &&
+        'code' in verify.error &&
+        (verify.error as { code: string }).code === 'AUTHENTICATION_ERROR';
+
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: 'FORBIDDEN',
-            message: 'You do not have access to this coupon',
+            code: isUnauthenticated ? 'AUTHENTICATION_ERROR' : 'FORBIDDEN',
+            message: 'Unauthorized',
           },
         } as ApiResponse<null>,
-        { status: 403 },
+        { status: isUnauthenticated ? 401 : 403 },
       );
     }
 

@@ -1,6 +1,9 @@
 /**
- * GET /api/coupons
- * List coupons for authenticated user's business
+ * GET /api/coupons?businessId=…
+ * List coupons for one of the authenticated owner's shops.
+ *
+ * `businessId` is required. Without it this used to list "the caller's shop",
+ * which for an owner of two shops was an arbitrary one.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -12,15 +15,23 @@ import { formatErrorForLog } from '@/lib/utils/describeDbError';
 
 export async function GET(req: NextRequest) {
   try {
-    // Verify business owner session
-    const auth = await verifyBusinessOwner();
+    // Verify the caller owns the shop asked for. A missing id fails
+    // verification (VALIDATION_ERROR → 400) rather than picking a shop.
+    const auth = await verifyBusinessOwner(
+      req.nextUrl.searchParams.get('businessId') ?? '',
+    );
     if (!auth.authorized) {
       const errorPayload =
         auth.error && typeof auth.error === 'object' && 'code' in auth.error
           ? (auth.error as { code: string; message: string })
           : { code: 'AUTHORIZATION_ERROR', message: 'Unauthorized' };
 
-      const status = errorPayload.code === 'AUTHENTICATION_ERROR' ? 401 : 403;
+      const status =
+        errorPayload.code === 'AUTHENTICATION_ERROR'
+          ? 401
+          : errorPayload.code === 'VALIDATION_ERROR'
+            ? 400
+            : 403;
 
       return NextResponse.json(
         {

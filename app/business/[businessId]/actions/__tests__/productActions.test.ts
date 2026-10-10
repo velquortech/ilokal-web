@@ -71,7 +71,7 @@ describe('createProductAction', () => {
   });
 
   it('returns VALIDATION_ERROR when name is missing', async () => {
-    const res = await createProductAction({
+    const res = await createProductAction(BUSINESS_ID, {
       name: '',
       price: 100,
       category_id: CATEGORY_ID,
@@ -81,7 +81,7 @@ describe('createProductAction', () => {
   });
 
   it('returns VALIDATION_ERROR when price is negative', async () => {
-    const res = await createProductAction({
+    const res = await createProductAction(BUSINESS_ID, {
       name: 'Test',
       price: -1,
       category_id: CATEGORY_ID,
@@ -91,7 +91,7 @@ describe('createProductAction', () => {
   });
 
   it('returns VALIDATION_ERROR when category_id is not a UUID', async () => {
-    const res = await createProductAction({
+    const res = await createProductAction(BUSINESS_ID, {
       name: 'Test',
       price: 100,
       category_id: 'not-a-uuid',
@@ -102,7 +102,7 @@ describe('createProductAction', () => {
 
   it('returns error when not authorized', async () => {
     mockUnauthorized();
-    const res = await createProductAction({
+    const res = await createProductAction(BUSINESS_ID, {
       name: 'Test',
       price: 100,
       category_id: CATEGORY_ID,
@@ -122,7 +122,7 @@ describe('createProductAction', () => {
       data: mockProduct as Product,
     });
 
-    const res = await createProductAction({
+    const res = await createProductAction(BUSINESS_ID, {
       name: 'Test',
       price: 100,
       category_id: CATEGORY_ID,
@@ -139,7 +139,7 @@ describe('getBusinessProductsAction', () => {
 
   it('returns error when not authorized', async () => {
     mockUnauthorized();
-    const res = await getBusinessProductsAction();
+    const res = await getBusinessProductsAction(BUSINESS_ID);
     expect(res.success).toBe(false);
   });
 
@@ -151,7 +151,7 @@ describe('getBusinessProductsAction', () => {
       ReturnType<typeof productQuery.getProductsByBusinessId>
     >);
 
-    const res = await getBusinessProductsAction();
+    const res = await getBusinessProductsAction(BUSINESS_ID);
     expect(res.success).toBe(true);
     expect((res as ApiResponse<Product[]>).data).toHaveLength(1);
   });
@@ -164,7 +164,7 @@ describe('getBusinessProductsAction', () => {
       ReturnType<typeof productQuery.getProductsByBusinessId>
     >);
 
-    const res = await getBusinessProductsAction();
+    const res = await getBusinessProductsAction(BUSINESS_ID);
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('INTERNAL_ERROR');
   });
@@ -209,13 +209,13 @@ describe('uploadProductImageAction', () => {
     mockUnauthorized();
     const fd = new FormData();
     fd.append('file', new File(['data'], 'img.jpg', { type: 'image/jpeg' }));
-    const res = await uploadProductImageAction(fd);
+    const res = await uploadProductImageAction(BUSINESS_ID, fd);
     expect(res.success).toBe(false);
   });
 
   it('returns VALIDATION_ERROR when no file in FormData', async () => {
     const fd = new FormData();
-    const res = await uploadProductImageAction(fd);
+    const res = await uploadProductImageAction(BUSINESS_ID, fd);
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('VALIDATION_ERROR');
   });
@@ -227,7 +227,7 @@ describe('uploadProductImageAction', () => {
       'file',
       new File([bigContent], 'big.jpg', { type: 'image/jpeg' }),
     );
-    const res = await uploadProductImageAction(fd);
+    const res = await uploadProductImageAction(BUSINESS_ID, fd);
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('VALIDATION_ERROR');
     expect(res.error?.message).toMatch(/2 MB/i);
@@ -239,7 +239,7 @@ describe('uploadProductImageAction', () => {
       'file',
       new File(['data'], 'doc.pdf', { type: 'application/pdf' }),
     );
-    const res = await uploadProductImageAction(fd);
+    const res = await uploadProductImageAction(BUSINESS_ID, fd);
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('VALIDATION_ERROR');
     expect(res.error?.message).toMatch(/JPEG|PNG|GIF|WebP/i);
@@ -262,7 +262,7 @@ describe('uploadProductImageAction', () => {
 
     const fd = new FormData();
     fd.append('file', await makeImageFile());
-    const res = await uploadProductImageAction(fd);
+    const res = await uploadProductImageAction(BUSINESS_ID, fd);
     expect(res.success).toBe(false);
     expect(res.error?.code).toBe('UPLOAD_ERROR');
   });
@@ -286,7 +286,7 @@ describe('uploadProductImageAction', () => {
 
     const fd = new FormData();
     fd.append('file', await makeImageFile());
-    const res = await uploadProductImageAction(fd);
+    const res = await uploadProductImageAction(BUSINESS_ID, fd);
     expect(res.success).toBe(true);
     expect((res as ApiResponse<{ url: string }>).data?.url).toBe(
       'https://storage.example.com/img.png',

@@ -24,8 +24,8 @@ export type RegistrationFileKind =
   // above it updates NO column on `businesses` — the row it belongs to does
   // not exist yet — so it returns the stored path for the offerings write to
   // carry. It rides this route rather than `uploadProductImageAction` because
-  // that action calls `verifyBusinessOwner()` with no argument, which falls
-  // back to whichever shop `.limit(1)` returns.
+  // that action used to call `verifyBusinessOwner()` with no argument, which
+  // fell back to whichever shop `.limit(1)` returned.
   | 'offering_image';
 
 export interface BusinessDraftMeta {

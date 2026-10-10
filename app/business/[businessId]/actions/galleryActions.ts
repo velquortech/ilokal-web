@@ -12,9 +12,9 @@
  * surface has no business resending.
  *
  * Publicly invocable, so it validates the id's shape, proves ownership of THAT
- * shop with the **route segment's** id — never `verifyBusinessOwner()` with no
- * argument, which falls back to whichever shop `.limit(1)` returns and would
- * let a two-shop owner rewrite the wrong gallery — and passes a per-user flood
+ * shop with the **route segment's** id — the helper used to accept no id and
+ * fall back to whichever shop `.limit(1)` returned, which would have let a
+ * two-shop owner rewrite the wrong gallery — and passes a per-user flood
  * guard, since Server-Action POSTs never reach the proxy's rate limiter and
  * this one amplifies into a storage delete.
  */
@@ -54,8 +54,9 @@ export async function updateBusinessGalleryAction(
   businessId: string,
   images: string[],
 ): Promise<ApiResponse<{ saved: number }>> {
-  // BEFORE `verifyBusinessOwner`: that helper reads a falsy id as "no argument"
-  // and authorizes some other shop of the caller's.
+  // BEFORE `verifyBusinessOwner`: a bad id is a clean VALIDATION_ERROR with no
+  // lookup. (The helper used to read a falsy id as "no argument" and authorize
+  // some other shop of the caller's; it now rejects one itself.)
   if (!businessIdSchema.safeParse(businessId).success) {
     return fail('VALIDATION_ERROR', 'Invalid business id.');
   }

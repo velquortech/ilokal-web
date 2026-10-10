@@ -17,6 +17,7 @@ import type { Coupon } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { deleteCouponAction } from '../../actions/couponActions';
+import { useBusinessId } from '@/providers/BusinessProvider';
 
 interface DeleteCouponDialogProps {
   coupon: Coupon;
@@ -27,6 +28,7 @@ export function DeleteCouponDialog({
   coupon,
   children,
 }: DeleteCouponDialogProps) {
+  const businessId = useBusinessId();
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
@@ -36,7 +38,7 @@ export function DeleteCouponDialog({
     setIsDeleting(true);
     setServerError(null);
     try {
-      const result = await deleteCouponAction(coupon.id);
+      const result = await deleteCouponAction(businessId, coupon.id);
       if (!result.success) {
         const msg = result.error?.message ?? 'Failed to delete coupon';
         setServerError(msg);

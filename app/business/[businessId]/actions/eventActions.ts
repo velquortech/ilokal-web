@@ -9,10 +9,10 @@
  * per-user flood guard — Server-Action POSTs never reach the proxy's limiter.
  *
  * Each takes the `businessId` from the route segment and hands it to
- * `verifyBusinessOwner`. That argument is not optional decoration: without it
- * the helper falls back to whichever shop `.limit(1)` returns, so an owner who
- * holds two shops files events against the wrong one — matching
- * `sectionActions.ts`, which has always passed it.
+ * `verifyBusinessOwner`. That argument is not decoration: it used to be
+ * optional, and without it the helper fell back to whichever shop `.limit(1)`
+ * returned, so an owner who holds two shops filed events against the wrong one.
+ * It is required now, for every business action.
  *
  * What is deliberately NOT here: approving or rejecting. An owner cannot reach
  * `approved` by any route — the DB trigger reverts it — so there is no action

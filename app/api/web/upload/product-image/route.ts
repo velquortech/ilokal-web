@@ -1,7 +1,10 @@
 import { formatErrorForLog } from '@/lib/utils/describeDbError';
 import { createServerSupabaseClient } from '@/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyBusinessOwner } from '@/lib/api/verifyBusinessOwner';
+import {
+  requireUploadShop,
+  requireUploadUser,
+} from '@/app/api/helpers/upload-auth';
 import { checkUploadRateLimit } from '@/app/api/helpers/upload-rate-limit';
 import {
   uploadWebP,
@@ -16,47 +19,27 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await verifyBusinessOwner();
-    if (!auth.authorized) {
-      const errorPayload =
-        auth.error && typeof auth.error === 'object' && 'code' in auth.error
-          ? (auth.error as { code: string; message: string })
-          : { code: 'AUTHENTICATION_ERROR', message: 'Unauthorized' };
-
-      const status = errorPayload.code === 'AUTHENTICATION_ERROR' ? 401 : 403;
-      return NextResponse.json(
-        { success: false, error: errorPayload.message || 'Unauthorized' },
-        { status },
-      );
-    }
-
-    const businessId = auth.business?.id;
-    if (!businessId) {
-      return NextResponse.json(
-        { success: false, error: 'Business not found' },
-        { status: 400 },
-      );
-    }
-
-    // The verified session user. `verifyBusinessOwner` returns it on every
-    // success path; an authorized result carrying none is unreachable today, so
-    // treat it as unauthorized rather than skipping the guard — the failure
-    // direction that matters here is an open flood door.
-    if (!auth.user?.id) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 },
-      );
-    }
+    const session = await requireUploadUser('upload/product-image');
+    if (session instanceof NextResponse) return session;
 
     // Before formData(): buffering a 2 MB body and re-encoding it through
     // sharp is exactly the cost this guard exists to prevent.
-    const limited = checkUploadRateLimit(auth.user.id);
+    const limited = checkUploadRateLimit(session.userId);
     if (limited) return limited;
 
     const supabase = await createServerSupabaseClient();
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
+
+    // The shop this upload is FOR, from the form and verified. Required: a
+    // missing id used to fall back to "the caller's shop", which for an owner
+    // of two shops was an arbitrary one.
+    const shop = await requireUploadShop(
+      'upload/product-image',
+      formData.get('businessId'),
+    );
+    if (shop instanceof NextResponse) return shop;
+    const { businessId } = shop;
 
     if (!file) {
       return NextResponse.json(

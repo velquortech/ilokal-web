@@ -16,10 +16,11 @@ import {
   uploadBranchImageAction,
 } from '../../../actions/branchActions';
 import { businessBranchesPath } from '@/config/routeConfig';
-import { useBusinessShop } from '@/providers/BusinessProvider';
+import { useBusinessShop, useBusinessId } from '@/providers/BusinessProvider';
 import type { BranchCreateValues } from '../validator/branch-create-schema';
 
 export function BranchCreateContent() {
+  const businessId = useBusinessId();
   const { step, form } = useBranchForm();
   const { business } = useBusinessShop();
   const router = useRouter();
@@ -50,7 +51,7 @@ export function BranchCreateContent() {
       if (data.cover_image instanceof File) {
         const fd = new FormData();
         fd.append('file', data.cover_image);
-        const res = await uploadBranchImageAction(fd);
+        const res = await uploadBranchImageAction(businessId, fd);
         if (!res.success) {
           const msg = res.error?.message ?? 'Cover image upload failed';
           setSubmitError(msg);
@@ -64,7 +65,7 @@ export function BranchCreateContent() {
         if (!(img instanceof File)) continue;
         const fd = new FormData();
         fd.append('file', img);
-        const res = await uploadBranchImageAction(fd);
+        const res = await uploadBranchImageAction(businessId, fd);
         if (!res.success) {
           toast.error(res.error?.message ?? 'Gallery upload failed');
           // continue with successfully uploaded ones
@@ -80,7 +81,7 @@ export function BranchCreateContent() {
       if (data.business_permit instanceof File) {
         const fd = new FormData();
         fd.append('file', data.business_permit);
-        const uploadResult = await uploadBranchDocumentAction(fd);
+        const uploadResult = await uploadBranchDocumentAction(businessId, fd);
         if (!uploadResult.success) {
           const msg =
             uploadResult.error?.message ?? 'Business permit upload failed';
@@ -94,7 +95,7 @@ export function BranchCreateContent() {
       if (data.other_document instanceof File) {
         const fd = new FormData();
         fd.append('file', data.other_document);
-        const uploadResult = await uploadBranchDocumentAction(fd);
+        const uploadResult = await uploadBranchDocumentAction(businessId, fd);
         if (!uploadResult.success) {
           const msg = uploadResult.error?.message ?? 'Document upload failed';
           setSubmitError(msg);
@@ -104,7 +105,7 @@ export function BranchCreateContent() {
         other_document_url = uploadResult.data?.url;
       }
 
-      const result = await createBranchAction({
+      const result = await createBranchAction(businessId, {
         name: data.name,
         address: data.address,
         latitude: data.latitude,

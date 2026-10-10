@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
+import { InstallPrompt } from '@/components/custom/pwa/InstallPrompt';
+import { ServiceWorkerRegistrar } from '@/components/custom/pwa/ServiceWorkerRegistrar';
 import { fontVariables } from './fonts';
 import './globals.css';
 
@@ -38,6 +40,34 @@ export const metadata: Metadata = {
     url: './',
   },
   twitter: { card: 'summary_large_image' },
+  /**
+   * iOS ignores most of the web app manifest. What it DOES read is this trio,
+   * emitted by Next as `apple-mobile-web-app-capable`,
+   * `apple-mobile-web-app-title` and `apple-mobile-web-app-status-bar-style` —
+   * without them, "Add to Home Screen" on an iPhone produces a bookmark that
+   * opens in Safari with its full chrome, not the standalone window Android
+   * gets from the manifest. The touch icon it also needs is already served by
+   * `app/apple-icon.png`.
+   */
+  /**
+   * 🔴 Next 16 renders `appleWebApp.capable` as the modern
+   * `mobile-web-app-capable` and does NOT emit the `apple-` prefixed name —
+   * confirmed by reading the served `<head>` on this app, not from the docs.
+   * Apple's own guidance still names `apple-mobile-web-app-capable`, so
+   * relying on the alias is a bet on Safari honouring a tag Apple never
+   * documented. One extra tag removes the bet.
+   */
+  other: {
+    'apple-mobile-web-app-capable': 'yes',
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'iLokal',
+    // `default` keeps the status bar legible over the app's own background.
+    // `black-translucent` would let content run under it, which on this app
+    // means the sticky dashboard header sitting behind the clock.
+    statusBarStyle: 'default',
+  },
 };
 
 /** Brick Ember light / Charcoal dark — paints the mobile browser chrome. */
@@ -71,6 +101,13 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
           <Toaster richColors position="top-right" />
+          {/* Renders nothing. Registers `public/sw.js` in production only —
+              see the component for why dev is excluded. */}
+          <ServiceWorkerRegistrar />
+          {/* One instance, in the root layout, for the same reason there is
+              one <Toaster>: two of these would race for the single-use
+              `beforeinstallprompt` event and only one would ever work. */}
+          <InstallPrompt />
         </ThemeProvider>
       </body>
     </html>

@@ -1,7 +1,10 @@
 'use client';
 
+import { cn } from '@/lib/utils';
+
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { BusinessHeader, BusinessSidebar, AIChatSheet } from '.';
+import { BusinessTabBar } from './BusinessTabBar';
 import { AIChatProvider } from './AIChatSheet';
 import { Branch, User } from '@/lib/types';
 import { UserProvider } from '@/providers/UserContext';
@@ -88,9 +91,22 @@ export default function BusinessLayout({
                           <ShopPendingBanner />
                         </div>
                       )}
-                      <div className="flex flex-1 overflow-auto px-4 py-6 sm:px-6 lg:px-10">
+                      <div
+                        className={cn(
+                          'flex flex-1 overflow-auto px-4 py-6 sm:px-6 lg:px-10',
+                          // Room for the tab bar, under the same condition
+                          // that paints it — otherwise the last row of every
+                          // table sits underneath it. The bar is `min-h-14`
+                          // plus the home-indicator inset.
+                          'standalone:pb-[calc(3.5rem+env(safe-area-inset-bottom)+1.5rem)]',
+                          'standalone:md:pb-6',
+                        )}
+                      >
                         {children}
                       </div>
+                      {/* Installed-app navigation. Always in the HTML; CSS
+                          decides whether it paints (see `globals.css`). */}
+                      <BusinessTabBar />
                     </SidebarInset>
                   </OnboardingTourProvider>
                 </SidebarProvider>

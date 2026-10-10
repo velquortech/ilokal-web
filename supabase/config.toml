@@ -71,12 +71,14 @@ sql_paths = [
   "./seeds/products.sql",
   "./seeds/bida_of_the_day.sql",
   "./seeds/coupons.sql",
+  "./seeds/playtest_fixtures.sql",
   "./seeds/ratings.sql",
   "./seeds/bida_analytics.sql",
   "./seeds/business_subscriptions.sql",
   "./seeds/business_posts.sql",
   "./seeds/events.sql",
   "./seeds/events_enable.sql",
+  "./seeds/refresh_freshness.sql",
 ]
 
 [db.network_restrictions]

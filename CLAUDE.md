@@ -290,7 +290,26 @@ Key facts about the current normalized schema (as of 2026-06-08):
     `search_path = public, postgis` intact, EXECUTE re-granted to
     `anon`/`authenticated`/`service_role`, and a live call returning real
     `banner_url` values.
-  - **Apply procedure** (still needs human approval per Workflow):
+  - **🔴 MERGING TO `main` NOW APPLIES MIGRATIONS TO CLOUD AUTOMATICALLY.**
+    `.github/workflows/supabase-migration-workflow.yml` runs on every push to
+    `main`, and its `Deploy-migration` job **succeeds** — verified on the
+    merges of PR #74, #75 and #76 (2026-08-26), each of which landed its
+    migration on `ilokal-database` within a minute of the merge button. The
+    "8 of 8 runs have FAILED / no migration has ever reached the database
+    through CI" note in the 2026-08-11 changelog entry is **historical**: the
+    two repository secrets it was blocked on have since been set.
+    **There is no human approval gate in front of a cloud apply — the merge IS
+    the deploy.** Treat merging a migration to `main` as shipping it.
+  - **⚠️ The workflow's overall status is RED for an unrelated reason, which
+    hides that.** A later job (`Production-preview`) fails its CSP smoke test
+    because Vercel Deployment Protection 302s the preview URL to
+    `vercel.com/sso-api`, so the check inspects Vercel's login page instead of
+    the app. **Read the JOB result, not the run result**: `Deploy-migration`
+    green means the migration is on cloud even though the run shows a red X.
+    A run that is red for the smoke test and a run that is red because the
+    migration failed look identical from the runs list.
+  - **Apply procedure** (for an out-of-band apply; the merge path above is the
+    normal one):
     prefer `yarn supabase db push --linked --yes` — it authenticates with a PAT
     over the Management API and needs no cloud `SUPABASE_DB_URL`, which is what
     `make migrate-cloud` demands and what `.env` does not carry (it holds the

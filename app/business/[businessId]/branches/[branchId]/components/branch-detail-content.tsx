@@ -85,8 +85,8 @@ export function BranchDetailContent({
         <div className="flex items-start gap-3">
           <Button
             variant="ghost"
-            size="icon"
-            className="mt-0.5 size-8 shrink-0"
+            size="icon-touch"
+            className="mt-0.5 shrink-0"
             asChild
           >
             <Link href={businessBranchesPath(businessId)}>

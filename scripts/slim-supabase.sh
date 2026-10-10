@@ -5,8 +5,16 @@
 # observability and dashboard services (analytics/Logflare, studio, pg_meta,
 # inbucket, vector) that burn ~900MB RAM + ~25% CPU for zero app-facing value.
 # This script stops those dev-only services and pins memory caps (with swap
-# disabled, so nothing thrashes) on the six containers the app actually talks
-# to: db, kong, rest, auth, storage, realtime.
+# disabled, so nothing thrashes) AND CPU ceilings on the six containers the app
+# actually talks to: db, kong, rest, auth, storage, realtime.
+#
+# The CPU ceilings matter as much as the memory ones on a laptop. Without
+# --cpus a single container is free to saturate every core: a seed script or a
+# migration turns into a 12-core Postgres burst that stalls the editor and the
+# Metro/Gradle builds running alongside it. The values below are ceilings, not
+# reservations, so an idle stack still costs nothing; they only bite under load.
+# They total well under the core count on purpose, leaving headroom for the
+# native Android build, which is the real CPU hog in this workflow.
 #
 # The caps are runtime-only — `supabase start` recreates containers and drops
 # them, so run this after every start. `make run-dev` does it automatically;
@@ -46,11 +54,14 @@ stop_if_running() {
   fi
 }
 
-cap_memory() {
-  local name="$1" limit="$2"
+cap_resources() {
+  local name="$1" limit="$2" cpus="$3"
   if docker ps --filter "name=${name}" --format '{{.Names}}' | grep -qx "${name}"; then
-    echo "  capping ${name} -> ${limit}"
-    docker update --memory "${limit}" --memory-swap "${limit}" "${name}" >/dev/null
+    echo "  capping ${name} -> ${limit} RAM, ${cpus} CPU"
+    docker update \
+      --memory "${limit}" --memory-swap "${limit}" \
+      --cpus "${cpus}" \
+      "${name}" >/dev/null
   fi
 }
 
@@ -61,12 +72,15 @@ stop_if_running "supabase_pg_meta_${SUFFIX}"
 stop_if_running "supabase_inbucket_${SUFFIX}"
 stop_if_running "supabase_vector_${SUFFIX}"
 
-echo "Capping memory on app-facing services (no swap):"
-cap_memory "supabase_db_${SUFFIX}" 1g
-cap_memory "supabase_realtime_${SUFFIX}" 512m
-cap_memory "supabase_storage_${SUFFIX}" 512m
-cap_memory "supabase_rest_${SUFFIX}" 256m
-cap_memory "supabase_auth_${SUFFIX}" 256m
-cap_memory "supabase_kong_${SUFFIX}" 128m
+# Postgres gets the largest share: it is the only one that does real work
+# under a migration or a seed. The rest are I/O-bound proxies that never need
+# a full core, so a fractional ceiling costs them nothing in practice.
+echo "Capping memory (no swap) and CPU on app-facing services:"
+cap_resources "supabase_db_${SUFFIX}"       1g    2
+cap_resources "supabase_realtime_${SUFFIX}" 512m  1
+cap_resources "supabase_storage_${SUFFIX}"  512m  0.5
+cap_resources "supabase_rest_${SUFFIX}"     256m  1
+cap_resources "supabase_auth_${SUFFIX}"     256m  0.5
+cap_resources "supabase_kong_${SUFFIX}"     128m  0.5
 
 echo "Done — stack is slim."

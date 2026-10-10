@@ -67,7 +67,7 @@ export function CustomerLoveSection({ business }: CustomerLoveSectionProps) {
       </div>
       {!hasContent ? (
         /* --- Empty State --- */
-        <div className="border-muted-foreground/25 bg-muted/20 relative w-full overflow-hidden rounded-2xl border border-dashed p-12">
+        <div className="border-muted-foreground/25 bg-muted/20 relative w-full overflow-hidden rounded-2xl border border-dashed p-6 sm:p-12">
           {/* Decorative background icons */}
           <Heart className="text-primary/5 absolute -top-4 -right-4 h-24 w-24 -rotate-12" />
 
@@ -138,7 +138,7 @@ export function CustomerLoveSection({ business }: CustomerLoveSectionProps) {
           <div className="bg-secondary/30 z-10 flex flex-1 items-center justify-center gap-4 rounded-2xl border p-8">
             <Button
               variant="outline"
-              size="icon"
+              size="icon-touch"
               className="shrink-0 rounded-full"
               onClick={handlePrev}
             >
@@ -168,7 +168,7 @@ export function CustomerLoveSection({ business }: CustomerLoveSectionProps) {
 
             <Button
               variant="outline"
-              size="icon"
+              size="icon-touch"
               className="shrink-0 rounded-full"
               onClick={handleNext}
             >

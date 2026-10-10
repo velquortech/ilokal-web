@@ -7,11 +7,13 @@ import {
   flexRender,
   getCoreRowModel,
   getExpandedRowModel,
+  getSortedRowModel,
   useReactTable,
   SortingState,
   PaginationState,
   RowSelectionState,
   ExpandedState,
+  VisibilityState,
   OnChangeFn,
   Row as TanStackRow,
   Table as TanStackTable,
@@ -51,8 +53,43 @@ interface DataTableProps<TData, TValue> {
     onChange: OnChangeFn<RowSelectionState>;
     getRowId: (row: TData, index: number) => string;
   };
-  /** Rendered above the table — bulk actions for the current selection. */
-  toolbar?: ReactNode;
+  /**
+   * Rendered above the table — bulk actions, a column-visibility menu, a count.
+   *
+   * Accepts a render function as well as a node, because some toolbars need the
+   * table instance (column visibility is the case that forced it) and the
+   * instance is created in here. A plain node stays valid, so no existing
+   * caller changed.
+   */
+  toolbar?: ReactNode | ((table: TanStackTable<TData>) => ReactNode);
+  /**
+   * Lift column visibility out of the table, for a toolbar that toggles it.
+   * Omit and TanStack keeps it internally — which is what every table with no
+   * visibility menu does.
+   */
+  columnVisibility?: {
+    state: VisibilityState;
+    onChange: OnChangeFn<VisibilityState>;
+  };
+  /**
+   * Sorting is SERVER-side by default, because every table here is
+   * server-paged: sorting the ten rows the server happened to return is not
+   * sorting the data, and looks identical to a user.
+   *
+   * Set false only where the caller genuinely sorts the page it was given and
+   * says so — the admin users table has always worked that way, and changing
+   * that behaviour is a separate decision from removing its fork.
+   */
+  manualSorting?: boolean;
+  /**
+   * Whether the pager offers a rows-per-page control.
+   *
+   * Turn it OFF where the page size is fixed by the data source. A selector
+   * that cannot change what is fetched is the exact "Rows per page does
+   * nothing" defect the 2026-07-25 pass had to fix on the product catalogue —
+   * an inert control is worse than no control, because it reads as broken.
+   */
+  pageSizeSelect?: boolean;
   /**
    * What fills the table when `data` is empty. Defaults to "No results.".
    *
@@ -97,6 +134,9 @@ export function DataTable<TData, TValue>({
   onSortingChange,
   selection,
   toolbar,
+  columnVisibility,
+  manualSorting = true,
+  pageSizeSelect = true,
   emptyState,
   expandable,
   renderMobile,
@@ -112,6 +152,7 @@ export function DataTable<TData, TValue>({
       sorting,
       ...(expandable && { expanded }),
       ...(selection && { rowSelection: selection.state }),
+      ...(columnVisibility && { columnVisibility: columnVisibility.state }),
     },
     onPaginationChange,
     onSortingChange,
@@ -123,10 +164,16 @@ export function DataTable<TData, TValue>({
       onRowSelectionChange: selection.onChange,
       getRowId: selection.getRowId,
     }),
+    ...(columnVisibility && {
+      onColumnVisibilityChange: columnVisibility.onChange,
+    }),
     getCoreRowModel: getCoreRowModel(),
     ...(expandable && { getExpandedRowModel: getExpandedRowModel() }),
+    // Only when the caller opted into sorting the page it holds. Adding this
+    // unconditionally would silently re-sort server-ordered rows.
+    ...(manualSorting ? {} : { getSortedRowModel: getSortedRowModel() }),
     manualPagination: true, // Crucial for server-side
-    manualSorting: true, // Crucial for server-side
+    manualSorting, // Server-side by default; see the prop.
     manualFiltering: true, // Crucial for server-side
   });
 
@@ -134,7 +181,7 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      {toolbar}
+      {typeof toolbar === 'function' ? toolbar(table) : toolbar}
       <div
         className={cn(
           'rounded-md border',
@@ -220,7 +267,7 @@ export function DataTable<TData, TValue>({
           )}
         </div>
       )}
-      <DataTablePagination table={table} />
+      <DataTablePagination table={table} showPageSize={pageSizeSelect} />
     </div>
   );
 }

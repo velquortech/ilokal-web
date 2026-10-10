@@ -1,5 +1,5 @@
 /**
- * The welcome-post generator (`.claude/WELCOME_POSTS.md`).
+ * The welcome-post generator.
  *
  * The renderer itself is Satori's problem. What is ours is the text handling —
  * a name pulled straight from the database, where the live rows run 3 to 29

@@ -100,9 +100,12 @@ EOF
 chmod +x "$T/bin/gh"
 : >"$T/gh.log"
 
-# Snapshot what the script must leave alone.
+# Snapshot what the script must leave alone. These, and `log` below, are read
+# inside the eval'd assertion strings, which shellcheck cannot see into.
 before() { git -C "$T/origin.git" rev-parse "$1"; }
+# shellcheck disable=SC2034
 c_before=$(before pr-c) d_before=$(before pr-d) e_before=$(before pr-e)
+# shellcheck disable=SC2034
 f_before=$(before pr-f) h_before=$(before pr-h) a_before=$(before pr-a)
 
 # --- run ----------------------------------------------------------------------
@@ -113,6 +116,7 @@ sed 's/^/  | /' "$T/out.log"
 
 o() { git -C "$T/origin.git" "$@"; }
 show() { o show "$1:CHANGELOG.md"; }
+# shellcheck disable=SC2034
 log=$(cat "$T/gh.log")
 
 echo "Assertions:"

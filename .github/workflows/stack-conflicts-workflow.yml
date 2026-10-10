@@ -1,0 +1,43 @@
+name: Stack conflict watch
+
+# Labels and comments on open PRs (stacked ones included) whose head stops
+# merging cleanly into main. GitHub only compares a PR with its base, so a
+# stack can go stale against main without any PR showing a conflict. The
+# logic, and how to dry-run it locally, is in .github/scripts/check-stack-conflicts.sh.
+
+on:
+  push:
+    branches:
+      - main
+  # A PR update may be the fix; re-check so its label clears without waiting
+  # for the next merge into main.
+  pull_request:
+    types: [opened, reopened, synchronize]
+  workflow_dispatch:
+
+# Each run re-scans every open PR, so only the newest run matters.
+concurrency:
+  group: stack-conflict-watch
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write # labels are issue labels
+
+jobs:
+  Check-stack-conflicts:
+    # Fork PRs get a read-only token and cannot label anything.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # merge-tree needs real merge bases, not a shallow tip.
+          fetch-depth: 0
+
+      - name: Check open PRs against main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/check-stack-conflicts.sh

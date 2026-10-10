@@ -149,7 +149,7 @@ export function BranchCard({ branch, businessId, onSuccess }: BranchCardProps) {
           </Link>
         </Button>
         <EditBranchDialog branch={branch} onSuccess={onSuccess}>
-          <Button variant="ghost" size="icon" className="size-8">
+          <Button variant="ghost" size="icon-touch">
             <Pencil className="size-4" />
             <span className="sr-only">Edit</span>
           </Button>
@@ -157,8 +157,8 @@ export function BranchCard({ branch, businessId, onSuccess }: BranchCardProps) {
         <DeleteBranchDialog branch={branch} onSuccess={onSuccess}>
           <Button
             variant="ghost"
-            size="icon"
-            className="text-destructive hover:text-destructive size-8"
+            size="icon-touch"
+            className="text-destructive hover:text-destructive"
           >
             <Trash2 className="size-4" />
             <span className="sr-only">Delete</span>

@@ -1,21 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import {
-  useReactTable,
-  getCoreRowModel,
-  flexRender,
+import type {
   PaginationState,
   ColumnDef,
+  SortingState,
 } from '@tanstack/react-table';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,7 +17,8 @@ import {
   XCircle,
 } from 'lucide-react';
 import type { BranchStatus } from '@/lib/types';
-import { DataTablePagination } from '@/components/custom/data-table/DataTablePagination';
+import { DataTable } from '@/components/custom/data-table/DataTable';
+import { MobileBranchCardList } from './mobile-branch-card-list';
 import { BUSINESS_TIME_ZONE } from '@/lib/utils/operatingHours';
 import { EditBranchDialog } from './edit-branch';
 import { DeleteBranchDialog } from './delete-branch';
@@ -92,6 +83,10 @@ export function BranchesTable({
       {
         accessorKey: 'address',
         header: 'Address',
+        // Layer 1: secondary columns leave the table below the breakpoint
+        // instead of pushing the actions off the right edge. They stay in the
+        // row model, and the card list renders them.
+        meta: { responsiveClassName: 'hidden lg:table-cell' },
         cell: ({ row }) => (
           <span className="text-muted-foreground block max-w-64 truncate">
             {row.original.address ?? '—'}
@@ -101,6 +96,7 @@ export function BranchesTable({
       {
         id: 'location',
         header: 'Coordinates',
+        meta: { responsiveClassName: 'hidden xl:table-cell' },
         cell: ({ row }) =>
           row.original.location ? (
             <Badge
@@ -126,6 +122,7 @@ export function BranchesTable({
       {
         accessorKey: 'created_at',
         header: 'Created',
+        meta: { responsiveClassName: 'hidden md:table-cell' },
         cell: ({ row }) => (
           <span className="text-muted-foreground text-sm">
             {new Date(row.original.created_at).toLocaleDateString(undefined, {
@@ -140,7 +137,7 @@ export function BranchesTable({
         cell: ({ row }) => (
           <div className="flex justify-end gap-1">
             <EditBranchDialog branch={row.original} onSuccess={onSuccess}>
-              <Button variant="ghost" size="icon" className="size-8">
+              <Button variant="ghost" size="icon-touch">
                 <Pencil className="size-4" />
                 <span className="sr-only">Edit branch</span>
               </Button>
@@ -148,8 +145,8 @@ export function BranchesTable({
             <DeleteBranchDialog branch={row.original} onSuccess={onSuccess}>
               <Button
                 variant="ghost"
-                size="icon"
-                className="text-destructive hover:text-destructive size-8"
+                size="icon-touch"
+                className="text-destructive hover:text-destructive"
               >
                 <Trash2 className="size-4" />
                 <span className="sr-only">Delete branch</span>
@@ -167,66 +164,45 @@ export function BranchesTable({
     [page, pageSize],
   );
 
-  const table = useReactTable({
-    data: branches,
-    columns,
-    pageCount: totalPages,
-    state: { pagination },
-    manualPagination: true,
-    onPaginationChange: (updater) => {
+  const handlePaginationChange = React.useCallback(
+    (
+      updater: PaginationState | ((old: PaginationState) => PaginationState),
+    ) => {
       const next =
         typeof updater === 'function' ? updater(pagination) : updater;
       onPaginationChange(next.pageIndex + 1, next.pageSize);
     },
-    getCoreRowModel: getCoreRowModel(),
-  });
+    [pagination, onPaginationChange],
+  );
 
-  if (branches.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16 text-center">
-        <MapPin className="text-muted-foreground mb-3 size-10" />
-        <p className="text-muted-foreground text-sm">No branches found</p>
-        <p className="text-muted-foreground mt-1 text-xs">
-          Add your first branch to appear on the map
-        </p>
-      </div>
-    );
-  }
+  /**
+   * Branches are ordered by the server; this table does not sort. The shared
+   * `DataTable` requires the pair anyway, and a frozen empty array with a
+   * no-op says so honestly — a `useState` here would look like sorting that
+   * simply does not work.
+   */
+  const sorting = React.useMemo<SortingState>(() => [], []);
+  const noSorting = React.useCallback(() => {}, []);
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-lg border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-      <DataTablePagination table={table} />
-    </div>
+    <DataTable
+      columns={columns}
+      data={branches}
+      pageCount={totalPages}
+      pagination={pagination}
+      onPaginationChange={handlePaginationChange}
+      sorting={sorting}
+      onSortingChange={noSorting}
+      renderMobile={(table) => <MobileBranchCardList table={table} />}
+      emptyState={
+        <div className="flex flex-col items-center justify-center gap-1 px-4 py-12 text-center">
+          <MapPin className="text-muted-foreground mb-2 size-8" />
+          <p className="font-medium">No branches found</p>
+          <p className="text-muted-foreground text-sm">
+            Add your first branch to appear on the map.
+          </p>
+        </div>
+      }
+    />
   );
 }

@@ -1,26 +1,46 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Table as UITable } from '@/components/ui/table';
+import { useCallback, useMemo, useState } from 'react';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import {
-  getCoreRowModel,
-  getSortedRowModel,
+import type {
   ColumnDef,
+  PaginationState,
   SortingState,
-  useReactTable,
+  VisibilityState,
 } from '@tanstack/react-table';
 import { AdminUser } from '@/lib/types/admin';
 import { PaginatedResponse } from '@/lib/services';
+import { DataTable } from '@/components/custom/data-table/DataTable';
+import { MobileFieldCardList } from '@/components/custom/data-table/MobileFieldCardList';
 import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
 import { UsersTableColumnVisibility } from './UsersTableColumnVisibility';
-import { UsersTablePagination } from './UsersTablePagination';
-import { UsersTableHeader } from './UsersTableHeader';
-import { UsersTableBody } from './UsersTableBody';
 import {
   createUsersTableColumns,
   UsersTableColumnsProps,
 } from './UsersTableColumns';
+
+/**
+ * The admin users/account-status table.
+ *
+ * This was a 654-line fork — its own TanStack instance plus its own header,
+ * body, pagination and column-visibility markup — so every responsive fix made
+ * to the shared `DataTable` had to be made here too, and was not: it never got
+ * the wrap-safe pager, the caller-supplied empty state, or a mobile renderer.
+ * It is the shared composite now, and the props below are unchanged, so all
+ * six callers (three user tabs, three account-status tabs) are untouched.
+ *
+ * Two behaviours it keeps, both deliberately:
+ *
+ *  · **Client-side sorting** (`manualSorting={false}`). It has always sorted
+ *    the page it was handed rather than asking the server to re-order. That is
+ *    arguably wrong for server-paged data — you are sorting ten rows, not the
+ *    set — but it is existing behaviour and changing it is a product decision,
+ *    not part of removing a fork.
+ *  · **No rows-per-page control.** The page size is fixed by the caller's
+ *    fetch (`useProfiles`' `limit`), so a selector here could not change what
+ *    is fetched. An inert control reads as a broken one — the "Rows per page
+ *    does nothing" defect, which is why `pageSizeSelect` exists.
+ */
 
 interface UsersTableProps<TRow = AdminUser> {
   data: PaginatedResponse<TRow> | null | undefined;
@@ -70,9 +90,7 @@ export default function UsersTable<TRow extends { id: string } = AdminUser>({
 }: UsersTableProps<TRow>) {
   const [error, setError] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<
-    Record<string, boolean>
-  >({
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     created_at: false, // Hide by default
   });
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
@@ -83,7 +101,8 @@ export default function UsersTable<TRow extends { id: string } = AdminUser>({
     user: null,
   });
 
-  // Use custom columns if provided, otherwise generate admin columns for backward compatibility
+  // Use custom columns if provided, otherwise generate admin columns for
+  // backward compatibility.
   const columns = useMemo(() => {
     if (customColumns) {
       return customColumns;
@@ -115,19 +134,26 @@ export default function UsersTable<TRow extends { id: string } = AdminUser>({
     onStatusChange,
   ]);
 
-  // Initialize table instance
-  const table = useReactTable({
-    data: data?.data || [],
-    columns,
-    state: {
-      sorting,
-      columnVisibility,
+  const pageSize = data?.pagination.pageSize ?? 10;
+  const pagination: PaginationState = useMemo(
+    () => ({ pageIndex: currentPage - 1, pageSize }),
+    [currentPage, pageSize],
+  );
+
+  const handlePaginationChange = useCallback(
+    (
+      updater: PaginationState | ((old: PaginationState) => PaginationState),
+    ) => {
+      const next =
+        typeof updater === 'function' ? updater(pagination) : updater;
+      // Page only — the size is the caller's, which is why the size control is
+      // switched off below rather than wired to nothing.
+      if (next.pageIndex !== pagination.pageIndex) {
+        onPageChange(next.pageIndex + 1);
+      }
     },
-    onSortingChange: setSorting,
-    onColumnVisibilityChange: setColumnVisibility,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-  });
+    [pagination, onPageChange],
+  );
 
   const handleDeleteConfirm = () => {
     if (deleteConfirmation.user) {
@@ -151,63 +177,66 @@ export default function UsersTable<TRow extends { id: string } = AdminUser>({
         aria-label="Loading users table"
       >
         <div className="flex flex-col items-center gap-2">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
-          <p className="text-gray-600">Loading users...</p>
+          <div className="border-muted border-t-primary h-8 w-8 animate-spin rounded-full border-4" />
+          <p className="text-muted-foreground">Loading users...</p>
         </div>
-      </div>
-    );
-  }
-
-  if (!data || (data.data?.length ?? 0) === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-gray-300 p-12 text-center">
-        <p className="text-gray-600">No users found</p>
-        <p className="mt-1 text-sm text-gray-500">
-          Create your first account to get started
-        </p>
       </div>
     );
   }
 
   if (columns.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-gray-300 p-12 text-center">
-        <p className="text-gray-600">No columns configured for this table</p>
+      <div className="rounded-lg border border-dashed p-6 text-center sm:p-12">
+        <p className="text-muted-foreground">
+          No columns configured for this table
+        </p>
       </div>
     );
   }
-
-  const { pagination } = data;
 
   return (
     <TooltipProvider>
       <div className="space-y-4">
         {error && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <div className="bg-destructive/10 text-destructive rounded-lg p-3 text-sm">
             {error}
           </div>
         )}
 
-        <UsersTableColumnVisibility table={table} />
-
-        <div className="overflow-hidden rounded-lg border border-gray-200">
-          <div className="overflow-x-auto">
-            <UITable role="table" aria-label="Users list table">
-              <UsersTableHeader headerGroups={table.getHeaderGroups()} />
-              <UsersTableBody
-                rows={table.getRowModel().rows}
-                columnsLength={columns.length}
-              />
-            </UITable>
-          </div>
-        </div>
-
-        <UsersTablePagination
-          currentPage={currentPage}
-          totalPages={pagination.totalPages}
-          totalItems={pagination.totalItems}
-          isSubmitting={isSubmitting}
-          onPageChange={onPageChange}
+        <DataTable
+          columns={columns}
+          data={data?.data ?? []}
+          pageCount={data?.pagination.totalPages ?? 0}
+          pagination={pagination}
+          onPaginationChange={handlePaginationChange}
+          sorting={sorting}
+          onSortingChange={setSorting}
+          manualSorting={false}
+          pageSizeSelect={false}
+          columnVisibility={{
+            state: columnVisibility,
+            onChange: setColumnVisibility,
+          }}
+          // A render function, because the visibility menu needs the table
+          // instance and `DataTable` is the one that creates it.
+          toolbar={(table) => <UsersTableColumnVisibility table={table} />}
+          renderMobile={(table) => (
+            // The generic card renderer, not a bespoke one: these columns are
+            // supplied by the CALLER and differ across all six mounts, so
+            // there is no fixed layout to hand-write.
+            <MobileFieldCardList
+              table={table}
+              primaryColumnIds={['name', 'full_name', 'email']}
+            />
+          )}
+          emptyState={
+            <div className="flex flex-col items-center justify-center gap-1 px-4 py-12 text-center">
+              <p className="font-medium">No users found</p>
+              <p className="text-muted-foreground text-sm">
+                Create your first account to get started.
+              </p>
+            </div>
+          }
         />
 
         {/* Delete Confirmation Dialog - Only show for AdminUser type with delete confirmation enabled */}

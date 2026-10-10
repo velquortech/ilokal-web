@@ -362,7 +362,7 @@ export function ShopOfferings() {
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon"
+                    size="icon-touch"
                     onClick={() => removeItem(index)}
                     aria-label={`Remove ${item?.name ?? singular}`}
                   >

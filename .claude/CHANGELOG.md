@@ -1,5 +1,54 @@
 # Changelog
 
+## 2026-08-26 — the deploy pipeline was red for a reason that had nothing to do with the deploy (fix/deploy-smoke-vercel-protection)
+
+> **No schema, API-contract or auth change.** One workflow step and one
+> correction to `CLAUDE.md`.
+
+- **🔴 `CLAUDE.md` said a cloud apply needs human approval. It does not — the
+  merge IS the deploy.** `supabase-migration-workflow.yml` runs on every push to
+  `main` and its `Deploy-migration` job **succeeds**; PR #74, #75 and #76 each
+  landed their migration on `ilokal-database` within a minute of the merge
+  button. The 2026-08-11 entry's "8 of 8 runs have FAILED / no migration has
+  ever reached the database through CI" is historical — the two secrets it was
+  blocked on have since been set, and nothing recorded that.
+- **The doc being stale in the OTHER direction is what made this dangerous.**
+  Acting on it, the Sports vertical was described here for hours as "applied to
+  LOCAL only, awaiting approval" while it was in fact live on production,
+  including a placement the owner had already asked to change. A stale "it isn't
+  applied" costs exactly what a stale "it is" costs — the lesson this file's own
+  migration-state banner was written to teach.
+- **🔴 What hid it: the run is red for an unrelated later job.** The
+  `Production-preview` job's CSP smoke test fails because Vercel Deployment
+  Protection **302s the preview URL to `vercel.com/sso-api`** — curl follows the
+  redirect and inspects VERCEL'S login page, whose CSP naturally never names
+  `nominatim.openstreetmap.org`. The app was always fine; `next.config.ts` has
+  carried that host in `connect-src` throughout.
+- **And the error message blamed the wrong thing**, which is the part worth
+  fixing rather than muting: *"the build is stale or the config was not picked
+  up"* is the opposite of what is happening, and it sent this investigation down
+  the wrong path before the redirect chain was actually read.
+- **The step now separates "protected" from "broken" BEFORE judging the CSP.**
+  It detects the SSO redirect and says so — naming the exact setting to change
+  (Vercel → Project → Settings → Deployment Protection → Protection Bypass for
+  Automation) and stating outright that the app's CSP is not implicated. With
+  `VERCEL_AUTOMATION_BYPASS_SECRET` set it passes the bypass as both a header
+  and a query param (the header covers the document request, the param survives
+  the redirect chain); with the secret set but rejected it says the secret is
+  stale rather than falling through to the CSP verdict.
+- **Verified against the real preview URL**, not a mock: its actual response
+  headers were fed through both branches, producing the protection message with
+  no secret and the stale-secret message with a wrong one — where the old code
+  produced "the build is stale". YAML re-parsed, both jobs and all 7
+  `Production-preview` steps intact.
+- **Still failing until a secret is added.** This does not turn the pipeline
+  green on its own — `VERCEL_AUTOMATION_BYPASS_SECRET` is a repo secret only an
+  admin can set. What changes is that the failure now names its own cause, so
+  the next person does not spend the investigation on the app's CSP. Until then,
+  **read the `Deploy-migration` job rather than the run status**: a run red from
+  the smoke test and a run red from a failed migration are indistinguishable in
+  the runs list.
+
 ## 2026-08-26 — the arcade and the iCafe go back where they came from (fix/sports-scope-gaming-trades)
 
 > **ONE migration (`20260827000000_sports_scope_gaming_trades.sql`) — MEDIUM risk:

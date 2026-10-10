@@ -10,6 +10,7 @@ import { CalendarDays } from 'lucide-react';
 import { DataTable } from '@/components/custom/data-table/DataTable';
 import type { EventWithRefs } from '@/lib/types';
 import { getReviewColumns } from './columns';
+import { MobileReviewCardList } from './mobile-review-card-list';
 
 interface EventsReviewTableProps {
   events: EventWithRefs[];
@@ -56,6 +57,7 @@ export function EventsReviewTable({
         onPaginationChange={handlePaginationChange}
         sorting={sorting}
         onSortingChange={setSorting}
+        renderMobile={(table) => <MobileReviewCardList table={table} />}
         emptyState={
           <EmptyState
             title={

@@ -62,8 +62,7 @@ export function BranchesGrid({
           <div className="flex items-center gap-1">
             <Button
               variant="outline"
-              size="icon"
-              className="size-8"
+              size="icon-touch"
               disabled={page <= 1}
               onClick={() => onPaginationChange(page - 1, pageSize)}
             >
@@ -75,8 +74,7 @@ export function BranchesGrid({
             </span>
             <Button
               variant="outline"
-              size="icon"
-              className="size-8"
+              size="icon-touch"
               disabled={page >= totalPages}
               onClick={() => onPaginationChange(page + 1, pageSize)}
             >

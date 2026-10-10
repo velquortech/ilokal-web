@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/custom/data-table/DataTable';
+import { MobileCategoryCardList } from './mobile-category-card-list';
 import {
   Dialog,
   DialogContent,
@@ -487,7 +488,7 @@ export function AdminCategoriesContent({
           <div className="flex items-center justify-end gap-1">
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-touch"
               onClick={() => setEditing(row.original)}
               aria-label={`Edit ${row.original.name}`}
             >
@@ -495,7 +496,7 @@ export function AdminCategoriesContent({
             </Button>
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-touch"
               onClick={() => setDeleting(row.original)}
               aria-label={`Delete ${row.original.name}`}
               className="text-destructive hover:text-destructive"
@@ -523,6 +524,7 @@ export function AdminCategoriesContent({
         }}
         sorting={sorting}
         onSortingChange={setSorting}
+        renderMobile={(table) => <MobileCategoryCardList table={table} />}
         toolbar={
           <div className="flex items-center justify-between gap-4">
             <p className="text-muted-foreground text-sm">

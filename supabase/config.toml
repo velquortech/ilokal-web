@@ -77,6 +77,7 @@ sql_paths = [
   "./seeds/business_posts.sql",
   "./seeds/events.sql",
   "./seeds/events_enable.sql",
+  "./seeds/refresh_freshness.sql",
 ]
 
 [db.network_restrictions]

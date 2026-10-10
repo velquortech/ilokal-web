@@ -37,8 +37,15 @@ function buildSupabaseMock(opts: {
     count: number | string;
   }[];
   rpcError?: { message: string } | null;
+  blurhashes?: { bucket: string; path: string; blurhash: string }[];
 }) {
   const supabase = {
+    // `image_blurhashes` — the placeholder lookup (lib/api/helpers/blurhash).
+    from: vi.fn(() => ({
+      select: () => ({
+        in: () => Promise.resolve({ data: opts.blurhashes ?? [], error: null }),
+      }),
+    })),
     rpc: vi.fn((name: string, ..._args: unknown[]) => {
       if (name === 'nearby_businesses_filtered') {
         return Promise.resolve({
@@ -245,6 +252,42 @@ describe('GET /api/mobile/businesses/nearby', () => {
       page_offset: 0,
       sort_featured_first: true,
     });
+  });
+
+  it('serves BlurHash placeholders for the logo and hero photo, null where none exists', async () => {
+    buildSupabaseMock({
+      rows: [
+        feedRow({
+          logo_url: 'biz-1/logo.webp',
+          interior_images: ['biz-1/hero.webp', 'biz-1/second.webp'],
+        }),
+        feedRow({ business_id: 'biz-2', logo_url: 'biz-2/logo.webp' }),
+      ],
+      followers: [],
+      counts: [],
+      blurhashes: [
+        { bucket: 'shop-logos', path: 'biz-1/logo.webp', blurhash: 'LOGOHASH' },
+        {
+          bucket: 'interior-images',
+          path: 'biz-1/hero.webp',
+          blurhash: 'HEROHASH',
+        },
+        // Same path, wrong bucket — must NOT be served as biz-2's logo hash.
+        {
+          bucket: 'interior-images',
+          path: 'biz-2/logo.webp',
+          blurhash: 'WRONG',
+        },
+      ],
+    });
+
+    const res = await GET(request('lat=10.7&lng=122.5&page=1&per_page=10'));
+    const body = await res.json();
+
+    expect(body.businesses[0].blur_hash).toBe('LOGOHASH');
+    expect(body.businesses[0].hero_blur_hash).toBe('HEROHASH');
+    expect(body.businesses[1].blur_hash).toBeNull();
+    expect(body.businesses[1].hero_blur_hash).toBeNull();
   });
 
   it('normalises rating_count / average_rating to numbers (BIGINT comes back as a string)', async () => {

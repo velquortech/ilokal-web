@@ -123,6 +123,11 @@ VALUES
   ('20260814000000','taxonomy_cleanup','DATA-ONLY','business_categories has ''Sari-sari / Convenience Store''',
    EXISTS (SELECT 1 FROM public.business_categories WHERE name='Sari-sari / Convenience Store')),
 
+  ('20260901000000','image_blurhashes','table','public.image_blurhashes + owner write policy',
+   to_regclass('public.image_blurhashes') IS NOT NULL
+   AND EXISTS (SELECT 1 FROM pg_policies WHERE tablename='image_blurhashes'
+               AND policyname='Owners write image blurhashes')),
+
   -- The column alone is not enough: the app needs the RPC to finish a
   -- registration, and without the CHECK a half-saved shop can still be verified.
   ('20261009000000','registration_completion','column+fn','businesses.registration_completed_at + complete_business_registration() + verify CHECK',

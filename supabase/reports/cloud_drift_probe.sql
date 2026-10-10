@@ -134,7 +134,12 @@ VALUES
    EXISTS (SELECT 1 FROM information_schema.columns
            WHERE table_schema='public' AND table_name='businesses' AND column_name='registration_completed_at')
    AND EXISTS (SELECT 1 FROM pg_proc WHERE proname='complete_business_registration')
-   AND EXISTS (SELECT 1 FROM pg_constraint WHERE conname='businesses_verified_requires_registration'))
+   AND EXISTS (SELECT 1 FROM pg_constraint WHERE conname='businesses_verified_requires_registration')),
+
+  ('20261009010000','registration_privileged_insert','fn','is_privileged_session() + set_business_initial_status() uses it',
+   EXISTS (SELECT 1 FROM pg_proc WHERE proname='is_privileged_session')
+   AND EXISTS (SELECT 1 FROM pg_proc WHERE proname='set_business_initial_status'
+               AND prosrc LIKE '%is_privileged_session%'))
 )
 SELECT
   p.version,

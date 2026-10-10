@@ -696,9 +696,10 @@ async function insert(db, records, ownerId) {
       },
       category_id: r.categoryId,
       // Explicit, and it survives: `trg_set_business_initial_status` returns
-      // early when `is_admin()` is true, which it is for the service role
-      // (auth.uid() IS NULL). Without 'verified' the row is invisible to the
-      // app, since both the RPC and RLS gate on it.
+      // early for a privileged session — `is_privileged_session()`, which
+      // covers the service role this script runs as (migration
+      // 20261009010000; `is_admin()` alone is false here). Without 'verified'
+      // the row is invisible to the app, since both the RPC and RLS gate on it.
       status: 'verified',
       // WHO listed it. Must be set explicitly: `origin` defaults to 'owner',
       // and the no-images guardrail exempts owner rows — so an import that

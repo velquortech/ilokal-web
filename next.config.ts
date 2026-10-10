@@ -225,6 +225,21 @@ const nextConfig: NextConfig = {
         destination: '/events/:eventId',
         permanent: false,
       },
+      // Legacy shop/deal URLs. Nothing inside the app links to /shops or
+      // /deals (every nav surface routes through ROUTES.EXPLORE.*), but they
+      // are the two words a first-time visitor types into the URL bar — the
+      // playtest found both landing on the 404 page. Send them to the real
+      // discovery surfaces. permanent:false alongside the others above.
+      {
+        source: '/shops',
+        destination: '/explore',
+        permanent: false,
+      },
+      {
+        source: '/deals',
+        destination: '/explore/deals',
+        permanent: false,
+      },
     ];
   },
   async headers() {

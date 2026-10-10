@@ -20,16 +20,93 @@ Make sure the following are installed on your machine:
    yarn
    ```
 
-2. Set up Supabase (ensure Docker is running):
+2. Set up Supabase (this starts Docker for you — see
+   [Docker](#-docker-starting-it-and-what-to-do-when-it-wont-start) if it
+   can't be reached):
 
    ```bash
    make setup-supabase
    ```
 
-3. Run the development server:
+3. Run the development server (starts the Supabase stack, then Next.js on
+   <http://localhost:3000>):
+
    ```bash
    make run-dev
    ```
+
+---
+
+## 🐳 Docker: starting it, and what to do when it won't start
+
+Everything local runs on Docker: `make setup-supabase`, `make run-dev`, and every
+`migrate-*` / `seed-*` target. Most go through the Supabase CLI, which opens the
+Docker daemon **socket** itself; `seed-db` calls `docker exec` directly. With the
+daemon down these fail with an error that names Supabase or Postgres rather than
+Docker, which sends you looking in the wrong place.
+
+### The one command
+
+```bash
+make start-docker
+```
+
+It checks whether a daemon is reachable, starts it if it is installed but
+stopped, and — when it genuinely can't be reached — prints the reason and the
+fix instead of a stack trace. It is idempotent: with Docker already up it prints
+one line and exits.
+
+`make run-dev` and `make setup-supabase` run it automatically, so most of the
+time you never call it yourself. The script lives at
+[`scripts/start-docker.sh`](scripts/start-docker.sh).
+
+### Starting Docker by hand
+
+| Platform | Command |
+| --- | --- |
+| Linux (systemd, packaged Docker Engine) | `sudo systemctl start docker` |
+| Linux (rootless install) | `systemctl --user start docker` |
+| macOS (Docker Desktop) | `open -a Docker` |
+| macOS (colima) | `colima start` |
+
+Confirm it took — `docker --version` answers from the client binary alone and
+reports success even with the daemon stopped, so it proves nothing:
+
+```bash
+docker info          # this is the honest check
+```
+
+To have Linux start it on every boot: `sudo systemctl enable --now docker`.
+
+### Checking the stack
+
+```bash
+docker ps                                  # containers currently running
+yarn supabase status                       # what the Supabase CLI thinks is up
+yarn supabase stop --project-id ilokal-web # stop this project's stack
+```
+
+### ⚠️ Flatpak (VS Code, Cursor and friends)
+
+If your editor is installed as a **Flatpak**, its integrated terminal is a
+sandbox that never receives `/var/run/docker.sock`. Docker is invisible in there
+even while it runs perfectly on the host, so `make run-dev` cannot work from that
+terminal — and adding a `docker` shim to `PATH` will not help, because the
+Supabase CLI opens the socket itself rather than shelling out to the `docker`
+binary.
+
+Two ways forward:
+
+1. **Run the make targets from a host terminal** (a normal system terminal, not
+   the editor's). This is the simple one.
+2. **Drive the host from the sandbox**, one command at a time:
+
+   ```bash
+   flatpak-spawn --host bash -lc 'cd "$PWD" && make run-dev'
+   ```
+
+`make start-docker` detects this case, starts the *host* daemon if it is down,
+and prints both options.
 
 ---
 

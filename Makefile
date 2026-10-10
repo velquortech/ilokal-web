@@ -135,7 +135,7 @@ seed-storage:
 	@bash supabase/seeds/seed-storage.sh
 
 seed-db:
-	@for f in supabase/seeds/users.sql supabase/seeds/subscription_plans.sql supabase/seeds/business_categories.sql supabase/seeds/businesses.sql supabase/seeds/freshness_tiers.sql supabase/seeds/products.sql supabase/seeds/bida_of_the_day.sql supabase/seeds/coupons.sql supabase/seeds/ratings.sql supabase/seeds/bida_analytics.sql supabase/seeds/business_subscriptions.sql supabase/seeds/business_posts.sql supabase/seeds/events.sql supabase/seeds/events_enable.sql supabase/seeds/follows.sql supabase/seeds/bulk_seed.sql supabase/seeds/view_counts.sql supabase/seeds/real_world_gaps.sql supabase/seeds/refresh_freshness.sql; do \
+	@for f in supabase/seeds/users.sql supabase/seeds/subscription_plans.sql supabase/seeds/business_categories.sql supabase/seeds/businesses.sql supabase/seeds/freshness_tiers.sql supabase/seeds/products.sql supabase/seeds/bida_of_the_day.sql supabase/seeds/coupons.sql supabase/seeds/playtest_fixtures.sql supabase/seeds/ratings.sql supabase/seeds/bida_analytics.sql supabase/seeds/business_subscriptions.sql supabase/seeds/business_posts.sql supabase/seeds/events.sql supabase/seeds/events_enable.sql supabase/seeds/follows.sql supabase/seeds/bulk_seed.sql supabase/seeds/view_counts.sql supabase/seeds/real_world_gaps.sql supabase/seeds/refresh_freshness.sql; do \
 		echo "  seeding $$f..."; \
 		docker exec -i supabase_db_ilokal-web psql -U postgres -d postgres < $$f; \
 	done

@@ -25,7 +25,10 @@
 --
 -- Run order: LAST. Other seeds may create rows it then re-dates; also, the
 -- real_world_gaps pass deliberately nulls some seed images and must not have
--- its work re-timed. Documented in README's run order alongside bulk_seed.
+-- its work re-timed. The playtest fixture pass (playtest_fixtures.sql) inserts
+-- named-coupon rows into the SAME 44444444 family, so the single prefix below
+-- covers them with no separate clause. Documented in README's run order
+-- alongside bulk_seed.
 
 UPDATE public.coupons
 SET start_date = NOW(),
@@ -33,6 +36,6 @@ SET start_date = NOW(),
 WHERE status = 'published'
   AND expiry_date <= NOW()
   AND (
-    id::text LIKE '44444444%'   -- curated coupons.sql rows
+    id::text LIKE '44444444%'   -- curated coupons.sql rows + playtest fixtures (4444…444x/8xxx sub-ranges)
     OR id::text LIKE 'f2000000%' -- bulk_seed procedural rows
   );

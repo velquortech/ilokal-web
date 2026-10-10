@@ -18,7 +18,11 @@ make seed            # = seed-storage (storage objects) + seed-db (SQL rows)
 
 - `config.toml` `[db.seed] sql_paths` seeds the **curated** files on every
   `db reset` (hero businesses, products, coupons, posts, events, …).
-- `make seed-db` runs the **full** list in order — curated files, then
+- `make seed-db` runs the **full** list in order — curated files (now including
+  `playtest_fixtures.sql`, the named promo set the mobile playtests browsed
+  against — SUMMER25, HILOT10, COLDBREW30 realism instead of bulk filler copy;
+  sits in the same `44444444…` family as `coupons.sql` so no logic anywhere
+  needs a separate clause for it), then
   `events.sql`, `follows.sql`, `bulk_seed.sql`, `view_counts.sql`, and finally
   `real_world_gaps.sql` (the gaps file must run **last**: it nulls images, and
   `bulk_seed`'s migration UPDATEs re-point rows before it), then

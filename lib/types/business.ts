@@ -39,6 +39,9 @@ export type BusinessProfileData = {
 /**
  * Core business record from database
  */
+/** Who created a listing. See `businesses.origin`. */
+export type BusinessOrigin = 'owner' | 'admin';
+
 export type Business = {
   id: string;
   owner_id: string;
@@ -47,6 +50,13 @@ export type Business = {
   logo_url: string | null;
   interior_images: string[] | null;
   status: BusinessVerificationStatus;
+  /**
+   * WHO listed this business: 'owner' (the business registered itself) or
+   * 'admin' (created by staff — e.g. the open-data directory import). Distinct
+   * from `source`, which records where the DATA came from. Any "is this ours?"
+   * question answers to this column.
+   */
+  origin: BusinessOrigin;
   verification_docs_url: string[] | null;
   created_at: string | null;
   updated_at: string | null;
@@ -89,6 +99,7 @@ export type AdminBusinessWithMeta = AdminBusiness & {
  */
 export type BusinessFilters = {
   status?: BusinessVerificationStatus | 'all';
+  origin?: BusinessOrigin | 'all';
   search?: string; // Search by name or owner email
   sortBy?: 'created' | 'updated' | 'name';
   sortOrder?: 'asc' | 'desc';

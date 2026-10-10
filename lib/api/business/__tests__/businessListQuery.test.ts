@@ -88,3 +88,40 @@ describe('getBusinessesPaginated', () => {
     expect(builder.range).toHaveBeenCalledWith(10, 19);
   });
 });
+
+describe('getBusinessesPaginated — origin filter', () => {
+  /**
+   * The admin review queue is ~70:1 admin-seeded, so without this filter it
+   * cannot be used for its actual purpose: finding the businesses that
+   * registered themselves and submitted documents.
+   */
+  it('filters on origin when one is given', async () => {
+    const { client, builder } = makeClient();
+    (createServerSupabaseClient as unknown as Mock).mockResolvedValue(client);
+
+    await getBusinessesPaginated({ origin: 'owner' });
+
+    expect(builder.eq).toHaveBeenCalledWith('origin', 'owner');
+  });
+
+  it("treats 'all' as no filter, so the default view still shows everything", async () => {
+    const { client, builder } = makeClient();
+    (createServerSupabaseClient as unknown as Mock).mockResolvedValue(client);
+
+    await getBusinessesPaginated({ origin: 'all' });
+
+    expect(
+      builder.eq.mock.calls.filter(([col]) => col === 'origin'),
+    ).toHaveLength(0);
+  });
+
+  it('applies origin and status together', async () => {
+    const { client, builder } = makeClient();
+    (createServerSupabaseClient as unknown as Mock).mockResolvedValue(client);
+
+    await getBusinessesPaginated({ origin: 'admin', status: 'verified' });
+
+    expect(builder.eq).toHaveBeenCalledWith('origin', 'admin');
+    expect(builder.eq).toHaveBeenCalledWith('status', 'verified');
+  });
+});

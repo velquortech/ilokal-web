@@ -126,6 +126,11 @@ describe('GET /api/mobile/businesses/nearby', () => {
       page_size: 10,
       page_offset: 0,
       sort_featured_first: false,
+      // Explore is an exhaustive radius browse, so it shows the whole
+      // directory and ranks claimed businesses first in every filter —
+      // hiding admin-listed entries here would defeat seeding them.
+      claimed_only: false,
+      sort_claimed_first: true,
     });
     // No other business-rows round-trip (no ratings re-fetch).
     expect(

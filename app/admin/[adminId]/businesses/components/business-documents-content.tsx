@@ -45,6 +45,10 @@ export function BusinessDocumentsContent({
     updateParams({ search: value.trim() || null, page: '1' });
   }, 400);
 
+  const handleOriginChange = (origin: string) => {
+    updateParams({ origin: origin || null, page: '1' });
+  };
+
   const handleStatusChange = (status: string) => {
     updateParams({ status: status || null, page: '1' });
   };
@@ -57,6 +61,7 @@ export function BusinessDocumentsContent({
   };
 
   const selectedStatus = searchParams.get('status') ?? '';
+  const selectedOrigin = searchParams.get('origin') ?? '';
 
   return (
     <div className="space-y-3">
@@ -70,6 +75,8 @@ export function BusinessDocumentsContent({
         <FilterBusinesses
           selectedStatus={selectedStatus}
           onStatusChange={handleStatusChange}
+          selectedOrigin={selectedOrigin}
+          onOriginChange={handleOriginChange}
         />
       </div>
 

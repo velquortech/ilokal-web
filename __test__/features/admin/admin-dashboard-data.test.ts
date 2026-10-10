@@ -226,11 +226,29 @@ describe('an outage is not a zero', () => {
 });
 
 describe('the summary counts the right rows', () => {
+  it('counts owner-registered and admin-seeded businesses separately', async () => {
+    const { getAdminDashboardSummary } = await load();
+    await getAdminDashboardSummary();
+
+    const originCalls = calls.filter((c) =>
+      c.eq?.some(([col]: [string, string]) => col === 'origin'),
+    );
+    expect(originCalls).toHaveLength(2);
+    expect(originCalls.every((c) => c.table === 'businesses')).toBe(true);
+    const values = originCalls
+      .flatMap((c) => c.eq ?? [])
+      .filter(([col]: [string, string]) => col === 'origin')
+      .map(([, val]: [string, string]) => val);
+    expect(values.sort()).toEqual(['admin', 'owner']);
+  });
+
   it('is head-only throughout', async () => {
     const { getAdminDashboardSummary } = await load();
     await getAdminDashboardSummary();
 
-    expect(calls).toHaveLength(5);
+    // 7, not 5: the business count is split by `origin` so the dashboard
+    // stops reporting ~1,480 imported directory rows as registered shops.
+    expect(calls).toHaveLength(7);
     expect(calls.every((c) => c.head)).toBe(true);
   });
 
@@ -241,7 +259,9 @@ describe('the summary counts the right rows', () => {
     const { getAdminDashboardSummary } = await load();
     await getAdminDashboardSummary();
 
-    expect(calls).toHaveLength(5);
+    // 7, not 5: the business count is split by `origin` so the dashboard
+    // stops reporting ~1,480 imported directory rows as registered shops.
+    expect(calls).toHaveLength(7);
     for (const call of calls) {
       expect(call.is).toContainEqual(['archived_at', null]);
     }

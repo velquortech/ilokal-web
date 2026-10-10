@@ -1,4 +1,5 @@
 import { createBearerClient } from '@/supabase/bearer';
+import { getAdminSeededVisible } from '@/lib/api/appSettings';
 import {
   loggedServerError,
   notFoundResponse,
@@ -90,6 +91,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       .select(
         `
         id, shop_name, description, logo_url, banner_url, interior_images, status,
+          origin, claimed_at,
         business_category,
         profiles!owner_id(full_name, email),
         business_categories!category_id(name, business_types!business_type_id(name, icon))
@@ -185,8 +187,27 @@ export async function GET(_req: NextRequest, { params }: Params) {
         ? { name: jsonbCategory.name, business_type: null, icon: null }
         : null;
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { profiles, business_categories, business_category, ...rest } = data;
+    // Destructured only to EXCLUDE them from `rest`: the nested relations are
+    // reshaped into `category` above, and origin/claimed_at are inputs to
+    // `is_claimed` below rather than fields the app should receive.
+    // The admin-seeded kill switch. A shared link is the hole an owner who
+    // objects would find first, so hiding a listing from the feed is not enough
+    // — the direct route has to 404 it too. 404, not 403: the listing simply
+    // does not exist as far as this caller is concerned.
+    if (data.origin === 'admin' && !(await getAdminSeededVisible())) {
+      return notFoundResponse({ message: 'Business not found' });
+    }
+
+    /* eslint-disable @typescript-eslint/no-unused-vars */
+    const {
+      profiles,
+      business_categories,
+      business_category,
+      origin,
+      claimed_at,
+      ...rest
+    } = data;
+    /* eslint-enable @typescript-eslint/no-unused-vars */
 
     const business = {
       ...rest,
@@ -197,6 +218,13 @@ export async function GET(_req: NextRequest, { params }: Params) {
           resolveStorageUrl(supabase, 'interior-images', url),
         ) ?? [],
       owner_handle: ownerHandle,
+      // Whether an owner stands behind this listing. The detail screen drew
+      // its check badge unconditionally, asserting something untrue about the
+      // ~1,480 admin-listed directory entries — and a user arriving by shared
+      // link has no nearby-feed cache to infer it from, so it has to come from
+      // here. Mirrors `nearby_businesses_filtered`: an admin listing counts as
+      // claimed once someone claims it, an owner-registered one by construction.
+      is_claimed: claimed_at !== null || origin === 'owner',
       category,
       branches,
       total_followers: followerCount ?? 0,

@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   getRegistrationSettings,
   getOnboardingTourEnabled,
+  getAdminSeededVisible,
 } from '../appSettings';
 import { createServerSupabaseClient } from '@/supabase/server';
 
@@ -199,5 +200,30 @@ describe('getOnboardingTourEnabled', () => {
     mockFlagRow({ value: 'yes' });
 
     await expect(getOnboardingTourEnabled()).resolves.toBe(false);
+  });
+});
+
+describe('getAdminSeededVisible — the admin-seeded kill switch', () => {
+  it('reports the stored value', async () => {
+    mockSettingsRows({ show_admin_seeded_businesses: false });
+    expect(await getAdminSeededVisible()).toBe(false);
+
+    mockSettingsRows({ show_admin_seeded_businesses: true });
+    expect(await getAdminSeededVisible()).toBe(true);
+  });
+
+  it('fails OPEN when the flags cannot be read', async () => {
+    // Deliberately the opposite of the registration flags, which fail closed.
+    // Hiding ~1,480 listings because of a transient read error is a far louder
+    // failure than briefly serving listings that were already public.
+    mockSettingsRows(null, { message: 'boom' });
+    expect(await getAdminSeededVisible()).toBe(true);
+  });
+
+  it('treats an older RPC without the column as "switch does not exist yet"', async () => {
+    // An app deployed ahead of its migration gets the previous function, which
+    // resolves successfully without this column.
+    mockSettingsRows({ enable_events: true });
+    expect(await getAdminSeededVisible()).toBe(true);
   });
 });

@@ -129,7 +129,12 @@ VALUES
    EXISTS (SELECT 1 FROM information_schema.columns
            WHERE table_schema='public' AND table_name='businesses' AND column_name='registration_completed_at')
    AND EXISTS (SELECT 1 FROM pg_proc WHERE proname='complete_business_registration')
-   AND EXISTS (SELECT 1 FROM pg_constraint WHERE conname='businesses_verified_requires_registration'))
+   AND EXISTS (SELECT 1 FROM pg_constraint WHERE conname='businesses_verified_requires_registration')),
+
+  ('20261010000000','image_blurhashes','table','public.image_blurhashes + owner write policy',
+   to_regclass('public.image_blurhashes') IS NOT NULL
+   AND EXISTS (SELECT 1 FROM pg_policies WHERE tablename='image_blurhashes'
+               AND policyname='Owners write image blurhashes'))
 )
 SELECT
   p.version,

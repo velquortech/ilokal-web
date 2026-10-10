@@ -6,6 +6,9 @@
 > code that needs them, in one release, never before it:** the 7
 > directory-provenance migrations `20261001000000`–`20261003030000`
 > (`businesses.origin` etc.) and `20261009000000_registration_completion`.
+> Plus `20261010000000_image_blurhashes` (branch `feat/blurhash-placeholders`):
+> after pushing it, run `node scripts/backfill-blurhashes.mjs --cloud` once so
+> images uploaded before it get placeholders (idempotent; reads storage only).
 > The registration code reads `origin` and calls
 > `complete_business_registration()`. Pushing early would also strand new
 > owner signups as hidden drafts under the old wizard. This is a LEDGER

@@ -7,6 +7,7 @@ import {
 } from '@/app/api/helpers/response';
 import { isValidResourceId } from '@/app/api/helpers/resourceId';
 import { resolveStorageUrl } from '@/app/api/helpers/storage';
+import { getBlurhashes } from '@/lib/api/helpers/blurhash';
 import { NextRequest } from 'next/server';
 
 type Params = { params: Promise<{ businessId: string }> };
@@ -128,8 +129,21 @@ export async function GET(_req: NextRequest, { params }: Params) {
     } = data;
     /* eslint-enable @typescript-eslint/no-unused-vars */
 
+    // Placeholders for the logo and EVERY gallery photo, index-aligned with
+    // `interior_images` — the detail screen's hero carousel shows them all.
+    const interiorRefs = ((data.interior_images ?? []) as string[]).map(
+      (pathOrUrl) => ({ bucket: 'interior-images', pathOrUrl }),
+    );
+    const logoRef = { bucket: 'shop-logos', pathOrUrl: data.logo_url };
+    const blurhashOf = await getBlurhashes(supabase, [
+      logoRef,
+      ...interiorRefs,
+    ]);
+
     const business = {
       ...rest,
+      logo_blur_hash: blurhashOf(logoRef),
+      interior_blur_hashes: interiorRefs.map(blurhashOf),
       logo_url: resolveStorageUrl(supabase, 'shop-logos', data.logo_url),
       banner_url: resolveStorageUrl(supabase, 'shop-banners', data.banner_url),
       interior_images:

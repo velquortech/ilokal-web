@@ -15,32 +15,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { FunnelCounts, RegistrationFunnel } from '@/lib/types';
-
-const STEPS: {
-  key: keyof FunnelCounts;
-  label: string;
-  /** How the share is phrased against the step before it. */
-  ofPrevious?: string;
-}[] = [
-  { key: 'visitors', label: 'Opened the link' },
-  {
-    key: 'signups',
-    label: 'Created an account',
-    ofPrevious: 'of those who opened',
-  },
-  {
-    key: 'started',
-    label: 'Started registering',
-    ofPrevious: 'of new accounts',
-  },
-  { key: 'completed', label: 'Finished', ofPrevious: 'of those who started' },
-];
-
-/** `null` when the step before is empty — "0 of 0" is not a percentage. */
-function share(part: number, whole: number): string | null {
-  return whole > 0 ? `${Math.round((part / whole) * 100)}%` : null;
-}
+import type { RegistrationFunnel } from '@/lib/types';
+import { FUNNEL_STEPS, funnelShare } from '@/lib/utils/registrationFunnel';
 
 /**
  * The mobile app's "List your business" link, step by step.
@@ -84,10 +60,12 @@ export function RegistrationFunnelCard({
         ) : (
           <div className="space-y-6">
             <ol className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {STEPS.map((step, i) => {
+              {FUNNEL_STEPS.map((step, i) => {
                 const value = totals[step.key];
                 const pct =
-                  i > 0 ? share(value, totals[STEPS[i - 1].key]) : null;
+                  i > 0
+                    ? funnelShare(value, totals[FUNNEL_STEPS[i - 1].key])
+                    : null;
                 return (
                   <li key={step.key} className="rounded-lg border p-4">
                     <p className="text-muted-foreground text-sm">
@@ -110,7 +88,7 @@ export function RegistrationFunnelCard({
               <TableHeader>
                 <TableRow>
                   <TableHead>Where in the app</TableHead>
-                  {STEPS.map((step) => (
+                  {FUNNEL_STEPS.map((step) => (
                     <TableHead key={step.key} className="text-right">
                       {step.label}
                     </TableHead>
@@ -123,7 +101,7 @@ export function RegistrationFunnelCard({
                     <TableCell className="font-medium">
                       {source.label}
                     </TableCell>
-                    {STEPS.map((step) => (
+                    {FUNNEL_STEPS.map((step) => (
                       <TableCell key={step.key} className="text-right">
                         {source[step.key].toLocaleString()}
                       </TableCell>

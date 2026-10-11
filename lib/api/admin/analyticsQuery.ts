@@ -278,17 +278,23 @@ export async function getPlatformGrowth(months = 6): Promise<PlatformGrowth> {
   }
 }
 
+type AnalyticsClient = Awaited<
+  ReturnType<typeof createAnalyticsSupabaseClient>
+>;
+
 /**
  * How many shops the mobile app's "List your business" link brought in, over
  * the last `days`: opened the link → created an account → started registering
  * → finished. Reads registration_funnel_report() (migration 20261010100000),
  * keeps only the app's refs, and labels them for staff.
  *
- * Admin proven first, then the analytics (service-role) client — the same
- * order as getPlatformGrowth, and the report admits the service role.
+ * Session-free on purpose — the caller proves who may read it: the dashboard
+ * through getRegistrationFunnel(), the weekly email through CRON_SECRET. The
+ * client must be one the report admits (an admin session or the service role).
  */
-export async function getRegistrationFunnel(
-  days = 30,
+export async function readRegistrationFunnel(
+  supabase: AnalyticsClient,
+  days: number,
 ): Promise<RegistrationFunnel> {
   const empty = { visitors: 0, signups: 0, started: 0, completed: 0 };
   const failed: RegistrationFunnel = {
@@ -299,15 +305,11 @@ export async function getRegistrationFunnel(
   };
 
   try {
-    const auth = await assertAuthorized(undefined, { roles: ['admin'] });
-    if (!auth.authorized) return failed;
-
-    const supabase = await createAnalyticsSupabaseClient();
     const { data, error } = await supabase.rpc('registration_funnel_report', {
       p_since: new Date(Date.now() - days * 86_400_000).toISOString(),
     });
     if (error) {
-      console.error('[getRegistrationFunnel]', formatErrorForLog(error));
+      console.error('[readRegistrationFunnel]', formatErrorForLog(error));
       return failed;
     }
 
@@ -342,9 +344,35 @@ export async function getRegistrationFunnel(
 
     return { days, sources, totals, failed: false };
   } catch (error) {
-    console.error('[getRegistrationFunnel]', formatErrorForLog(error));
+    console.error('[readRegistrationFunnel]', formatErrorForLog(error));
     return failed;
   }
+}
+
+/**
+ * The dashboard's read: admin proven first, then the analytics (service-role)
+ * client — the same order as getPlatformGrowth.
+ */
+export async function getRegistrationFunnel(
+  days = 30,
+): Promise<RegistrationFunnel> {
+  try {
+    const auth = await assertAuthorized(undefined, { roles: ['admin'] });
+    if (auth.authorized) {
+      return await readRegistrationFunnel(
+        await createAnalyticsSupabaseClient(),
+        days,
+      );
+    }
+  } catch (error) {
+    console.error('[getRegistrationFunnel]', formatErrorForLog(error));
+  }
+  return {
+    days,
+    sources: [],
+    totals: { visitors: 0, signups: 0, started: 0, completed: 0 },
+    failed: true,
+  };
 }
 
 const MONTH_NAMES = [

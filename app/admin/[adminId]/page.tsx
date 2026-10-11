@@ -13,6 +13,7 @@ import {
 import {
   getAdminDashboardSummary,
   getPlatformGrowth,
+  getRegistrationFunnel,
   getWelcomePostCandidates,
 } from '@/lib/api/admin/analyticsQuery';
 import { getRegistrationSettings } from '@/lib/api/appSettings';
@@ -20,6 +21,7 @@ import { WELCOME_POST_NEW_DAYS } from '@/lib/types';
 import { adminWelcomePostsPath } from '@/config/routeConfig';
 import { Button } from '@/components/ui/button';
 import { GrowthCharts } from './components/GrowthChart';
+import { RegistrationFunnelCard } from './components/RegistrationFunnelCard';
 import { PageHeader } from '@/components/custom/PageHeader';
 
 /**
@@ -66,6 +68,21 @@ function StatValue({ value }: { value: number | null }) {
 async function GrowthSection() {
   const growth = await getPlatformGrowth();
   return <GrowthCharts buckets={growth.buckets} failed={growth.failed} />;
+}
+
+/** Its own boundary, like the charts: the cards never wait on the funnel. */
+async function RegistrationFunnelSection() {
+  const funnel = await getRegistrationFunnel(30);
+  return <RegistrationFunnelCard funnel={funnel} />;
+}
+
+function RegistrationFunnelSkeleton() {
+  return (
+    <div role="status" aria-busy="true">
+      <span className="sr-only">Loading app registrations</span>
+      <Skeleton className="h-56 w-full rounded-xl" aria-hidden="true" />
+    </div>
+  );
 }
 
 function GrowthSkeleton() {
@@ -129,7 +146,10 @@ export default async function DashboardPage({
     (summary.pending_businesses ?? 0) > 0;
 
   return (
-    <div className="flex flex-1 flex-col space-y-6">
+    // `min-w-0`: this column is a flex item, so by default it grows to its
+    // widest child — the funnel table pushed every card past a phone's width.
+    // Letting it shrink keeps the table scrolling inside its own card.
+    <div className="flex min-w-0 flex-1 flex-col space-y-6">
       <PageHeader title="Dashboard" lede="Welcome back to iLokal Admin Panel" />
 
       {showWelcomePrompt && (
@@ -256,6 +276,10 @@ export default async function DashboardPage({
           </Card>
         )}
       </div>
+
+      <Suspense fallback={<RegistrationFunnelSkeleton />}>
+        <RegistrationFunnelSection />
+      </Suspense>
 
       <Suspense fallback={<GrowthSkeleton />}>
         <GrowthSection />

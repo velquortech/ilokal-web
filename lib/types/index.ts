@@ -280,6 +280,9 @@ export type {
   GrowthBucket,
   PlatformGrowth,
   AdminDashboardSummary,
+  FunnelCounts,
+  FunnelSource,
+  RegistrationFunnel,
 } from './analytics';
 export type {
   BusinessDashboard,

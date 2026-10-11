@@ -31,6 +31,31 @@ export interface PlatformGrowth {
   failed: boolean;
 }
 
+/** One step count per stage of the app registration funnel. */
+export interface FunnelCounts {
+  /** Unique people who opened the tracked link (not raw taps). */
+  visitors: number;
+  signups: number;
+  started: number;
+  completed: number;
+}
+
+export interface FunnelSource extends FunnelCounts {
+  /** The tracked-link ref, e.g. `app_profile`. */
+  ref: string;
+  /** What staff read, e.g. "App · Profile tab". */
+  label: string;
+}
+
+/** registration_funnel_report(), narrowed to the mobile app's links. */
+export interface RegistrationFunnel {
+  days: number;
+  sources: FunnelSource[];
+  totals: FunnelCounts;
+  /** The read failed — say so, never show a funnel of zeros. */
+  failed: boolean;
+}
+
 export interface AdminDashboardSummary {
   /**
    * `null` means THIS figure failed to load.

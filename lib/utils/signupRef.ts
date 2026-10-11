@@ -20,3 +20,20 @@ export function parseSignupRef(
 ): string | null {
   return value && SIGNUP_REF_PATTERN.test(value) ? value : null;
 }
+
+/** The prefix every mobile-app link's ref carries. */
+export const APP_REF_PREFIX = 'app_';
+
+const SOURCE_LABELS: Record<string, string> = {
+  app_profile: 'App · Profile tab',
+  app_guest: 'App · Guest prompt',
+};
+
+/** The name staff see for a ref. An unmapped app ref still reads sensibly
+ *  ("app_events_tab" → "App · events tab") instead of disappearing. */
+export function signupRefLabel(ref: string): string {
+  if (SOURCE_LABELS[ref]) return SOURCE_LABELS[ref];
+  return ref.startsWith(APP_REF_PREFIX)
+    ? `App · ${ref.slice(APP_REF_PREFIX.length).replace(/_/g, ' ')}`
+    : ref;
+}

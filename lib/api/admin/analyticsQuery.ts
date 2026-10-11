@@ -7,11 +7,13 @@ import type {
   AdminDashboardSummary,
   PlatformAnalytics,
   PlatformGrowth,
+  RegistrationFunnel,
   WelcomePostCandidate,
   WelcomePostCandidates,
 } from '@/lib/types';
 import { WELCOME_POST_NEW_DAYS } from '@/lib/types';
 import { formatErrorForLog } from '@/lib/utils/describeDbError';
+import { APP_REF_PREFIX, signupRefLabel } from '@/lib/utils/signupRef';
 
 export async function getPlatformOverview(): Promise<PlatformAnalytics> {
   const supabase = await createServerSupabaseClient();
@@ -273,6 +275,75 @@ export async function getPlatformGrowth(months = 6): Promise<PlatformGrowth> {
   } catch (error: unknown) {
     console.error('[getPlatformGrowth] threw', formatErrorForLog(error));
     return { buckets: [], failed: true };
+  }
+}
+
+/**
+ * How many shops the mobile app's "List your business" link brought in, over
+ * the last `days`: opened the link → created an account → started registering
+ * → finished. Reads registration_funnel_report() (migration 20261010100000),
+ * keeps only the app's refs, and labels them for staff.
+ *
+ * Admin proven first, then the analytics (service-role) client — the same
+ * order as getPlatformGrowth, and the report admits the service role.
+ */
+export async function getRegistrationFunnel(
+  days = 30,
+): Promise<RegistrationFunnel> {
+  const empty = { visitors: 0, signups: 0, started: 0, completed: 0 };
+  const failed: RegistrationFunnel = {
+    days,
+    sources: [],
+    totals: empty,
+    failed: true,
+  };
+
+  try {
+    const auth = await assertAuthorized(undefined, { roles: ['admin'] });
+    if (!auth.authorized) return failed;
+
+    const supabase = await createAnalyticsSupabaseClient();
+    const { data, error } = await supabase.rpc('registration_funnel_report', {
+      p_since: new Date(Date.now() - days * 86_400_000).toISOString(),
+    });
+    if (error) {
+      console.error('[getRegistrationFunnel]', formatErrorForLog(error));
+      return failed;
+    }
+
+    const sources = (
+      (data ?? []) as {
+        ref: string;
+        visitors: number;
+        signups: number;
+        started: number;
+        completed: number;
+      }[]
+    )
+      .filter((row) => row.ref.startsWith(APP_REF_PREFIX))
+      .map((row) => ({
+        ref: row.ref,
+        label: signupRefLabel(row.ref),
+        visitors: Number(row.visitors) || 0,
+        signups: Number(row.signups) || 0,
+        started: Number(row.started) || 0,
+        completed: Number(row.completed) || 0,
+      }));
+
+    const totals = sources.reduce(
+      (sum, s) => ({
+        visitors: sum.visitors + s.visitors,
+        signups: sum.signups + s.signups,
+        started: sum.started + s.started,
+        completed: sum.completed + s.completed,
+      }),
+      empty,
+    );
+
+    return { days, sources, totals, failed: false };
+  } catch (error) {
+    console.error('[getRegistrationFunnel]', formatErrorForLog(error));
+    return failed;
   }
 }
 

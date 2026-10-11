@@ -2,7 +2,8 @@
  * Reset-password email sender (server-only).
  *
  * Delivery is gated by `RESEND_API_KEY`:
- * - key set (prod)  → POST the rendered email to the Resend REST API via axios.
+ * - key set (prod)  → POST the rendered email to Resend via the shared
+ *   `postToResend` (./resend.ts).
  * - key unset (dev) → don't send; log the reset link so a developer can copy it
  *   and walk the full flow locally. This is the local "sandbox".
  *
@@ -15,13 +16,11 @@
  * handlers.
  */
 
-import axios from 'axios';
 import {
   renderResetPasswordEmail,
   type ResetPasswordEmailInput,
 } from './templates/resetPassword';
-
-const RESEND_ENDPOINT = 'https://api.resend.com/emails';
+import { postToResend, resendConfig } from './resend';
 
 export interface SendResetEmailInput {
   /** Recipient email address. */
@@ -54,16 +53,8 @@ export async function sendResetEmail({
     expiresInLabel,
   });
 
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM;
-
-  // A real Resend key always starts with "re_". Treat a missing key, a
-  // placeholder/sample value, or a missing EMAIL_FROM as "sandbox mode": don't
-  // send — surface the link so it can be tested locally. Only a genuine key +
-  // from address triggers an actual send, so a placeholder can never attempt a
-  // doomed 401 request.
-  const hasRealKey = typeof apiKey === 'string' && apiKey.startsWith('re_');
-  if (!hasRealKey || !from) {
+  const config = resendConfig();
+  if (!config) {
     // Only surface the (single-use) link in non-production, so a misconfigured
     // prod (missing/placeholder key) can never write live reset tokens to logs.
     if (process.env.NODE_ENV !== 'production') {
@@ -87,35 +78,5 @@ export async function sendResetEmail({
     return { sent: false };
   }
 
-  try {
-    await axios.post(
-      RESEND_ENDPOINT,
-      { from, to, subject, html, text },
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        timeout: 10_000,
-      },
-    );
-    return { sent: true };
-  } catch (error) {
-    // Log server-side only (never to the client). Include Resend's response
-    // body — its message names the actual cause (e.g. unverified domain, or an
-    // onboarding@resend.dev send to a non-account address), which a bare status
-    // code hides.
-    if (axios.isAxiosError(error) && error.response) {
-      console.error(
-        `[reset-email] Resend send failed (status ${error.response.status}):`,
-        JSON.stringify(error.response.data),
-      );
-    } else {
-      console.error(
-        '[reset-email] Resend send failed:',
-        error instanceof Error ? error.message : 'unknown error',
-      );
-    }
-    return { sent: false };
-  }
+  return postToResend(config, '[reset-email]', { to, subject, html, text });
 }

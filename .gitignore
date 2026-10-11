@@ -99,3 +99,8 @@ theme-public-1280.png
 # CSV/TXT it writes hold REAL production user emails — never commit them.
 data/user-emails.csv
 data/user-emails-comma.txt
+
+# Playwright e2e artifacts (video, traces, reports) — local dev only
+e2e/.artifacts/
+test-results/
+playwright-report/

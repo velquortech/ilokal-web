@@ -124,6 +124,12 @@ package, stop and propose it (name, why existing deps can't do it, size/risk) �
 don't install speculatively. Same rule for new external services, CDNs, fonts,
 or APIs.
 
+Approved additions (record each one here):
+
+- `@playwright/test` (dev, pinned exactly) — approved 2026-10-11 for the live
+  E2E walkthrough in `e2e/` (`make e2e`). Local-only: not in `ci:checks` or
+  `pre-push`, never in the production bundle.
+
 ## Design system — brand v1.0 (standing direction)
 
 The **"Presented Brand Identity"** (2026-08-01) is the identity, not a phase.

@@ -32,6 +32,13 @@ export default tseslint.config(
       // `.claude/worktrees` exclusion already in vitest.config.ts.
       '.claude/worktrees/**',
       '.freebuff/worktrees/**',
+      // Playwright output from `make e2e`: HTML reports and traces carry large
+      // minified JS bundles (~180 MB after one run). They are gitignored, but
+      // ESLint does not read .gitignore — without these, `yarn lint` (and so
+      // pre-push) crawls through them for over 15 minutes after any e2e run.
+      'e2e/.artifacts/**',
+      'test-results/**',
+      'playwright-report/**',
     ],
   },
 

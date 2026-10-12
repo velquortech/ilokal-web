@@ -511,4 +511,77 @@ UPDATE public.businesses
 SET banner_url = id || '/banner.jpg'
 WHERE id::text LIKE '11111111-1111-1111-1111-1111111111%';
 
+-- Seed operating hours (business_settings.operating_hours, one row per shop).
+-- Without these the mobile business detail renders no schedule and the
+-- open/close state is permanently unknown — every seeded shop looks 24/7-unset.
+-- Shape matches lib/validation/settings.ts exactly: mon..sun keys, each
+-- { open: 'HH:mm', close: 'HH:mm', closed: boolean } (closed=true ignores
+-- open/close). Category-varied so the detail sheet exercises different
+-- schedules; The Lampara Live Music Bar (id16) closes past midnight to test
+-- the wrap-around day-span case.
+INSERT INTO public.business_settings (business_id, operating_hours)
+VALUES
+  -- 101 Café: early coffee hours, closed Mon (roast day)
+  ('11111111-1111-1111-1111-111111111101',
+   '{"mon":{"closed":true},"tue":{"open":"06:30","close":"21:00","closed":false},"wed":{"open":"06:30","close":"21:00","closed":false},"thu":{"open":"06:30","close":"21:00","closed":false},"fri":{"open":"06:30","close":"22:00","closed":false},"sat":{"open":"07:00","close":"22:00","closed":false},"sun":{"open":"07:00","close":"20:00","closed":false}}'::jsonb),
+  -- 102 Bakery: dawn bakers, early close
+  ('11111111-1111-1111-1111-111111111102',
+   '{"mon":{"open":"05:30","close":"18:00","closed":false},"tue":{"open":"05:30","close":"18:00","closed":false},"wed":{"open":"05:30","close":"18:00","closed":false},"thu":{"open":"05:30","close":"18:00","closed":false},"fri":{"open":"05:30","close":"19:00","closed":false},"sat":{"open":"05:30","close":"19:00","closed":false},"sun":{"closed":true}}'::jsonb),
+  -- 103 handyman shop: short weekday hours, weekends closed
+  ('11111111-1111-1111-1111-111111111103',
+   '{"mon":{"open":"08:00","close":"17:00","closed":false},"tue":{"open":"08:00","close":"17:00","closed":false},"wed":{"open":"08:00","close":"17:00","closed":false},"thu":{"open":"08:00","close":"17:00","closed":false},"fri":{"open":"08:00","close":"17:00","closed":false},"sat":{"open":"09:00","close":"13:00","closed":false},"sun":{"closed":true}}'::jsonb),
+  -- 104 Salon: late mornings only, closed Tue
+  ('11111111-1111-1111-1111-111111111104',
+   '{"mon":{"closed":true},"tue":{"open":"10:00","close":"19:00","closed":false},"wed":{"open":"10:00","close":"19:00","closed":false},"thu":{"open":"10:00","close":"19:00","closed":false},"fri":{"open":"10:00","close":"20:00","closed":false},"sat":{"open":"09:00","close":"20:00","closed":false},"sun":{"open":"10:00","close":"17:00","closed":false}}'::jsonb),
+  -- 105 Bistro: lunch + dinner split approximated as one span
+  ('11111111-1111-1111-1111-111111111105',
+   '{"mon":{"open":"11:00","close":"22:00","closed":false},"tue":{"open":"11:00","close":"22:00","closed":false},"wed":{"open":"11:00","close":"22:00","closed":false},"thu":{"open":"11:00","close":"22:00","closed":false},"fri":{"open":"11:00","close":"23:00","closed":false},"sat":{"open":"11:00","close":"23:00","closed":false},"sun":{"open":"11:00","close":"21:00","closed":false}}'::jsonb),
+  -- 106 Tapas bar: late-night weekends
+  ('11111111-1111-1111-1111-111111111106',
+   '{"mon":{"open":"16:00","close":"23:00","closed":false},"tue":{"open":"16:00","close":"23:00","closed":false},"wed":{"open":"16:00","close":"23:00","closed":false},"thu":{"open":"16:00","close":"23:00","closed":false},"fri":{"open":"16:00","close":"01:00","closed":false},"sat":{"open":"12:00","close":"01:00","closed":false},"sun":{"closed":true}}'::jsonb),
+  -- 107 street eats: breakfast thru late snack
+  ('11111111-1111-1111-1111-111111111107',
+   '{"mon":{"open":"06:00","close":"22:00","closed":false},"tue":{"open":"06:00","close":"22:00","closed":false},"wed":{"open":"06:00","close":"22:00","closed":false},"thu":{"open":"06:00","close":"22:00","closed":false},"fri":{"open":"06:00","close":"23:00","closed":false},"sat":{"open":"06:00","close":"23:00","closed":false},"sun":{"open":"06:00","close":"21:00","closed":false}}'::jsonb),
+  -- 108 sari-sari: all-day neighborhood store
+  ('11111111-1111-1111-1111-111111111108',
+   '{"mon":{"open":"07:00","close":"21:00","closed":false},"tue":{"open":"07:00","close":"21:00","closed":false},"wed":{"open":"07:00","close":"21:00","closed":false},"thu":{"open":"07:00","close":"21:00","closed":false},"fri":{"open":"07:00","close":"22:00","closed":false},"sat":{"open":"07:00","close":"22:00","closed":false},"sun":{"open":"08:00","close":"20:00","closed":false}}'::jsonb),
+  -- 109 boutique: mall hours, closed Sun
+  ('11111111-1111-1111-1111-111111111109',
+   '{"mon":{"open":"10:00","close":"19:00","closed":false},"tue":{"open":"10:00","close":"19:00","closed":false},"wed":{"open":"10:00","close":"19:00","closed":false},"thu":{"open":"10:00","close":"19:00","closed":false},"fri":{"open":"10:00","close":"20:00","closed":false},"sat":{"open":"10:00","close":"20:00","closed":false},"sun":{"closed":true}}'::jsonb),
+  -- 110 books: quiet weekday hours
+  ('11111111-1111-1111-1111-111111111110',
+   '{"mon":{"open":"09:00","close":"18:00","closed":false},"tue":{"open":"09:00","close":"18:00","closed":false},"wed":{"open":"09:00","close":"18:00","closed":false},"thu":{"open":"09:00","close":"19:00","closed":false},"fri":{"open":"09:00","close":"19:00","closed":false},"sat":{"open":"10:00","close":"18:00","closed":false},"sun":{"open":"10:00","close":"16:00","closed":false}}'::jsonb),
+  -- 111 spa: appointment-driven, closed Mon
+  ('11111111-1111-1111-1111-111111111111',
+   '{"mon":{"closed":true},"tue":{"open":"13:00","close":"21:00","closed":false},"wed":{"open":"13:00","close":"21:00","closed":false},"thu":{"open":"13:00","close":"21:00","closed":false},"fri":{"open":"13:00","close":"22:00","closed":false},"sat":{"open":"10:00","close":"22:00","closed":false},"sun":{"open":"10:00","close":"21:00","closed":false}}'::jsonb),
+  -- 112 gym: early + late, open all week
+  ('11111111-1111-1111-1111-111111111112',
+   '{"mon":{"open":"05:00","close":"22:00","closed":false},"tue":{"open":"05:00","close":"22:00","closed":false},"wed":{"open":"05:00","close":"22:00","closed":false},"thu":{"open":"05:00","close":"22:00","closed":false},"fri":{"open":"05:00","close":"21:00","closed":false},"sat":{"open":"07:00","close":"20:00","closed":false},"sun":{"open":"07:00","close":"20:00","closed":false}}'::jsonb),
+  -- 113 repair hub: weekdays only
+  ('11111111-1111-1111-1111-111111111113',
+   '{"mon":{"open":"08:00","close":"18:00","closed":false},"tue":{"open":"08:00","close":"18:00","closed":false},"wed":{"open":"08:00","close":"18:00","closed":false},"thu":{"open":"08:00","close":"18:00","closed":false},"fri":{"open":"08:00","close":"18:00","closed":false},"sat":{"closed":true},"sun":{"closed":true}}'::jsonb),
+  -- 114 B&B: front desk all week, late check-in
+  ('11111111-1111-1111-1111-111111111114',
+   '{"mon":{"open":"06:00","close":"23:00","closed":false},"tue":{"open":"06:00","close":"23:00","closed":false},"wed":{"open":"06:00","close":"23:00","closed":false},"thu":{"open":"06:00","close":"23:00","closed":false},"fri":{"open":"06:00","close":"23:59","closed":false},"sat":{"open":"06:00","close":"23:59","closed":false},"sun":{"open":"06:00","close":"23:00","closed":false}}'::jsonb),
+  -- 115 craft workshop: class-based, short days
+  ('11111111-1111-1111-1111-111111111115',
+   '{"mon":{"open":"09:00","close":"17:00","closed":false},"tue":{"open":"09:00","close":"17:00","closed":false},"wed":{"open":"09:00","close":"17:00","closed":false},"thu":{"open":"09:00","close":"17:00","closed":false},"fri":{"open":"09:00","close":"18:00","closed":false},"sat":{"open":"10:00","close":"16:00","closed":false},"sun":{"closed":true}}'::jsonb),
+  -- 116 live music bar: night hours, closes PAST MIDNIGHT (wrap-around test)
+  ('11111111-1111-1111-1111-111111111116',
+   '{"mon":{"closed":true},"tue":{"open":"18:00","close":"02:00","closed":false},"wed":{"open":"18:00","close":"02:00","closed":false},"thu":{"open":"18:00","close":"02:00","closed":false},"fri":{"open":"18:00","close":"03:00","closed":false},"sat":{"open":"18:00","close":"03:00","closed":false},"sun":{"open":"18:00","close":"01:00","closed":false}}'::jsonb),
+  -- 117-121 cross-province shops: compact generic hours
+  ('11111111-1111-1111-1111-111111111117',
+   '{"mon":{"open":"08:00","close":"17:00","closed":false},"tue":{"open":"08:00","close":"17:00","closed":false},"wed":{"open":"08:00","close":"17:00","closed":false},"thu":{"open":"08:00","close":"17:00","closed":false},"fri":{"open":"08:00","close":"17:00","closed":false},"sat":{"open":"08:00","close":"14:00","closed":false},"sun":{"closed":true}}'::jsonb),
+  ('11111111-1111-1111-1111-111111111118',
+   '{"mon":{"open":"08:00","close":"17:00","closed":false},"tue":{"open":"08:00","close":"17:00","closed":false},"wed":{"open":"08:00","close":"17:00","closed":false},"thu":{"open":"08:00","close":"17:00","closed":false},"fri":{"open":"08:00","close":"17:00","closed":false},"sat":{"open":"08:00","close":"14:00","closed":false},"sun":{"closed":true}}'::jsonb),
+  ('11111111-1111-1111-1111-111111111119',
+   '{"mon":{"open":"08:00","close":"17:00","closed":false},"tue":{"open":"08:00","close":"17:00","closed":false},"wed":{"open":"08:00","close":"17:00","closed":false},"thu":{"open":"08:00","close":"17:00","closed":false},"fri":{"open":"08:00","close":"17:00","closed":false},"sat":{"open":"08:00","close":"14:00","closed":false},"sun":{"closed":true}}'::jsonb),
+  ('11111111-1111-1111-1111-111111111120',
+   '{"mon":{"open":"06:00","close":"20:00","closed":false},"tue":{"open":"06:00","close":"20:00","closed":false},"wed":{"open":"06:00","close":"20:00","closed":false},"thu":{"open":"06:00","close":"20:00","closed":false},"fri":{"open":"06:00","close":"20:00","closed":false},"sat":{"open":"06:00","close":"21:00","closed":false},"sun":{"open":"07:00","close":"19:00","closed":false}}'::jsonb),
+  ('11111111-1111-1111-1111-111111111121',
+   '{"mon":{"open":"09:00","close":"20:00","closed":false},"tue":{"open":"09:00","close":"20:00","closed":false},"wed":{"open":"09:00","close":"20:00","closed":false},"thu":{"open":"09:00","close":"20:00","closed":false},"fri":{"open":"09:00","close":"21:00","closed":false},"sat":{"open":"09:00","close":"21:00","closed":false},"sun":{"open":"10:00","close":"18:00","closed":false}}'::jsonb)
+ON CONFLICT (business_id) DO UPDATE SET
+  operating_hours  = EXCLUDED.operating_hours,
+  updated_at       = now();
+
 SET session_replication_role = DEFAULT;

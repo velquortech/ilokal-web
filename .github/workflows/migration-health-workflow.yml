@@ -1,0 +1,41 @@
+name: Migration health
+
+# Every day, whether or not anything deployed: is SUPABASE_ACCESS_TOKEN still
+# accepted, and does production have every migration on main? The token died
+# between 2026-08-30 and 2026-10-09 while nothing ran, so nothing failed and
+# nobody knew for weeks. The deploy-failure workflow reports a deploy that
+# fails; this catches the state of production on a quiet week too.
+#
+# A problem opens an issue (label deploy-failure, assigned to whoever owns this
+# schedule) and turns this run red, which GitHub emails separately. Logic and
+# tests in .github/scripts/migration-health/.
+
+on:
+  schedule:
+    - cron: '0 23 * * *' # 07:00 Manila
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  Check-production:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main with history
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0 # when each migration landed, for the 2-hour grace
+
+      - name: Unit tests
+        run: node --test .github/scripts/migration-health/health.test.mjs
+
+      - name: Check the token and the migration backlog
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF_PRODUCTION }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ASSIGNEE: ${{ github.actor }}
+        run: node .github/scripts/migration-health/run.mjs

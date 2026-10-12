@@ -15,6 +15,7 @@ import { GET } from '@/app/api/cron/weekly-funnel-report/route';
 import { readRegistrationFunnel } from '@/lib/api/admin/analyticsQuery';
 import { sendFunnelReportEmail } from '@/app/api/emails/sendFunnelReport';
 import { createAnalyticsSupabaseClient } from '@/supabase/server';
+import * as Sentry from '@sentry/nextjs';
 
 vi.mock('@/supabase/server', () => ({
   createAnalyticsSupabaseClient: vi.fn(),
@@ -25,6 +26,10 @@ vi.mock('@/lib/api/admin/analyticsQuery', () => ({
 }));
 vi.mock('@/app/api/emails/sendFunnelReport', () => ({
   sendFunnelReportEmail: vi.fn(),
+}));
+vi.mock('@sentry/nextjs', () => ({
+  captureCheckIn: vi.fn(() => 'check-in-1'),
+  flush: vi.fn(() => Promise.resolve(true)),
 }));
 
 const SECRET = 'cron-secret-123';
@@ -125,5 +130,56 @@ describe('GET /api/cron/weekly-funnel-report', () => {
 
     expect(res.status).toBe(502);
     vi.unstubAllEnvs();
+  });
+
+  describe('Sentry cron monitor', () => {
+    const statuses = () =>
+      (Sentry.captureCheckIn as unknown as Mock).mock.calls.map(
+        (c) => c[0].status,
+      );
+
+    it('checks in at the start and reports ok when the email went out', async () => {
+      await call(`Bearer ${SECRET}`);
+
+      expect(statuses()).toEqual(['in_progress', 'ok']);
+      const [[start, config], [end]] = (
+        Sentry.captureCheckIn as unknown as Mock
+      ).mock.calls;
+      expect(start.monitorSlug).toBe('weekly-funnel-report');
+      expect(config.schedule).toEqual({ type: 'crontab', value: '0 0 * * 1' });
+      expect(end).toMatchObject({ checkInId: 'check-in-1', status: 'ok' });
+      // Serverless: the check-in must be sent before the function freezes.
+      expect(Sentry.flush).toHaveBeenCalled();
+    });
+
+    it('reports error when the run fails, so Sentry alerts', async () => {
+      (readRegistrationFunnel as unknown as Mock).mockResolvedValue({
+        ...FUNNEL,
+        failed: true,
+      });
+
+      await call(`Bearer ${SECRET}`);
+
+      expect(statuses()).toEqual(['in_progress', 'error']);
+    });
+
+    it('reports error on a misconfiguration too', async () => {
+      process.env.FUNNEL_REPORT_RECIPIENTS = '';
+
+      await call(`Bearer ${SECRET}`);
+
+      expect(statuses()).toEqual(['in_progress', 'error']);
+    });
+
+    it('never checks in for a caller without the secret', async () => {
+      // A stranger must not be able to mark the job ok — and with
+      // CRON_SECRET unset, the real cron never checks in either, which
+      // Sentry reports as a MISSED run.
+      await call('Bearer wrong');
+      delete process.env.CRON_SECRET;
+      await call('Bearer undefined');
+
+      expect(Sentry.captureCheckIn).not.toHaveBeenCalled();
+    });
   });
 });

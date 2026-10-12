@@ -110,6 +110,13 @@ export async function getBusinessesPaginated(
       query = query.eq('status', filters.status);
     }
 
+    // Apply origin filter. `select('*')` already returns the column; this lets
+    // an admin separate the businesses that registered themselves from the
+    // directory we imported, which is otherwise impossible in this list.
+    if (filters.origin && filters.origin !== 'all') {
+      query = query.eq('origin', filters.origin);
+    }
+
     // Apply search filter. Column is `shop_name` (renamed from `name` in
     // 20260418094212). We filter the base table only — `owner` is an embedded
     // foreign relation, not a JSONB column, so it can't be OR'd here (doing so

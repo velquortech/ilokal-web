@@ -17,7 +17,8 @@ export type PlatformSettingKey =
   | 'require_business_documents'
   | 'auto_verify_businesses'
   | 'enable_events'
-  | 'enable_onboarding_tour';
+  | 'enable_onboarding_tour'
+  | 'show_admin_seeded_businesses';
 
 /** Original name, kept so existing registration call sites do not change. */
 export type RegistrationSettingKey = PlatformSettingKey;
@@ -27,6 +28,7 @@ const ALLOWED_KEYS: PlatformSettingKey[] = [
   'auto_verify_businesses',
   'enable_events',
   'enable_onboarding_tour',
+  'show_admin_seeded_businesses',
 ];
 
 export async function updateRegistrationSettingAction(

@@ -1,5 +1,5 @@
 /**
- * Coupon & Featured Deal Type Definitions
+ * Coupon Type Definitions
  * Discount management and promotional features
  */
 
@@ -149,49 +149,6 @@ export type RedemptionStats = {
   last_redeemed_at: string | null;
 };
 
-// ===== Featured Deal Types =====
-export type FeaturedDealDuration = 'daily' | 'weekly' | 'monthly';
-
-export type FeaturedDeal = {
-  id: string;
-  coupon_id: string;
-  business_id: string;
-  duration: FeaturedDealDuration;
-  placement: 'category_page' | 'homepage_banner' | 'search_featured';
-  start_date: string;
-  end_date: string;
-  price_cents: number; // cost to feature
-  created_at: string;
-  updated_at: string;
-  archived_at: string | null;
-};
-
-export type CreateFeaturedDealRequest = {
-  coupon_id: string;
-  duration: FeaturedDealDuration;
-  placement: 'category_page' | 'homepage_banner' | 'search_featured';
-  start_date: string;
-  end_date?: string; // auto-calculated based on duration if not provided
-  price_cents: number;
-};
-
-export type UpdateFeaturedDealRequest = Partial<CreateFeaturedDealRequest>;
-
-export type FeaturedDealFilters = {
-  page?: number;
-  per_page?: number;
-  placement?: 'category_page' | 'homepage_banner' | 'search_featured';
-  sort_by?: 'newest' | 'oldest' | 'expiry_asc' | 'expiry_desc';
-};
-
-export type PaginatedFeaturedDealsResponse = {
-  deals: FeaturedDeal[];
-  total: number;
-  page: number;
-  per_page: number;
-  total_pages: number;
-};
-
 // ===== Redeemed Coupons (Business Owner View) =====
 
 export type RedemptionStatus = 'active' | 'claimed' | 'expired';
@@ -246,5 +203,4 @@ export type CouponError =
   | 'COUPON_EXPIRED'
   | 'COUPON_LIMIT_REACHED'
   | 'COUPON_ALREADY_REDEEMED'
-  | 'INVALID_COUPON_CODE'
-  | 'FEATURED_DEAL_NOT_FOUND';
+  | 'INVALID_COUPON_CODE';

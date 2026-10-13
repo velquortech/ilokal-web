@@ -43,7 +43,7 @@ export async function GET(
 
     const { data, error } = await supabase
       .from('businesses')
-      .select('id, status, name, created_at, owner_id')
+      .select('id, status, shop_name, created_at, owner_id')
       .eq('id', businessId)
       .is('archived_at', null)
       .single();
@@ -79,7 +79,9 @@ export async function GET(
     const verificationData: VerificationStatusData = {
       id: data.id,
       status: data.status,
-      name: data.name,
+      // The column is `shop_name`; the response keeps its `name` field.
+      // Selecting `name` made every call fail as "Business not found".
+      name: data.shop_name,
       created_at: data.created_at,
     };
 
@@ -88,7 +90,8 @@ export async function GET(
         success: true,
         data: verificationData,
       },
-      { status: 200, headers: { 'Cache-Control': 'public, max-age=60' } },
+      // Owner/admin-only data: never cacheable by a shared cache.
+      { status: 200, headers: { 'Cache-Control': 'private, no-store' } },
     );
   } catch (error) {
     return NextResponse.json<ApiResponse<null>>(

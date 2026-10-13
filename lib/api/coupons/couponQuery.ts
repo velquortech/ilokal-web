@@ -1,6 +1,6 @@
 /**
  * Coupon Query Layer
- * Handles all direct Supabase database operations for coupons and featured deals
+ * Handles all direct Supabase database operations for coupons
  */
 
 import { formatErrorForLog } from '@/lib/utils/describeDbError';
@@ -11,8 +11,6 @@ import {
 import type {
   Coupon,
   CouponFilters,
-  FeaturedDeal,
-  FeaturedDealFilters,
   RedemptionStats,
   RedemptionRecord,
   RedemptionRecordFilters,
@@ -228,163 +226,6 @@ export async function getRedemptionStats(
   }
 }
 
-// ===== Featured Deal Queries =====
-
-/**
- * Get paginated featured deals (public listing)
- */
-export async function getFeaturedDealsPaginated(filters: FeaturedDealFilters) {
-  try {
-    const { page = 1, per_page = 20, placement, sort_by = 'newest' } = filters;
-    const offset = (page - 1) * per_page;
-
-    const supabase = await createServerSupabaseClient();
-
-    const now = new Date().toISOString();
-
-    let query = supabase
-      .from('featured_deals')
-      .select('*', { count: 'exact' })
-      .lte('start_date', now)
-      .gte('end_date', now)
-      .is('archived_at', null);
-
-    if (placement) {
-      query = query.eq('placement', placement);
-    }
-
-    // Apply sorting
-    if (sort_by === 'oldest') {
-      query = query.order('created_at', { ascending: true });
-    } else if (sort_by === 'expiry_asc') {
-      query = query.order('end_date', { ascending: true });
-    } else if (sort_by === 'expiry_desc') {
-      query = query.order('end_date', { ascending: false });
-    } else {
-      // newest (default)
-      query = query.order('created_at', { ascending: false });
-    }
-
-    const { data, count, error } = await query.range(
-      offset,
-      offset + per_page - 1,
-    );
-
-    if (error) {
-      return {
-        deals: [] as FeaturedDeal[],
-        total: 0,
-        error: `Failed to fetch featured deals: ${error.message}` as const,
-      };
-    }
-
-    return {
-      deals: (data || []) as FeaturedDeal[],
-      total: count || 0,
-      page,
-      per_page,
-      total_pages: Math.ceil((count || 0) / per_page),
-    };
-  } catch (err) {
-    console.error('[getFeaturedDealsPaginated]', formatErrorForLog(err));
-    return {
-      deals: [] as FeaturedDeal[],
-      total: 0,
-      error: 'Failed to fetch featured deals' as const,
-    };
-  }
-}
-
-/**
- * Get featured deals by business
- */
-export async function getFeaturedDealsByBusinessId(
-  businessId: string,
-  filters: FeaturedDealFilters = {},
-) {
-  try {
-    const { page = 1, per_page = 20, placement, sort_by = 'newest' } = filters;
-    const offset = (page - 1) * per_page;
-
-    const supabase = await createServerSupabaseClient();
-
-    let query = supabase
-      .from('featured_deals')
-      .select('*', { count: 'exact' })
-      .eq('business_id', businessId)
-      .is('archived_at', null);
-
-    if (placement) {
-      query = query.eq('placement', placement);
-    }
-
-    // Apply sorting
-    if (sort_by === 'oldest') {
-      query = query.order('created_at', { ascending: true });
-    } else if (sort_by === 'expiry_asc') {
-      query = query.order('end_date', { ascending: true });
-    } else if (sort_by === 'expiry_desc') {
-      query = query.order('end_date', { ascending: false });
-    } else {
-      // newest (default)
-      query = query.order('created_at', { ascending: false });
-    }
-
-    const { data, count, error } = await query.range(
-      offset,
-      offset + per_page - 1,
-    );
-
-    if (error) {
-      return {
-        deals: [] as FeaturedDeal[],
-        total: 0,
-        error: `Failed to fetch featured deals: ${error.message}` as const,
-      };
-    }
-
-    return {
-      deals: (data || []) as FeaturedDeal[],
-      total: count || 0,
-      page,
-      per_page,
-      total_pages: Math.ceil((count || 0) / per_page),
-    };
-  } catch (err) {
-    console.error('[getFeaturedDealsByBusinessId]', formatErrorForLog(err));
-    return {
-      deals: [] as FeaturedDeal[],
-      total: 0,
-      error: 'Failed to fetch featured deals' as const,
-    };
-  }
-}
-
-/**
- * Get featured deal by ID
- */
-export async function getFeaturedDealById(id: string) {
-  try {
-    const supabase = await createServerSupabaseClient();
-
-    const { data, error } = await supabase
-      .from('featured_deals')
-      .select('*')
-      .eq('id', id)
-      .is('archived_at', null)
-      .single();
-
-    if (error || !data) {
-      return { error: 'Featured deal not found' as const };
-    }
-
-    return { deal: data as FeaturedDeal };
-  } catch (err) {
-    console.error('[getFeaturedDealById]', formatErrorForLog(err));
-    return { error: 'Failed to fetch featured deal' as const };
-  }
-}
-
 /**
  * Get coupon status counts for a business (used by stats panel)
  */
@@ -417,26 +258,6 @@ export async function getCouponStatsByBusiness(
     };
   } catch {
     return { total: 0, published: 0, draft: 0 };
-  }
-}
-
-/**
- * Check if featured deal exists
- */
-export async function featuredDealExists(id: string): Promise<boolean> {
-  try {
-    const supabase = await createServerSupabaseClient();
-
-    const { count } = await supabase
-      .from('featured_deals')
-      .select('id', { count: 'exact', head: true })
-      .eq('id', id)
-      .is('archived_at', null);
-
-    return (count || 0) > 0;
-  } catch (err) {
-    console.error('[featuredDealExists]', formatErrorForLog(err));
-    return false;
   }
 }
 

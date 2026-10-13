@@ -61,7 +61,6 @@ POST   /api/auth/login           - User login (email/password) ✅
 POST   /api/auth/signup          - User registration ✅
 POST   /api/auth/logout          - User logout ✅
 POST   /api/auth/refresh-token   - Refresh JWT token ✅
-POST   /api/auth/verify-email    - Email verification ✅
 POST   /api/auth/reset-password  - Password reset request ✅
 ```
 
@@ -242,6 +241,8 @@ GET    /api/coupons/:id/redemptions - Get redemption stats (business)
 
 ### Featured Deals (Platform-wide)
 
+> **Status:** never built: no migration ever created its tables, and the unreachable scaffolding (routes, actions, services, types) was removed on 2026-10-13. Start from git history if it is built.
+
 ```
 POST   /api/featured-deals        - Create featured deal (admin)
 GET    /api/featured-deals        - List featured deals
@@ -259,6 +260,8 @@ DELETE /api/featured-deals/:id    - Remove from featured
 ---
 
 ## Phase 7: Payments & Transactions (P1)
+
+> **Status:** payments and invoices were never built: no migration ever created its tables, and the unreachable scaffolding (routes, actions, services, types) was removed on 2026-10-13. Start from git history if it is built.
 
 **Timeline: Week 4-5 | Revenue collection**
 
@@ -443,6 +446,8 @@ GET    /api/admin/analytics/businesses - Business metrics
 
 ## Phase 12: Admin Moderation (P2)
 
+> **Status:** never built: no migration ever created its tables, and the unreachable scaffolding (routes, actions, services, types) was removed on 2026-10-13. Start from git history if it is built.
+
 **Timeline: Week 6+ | Content safety**
 
 Platform safety and content quality control.
@@ -518,7 +523,6 @@ WEEK 7+    (P3) Notifications + Optimizations
 - [x] POST /api/auth/signup - User registration ✅ DONE
 - [x] POST /api/auth/logout - User logout ✅ DONE
 - [x] POST /api/auth/refresh-token - Refresh JWT token ✅ DONE
-- [x] POST /api/auth/verify-email - Email verification ✅ DONE
 - [x] POST /api/auth/reset-password - Password reset request ✅ DONE
 
 #### User Profile Endpoints ✅
@@ -645,6 +649,8 @@ WEEK 7+    (P3) Notifications + Optimizations
 
 #### Featured Deals (Platform-wide)
 
+> **Status:** never built: no migration ever created its tables, and the unreachable scaffolding (routes, actions, services, types) was removed on 2026-10-13. Start from git history if it is built.
+
 - [x] POST /api/featured-deals - Create featured deal (admin) ✅
 - [x] GET /api/featured-deals - List featured deals ✅
 - [x] GET /api/featured-deals/:id - Get featured deal ✅
@@ -653,7 +659,9 @@ WEEK 7+    (P3) Notifications + Optimizations
 
 ---
 
-### Phase 6: Payments & Transactions (P1) ✅ COMPLETE
+### Phase 6: Payments & Transactions (P1) — not built
+
+> **Status:** never built: no migration ever created its tables, and the unreachable scaffolding (routes, actions, services, types) was removed on 2026-10-13. Start from git history if it is built.
 
 **Timeline: Week 4-5 | Status: 100% Complete**
 
@@ -797,6 +805,8 @@ WEEK 7+    (P3) Notifications + Optimizations
 
 ### Phase 11: Admin Moderation (P2)
 
+> **Status:** never built: no migration ever created its tables, and the unreachable scaffolding (routes, actions, services, types) was removed on 2026-10-13. Start from git history if it is built.
+
 **Timeline: Week 6+ | Status: ✅ Implemented (code + tests present)**
 
 #### Moderation Endpoints
@@ -859,12 +869,12 @@ This summary reflects the current repository implementation state. Key analytics
 - **Phase 3 (P1):** ✅ COMPLETE - Products & Categories
 - **Phase 4 (P1):** ✅ COMPLETE - Branches & Locations
 - **Phase 5 (P1):** ✅ COMPLETE - Coupons & Deals
-- **Phase 6 (P1):** ✅ COMPLETE - Payments & Transactions
+- **Phase 6 (P1):** 🔲 NOT BUILT - Payments & Transactions (tables never created; scaffolding removed 2026-10-13)
 - **Phase 7 (P1):** ✅ COMPLETE - Subscriptions & Billing
 - **Phase 8 (P2):** ✅ COMPLETE - Search & Discovery
 - **Phase 9 (P2):** ✅ COMPLETE - Reviews & Ratings (implementation + tests present)
 - **Phase 10 (P2):** ✅ COMPLETE - Analytics & Reporting (admin + business analytics routes added; minor QA possible)
-- **Phase 11 (P2):** ✅ COMPLETE - Admin Moderation (implementation + tests present)
+- **Phase 11 (P2):** 🔲 NOT BUILT - Admin Moderation (tables never created; scaffolding removed 2026-10-13)
 - **Phase 12 (P3):** ✅ COMPLETE - Notifications (implementation + tests present)
 
 ### Critical Path (Revenue):

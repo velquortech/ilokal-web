@@ -13,9 +13,6 @@ import type {
   CreateCouponRequest,
   UpdateCouponRequest,
   CouponDetailResponse,
-  FeaturedDeal,
-  CreateFeaturedDealRequest,
-  UpdateFeaturedDealRequest,
   RedemptionRecordFilters,
   PaginatedRedemptionRecordsResponse,
   RedemptionSummaryStats,
@@ -23,8 +20,6 @@ import type {
 import {
   createCouponSchema,
   updateCouponSchema,
-  createFeaturedDealSchema,
-  updateFeaturedDealSchema,
 } from '@/lib/validation/coupons';
 import couponService from '@/lib/services/couponService';
 import { logActionError } from '@/lib/utils/captureError';
@@ -32,7 +27,6 @@ import {
   getCouponsPaginated,
   getCouponStatsByBusiness,
   getCouponById,
-  getFeaturedDealById,
   getRedeemedCouponsPaginated,
   getRedemptionSummaryStatsByBusiness,
 } from '@/lib/api/coupons/couponQuery';
@@ -286,164 +280,6 @@ export async function redeemCouponAction(
       error: {
         code: 'INTERNAL_ERROR',
         message: 'Failed to redeem coupon',
-      },
-    };
-  }
-}
-
-/**
- * Create a featured deal for the business
- */
-export async function createFeaturedDealAction(
-  input: CreateFeaturedDealRequest,
-): Promise<ApiResponse<FeaturedDeal>> {
-  try {
-    // Validate input
-    const validation = createFeaturedDealSchema.safeParse(input);
-    if (!validation.success) {
-      const fieldErrors = validation.error.flatten().fieldErrors;
-      return {
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: fieldErrors.coupon_id?.[0] || 'Invalid featured deal data',
-        },
-      };
-    }
-
-    const verify = await verifyBusinessOwner();
-    if (!verify.authorized)
-      return { success: false, error: verify.error as ApiError };
-
-    const result = (await couponService.createFeaturedDeal(
-      verify.business!.id,
-      validation.data,
-    )) as ApiResponse<FeaturedDeal>;
-    if (result.success)
-      revalidatePath(businessCouponsPath(verify.business!.id));
-    return result;
-  } catch (error) {
-    logActionError('createFeaturedDealAction', error);
-    return {
-      success: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Failed to create featured deal',
-      },
-    };
-  }
-}
-
-/**
- * Update a featured deal
- */
-export async function updateFeaturedDealAction(
-  id: string,
-  input: UpdateFeaturedDealRequest,
-): Promise<ApiResponse<FeaturedDeal>> {
-  try {
-    // Validate input
-    const validation = updateFeaturedDealSchema.safeParse(input);
-    if (!validation.success) {
-      const fieldErrors = validation.error.flatten().fieldErrors;
-      return {
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: fieldErrors.coupon_id?.[0] || 'Invalid featured deal data',
-        },
-      };
-    }
-
-    const verify = await verifyBusinessOwner();
-    if (!verify.authorized)
-      return { success: false, error: verify.error as ApiError };
-
-    const { deal, error } = await getFeaturedDealById(id);
-    if (error || !deal) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Featured deal not found',
-        },
-      };
-    }
-
-    if (deal.business_id !== verify.business!.id) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHORIZATION_ERROR',
-          message: 'You do not have permission to update this featured deal',
-        },
-      };
-    }
-
-    const result = (await couponService.updateFeaturedDeal(
-      id,
-      validation.data,
-    )) as ApiResponse<FeaturedDeal>;
-    if (result.success)
-      revalidatePath(businessCouponsPath(verify.business!.id));
-    return result;
-  } catch (error) {
-    logActionError('updateFeaturedDealAction', error);
-    return {
-      success: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Failed to update featured deal',
-      },
-    };
-  }
-}
-
-/**
- * Delete a featured deal
- */
-export async function deleteFeaturedDealAction(
-  id: string,
-): Promise<ApiResponse<null>> {
-  try {
-    const verify = await verifyBusinessOwner();
-    if (!verify.authorized)
-      return { success: false, error: verify.error as ApiError };
-
-    const { deal, error } = await getFeaturedDealById(id);
-    if (error || !deal) {
-      return {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Featured deal not found',
-        },
-      };
-    }
-
-    if (deal.business_id !== verify.business!.id) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTHORIZATION_ERROR',
-          message: 'You do not have permission to delete this featured deal',
-        },
-      };
-    }
-
-    const result = (await couponService.deleteFeaturedDeal(
-      id,
-    )) as ApiResponse<null>;
-    if (result.success)
-      revalidatePath(businessCouponsPath(verify.business!.id));
-    return result;
-  } catch (error) {
-    logActionError('deleteFeaturedDealAction', error);
-    return {
-      success: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Failed to delete featured deal',
       },
     };
   }

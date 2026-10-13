@@ -76,7 +76,7 @@ Create a new file following the naming pattern: `[featureName]Wrapper.ts`
 
 ```bash
 # Example: business verification wrapper
-cp lib/services/public/paymentsPublicWrapper.example.ts \
+cp lib/services/public/TEMPLATE.newFeatureWrapper.example.ts \
    lib/services/public/businessVerificationWrapper.ts
 ```
 
@@ -367,5 +367,5 @@ If you get a Turbopack error about server-only code in the build, ensure:
 
 - [.claude/docs/api-wrapper.md](../../../.claude/docs/api-wrapper.md) — Frontend developer guide (replaces the old root `API_WRAPPER_FOR_FRONTEND.md`, which no longer exists)
 - [lib/services/README.md](../README.md) — Isomorphic pattern details
-- [lib/services/public/paymentsPublicWrapper.example.ts](paymentsPublicWrapper.example.ts) — Real example
+- [lib/services/public/TEMPLATE.newFeatureWrapper.example.ts](TEMPLATE.newFeatureWrapper.example.ts) — Starting template
 - [lib/services/index.ts](../index.ts) — the barrel; what it re-exports is browser-safe. (There is no `WORKFLOW/api-wrapper-inventory.md`; that pointer was dead.)

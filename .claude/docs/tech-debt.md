@@ -464,14 +464,13 @@ mutating handlers):
   registration per-file POST). Same cost profile as the routes fixed below, but
   it sits outside `upload/` so the contract sweep does not reach it. **Closest
   to done; take this one first.**
-- 15 other mutating `/api/web/**` routes — payments (`checkout`, `confirm`,
-  `refund`), `ratings`, `coupons/[id]/redeem`, `invoices/[id]/send`,
+- 11 other mutating `/api/web/**` routes — `ratings`, `coupons/[id]/redeem`,
   `notifications/[id]` + `preferences`, `users/[id]` + `users/me`,
   `businesses`, and the four taxonomy handlers.
-- 14 mutating `/api/admin/**` routes — business verify/suspend/reject/delete,
-  moderation, subscription plans.
-- `/api/auth/logout`, `/refresh-token`, `/verify-email` — the three auth routes
-  with no `checkAuthRateLimit`.
+- 10 mutating `/api/admin/**` routes — business verify/suspend/reject/delete,
+  subscription plans, and the rest of the admin writes.
+- `/api/auth/logout`, `/refresh-token` — the two auth routes with no
+  `checkAuthRateLimit`.
 - 22 Server Action files — `couponActions`, `branchActions`, `profileActions`,
   `sectionActions`, `settingsActions`, and most of `app/admin/[adminId]/actions/`.
 

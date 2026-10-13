@@ -8,7 +8,7 @@
  *
  * To create a new public wrapper:
  * 1. Read lib/services/public/README.md
- * 2. Copy paymentsPublicWrapper.example.ts as a starting point
+ * 2. Copy this file as a starting point
  * 3. Rename and customize for your feature
  */
 

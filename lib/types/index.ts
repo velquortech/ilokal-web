@@ -120,7 +120,6 @@ export type {
 // Coupon & Deal Domain Types
 export type {
   Coupon,
-  FeaturedDeal,
   DiscountValue,
   DiscountType,
   FlatDiscountType,
@@ -139,35 +138,8 @@ export type {
   RedemptionRecordFilters,
   PaginatedRedemptionRecordsResponse,
   RedemptionSummaryStats,
-  CreateFeaturedDealRequest,
-  UpdateFeaturedDealRequest,
-  FeaturedDealFilters,
-  PaginatedFeaturedDealsResponse,
-  FeaturedDealDuration,
   CouponError,
 } from './coupon';
-
-// Payment & Invoice Domain Types
-export type {
-  Payment,
-  PaymentResponse,
-  PaymentStatus,
-  PaymentMethod,
-  CreatePaymentRequest,
-  PaymentHistoryFilters,
-  PaginatedPaymentsResponse,
-  Invoice,
-  InvoiceResponse,
-  InvoiceStatus,
-  CreateInvoiceRequest,
-  InvoiceFilters,
-  PaginatedInvoicesResponse,
-  CheckoutRequest,
-  StripeCheckoutSession,
-  StripePaymentConfirm,
-  PaymentAnalytics,
-  PaymentError,
-} from './payment';
 
 // Subscription Domain Types
 export type {
@@ -232,15 +204,6 @@ export type {
   AdminUserFilters,
   AdminActivityLog,
 } from './admin';
-
-// Moderation types
-export type {
-  ModerationReport,
-  FlaggedContent,
-  ModerationActionRequest,
-  SuspendRequest,
-  WarnRequest,
-} from './moderation';
 
 // Notification types
 export type {

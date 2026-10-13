@@ -10,10 +10,10 @@
   Rules / Usage:
   - Client code should import from this barrel (e.g. `@/lib/services`) only
     for services listed below.
-  - Server-only services (payment, subscription, business/admin write flows,
+  - Server-only services (subscription, business/admin write flows,
     notification, etc.) must be imported directly from their module in
     server-only callsites (API routes, server actions, or Server Components).
-    Example: `import paymentService from '@/lib/services/paymentService'`
+    Example: `import couponService from '@/lib/services/couponService'`
     inside an `app/api/.../route.ts` or a Server Component only.
   - If you need to expose a read-only public wrapper for the browser, create
     an isomorphic wrapper that implements a server-fast-path (dynamic
@@ -27,7 +27,6 @@
 export { default as userService } from './userService';
 export { default as http } from './client';
 export { default as ratingService } from './ratingService';
-export { default as featuredDealService } from './featuredDealService';
 export { default as branchService } from './branchService';
 export { default as uploadService } from './uploadService';
 export { default as trendingService } from './trendingService';
@@ -39,17 +38,14 @@ export { default as productCategoryService } from './productCategoryService';
 // Import them directly in server-only callsites (Server Components, Server Actions, API routes) when needed:
 // - productService (create/update/delete product & category flows)
 // - categoryService (create/update/delete category flows)
-// - invoiceService (read/write invoice flows with auth requirements)
 // - searchService (search with server-side filters and auth)
 // - analyticsService (analytics queries requiring auth/admin context)
 // - authService (getMe requires server helper for session access)
 // - reviewService (review mutations require server auth)
-// - paymentService (confirm/refund flows)
 // - subscriptionService (subscription mutation flows)
 // - couponService (coupon mutation flows)
-// - businessService / businessPublicService (business write flows)
+// - businessService (business write flows)
 // - notificationService (notification send flows)
-// - paymentsPublicService (payment session flows)
 // If you need a browser-safe wrapper for any of the above, create an
 // explicit isomorphic wrapper (eg. `lib/services/public/<name>Wrapper.ts`) that
 // does NOT dynamically import server modules (use API routes instead).

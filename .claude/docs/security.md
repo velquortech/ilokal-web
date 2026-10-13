@@ -513,10 +513,10 @@ Three properties worth preserving, each of which cost something to learn:
 | `/monitoring` (Sentry tunnel) | ✅ proxy, per IP |
 | 8 Server Action files (business/customer/admin writes) | ✅ per user |
 | **`/api/web/businesses/[id]/files`** | 🔲 **unguarded** — sibling upload route, outside `upload/` |
-| **15 other mutating `/api/web/**` routes** | 🔲 **unguarded** — payments (checkout/confirm/refund), ratings, coupon redeem, invoices, notifications, users, taxonomy |
-| **14 mutating `/api/admin/**` routes** | 🔲 **unguarded** — in the proxy matcher, but the limiter block only tests the two mobile prefixes |
+| **11 other mutating `/api/web/**` routes** | 🔲 **unguarded** — ratings, coupon redeem, notifications, users, taxonomy |
+| **10 mutating `/api/admin/**` routes** | 🔲 **unguarded** — in the proxy matcher, but the limiter block only tests the two mobile prefixes |
 | **22 Server Action files** | 🔲 **unguarded** — incl. coupons, branches, profile, sections, most of admin |
-| `/api/auth/logout`, `/refresh-token`, `/verify-email` | 🔲 unguarded |
+| `/api/auth/logout`, `/refresh-token` | 🔲 unguarded |
 
 **🔴 The structural cause, which matters more than any single route:
 `/api/web` is absent from the proxy matcher.** A route added there is

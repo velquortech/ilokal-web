@@ -5,9 +5,6 @@ import type {
   CouponDetailResponse,
   CreateCouponRequest,
   UpdateCouponRequest,
-  FeaturedDeal,
-  CreateFeaturedDealRequest,
-  UpdateFeaturedDealRequest,
 } from '@/lib/types';
 
 async function useServerClient() {
@@ -125,76 +122,6 @@ const couponService = {
         branch_id: branchId,
       });
       return res as ApiResponse;
-    } catch (err: unknown) {
-      return {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: err instanceof Error ? err.message : String(err),
-        },
-      };
-    }
-  },
-
-  // Featured deals
-  async createFeaturedDeal(
-    businessId: string,
-    input: CreateFeaturedDealRequest,
-  ): Promise<ApiResponse<FeaturedDeal>> {
-    if (typeof window === 'undefined') {
-      const client = await useServerClient();
-      return await client.createFeaturedDeal(businessId, input);
-    }
-
-    try {
-      const res = await http.post('/featured-deals', {
-        business_id: businessId,
-        ...input,
-      });
-      return res as ApiResponse<FeaturedDeal>;
-    } catch (err: unknown) {
-      return {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: err instanceof Error ? err.message : String(err),
-        },
-      };
-    }
-  },
-
-  async updateFeaturedDeal(
-    id: string,
-    input: UpdateFeaturedDealRequest,
-  ): Promise<ApiResponse<FeaturedDeal>> {
-    if (typeof window === 'undefined') {
-      const client = await useServerClient();
-      return await client.updateFeaturedDeal(id, input);
-    }
-
-    try {
-      const res = await http.put(`/featured-deals/${id}`, input);
-      return res as ApiResponse<FeaturedDeal>;
-    } catch (err: unknown) {
-      return {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: err instanceof Error ? err.message : String(err),
-        },
-      };
-    }
-  },
-
-  async deleteFeaturedDeal(id: string): Promise<ApiResponse<null>> {
-    if (typeof window === 'undefined') {
-      const client = await useServerClient();
-      return await client.deleteFeaturedDeal(id);
-    }
-
-    try {
-      const res = await http.del(`/featured-deals/${id}`);
-      return res as ApiResponse<null>;
     } catch (err: unknown) {
       return {
         success: false,

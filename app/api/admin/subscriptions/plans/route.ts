@@ -136,7 +136,9 @@ export async function POST(
           description: body.description || null,
           price: body.price,
           interval: body.interval,
-          features: body.features || null,
+          // No `features` column exists (writing it failed every insert);
+          // the plan's one feature switch is `features_promo_boost`.
+          features_promo_boost: body.features_promo_boost === true,
         },
       ])
       .select()

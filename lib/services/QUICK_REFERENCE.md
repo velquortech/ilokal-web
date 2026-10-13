@@ -65,7 +65,7 @@ If you need to expose server-side logic to the browser:
 1. **Location**: `lib/services/public/<featureName>Wrapper.ts`
 2. **Pattern**: Server fast-path + browser HTTP fallback
 3. **Step-by-step guide**: See [lib/services/public/README.md](./public/README.md)
-4. **Example**: [paymentsPublicWrapper.example.ts](./public/paymentsPublicWrapper.example.ts)
+4. **Template**: [TEMPLATE.newFeatureWrapper.example.ts](./public/TEMPLATE.newFeatureWrapper.example.ts)
 
 ```typescript
 // lib/services/public/exampleWrapper.ts

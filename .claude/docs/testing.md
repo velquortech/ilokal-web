@@ -78,10 +78,6 @@ PUT /api/auth/signup
 ├─ Tests needed: HTTP handler, validation, error transformation
 ├─ Status: 🔴 PRIORITY #1
 
-POST /api/auth/verify-email
-├─ Service: authService
-├─ Wrappers: None
-├─ Tests needed: Token verification, error cases
 ├─ Status: 🔴 PRIORITY #1
 
 POST /api/auth/reset-password
@@ -124,26 +120,6 @@ POST /api/admin/businesses
 - DELETE /api/admin/businesses/[id]/delete
 ```
 
-### Payment Routes - FINANCIAL CRITICAL
-
-```
-POST /api/payments/checkout
-├─ Service: paymentService ✓ (tested)
-├─ Wrappers: verifyBusinessOwner ✓ (tested)
-├─ Tests needed: Webhook handling, error response formatting
-├─ Test file: app/api/payments/__tests__/payments.integration.test.ts
-├─ Est. effort: 3-4h
-└─ Status: 🔴 PRIORITY #1
-
-POST /api/payments/[id]/confirm
-├─ Service: paymentService ✓ (tested)
-├─ Status: 🔴 PRIORITY #1
-
-POST /api/payments/[id]/refund
-├─ Service: paymentService ✓ (tested with idempotency)
-├─ Status: 🔴 PRIORITY #1
-```
-
 ### Business Action Wrappers
 
 ```
@@ -173,25 +149,6 @@ billingActions.ts (business)
 ---
 
 ## 🟡 HIGH - SCHEDULE NEXT (21 items, ~10 hours)
-
-### Admin Moderation Routes
-
-```
-GET /api/admin/moderation/reports
-├─ Service: moderationService ✓ (tested)
-├─ Wrappers: verifyAdminAccess ✓ (tested)
-├─ Tests needed: Route-level tests for admin ops
-├─ Test file: app/api/admin/__tests__/moderation.integration.test.ts
-├─ Est. effort: 1-2h
-└─ Status: 🟡 MEDIUM PRIORITY
-
-...similar for:
-- POST /api/admin/moderation/report
-- GET /api/admin/moderation/flagged
-- PUT /api/admin/moderation/[id]/status
-- POST /api/admin/moderation/[id]/suspend
-- POST /api/admin/moderation/[id]/warn
-```
 
 ### Subscription Routes - BILLING IMPACT
 

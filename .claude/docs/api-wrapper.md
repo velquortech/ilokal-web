@@ -71,12 +71,11 @@ async function loadUsers() {
 
 ```ts
 // Inside a server action or route handler (server runtime)
-import invoiceService from '@/lib/services/invoiceService'; // server-only wrapper
 import subscriptionService from '@/lib/services/subscriptionService'; // server-only wrapper
 
 export async function someServerAction() {
-  // Server-only wrappers will use the server implementation (invoiceService is not exported from public barrel)
-  return await invoiceService.list();
+  // Server-only wrappers use the server implementation (not exported from the public barrel)
+  return await subscriptionService.list();
 }
 ```
 
@@ -125,15 +124,11 @@ Import these **only in server contexts** (API routes, server actions, Server Com
 import authService from '@/lib/services/authService';
 import productService from '@/lib/services/productService';
 import categoryService from '@/lib/services/categoryService';
-import invoiceService from '@/lib/services/invoiceService';
 import analyticsService from '@/lib/services/analyticsService';
 import adminService from '@/lib/services/adminService';
-import businessPublicService from '@/lib/services/businessPublicService';
-import paymentService from '@/lib/services/paymentService';
 import couponService from '@/lib/services/couponService';
 import businessService from '@/lib/services/businessService';
 import notificationService from '@/lib/services/notificationService';
-import paymentsPublicService from '@/lib/services/paymentsPublicService';
 
 // ❌ NEVER in client code — will cause Turbopack build error:
 import authService from '@/lib/services/authService'; // ❌ Server-only

@@ -56,10 +56,6 @@ const authService = {
     return await http.post('/auth/signup', data);
   },
 
-  async verifyEmail() {
-    return await http.post('/auth/verify-email');
-  },
-
   async refreshToken() {
     return await http.post('/auth/refresh-token');
   },

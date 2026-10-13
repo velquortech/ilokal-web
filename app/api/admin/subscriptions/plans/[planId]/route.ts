@@ -111,7 +111,11 @@ export async function PUT(
         description: body.description,
         price: body.price,
         interval: body.interval,
-        features: body.features,
+        // The table has no `features` column (writing it failed every
+        // update); the plan's one feature switch is `features_promo_boost`.
+        ...(typeof body.features_promo_boost === 'boolean'
+          ? { features_promo_boost: body.features_promo_boost }
+          : {}),
         updated_at: new Date().toISOString(),
       })
       .eq('id', planId)

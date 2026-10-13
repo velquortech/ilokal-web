@@ -16,9 +16,6 @@ vi.mock('@/lib/services/couponService', () => ({
     update: vi.fn(),
     delete: vi.fn(),
     redeem: vi.fn(),
-    createFeaturedDeal: vi.fn(),
-    updateFeaturedDeal: vi.fn(),
-    deleteFeaturedDeal: vi.fn(),
   },
 }));
 

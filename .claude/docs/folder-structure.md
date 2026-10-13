@@ -153,7 +153,6 @@ business/
 │   ├── couponActions.ts        # Coupon & deal actions
 │   │                           # - createCouponAction()
 │   │                           # - redeemCouponAction()
-│   │                           # - createFeaturedDealAction()
 │   └── index.ts                # Barrel exports (backward compatible)
 ├── components/                 # Business-specific components
 ├── config/                     # Business configuration

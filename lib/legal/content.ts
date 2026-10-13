@@ -137,7 +137,7 @@ export const PRIVACY_POLICY: LegalDoc = {
   title: 'Privacy Policy',
   // Newer than the app's own "August 8, 2026" on purpose: the deletion section
   // below was corrected after that date.
-  lastUpdated: 'August 11, 2026',
+  lastUpdated: 'October 14, 2026',
   intro: `This Privacy Policy explains what information iLokal collects when you use the app, how we use and share it, and the choices you have. We wrote it to be easy to read — if anything is unclear, ${CONTACT_CLAUSE}.`,
   sections: [
     {
@@ -153,7 +153,7 @@ export const PRIVACY_POLICY: LegalDoc = {
         'Full name — shown on your profile.',
         'Phone number and profile photo — optional, added by you.',
         'Password — stored and managed by our authentication provider; we never store it in plaintext.',
-        'Ratings and reviews — anything you write about a business.',
+        'Ratings and reviews — your rating and comment for a business, and any reports you make about other reviews.',
       ],
       paragraphs: [
         'If you sign in with Google, we receive the basic profile information (name, email, avatar) you authorize Google to share.',
@@ -163,6 +163,7 @@ export const PRIVACY_POLICY: LegalDoc = {
       heading: 'Information we collect automatically',
       bullets: [
         'Approximate location — to show nearby businesses and directions (see Location below).',
+        'Check-ins — when you tap Check in at a business, one reading of your device location, used only to confirm you are there (see Location data below).',
         'Your activity — businesses you follow, offers you claim and redeem, events you view, and pages you visit.',
         'View counts — businesses and products you view, deduplicated to one view per item per day and used only as aggregate trending numbers.',
         'Device and technical data — device type, operating system, and app version, to operate and secure the app.',
@@ -181,6 +182,8 @@ export const PRIVACY_POLICY: LegalDoc = {
         'To provide the app — discovery, follows, events, offers, updates, and notifications.',
         'To manage your account and keep you signed in.',
         'To validate and honor offers you claim (redemption codes).',
+        'To confirm a visit before you review a business, and to show the visit label on your review.',
+        'To moderate reviews and handle reports.',
         'To produce aggregate numbers like view and trending counts.',
         'To send service messages — email confirmations, password resets, and notifications from businesses you follow.',
         'To keep the app secure and prevent fraud and abuse.',
@@ -194,6 +197,7 @@ export const PRIVACY_POLICY: LegalDoc = {
       ],
       bullets: [
         'With businesses you interact with — when you redeem an offer, the business processes what is needed to honor it.',
+        'Publicly, for reviews — your rating, comment and the date are shown to everyone with your first name, last-name initial and profile photo.',
         'With service providers who host and run the app for us — such as our authentication, database, hosting, email, and map providers.',
         'Where required by law, to enforce our Terms, or to protect rights, safety, and property.',
         'In a merger, acquisition, or asset sale, subject to this policy.',
@@ -202,7 +206,7 @@ export const PRIVACY_POLICY: LegalDoc = {
     {
       heading: 'Location data',
       paragraphs: [
-        'We request location only to show nearby businesses and directions, and we use it while you use the app ("when in use"). Location is optional — you can decline it or use the app with a default area instead, and you can revoke access anytime in your device settings. We don’t build a persistent history of where you’ve been.',
+        'We request location to show nearby businesses and directions, and — only when you tap Check in — to confirm you are at a business so you can review it. We use location while you use the app (“when in use”). For a check-in, our server compares one reading with the business’s location and keeps only the distance and the date, not your coordinates. Location is optional — you can decline it or use the app with a default area instead, and you can revoke access anytime in your device settings. We don’t build a persistent history of where you’ve been.',
       ],
     },
     {
@@ -243,6 +247,7 @@ export const PRIVACY_POLICY: LegalDoc = {
       paragraphs: [
         'If you want a break rather than a deletion, you can deactivate instead, in the app under Profile → Account Settings → Deactivate Account.',
         'Deactivating is reversible: it signs you out and pauses your account, and your data is kept while it is deactivated. You can reactivate by signing back in. Deactivation does not delete anything — to remove your details, use Delete Account.',
+        'While your account is deactivated, your written reviews are not shown to others.',
       ],
     },
     {
@@ -260,6 +265,7 @@ export const PRIVACY_POLICY: LegalDoc = {
         // policy states only what actually holds on both.
         'Deleting archives your account straight away: you are signed out on every device and your profile stops being visible to anyone. We keep the archived record for 90 days before removing your personal details, so a deletion made by mistake is not immediately irreversible.',
         'After 90 days we purge the personal fields — your email address, name, phone number and profile photo. Records of things you did, such as offers you redeemed, may be kept for the businesses’ own records and for legal and fraud-prevention reasons, in a form that no longer identifies you.',
+        'Once your account is deleted, your reviews are no longer shown.',
       ],
     },
     {
@@ -312,7 +318,7 @@ export const TERMS_OF_SERVICE: LegalDoc = {
   title: 'Terms of Service',
   // Same date as the policy: both were reviewed together, and a terms page
   // stamped earlier than the policy it references reads as the stale one.
-  lastUpdated: 'August 11, 2026',
+  lastUpdated: 'October 14, 2026',
   intro:
     'These Terms of Service (“Terms”) govern your use of the iLokal app and its services. By downloading, accessing, or using iLokal, you agree to these Terms and to our Privacy Policy. If you don’t agree, please don’t use the app.',
   sections: [
@@ -347,8 +353,29 @@ export const TERMS_OF_SERVICE: LegalDoc = {
     {
       heading: 'Ratings and reviews',
       paragraphs: [
-        'You may submit ratings and reviews. You keep ownership of what you write, and you grant iLokal a worldwide, non-exclusive, royalty-free license to host, store, and display it in the app to operate the service.',
-        'Please be honest and respectful: your reviews should reflect your own experience and must not violate any law or third-party right. We may remove content that breaks these Terms.',
+        'You can rate and review a business you have actually visited. To keep reviews honest, iLokal asks for proof of a visit before you can write one: either a check-in at the business (made with your device location, see Location services) or a deal from that business redeemed at the counter. Each review shows which kind of visit backs it, such as “Checked in” or “Verified visit”.',
+        'Your rating, comment, and the date are public. They are shown with your first name, the initial of your last name, and your profile photo. You can edit or delete your review at any time; an edited review is marked as edited.',
+        'You keep ownership of what you write, and you grant iLokal a worldwide, non-exclusive, royalty-free license to host, store, reproduce, and display it in the app and on iLokal’s website to operate and promote the service.',
+        'A business can turn off reviews for its listing. When it does, new reviews can’t be written for that business.',
+      ],
+    },
+    {
+      heading: 'Review rules',
+      paragraphs: ['Your review must describe your own visit. It must not:'],
+      bullets: [
+        'be fake, or be written about a business you own, work for, are related to, or compete with;',
+        'be paid for, or written in exchange for a discount, freebie, or any other reward;',
+        'include links, phone numbers, or other contact details, or advertise anything;',
+        'include someone else’s personal information, or be hateful, harassing, obscene, or threatening;',
+        'be posted from more than one account, or as part of an organized campaign for or against a business.',
+      ],
+    },
+    {
+      heading: 'Reporting and moderating reviews',
+      paragraphs: [
+        'Anyone signed in can report a review. A review reported by several people may be hidden automatically while our team looks at it. We may hide, remove, or restore reviews, and we may limit or remove the ability to review for accounts that break these rules.',
+        'Businesses can report reviews but cannot edit or remove them, and no one can pay to change or remove a review.',
+        'Reviews are the opinions of the people who wrote them, not of iLokal. We don’t verify every statement: a “Checked in” or “Verified visit” label confirms a visit, not the accuracy of what was written. An average rating is shown only once a business has enough ratings.',
       ],
     },
     {
@@ -373,6 +400,7 @@ export const TERMS_OF_SERVICE: LegalDoc = {
       heading: 'Location services',
       paragraphs: [
         'iLokal can use your device location to show nearby businesses and directions. Location is optional and controlled by your device permissions — you can decline it or revoke it anytime in your device settings.',
+        'When you tap Check in at a business, the app reads your location once to confirm that you are at the business. Check-ins are only needed if you want to write a review.',
       ],
     },
     {

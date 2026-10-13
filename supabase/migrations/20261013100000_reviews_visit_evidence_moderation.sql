@@ -467,7 +467,10 @@ CREATE OR REPLACE FUNCTION public.record_business_checkin(
   p_accuracy_m double precision, p_mocked boolean
 ) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public, pg_temp
+-- PostGIS lives in `public` locally but may sit in `extensions` (Supabase
+-- dashboard default) or `postgis` elsewhere; schemas that don't exist are
+-- ignored, so listing all three keeps ST_* resolvable wherever it's installed.
+SET search_path = public, extensions, postgis, pg_temp
 AS $$
 DECLARE
   v_uid      uuid := auth.uid();

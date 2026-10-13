@@ -5,76 +5,111 @@ import {
   notFoundResponse,
   successResponse,
   unauthorizedResponse,
-  forbiddenResponse,
-  loggedServerError,
 } from '@/app/api/helpers/response';
+import { reviewErrorResponse } from '@/app/api/helpers/reviewErrors';
 import { isValidResourceId } from '@/app/api/helpers/resourceId';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 type Params = { params: Promise<{ businessId: string }> };
 
+const CONTEXT = 'protected/mobile/ratings/businesses/[businessId]';
+
+/**
+ * The signed-in user's review of one business.
+ *
+ * Every write goes through a SECURITY DEFINER RPC (migration 20261013100000):
+ * the table no longer grants INSERT/UPDATE/DELETE to `authenticated`, so the
+ * eligibility rule (visit evidence), comment filters, rate limit, the owner's
+ * `allow_reviews` and the global kill switch can't be bypassed by calling
+ * PostgREST directly.
+ */
+
+/** GET → `{ mine, eligibility }`, which drives the app's review button. */
+export async function GET(req: NextRequest, { params }: Params) {
+  try {
+    const auth = await getMobileUser(req);
+    if (!auth) return unauthorizedResponse();
+    const { businessId } = await params;
+    if (!isValidResourceId(businessId)) {
+      return notFoundResponse({ message: 'Business not found' });
+    }
+    const { data, error } = await auth.supabase.rpc('get_my_business_review', {
+      p_business: businessId,
+    });
+    if (error) return reviewErrorResponse(CONTEXT, error, auth.user.id);
+    return successResponse(data);
+  } catch {
+    return generalErrorResponse();
+  }
+}
+
+/** POST `{ rating, comment? }` → `{ rating: MyReview }` (create or edit). */
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const auth = await getMobileUser(req);
     if (!auth) return unauthorizedResponse();
-
     const { businessId } = await params;
-    // A slug (`bida-ngayon`) reaching PostgREST as a `uuid` is a 22P02 and a
-    // 500 for what is really "no such shop". See app/api/helpers/resourceId.ts.
     if (!isValidResourceId(businessId)) {
       return notFoundResponse({ message: 'Business not found' });
     }
-    const body = await req.json();
-    const { rating, comment } = body;
 
-    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    const body = (await req.json().catch(() => null)) as {
+      rating?: unknown;
+      comment?: unknown;
+    } | null;
+    const rating = body?.rating;
+    const comment = body?.comment;
+    if (
+      !Number.isInteger(rating) ||
+      (rating as number) < 1 ||
+      (rating as number) > 5
+    ) {
       return badRequestResponse({
-        message: 'rating must be an integer between 1 and 5',
+        code: 'INVALID_RATING',
+        message: 'Pick 1 to 5 stars',
+      });
+    }
+    if (comment != null && typeof comment !== 'string') {
+      return badRequestResponse({
+        code: 'INVALID_COMMENT',
+        message: 'Comment must be text',
       });
     }
 
-    // Verify the business exists and is verified
-    const { data: business, error: bizError } = await auth.supabase
-      .from('businesses')
-      .select('id')
-      .eq('id', businessId)
-      .eq('status', 'verified')
-      .is('archived_at', null)
-      .single();
+    const { data, error } = await auth.supabase.rpc('upsert_business_rating', {
+      p_business: businessId,
+      p_rating: rating as number,
+      p_comment: (comment as string | null | undefined) ?? null,
+    });
+    if (error) return reviewErrorResponse(CONTEXT, error, auth.user.id);
+    return successResponse({ rating: data });
+  } catch {
+    return generalErrorResponse();
+  }
+}
 
-    if (bizError || !business) {
+/** DELETE → 204. Removes my review (published or awaiting moderation). */
+export async function DELETE(req: NextRequest, { params }: Params) {
+  try {
+    const auth = await getMobileUser(req);
+    if (!auth) return unauthorizedResponse();
+    const { businessId } = await params;
+    if (!isValidResourceId(businessId)) {
       return notFoundResponse({ message: 'Business not found' });
     }
-
-    const { data, error } = await auth.supabase
-      .from('business_ratings')
-      .upsert(
-        {
-          user_id: auth.user.id,
-          business_id: businessId,
-          rating: Math.round(rating),
-          comment: comment ?? null,
-        },
-        { onConflict: 'user_id,business_id' },
-      )
-      .select('id, rating, comment, created_at, updated_at')
-      .single();
-
-    if (error) {
-      // SEC-4 gate: inserting a first rating requires having redeemed a coupon
-      // from this business (RESTRICTIVE RLS policy) — surface as 403, not 500.
-      if (error.code === '42501') {
-        return forbiddenResponse({
-          message: 'You can only rate a business you have redeemed a deal from',
-        });
-      }
-      return loggedServerError(
-        'protected/mobile/ratings/businesses/[businessId]',
-        error,
-      );
-    }
-
-    return successResponse({ rating: data });
+    const { data, error } = await auth.supabase.rpc(
+      'delete_my_business_rating',
+      {
+        p_business: businessId,
+      },
+    );
+    if (error) return reviewErrorResponse(CONTEXT, error, auth.user.id);
+    if (!data)
+      return notFoundResponse({
+        code: 'REVIEW_NOT_FOUND',
+        message: 'No review to delete',
+      });
+    return new NextResponse(null, { status: 204 });
   } catch {
     return generalErrorResponse();
   }

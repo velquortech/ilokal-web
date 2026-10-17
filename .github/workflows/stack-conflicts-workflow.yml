@@ -1,0 +1,58 @@
+name: Stack conflict watch
+
+# Labels and comments on open PRs (stacked ones included) whose head stops
+# merging cleanly into main. GitHub only compares a PR with its base, so a
+# stack can go stale against main without any PR showing a conflict. When the
+# only conflicts are appended changelog / release-note entries, it merges and
+# pushes the keep-both resolution itself. The logic, and how to dry-run it
+# locally, is in .github/scripts/check-stack-conflicts.sh.
+
+on:
+  push:
+    branches:
+      - main
+  # A PR update may be the fix; re-check so its label clears without waiting
+  # for the next merge into main.
+  pull_request:
+    types: [opened, reopened, synchronize]
+  workflow_dispatch:
+
+# Each run re-scans every open PR, so only the newest run matters.
+concurrency:
+  group: stack-conflict-watch
+  cancel-in-progress: true
+
+permissions:
+  contents: write # pushes changelog-only conflict resolutions to PR branches
+  pull-requests: write
+  issues: write # labels are issue labels
+
+jobs:
+  Check-stack-conflicts:
+    # Fork PRs get a read-only token and cannot label anything.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # merge-tree needs real merge bases, not a shallow tip.
+          fetch-depth: 0
+          # The auto-resolve push uses this checkout's credentials. A push made
+          # with the default GITHUB_TOKEN does not trigger other workflows, so
+          # CI and the Vercel preview would not run on the merge commit. Set
+          # STACK_BOT_TOKEN (a fine-grained PAT with contents: write on this
+          # repo) to have them run; without it, pushes still work.
+          token: ${{ secrets.STACK_BOT_TOKEN || github.token }}
+
+      # The resolver is awk + git plumbing, whose behaviour differs between
+      # versions (mawk vs gawk). Prove it on this runner before it pushes.
+      - name: Self-test the conflict resolver
+        run: |
+          shellcheck -S warning .github/scripts/*.sh
+          bash .github/scripts/test-check-stack-conflicts.sh
+
+      - name: Check open PRs against main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/check-stack-conflicts.sh

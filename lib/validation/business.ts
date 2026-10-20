@@ -205,6 +205,9 @@ export const businessFiltersSchema = z.object({
     .enum(['pending', 'verified', 'suspended', 'rejected', 'all'])
     .optional()
     .default('all'),
+  // Admin-seeded listings outnumber owner-registered ones ~70:1, so without
+  // this filter the review queue is unusable for its actual purpose.
+  origin: z.enum(['owner', 'admin', 'all']).optional().default('all'),
   search: z.string().trim().optional(),
   sortBy: z.enum(['created', 'updated', 'name']).optional().default('created'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),

@@ -14,6 +14,7 @@ type SearchParams = Promise<{
   perPage?: string;
   search?: string;
   status?: string;
+  origin?: string;
 }>;
 
 /**
@@ -36,10 +37,12 @@ export default async function AdminBusinessesPage({
   );
   const search = params.search?.trim() || undefined;
   const status = params.status?.trim() || undefined;
+  const origin = params.origin?.trim() || undefined;
 
   const filters: Record<string, string | number> = { page, pageSize };
   if (search) filters.search = search;
   if (status) filters.status = status;
+  if (origin) filters.origin = origin;
 
   const [result, countsResult] = await Promise.all([
     getBusinessesAction(filters),

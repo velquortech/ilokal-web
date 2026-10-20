@@ -206,8 +206,21 @@ export default async function DashboardPage({
             <Building2 className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <StatValue value={summary.total_businesses} />
-            <p className="text-muted-foreground text-xs">Registered shops</p>
+            {/* Owner-registered, not the raw row count. `total_businesses`
+                also counts the open-data directory import — ~1,480 listings
+                nobody registered — so showing it under "Registered shops"
+                overstated the platform roughly seventyfold. The seeded
+                figure stays beside it so the total is still reachable. */}
+            <StatValue value={summary.owner_businesses} />
+            <p className="text-muted-foreground text-xs">
+              Registered shops
+              {summary.seeded_businesses ? (
+                <>
+                  {' · '}
+                  {summary.seeded_businesses.toLocaleString()} admin-seeded
+                </>
+              ) : null}
+            </p>
           </CardContent>
         </Card>
 

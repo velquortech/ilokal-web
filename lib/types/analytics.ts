@@ -42,6 +42,15 @@ export interface AdminDashboardSummary {
   total_users: number | null;
   new_users_last_30_days: number | null;
   total_businesses: number | null;
+  /**
+   * Businesses that registered themselves (`origin = 'owner'`). This is what
+   * "registered shops" means — `total_businesses` also counts the open-data
+   * directory we imported, which at ~70:1 would otherwise make the dashboard
+   * report a platform roughly seventy times the size it is.
+   */
+  owner_businesses: number | null;
+  /** Listings staff created, chiefly the OpenStreetMap directory import. */
+  seeded_businesses: number | null;
   verified_businesses: number | null;
   /** Shops still waiting on a human decision. */
   pending_businesses: number | null;

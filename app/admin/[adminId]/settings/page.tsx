@@ -2,6 +2,7 @@ import {
   getRegistrationSettings,
   getEventsEnabled,
   getOnboardingTourEnabled,
+  getAdminSeededVisible,
 } from '@/lib/api/appSettings';
 import { RegistrationSettingsCard } from './components/registration-settings-card';
 import { FeatureFlagsCard } from './components/feature-flags-card';
@@ -14,11 +15,13 @@ export const dynamic = 'force-dynamic';
  * business-registration gates, plus the dark-shipped features.
  */
 export default async function AdminSettingsPage() {
-  const [settings, eventsEnabled, onboardingTourEnabled] = await Promise.all([
-    getRegistrationSettings(),
-    getEventsEnabled(),
-    getOnboardingTourEnabled(),
-  ]);
+  const [settings, eventsEnabled, onboardingTourEnabled, adminSeededVisible] =
+    await Promise.all([
+      getRegistrationSettings(),
+      getEventsEnabled(),
+      getOnboardingTourEnabled(),
+      getAdminSeededVisible(),
+    ]);
 
   return (
     <div className="flex flex-1 flex-col space-y-6">
@@ -30,6 +33,7 @@ export default async function AdminSettingsPage() {
         initial={{
           enable_events: eventsEnabled,
           enable_onboarding_tour: onboardingTourEnabled,
+          show_admin_seeded_businesses: adminSeededVisible,
           // Present so the record is total; the registration card owns these.
           require_business_documents: settings.requireBusinessDocuments,
           auto_verify_businesses: settings.autoVerifyBusinesses,

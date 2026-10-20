@@ -8,6 +8,7 @@ import {
   getPlatformOverview,
   getUserMetrics,
   getRevenueMetrics,
+  getAdminDashboardSummary,
 } from '../analyticsQuery';
 import { createServerSupabaseClient } from '@/supabase/server';
 
@@ -304,5 +305,62 @@ describe('analyticsQuery', () => {
       expect(result.total_revenue).toBe(0);
       expect(result.revenue_last_30_days).toBe(0);
     });
+  });
+});
+
+describe('getAdminDashboardSummary — business counts by origin', () => {
+  /**
+   * The "Businesses · Registered shops" card used to show every row, which
+   * after the OpenStreetMap import meant ~1,503 where 21 shops had actually
+   * registered. A dashboard that overstates the platform seventyfold is worse
+   * than no dashboard, so the card reports owner-registered and carries the
+   * seeded count alongside it.
+   */
+  function clientCounting(counts: Record<string, number>) {
+    // `countRows` awaits whatever the filter chain returns, so every node has
+    // to be both chainable and awaitable. Filters accumulate into a key so a
+    // call can resolve to the count for its exact combination.
+    type Node = {
+      count: number;
+      error: null;
+      is: Mock;
+      eq: Mock;
+      gte: Mock;
+    };
+    const node = (filters: string[]): Node => {
+      const key = filters.length ? filters.join('+') : 'all';
+      return {
+        count: counts[key] ?? 0,
+        error: null,
+        is: vi.fn(() => node(filters)), // archived_at IS NULL — no bucket of its own
+        eq: vi.fn((col: string, val: string) =>
+          node([...filters, `${col}:${val}`]),
+        ),
+        gte: vi.fn(() => node([...filters, 'recent'])),
+      };
+    };
+    return {
+      from: vi.fn(() => ({ select: vi.fn(() => node([])) })),
+    };
+  }
+
+  it('reports owner-registered and admin-seeded separately', async () => {
+    (createServerSupabaseClient as unknown as Mock).mockResolvedValue(
+      clientCounting({
+        all: 1503,
+        'origin:owner': 21,
+        'origin:admin': 1482,
+        'status:verified': 1503,
+        'status:pending': 0,
+      }),
+    );
+
+    const summary = await getAdminDashboardSummary();
+
+    expect(summary.owner_businesses).toBe(21);
+    expect(summary.seeded_businesses).toBe(1482);
+    // The raw total stays available; it is simply no longer the headline.
+    expect(summary.total_businesses).toBe(1503);
+    expect(summary.failed).toBe(false);
   });
 });

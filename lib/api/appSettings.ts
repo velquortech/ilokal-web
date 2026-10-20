@@ -92,6 +92,7 @@ export async function getRegistrationSettings(): Promise<RegistrationSettings> {
 }
 
 type PublicFlagRow = {
+  show_admin_seeded_businesses: boolean;
   require_business_documents: boolean;
   auto_verify_businesses: boolean;
 };
@@ -219,4 +220,36 @@ export async function getOnboardingTourEnabled(): Promise<boolean> {
     logActionError('getOnboardingTourEnabled', err);
     return false;
   }
+}
+
+/**
+ * The admin-seeded kill switch (`show_admin_seeded_businesses`).
+ *
+ * ~1,480 of ~1,500 listings are an open-data directory import nobody has
+ * claimed. When this is off, they disappear from every surface: the feed and
+ * the category counts drop them in the database (see migration
+ * 20261003030000), and the public detail and share routes 404 them — a kill
+ * switch with a hole is not a kill switch, and a shared link is exactly the
+ * hole an angry owner would find first.
+ *
+ * Via the anon-safe RPC, never a table read: these callers are public, and an
+ * `anon` table read returns zero rows WITHOUT an error.
+ *
+ * **Fails OPEN**, unlike the registration flags above. For those, an unreadable
+ * value must not advertise a laxer flow than the wizard runs. Here the reverse
+ * holds: hiding ~1,480 listings on a transient read error is a much louder
+ * failure than briefly serving listings that were already public. An admin who
+ * deliberately switches this off gets a persisted `false`, which reads fine.
+ */
+export async function getAdminSeededVisible(): Promise<boolean> {
+  const data = await readPublicFlags();
+  if (!data) return true;
+
+  const row = data as Partial<PublicFlagRow>;
+  // An app deployed ahead of its migration gets the older function, which
+  // resolves successfully without this column. Absent means "switch does not
+  // exist yet", which is the same as on.
+  return typeof row.show_admin_seeded_businesses === 'boolean'
+    ? row.show_admin_seeded_businesses
+    : true;
 }

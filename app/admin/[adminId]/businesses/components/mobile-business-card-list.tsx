@@ -11,7 +11,7 @@ interface MobileBusinessCardListProps {
  * The admin document-review list as cards below `md`, from the SAME TanStack
  * rows as the desktop table.
  *
- * Five columns — business, owner, status, submitted, actions — do not fit a
+ * Six columns — business, owner, status, origin, submitted, actions — do not fit a
  * 375px screen, and `<Table>`'s `overflow-x-auto` turns that into a
  * scroll-within-scroll most people never discover: the kebab that approves or
  * rejects a shop is in the last column, i.e. the one off-screen.
@@ -48,6 +48,7 @@ export function MobileBusinessCardList({ table }: MobileBusinessCardListProps) {
 
             <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
               {render('status')}
+              {render('origin')}
               <span className="text-muted-foreground text-xs">
                 Submitted {render('created_at')}
               </span>

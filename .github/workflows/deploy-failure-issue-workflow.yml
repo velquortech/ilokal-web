@@ -1,0 +1,38 @@
+name: Deploy failure issue
+
+# Opens (or comments on) an issue when a job of the migration deploy fails on
+# main, and closes it when that job passes again. The deploy run was red for
+# weeks for an unrelated reason, which hid the migration job itself failing;
+# an issue per failing job does not get lost the way a red X does. Logic in
+# .github/scripts/report-deploy-failure.sh.
+
+on:
+  workflow_run:
+    workflows: ['Deploy Supabase Migrations']
+    types: [completed]
+    branches: [main]
+  # Re-check any past run by id, e.g. to open the issue for a failure that
+  # happened before this workflow existed.
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Run id of a "Deploy Supabase Migrations" run'
+        required: true
+
+permissions:
+  contents: read
+  actions: read # job list and failed-step logs
+  issues: write
+
+jobs:
+  Report-deploy-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Open, update or close the deploy-failure issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+        run: bash .github/scripts/report-deploy-failure.sh

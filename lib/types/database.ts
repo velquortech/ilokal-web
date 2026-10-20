@@ -1193,6 +1193,82 @@ export type Database = {
           },
         ]
       }
+      plan_stops: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          plan_id: string
+          position: number
+          stop_time: string | null
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          plan_id: string
+          position: number
+          stop_time?: string | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          plan_id?: string
+          position?: number
+          stop_time?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_stops_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_dashboard_stats"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "plan_stops_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_stops_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plans: {
+        Row: {
+          created_at: string
+          id: string
+          target_date: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          target_date: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          target_date?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       product_sections: {
         Row: {
           archived_at: string | null
@@ -2384,8 +2460,21 @@ export type Database = {
           require_business_documents: boolean
         }[]
       }
+      purge_archived_profiles: {
+        Args: { p_limit?: number; p_retention_days?: number }
+        Returns: number
+      }
       record_view: {
         Args: { p_business_id?: string; p_product_id?: string }
+        Returns: undefined
+      }
+      replace_plan_stops: {
+        Args: {
+          p_plan_id: string
+          p_stops: Json
+          p_target_date: string
+          p_title: string
+        }
         Returns: undefined
       }
       request_booking: {

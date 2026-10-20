@@ -99,3 +99,6 @@ theme-public-1280.png
 # CSV/TXT it writes hold REAL production user emails — never commit them.
 data/user-emails.csv
 data/user-emails-comma.txt
+
+# Python bytecode (tests/api_smoke)
+__pycache__/

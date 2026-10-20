@@ -38,6 +38,11 @@ export default defineConfig({
       '**/.next/**',
       '**/.claude/worktrees/**',
       '**/.freebuff/worktrees/**',
+      // `e2e/` holds Playwright specs, which need a real browser and a running
+      // Supabase stack. They are named `*.spec.ts` so `include` already misses
+      // them; this is the second net, so a `*.test.ts` dropped in there fails
+      // at review rather than silently under `environment: 'node'`.
+      'e2e/**',
     ],
   },
   resolve: {

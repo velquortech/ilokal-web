@@ -1,0 +1,77 @@
+name: Schema gate
+
+# Fails a PR whose code reads database tables, columns or functions that
+# production does not have — unless the PR's own migrations create them AND
+# production already has every migration on main (a healthy deploy pipeline).
+# On 2026-10-09 the migration deploy broke while code kept shipping: #93 went
+# live without its table, and the registration stack would have taken the
+# mobile feed down. Logic and rationale: .github/scripts/schema-gate/gate.mjs.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+  # Re-check a PR after production changes (e.g. once a stuck migration
+  # finally applies): Actions → Schema gate → Run workflow, with the PR branch.
+  workflow_dispatch:
+
+concurrency:
+  group: schema-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  Schema-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # The merge-base with main and main's migration list are both needed.
+          fetch-depth: 0
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      # The gate parses code with the repo's own `typescript`.
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --ignore-scripts
+
+      - name: Self-test the gate
+        run: node --test .github/scripts/schema-gate/gate.test.mjs
+
+      # The ONLY step that sees the token, and it runs nothing from the PR but
+      # a read-only catalog query. Unreadable production (no secret on a fork,
+      # an invalid token) is not fatal here — the gate then blocks only PRs
+      # that add database references or migrations.
+      - name: Read production schema
+        id: schema
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF_PRODUCTION }}
+        run: |
+          out="$RUNNER_TEMP/prod-schema.json"
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$PROJECT_REF" ]; then
+            echo "::warning::Production schema unavailable: SUPABASE_ACCESS_TOKEN or SUPABASE_PROJECT_REF_PRODUCTION is not set."
+            echo "file=unavailable" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          status=$(curl -sS -o "$out" -w '%{http_code}' --max-time 60 \
+            -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data "$(jq -Rs '{query: .}' .github/scripts/schema-gate/schema.sql)") || status=000
+          if [ "$status" != 200 ] && [ "$status" != 201 ]; then
+            echo "::warning::Production schema unavailable: Supabase answered HTTP $status. If 401, SUPABASE_ACCESS_TOKEN is invalid — the migration deploy is failing for the same reason."
+            echo "file=unavailable" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "file=$out" >> "$GITHUB_OUTPUT"
+
+      - name: Check this PR against production
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: bash .github/scripts/schema-gate/run.sh "$HEAD_SHA" "${{ steps.schema.outputs.file }}"

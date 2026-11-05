@@ -3,14 +3,14 @@
 /**
  * Customer (role app_user) mutations — follow/unfollow + coupon redeem.
  *
- * Web twin of the mobile contract: the redeem gates mirror
- * `app/api/protected/mobile/redemptions/route.ts` 1:1 (same order, same user
- * copy — see `.claude/docs/coupon-rules.md`). Unifying both behind one shared
- * core is a tracked follow-up; the tests pin this action to the same matrix.
+ * Web twin of the mobile contract: redeem calls the same `redeem_coupon` RPC
+ * as `app/api/protected/mobile/redemptions/route.ts`, so the gates (and their
+ * user copy — see `.claude/docs/coupon-rules.md`) exist once, in SQL.
  *
- * All queries run on the cookie RLS client: `follows` and `user_redemptions`
- * writes land through the self-scoped policies, so a forged businessId/couponId
- * can never touch another user's rows.
+ * All queries run on the cookie RLS client: `follows` writes land through the
+ * self-scoped policy, and `user_redemptions` is written only by the RPC (direct
+ * writes are revoked), so a forged businessId/couponId can never touch another
+ * user's rows.
  */
 
 import { z } from 'zod';
@@ -19,6 +19,7 @@ import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import { rateLimit } from '@/app/api/helpers/rateLimit';
 import { logActionError } from '@/lib/utils/captureError';
 import { formatErrorForLog } from '@/lib/utils/describeDbError';
+import { redemptionErrorCode } from '@/app/api/helpers/redemptionErrors';
 
 export type CustomerActionError =
   | 'AUTH_REQUIRED'
@@ -183,178 +184,34 @@ export async function redeemCouponAction(
     }
 
     const supabase = await createServerSupabaseClient();
-    const now = new Date().toISOString();
 
-    // Gate order mirrors the mobile route exactly.
-    const { data: coupon, error: couponError } = await supabase
-      .from('coupons')
-      .select(
-        'id, start_date, expiry_date, status, max_redemptions_per_user, max_redemptions_global, current_redemptions, requires_follow, business_id, branch_id, businesses!business_id (archived_at)',
-      )
-      .eq('id', couponId)
-      .eq('status', 'published')
-      .is('archived_at', null)
-      .lte('start_date', now)
-      .single();
+    // The gates, the insert and the counter bump all live in the RPC
+    // (migration 20261024000000) — the same one the mobile route calls, so the
+    // two surfaces can no longer drift.
+    const { data: redemption, error: redeemError } = await supabase.rpc(
+      'redeem_coupon',
+      { p_coupon_id: couponId, p_branch_id: branchId },
+    );
 
-    // An archived business's coupons stay readable through the coupon RLS
-    // policy (it checks verified only) — treat them as not found here.
-    const businessArchived =
-      (coupon as unknown as { businesses?: { archived_at: string | null } })
-        ?.businesses?.archived_at != null;
-
-    if (couponError || !coupon || businessArchived) {
-      return {
-        ok: false,
-        code: 'BAD_REQUEST',
-        message: 'Coupon not found or not yet active',
-      };
-    }
-
-    // Branch must belong to the coupon's business, and a branch-scoped coupon
-    // may only be redeemed at its branch. (Gate added on web first — the
-    // mobile route shares the gap; align it in the shared-core follow-up.)
-    const { data: branch, error: branchError } = await supabase
-      .from('branches')
-      .select('id, business_id')
-      .eq('id', branchId)
-      .is('archived_at', null)
-      .maybeSingle();
-
-    if (branchError) {
-      logActionError('redeemCouponAction', branchError);
-      return {
-        ok: false,
-        code: 'SERVER_ERROR',
-        message: 'Could not redeem right now',
-      };
-    }
-    if (
-      !branch ||
-      branch.business_id !== coupon.business_id ||
-      (coupon.branch_id !== null && coupon.branch_id !== branchId)
-    ) {
-      return {
-        ok: false,
-        code: 'BAD_REQUEST',
-        message: 'This deal cannot be redeemed at that branch',
-      };
-    }
-
-    if (coupon.expiry_date < now) {
-      return { ok: false, code: 'BAD_REQUEST', message: 'Coupon has expired' };
-    }
-
-    if (
-      coupon.max_redemptions_global !== null &&
-      (coupon.current_redemptions ?? 0) >= coupon.max_redemptions_global
-    ) {
-      return {
-        ok: false,
-        code: 'BAD_REQUEST',
-        message: 'Coupon has reached its redemption limit',
-      };
-    }
-
-    if (coupon.requires_follow) {
-      const { count: followCount, error: followError } = await supabase
-        .from('follows')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', auth.userId)
-        .eq('business_id', coupon.business_id);
-
-      if (followError) {
-        logActionError('redeemCouponAction', followError);
+    if (redeemError || !redemption) {
+      const code = redeemError ? redemptionErrorCode(redeemError) : null;
+      if (code) {
         return {
           ok: false,
-          code: 'SERVER_ERROR',
-          message: 'Could not redeem right now',
+          code:
+            code === 'FOLLOW_REQUIRED'
+              ? 'FORBIDDEN'
+              : code === 'UNAUTHENTICATED'
+                ? 'AUTH_REQUIRED'
+                : 'BAD_REQUEST',
+          message: redeemError?.hint || code,
         };
       }
-      if ((followCount ?? 0) === 0) {
-        return {
-          ok: false,
-          code: 'FORBIDDEN',
-          message: 'Follow this business to claim this deal',
-        };
-      }
-    }
-
-    const { data: userRedemptions, error: redemptionsError } = await supabase
-      .from('user_redemptions')
-      .select('is_claimed, expires_at')
-      .eq('coupon_id', couponId)
-      .eq('user_id', auth.userId);
-
-    if (redemptionsError) {
-      logActionError('redeemCouponAction', redemptionsError);
+      logActionError('redeemCouponAction', redeemError);
       return {
         ok: false,
         code: 'SERVER_ERROR',
         message: 'Could not redeem right now',
-      };
-    }
-
-    const hasActiveRedemption = (userRedemptions ?? []).some(
-      (r) => !r.is_claimed && (r.expires_at === null || r.expires_at > now),
-    );
-    if (hasActiveRedemption) {
-      return {
-        ok: false,
-        code: 'BAD_REQUEST',
-        message: 'You already have this deal in your wallet',
-      };
-    }
-
-    if (
-      coupon.max_redemptions_per_user !== null &&
-      (userRedemptions ?? []).length >= coupon.max_redemptions_per_user
-    ) {
-      return {
-        ok: false,
-        code: 'BAD_REQUEST',
-        message:
-          'You have already redeemed this coupon the maximum number of times',
-      };
-    }
-
-    const { data: redemption, error: insertError } = await supabase
-      .from('user_redemptions')
-      .insert({
-        user_id: auth.userId,
-        coupon_id: couponId,
-        branch_id: branchId,
-        expires_at: coupon.expiry_date,
-      })
-      .select('id, code, expires_at')
-      .single();
-
-    if (insertError || !redemption) {
-      logActionError('redeemCouponAction', insertError);
-      return {
-        ok: false,
-        code: 'SERVER_ERROR',
-        message: 'Could not redeem right now',
-      };
-    }
-
-    // Atomic global-cap increment; false ⇒ a concurrent redeem won the last
-    // slot — roll back this row (mirrors the mobile route).
-    const { data: incremented, error: incrError } = await supabase.rpc(
-      'increment_coupon_redemptions',
-      { p_coupon_id: couponId },
-    );
-    if (incrError) {
-      console.error(
-        '[redeemCouponAction] increment failed:',
-        formatErrorForLog(incrError),
-      );
-    } else if (!incremented) {
-      await supabase.from('user_redemptions').delete().eq('id', redemption.id);
-      return {
-        ok: false,
-        code: 'BAD_REQUEST',
-        message: 'Coupon has reached its redemption limit',
       };
     }
 
@@ -370,7 +227,14 @@ export async function redeemCouponAction(
       );
     }
 
-    return { ok: true, redemption };
+    return {
+      ok: true,
+      redemption: {
+        id: redemption.id,
+        code: redemption.code,
+        expires_at: redemption.expires_at,
+      },
+    };
   } catch (err) {
     logActionError('redeemCouponAction', err);
     return {

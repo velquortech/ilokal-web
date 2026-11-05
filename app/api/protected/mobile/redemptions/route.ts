@@ -1,14 +1,16 @@
 import { getMobileUser } from '@/app/api/helpers/mobile-request';
 import {
   badRequestResponse,
-  forbiddenResponse,
   generalErrorResponse,
   successResponse,
   unauthorizedResponse,
   loggedServerError,
 } from '@/app/api/helpers/response';
 import { redeemCouponSchema } from '@/lib/validation/redemptions';
+import { redemptionErrorResponse } from '@/app/api/helpers/redemptionErrors';
 import { NextRequest } from 'next/server';
+
+const CONTEXT = 'protected/mobile/redemptions';
 
 export async function GET(req: NextRequest) {
   try {
@@ -88,127 +90,17 @@ export async function POST(req: NextRequest) {
     }
     const { coupon_id, branch_id } = parsed.data;
 
-    const now = new Date().toISOString();
+    // Every claim gate (published/started/expired, verified business, branch
+    // ownership, follow gate, active-dupe, per-user + global caps), the insert
+    // and the counter bump run inside this one RPC under the coupon row lock
+    // (migration 20261024000000). Direct writes to user_redemptions are
+    // revoked, so the gates can't be skipped by calling PostgREST directly.
+    const { data, error } = await auth.supabase.rpc('redeem_coupon', {
+      p_coupon_id: coupon_id,
+      p_branch_id: branch_id,
+    });
 
-    const { data: coupon, error: couponError } = await auth.supabase
-      .from('coupons')
-      .select(
-        'id, start_date, expiry_date, status, max_redemptions_per_user, max_redemptions_global, current_redemptions, requires_follow, business_id',
-      )
-      .eq('id', coupon_id)
-      .eq('status', 'published')
-      .is('archived_at', null)
-      .lte('start_date', now)
-      .single();
-
-    if (couponError || !coupon) {
-      return badRequestResponse({
-        message: 'Coupon not found or not yet active',
-      });
-    }
-
-    if (coupon.expiry_date < now) {
-      return badRequestResponse({ message: 'Coupon has expired' });
-    }
-
-    if (
-      coupon.max_redemptions_global !== null &&
-      (coupon.current_redemptions ?? 0) >= coupon.max_redemptions_global
-    ) {
-      return badRequestResponse({
-        message: 'Coupon has reached its redemption limit',
-      });
-    }
-
-    // Follow gate — coupon requires user to follow the business
-    if (coupon.requires_follow) {
-      const { count: followCount, error: followError } = await auth.supabase
-        .from('follows')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', auth.user.id)
-        .eq('business_id', coupon.business_id);
-
-      if (followError)
-        return loggedServerError('protected/mobile/redemptions', followError);
-
-      if ((followCount ?? 0) === 0) {
-        return forbiddenResponse({
-          message: 'Follow this business to claim this deal',
-        });
-      }
-    }
-
-    // This user's redemptions of this coupon back both the active-dupe guard
-    // and the per-user cap below — fetch once instead of counting twice.
-    const { data: userRedemptions, error: redemptionsError } =
-      await auth.supabase
-        .from('user_redemptions')
-        .select('is_claimed, expires_at')
-        .eq('coupon_id', coupon_id)
-        .eq('user_id', auth.user.id);
-
-    if (redemptionsError) {
-      return loggedServerError(
-        'protected/mobile/redemptions',
-        redemptionsError,
-      );
-    }
-
-    // Active-dupe — user can't hold two unclaimed, unexpired redemptions of the same coupon.
-    const hasActiveRedemption = userRedemptions.some(
-      (r) => !r.is_claimed && (r.expires_at === null || r.expires_at > now),
-    );
-    if (hasActiveRedemption) {
-      return badRequestResponse({
-        message: 'You already have this deal in your wallet',
-      });
-    }
-
-    if (
-      coupon.max_redemptions_per_user !== null &&
-      userRedemptions.length >= coupon.max_redemptions_per_user
-    ) {
-      return badRequestResponse({
-        message:
-          'You have already redeemed this coupon the maximum number of times',
-      });
-    }
-
-    const expires_at = coupon.expiry_date;
-
-    const { data, error } = await auth.supabase
-      .from('user_redemptions')
-      .insert({
-        user_id: auth.user.id,
-        coupon_id,
-        branch_id,
-        expires_at,
-      })
-      .select()
-      .single();
-
-    if (error) return loggedServerError('protected/mobile/redemptions', error);
-
-    // Atomic increment — DB function updates current_redemptions + 1 only if still
-    // under max_redemptions_global, catching the race between the cap check above
-    // and concurrent inserts. Returns false if the cap was exceeded by a concurrent
-    // request; we still return success (the insert already landed) but log the race.
-    const { data: incremented, error: incrError } = await auth.supabase.rpc(
-      'increment_coupon_redemptions',
-      { p_coupon_id: coupon_id },
-    );
-    if (incrError) {
-      console.error(
-        '[redemptions] counter increment failed:',
-        incrError.message,
-      );
-    } else if (!incremented) {
-      // Cap was exceeded by a concurrent insert — roll back this row.
-      await auth.supabase.from('user_redemptions').delete().eq('id', data.id);
-      return badRequestResponse({
-        message: 'Coupon has reached its redemption limit',
-      });
-    }
+    if (error) return redemptionErrorResponse(CONTEXT, error, auth.user.id);
 
     // Notify the business owner — names the customer, coupon, and branch. The RPC
     // is SECURITY DEFINER and authorizes this caller as the redemption's owner.

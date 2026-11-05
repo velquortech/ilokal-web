@@ -13,6 +13,7 @@ import type {
 } from '@/lib/types';
 import * as couponQuery from './couponQuery';
 import { formatErrorForLog } from '@/lib/utils/describeDbError';
+import { redemptionErrorCode } from '@/app/api/helpers/redemptionErrors';
 
 // ===== Coupon Service =====
 
@@ -238,11 +239,14 @@ export async function deleteCoupon(
 }
 
 /**
- * Redeem a coupon (track redemption)
+ * Redeem a coupon (track redemption).
+ *
+ * `_userId` is kept for the caller's signature only: the RPC redeems as the
+ * session's `auth.uid()`, never as a passed-in id.
  */
 export async function redeemCoupon(
   couponCode: string,
-  userId: string,
+  _userId: string,
 ): Promise<ApiResponse<CouponDetailResponse>> {
   try {
     const supabase = await createServerSupabaseClient();
@@ -261,118 +265,27 @@ export async function redeemCoupon(
 
     const coupon = couponResult.coupon;
 
-    // Check if coupon is active
-    const now = new Date();
-    if (new Date(coupon.start_date) > now) {
-      return {
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Coupon is not yet active',
-        },
-      };
-    }
-
-    if (new Date(coupon.expiry_date) < now) {
-      return {
-        success: false,
-        error: {
-          code: 'COUPON_EXPIRED',
-          message: 'Coupon has expired',
-        },
-      };
-    }
-
-    // Check global redemption limit
-    if (coupon.max_redemptions_global) {
-      const { count: totalRedemptions } = await supabase
-        .from('user_redemptions')
-        .select('id', { count: 'exact', head: true })
-        .eq('coupon_id', coupon.id);
-
-      if ((totalRedemptions || 0) >= coupon.max_redemptions_global) {
-        return {
-          success: false,
-          error: {
-            code: 'COUPON_LIMIT_REACHED',
-            message: 'Coupon redemption limit reached',
-          },
-        };
-      }
-    }
-
-    // Check per-user redemption limit
-    if (coupon.max_redemptions_per_user) {
-      const { count: userRedemptions } = await supabase
-        .from('user_redemptions')
-        .select('id', { count: 'exact', head: true })
-        .eq('coupon_id', coupon.id)
-        .eq('user_id', userId);
-
-      if ((userRedemptions || 0) >= coupon.max_redemptions_per_user) {
-        return {
-          success: false,
-          error: {
-            code: 'COUPON_ALREADY_REDEEMED',
-            message: 'You have already redeemed this coupon maximum times',
-          },
-        };
-      }
-    }
-
-    // Record redemption
-    const { data: redemptionRow, error: redeemError } = await supabase
-      .from('user_redemptions')
-      .insert({
-        coupon_id: coupon.id,
-        user_id: userId,
-        redeemed_at: new Date().toISOString(),
-        expires_at: coupon.expiry_date,
-        is_claimed: false,
-      })
-      .select('id')
-      .single();
+    // Gates + insert + counter bump live in the `redeem_coupon` RPC (migration
+    // 20261024000000) — direct user_redemptions writes are revoked. No branch
+    // here: a branch-scoped coupon defaults to its own branch in the RPC.
+    const { error: redeemError } = await supabase.rpc('redeem_coupon', {
+      p_coupon_id: coupon.id,
+    });
 
     if (redeemError) {
-      console.error(
-        '[redeemCoupon] Insert error:',
-        formatErrorForLog(redeemError),
-      );
+      const code = redemptionErrorCode(redeemError);
+      if (!code) {
+        console.error(
+          '[redeemCoupon] RPC error:',
+          formatErrorForLog(redeemError),
+        );
+      }
       return {
         success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Failed to redeem coupon',
-        },
+        error: code
+          ? { code, message: redeemError.hint || code }
+          : { code: 'INTERNAL_ERROR', message: 'Failed to redeem coupon' },
       };
-    }
-
-    // Atomic global-cap enforcement — closes the race between the count check above
-    // and concurrent inserts. RPC returns false when the cap was already filled by a
-    // concurrent request; roll back the over-cap row in that case.
-    if (coupon.max_redemptions_global) {
-      const { data: incremented, error: incrError } = await supabase.rpc(
-        'increment_coupon_redemptions',
-        { p_coupon_id: coupon.id },
-      );
-      if (incrError) {
-        console.error(
-          '[redeemCoupon] counter increment failed:',
-          incrError.message,
-        );
-      } else if (!incremented) {
-        await supabase
-          .from('user_redemptions')
-          .delete()
-          .eq('id', redemptionRow.id);
-        return {
-          success: false,
-          error: {
-            code: 'COUPON_LIMIT_REACHED',
-            message: 'Coupon redemption limit reached',
-          },
-        };
-      }
     }
 
     // Get updated stats

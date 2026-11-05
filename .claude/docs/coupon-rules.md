@@ -1,19 +1,20 @@
 # Coupon & Redemption Rules
 
-Business rules for coupon claiming. Enforcement lives in `app/api/protected/mobile/redemptions/route.ts` (POST handler).
+Business rules for coupon claiming. Enforcement lives in the `redeem_coupon` SQL RPC (migration `20261024000000`), shared by every redeem path (mobile `POST /api/protected/mobile/redemptions`, the web shop page's `redeemCouponAction`, and the legacy `/api/web/coupons/[id]/redeem` + `couponService.redeemCoupon`). Clients cannot write `user_redemptions` directly. Behaviour is pinned by `supabase/tests/redemption_lockdown.test.sql`; the code → HTTP mapping lives in `app/api/helpers/redemptionErrors.ts`.
 
 ---
 
 ## Rules enforced today
 
-| Rule                                    | Column                                           | Behavior                                                                                                        |
-| --------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| Coupon must be published & not archived | `status = 'published'`, `archived_at IS NULL`    | 400 — "Coupon not found or not yet active"                                                                      |
-| Coupon must be within active window     | `start_date ≤ now ≤ expiry_date`                 | 400 — "Coupon has expired" or "not yet active"                                                                  |
-| Total supply cap                        | `max_redemptions_global`                         | 400 — "Coupon has reached its redemption limit" (atomic via `increment_coupon_redemptions` RPC to prevent race) |
-| Per-user lifetime claim limit           | `max_redemptions_per_user`                       | 400 — "You have already redeemed this coupon the maximum number of times"                                       |
-| No duplicate active redemption          | query `user_redemptions` for unclaimed+unexpired | 400 — "You already have this deal in your wallet"                                                               |
-| Subscription gate                       | `requires_subscription` (default `false`)        | 403 — "Follow this business to claim this deal"                                                                 |
+| Rule                                    | Column                                                 | Behavior                                                                                                     |
+| --------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| Coupon must be published & not archived | `status = 'published'`, `archived_at IS NULL`          | 400 — "Coupon not found or not yet active"                                                                   |
+| Coupon must be within active window     | `start_date ≤ now ≤ expiry_date`                       | 400 — "Coupon has expired" or "not yet active"                                                               |
+| Total supply cap                        | `max_redemptions_global`                               | 400 — "Coupon has reached its redemption limit" (race-safe: checked + incremented under the coupon row lock) |
+| Per-user lifetime claim limit           | `max_redemptions_per_user`                             | 400 — "You have already redeemed this coupon the maximum number of times"                                    |
+| No duplicate active redemption          | query `user_redemptions` for unclaimed+unexpired       | 400 — "You already have this deal in your wallet"                                                            |
+| Follow gate                             | `requires_follow` (default `false`)                    | 403 — "Follow this business to claim this deal"                                                              |
+| Branch must fit the coupon              | branch of the coupon's business; `branch_id` if scoped | 400 — "This deal cannot be redeemed at that branch"                                                          |
 
 ### Typical values set by businesses
 
@@ -30,16 +31,21 @@ Business rules for coupon claiming. Enforcement lives in `app/api/protected/mobi
 
 ## Error codes mobile app should handle
 
-| Condition                   | HTTP  | Message pattern                                                     |
-| --------------------------- | ----- | ------------------------------------------------------------------- |
-| Coupon not found / inactive | `400` | "Coupon not found or not yet active"                                |
-| Expired                     | `400` | "Coupon has expired"                                                |
-| Supply exhausted            | `400` | "Coupon has reached its redemption limit"                           |
-| Per-user limit hit          | `400` | "You have already redeemed this coupon the maximum number of times" |
-| Active dupe                 | `400` | "You already have this deal in your wallet"                         |
-| Subscription required       | `403` | "Follow this business to claim this deal"                           |
+Every error body is `{ "code": "<CODE>", "message": "<user copy>" }` (the `code` field was added in `20261024000000`; status + message are unchanged).
 
-**Note:** Most errors return `400`; the subscription gate returns `403` so mobile can distinguish "you can't claim this" from "invalid request."
+| Condition                   | `code`                   | HTTP  | Message pattern                                                     |
+| --------------------------- | ------------------------ | ----- | ------------------------------------------------------------------- |
+| Coupon not found / inactive | `COUPON_NOT_FOUND`       | `400` | "Coupon not found or not yet active"                                |
+| Wrong branch                | `BRANCH_MISMATCH`        | `400` | "This deal cannot be redeemed at that branch"                       |
+| Expired                     | `COUPON_EXPIRED`         | `400` | "Coupon has expired"                                                |
+| Supply exhausted            | `COUPON_LIMIT_REACHED`   | `400` | "Coupon has reached its redemption limit"                           |
+| Per-user limit hit          | `PER_USER_LIMIT_REACHED` | `400` | "You have already redeemed this coupon the maximum number of times" |
+| Active dupe                 | `ALREADY_IN_WALLET`      | `400` | "You already have this deal in your wallet"                         |
+| Follow required             | `FOLLOW_REQUIRED`        | `403` | "Follow this business to claim this deal"                           |
+
+Claim (`PATCH /api/protected/mobile/redemptions/[id]/claim`, RPC `claim_my_redemption`): `REDEMPTION_NOT_FOUND` 404 "Redemption not found", `ALREADY_CLAIMED` 400 "Redemption already claimed", `REDEMPTION_EXPIRED` 400 "Redemption has expired".
+
+**Note:** Most errors return `400`; the follow gate returns `403` so mobile can distinguish "you can't claim this" from "invalid request."
 
 ---
 

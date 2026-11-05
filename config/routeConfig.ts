@@ -373,6 +373,11 @@ export function adminWelcomePostsPath(adminId: string, ids?: string[]): string {
   return ids?.length ? `${base}?ids=${ids.join(',')}` : base;
 }
 
+/** Admin review moderation queue (reported + hidden/removed reviews). */
+export function adminReviewsPath(adminId: string): string {
+  return adminPath(adminId, 'reviews');
+}
+
 export function adminAccountStatusPath(adminId: string): string {
   return adminPath(adminId, 'account-status');
 }

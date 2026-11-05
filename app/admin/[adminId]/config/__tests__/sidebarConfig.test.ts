@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { adminReviewsPath } from '@/config/routeConfig';
 import {
   injectAdminId,
   SIDEBAR_SECTIONS,
@@ -62,6 +63,14 @@ describe('SIDEBAR_SECTIONS', () => {
     // Same base the route helper and the actions' revalidate use.
     expect(injectAdminId(item!.href!, ADMIN_ID)).toBe(
       `/admin/${ADMIN_ID}/menu-follow-up`,
+    );
+  });
+
+  it('includes the reviews moderation entry, matching its route helper', () => {
+    const item = mainNavigation.find((i) => i.title === 'Reviews');
+    expect(item?.href).toBe('/admin/reviews');
+    expect(injectAdminId(item!.href!, ADMIN_ID)).toBe(
+      adminReviewsPath(ADMIN_ID),
     );
   });
 

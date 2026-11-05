@@ -6,6 +6,7 @@ import {
   FileCheck,
   CalendarDays,
   MailWarning,
+  MessageSquareWarning,
   Settings,
   Sparkles,
   Star,
@@ -50,6 +51,11 @@ export const mainNavigation: NavItem[] = [
     title: 'Menu Follow-up',
     href: '/admin/menu-follow-up',
     icon: MailWarning,
+  },
+  {
+    title: 'Reviews',
+    href: '/admin/reviews',
+    icon: MessageSquareWarning,
   },
   {
     title: 'Welcome Posts',

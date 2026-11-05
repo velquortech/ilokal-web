@@ -2045,6 +2045,25 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      claim_my_redemption: {
+        Args: { p_redemption_id: string }
+        Returns: {
+          branch_id: string | null
+          code: string
+          coupon_id: string
+          expires_at: string | null
+          id: string
+          is_claimed: boolean | null
+          redeemed_at: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "user_redemptions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_notification: {
         Args: {
           p_actor_id?: string
@@ -2387,6 +2406,25 @@ export type Database = {
       record_view: {
         Args: { p_business_id?: string; p_product_id?: string }
         Returns: undefined
+      }
+      redeem_coupon: {
+        Args: { p_branch_id?: string; p_coupon_id: string }
+        Returns: {
+          branch_id: string | null
+          code: string
+          coupon_id: string
+          expires_at: string | null
+          id: string
+          is_claimed: boolean | null
+          redeemed_at: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "user_redemptions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       request_booking: {
         Args: {

@@ -1,10 +1,11 @@
 /**
- * redeemCouponAction / follow actions — full gate matrix.
+ * redeemCouponAction / follow actions.
  *
- * The web redeem action must stay behavior-identical to the mobile route
- * (`app/api/protected/mobile/redemptions/route.ts`): same gate ORDER and the
- * exact user copy from `.claude/docs/coupon-rules.md`. These tests pin that
- * contract so either twin drifting fails the build.
+ * The redeem gates live in the `redeem_coupon` RPC (migration 20261024000000),
+ * shared with the mobile route; their behaviour is pinned by
+ * `supabase/tests/redemption_lockdown.test.sql`. What this file pins is the
+ * action's own half: the auth gates that run before the DB, the RPC call, and
+ * the mapping of each RPC code to the action's failure shape + user copy.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -36,101 +37,31 @@ const customer = {
   archived_at: null,
 } as unknown as User;
 
-function futureIso(hours: number): string {
-  return new Date(Date.now() + hours * 3_600_000).toISOString();
-}
+const REDEMPTION = {
+  id: 'red-1',
+  code: 'ABC123',
+  expires_at: '2026-12-31T00:00:00.000Z',
+  user_id: USER_ID,
+  coupon_id: COUPON_ID,
+  branch_id: BRANCH_ID,
+  is_claimed: false,
+  redeemed_at: '2026-10-24T00:00:00.000Z',
+};
 
-interface CouponRow {
-  id: string;
-  start_date: string;
-  expiry_date: string;
-  status: string;
-  max_redemptions_per_user: number | null;
-  max_redemptions_global: number | null;
-  current_redemptions: number;
-  requires_follow: boolean;
-  business_id: string;
-  branch_id: string | null;
-  businesses?: { archived_at: string | null } | null;
-}
-
-function liveCoupon(overrides: Partial<CouponRow> = {}): CouponRow {
-  return {
-    id: COUPON_ID,
-    start_date: futureIso(-24),
-    expiry_date: futureIso(24),
-    status: 'published',
-    max_redemptions_per_user: null,
-    max_redemptions_global: null,
-    current_redemptions: 0,
-    requires_follow: false,
-    business_id: BUSINESS_ID,
-    branch_id: null,
-    businesses: { archived_at: null },
-    ...overrides,
-  };
-}
-
-/**
- * Table-routed supabase mock. Each table gets a self-chaining proxy whose
- * terminal methods resolve with the configured result.
- */
-interface TableConfig {
-  coupon?: { data: CouponRow | null; error?: unknown };
-  /** Defaults to a branch belonging to the coupon's business. */
-  branch?: { id: string; business_id: string } | null;
-  followCount?: number;
-  priorRedemptions?: Array<{ is_claimed: boolean; expires_at: string | null }>;
-  insertResult?: {
-    data: { id: string; code: string | null; expires_at: string | null } | null;
-    error?: unknown;
-  };
+interface MockConfig {
+  /** What `rpc('redeem_coupon')` resolves to. Defaults to a fresh row. */
+  redeem?: { data: unknown; error: unknown };
+  notifyError?: unknown;
   followInsertError?: { code: string } | null;
-  increment?: boolean;
 }
 
-const deleteEq = vi.fn();
 const followInsert = vi.fn();
 const rpcMock = vi.fn();
 
-function mockSupabase(config: TableConfig) {
+function mockSupabase(config: MockConfig) {
   const from = vi.fn((table: string) => {
-    if (table === 'coupons') {
-      return {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        is: vi.fn().mockReturnThis(),
-        lte: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({
-          data: config.coupon?.data ?? null,
-          error: config.coupon?.error ?? (config.coupon?.data ? null : {}),
-        }),
-      };
-    }
-    if (table === 'branches') {
-      return {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        is: vi.fn().mockReturnThis(),
-        maybeSingle: vi.fn().mockResolvedValue({
-          data:
-            config.branch === undefined
-              ? { id: BRANCH_ID, business_id: BUSINESS_ID }
-              : config.branch,
-          error: null,
-        }),
-      };
-    }
     if (table === 'follows') {
       return {
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            eq: vi.fn().mockResolvedValue({
-              count: config.followCount ?? 0,
-              error: null,
-            }),
-          })),
-        })),
         insert: followInsert.mockResolvedValue({
           error: config.followInsertError ?? null,
         }),
@@ -141,39 +72,16 @@ function mockSupabase(config: TableConfig) {
         })),
       };
     }
-    if (table === 'user_redemptions') {
-      return {
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            eq: vi.fn().mockResolvedValue({
-              data: config.priorRedemptions ?? [],
-              error: null,
-            }),
-          })),
-        })),
-        insert: vi.fn(() => ({
-          select: vi.fn(() => ({
-            single: vi.fn().mockResolvedValue(
-              config.insertResult ?? {
-                data: {
-                  id: 'red-1',
-                  code: 'ABC123',
-                  expires_at: futureIso(24),
-                },
-                error: null,
-              },
-            ),
-          })),
-        })),
-        delete: vi.fn(() => ({ eq: deleteEq.mockResolvedValue({}) })),
-      };
-    }
+    // Redeem must never touch a table directly — the writes are revoked.
     throw new Error(`unexpected table ${table}`);
   });
 
   rpcMock.mockImplementation(async (fn: string) => {
-    if (fn === 'increment_coupon_redemptions') {
-      return { data: config.increment ?? true, error: null };
+    if (fn === 'redeem_coupon') {
+      return config.redeem ?? { data: REDEMPTION, error: null };
+    }
+    if (fn === 'notify_coupon_redemption') {
+      return { data: null, error: config.notifyError ?? null };
     }
     return { data: null, error: null };
   });
@@ -182,6 +90,10 @@ function mockSupabase(config: TableConfig) {
     from,
     rpc: rpcMock,
   } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>);
+}
+
+function rpcError(code: string, hint: string) {
+  return { data: null, error: { message: code, hint, code: 'P0001' } };
 }
 
 beforeEach(() => {
@@ -252,153 +164,86 @@ describe('redeemCouponAction — auth gates', () => {
   });
 });
 
-describe('redeemCouponAction — coupon gates (mobile-route copy)', () => {
-  it('unknown/unpublished coupon', async () => {
-    mockSupabase({ coupon: { data: null } });
+describe('redeemCouponAction — RPC gate mapping', () => {
+  it.each([
+    ['COUPON_NOT_FOUND', 'Coupon not found or not yet active', 'BAD_REQUEST'],
+    [
+      'BRANCH_MISMATCH',
+      'This deal cannot be redeemed at that branch',
+      'BAD_REQUEST',
+    ],
+    ['COUPON_EXPIRED', 'Coupon has expired', 'BAD_REQUEST'],
+    [
+      'COUPON_LIMIT_REACHED',
+      'Coupon has reached its redemption limit',
+      'BAD_REQUEST',
+    ],
+    ['FOLLOW_REQUIRED', 'Follow this business to claim this deal', 'FORBIDDEN'],
+    [
+      'ALREADY_IN_WALLET',
+      'You already have this deal in your wallet',
+      'BAD_REQUEST',
+    ],
+    [
+      'PER_USER_LIMIT_REACHED',
+      'You have already redeemed this coupon the maximum number of times',
+      'BAD_REQUEST',
+    ],
+    ['UNAUTHENTICATED', 'Sign in to continue', 'AUTH_REQUIRED'],
+  ])('%s → %s', async (rpcCode, hint, actionCode) => {
+    mockSupabase({ redeem: rpcError(rpcCode, hint) });
     const result = await redeemCouponAction(COUPON_ID, BRANCH_ID);
-    expect(result).toMatchObject({
-      ok: false,
-      message: 'Coupon not found or not yet active',
-    });
+    expect(result).toEqual({ ok: false, code: actionCode, message: hint });
+    expect(rpcMock).not.toHaveBeenCalledWith(
+      'notify_coupon_redemption',
+      expect.anything(),
+    );
   });
 
-  it('treats a coupon of an archived business as not found', async () => {
+  it('an unknown DB error is a generic SERVER_ERROR, never the DB text', async () => {
     mockSupabase({
-      coupon: {
-        data: liveCoupon({
-          businesses: { archived_at: '2026-07-01T00:00:00Z' },
-        }),
+      redeem: {
+        data: null,
+        error: { message: 'relation "x" does not exist', code: '42P01' },
       },
     });
     const result = await redeemCouponAction(COUPON_ID, BRANCH_ID);
-    expect(result).toMatchObject({
+    expect(result).toEqual({
       ok: false,
-      message: 'Coupon not found or not yet active',
-    });
-  });
-
-  it('rejects a branch belonging to a different business', async () => {
-    mockSupabase({
-      coupon: { data: liveCoupon() },
-      branch: { id: BRANCH_ID, business_id: 'not-the-coupon-business' },
-    });
-    const result = await redeemCouponAction(COUPON_ID, BRANCH_ID);
-    expect(result).toMatchObject({
-      ok: false,
-      message: 'This deal cannot be redeemed at that branch',
-    });
-  });
-
-  it('rejects redeeming a branch-scoped coupon at another branch', async () => {
-    mockSupabase({
-      coupon: {
-        data: liveCoupon({
-          branch_id: '55555555-5555-5555-5555-555555555555',
-        }),
-      },
-    });
-    const result = await redeemCouponAction(COUPON_ID, BRANCH_ID);
-    expect(result).toMatchObject({
-      ok: false,
-      message: 'This deal cannot be redeemed at that branch',
-    });
-  });
-
-  it('expired coupon', async () => {
-    mockSupabase({
-      coupon: { data: liveCoupon({ expiry_date: futureIso(-1) }) },
-    });
-    const result = await redeemCouponAction(COUPON_ID, BRANCH_ID);
-    expect(result).toMatchObject({ ok: false, message: 'Coupon has expired' });
-  });
-
-  it('global cap already reached', async () => {
-    mockSupabase({
-      coupon: {
-        data: liveCoupon({
-          max_redemptions_global: 50,
-          current_redemptions: 50,
-        }),
-      },
-    });
-    const result = await redeemCouponAction(COUPON_ID, BRANCH_ID);
-    expect(result).toMatchObject({
-      ok: false,
-      message: 'Coupon has reached its redemption limit',
-    });
-  });
-
-  it('follow gate returns FORBIDDEN with the follow copy', async () => {
-    mockSupabase({
-      coupon: { data: liveCoupon({ requires_follow: true }) },
-      followCount: 0,
-    });
-    const result = await redeemCouponAction(COUPON_ID, BRANCH_ID);
-    expect(result).toMatchObject({
-      ok: false,
-      code: 'FORBIDDEN',
-      message: 'Follow this business to claim this deal',
-    });
-  });
-
-  it('active duplicate in the wallet', async () => {
-    mockSupabase({
-      coupon: { data: liveCoupon() },
-      priorRedemptions: [{ is_claimed: false, expires_at: futureIso(5) }],
-    });
-    const result = await redeemCouponAction(COUPON_ID, BRANCH_ID);
-    expect(result).toMatchObject({
-      ok: false,
-      message: 'You already have this deal in your wallet',
-    });
-  });
-
-  it('per-user lifetime cap', async () => {
-    mockSupabase({
-      coupon: { data: liveCoupon({ max_redemptions_per_user: 1 }) },
-      priorRedemptions: [{ is_claimed: true, expires_at: null }],
-    });
-    const result = await redeemCouponAction(COUPON_ID, BRANCH_ID);
-    expect(result).toMatchObject({
-      ok: false,
-      message:
-        'You have already redeemed this coupon the maximum number of times',
+      code: 'SERVER_ERROR',
+      message: 'Could not redeem right now',
     });
   });
 });
 
-describe('redeemCouponAction — success + race', () => {
-  it('inserts, increments, and returns the server-generated code', async () => {
-    mockSupabase({ coupon: { data: liveCoupon() } });
+describe('redeemCouponAction — success', () => {
+  it('redeems through the RPC, notifies, and returns the server code', async () => {
+    mockSupabase({});
     const result = await redeemCouponAction(COUPON_ID, BRANCH_ID);
-    expect(result).toMatchObject({
+    expect(result).toEqual({
       ok: true,
-      redemption: { id: 'red-1', code: 'ABC123' },
+      redemption: {
+        id: 'red-1',
+        code: 'ABC123',
+        expires_at: REDEMPTION.expires_at,
+      },
     });
-    expect(rpcMock).toHaveBeenCalledWith('increment_coupon_redemptions', {
+    expect(rpcMock).toHaveBeenCalledWith('redeem_coupon', {
       p_coupon_id: COUPON_ID,
+      p_branch_id: BRANCH_ID,
     });
     expect(rpcMock).toHaveBeenCalledWith('notify_coupon_redemption', {
       p_redemption_id: 'red-1',
     });
-    expect(deleteEq).not.toHaveBeenCalled();
+    expect(rpcMock).not.toHaveBeenCalledWith(
+      'increment_coupon_redemptions',
+      expect.anything(),
+    );
   });
 
-  it('rolls the row back when a concurrent redeem takes the last slot', async () => {
-    mockSupabase({ coupon: { data: liveCoupon() }, increment: false });
-    const result = await redeemCouponAction(COUPON_ID, BRANCH_ID);
-    expect(result).toMatchObject({
-      ok: false,
-      message: 'Coupon has reached its redemption limit',
-    });
-    expect(deleteEq).toHaveBeenCalledWith('id', 'red-1');
-  });
-
-  it('a follower passes the follow gate', async () => {
-    mockSupabase({
-      coupon: { data: liveCoupon({ requires_follow: true }) },
-      followCount: 1,
-    });
+  it('a notification failure does not fail the redeem', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockSupabase({ notifyError: { message: 'notify boom' } });
     const result = await redeemCouponAction(COUPON_ID, BRANCH_ID);
     expect(result).toMatchObject({ ok: true });
   });

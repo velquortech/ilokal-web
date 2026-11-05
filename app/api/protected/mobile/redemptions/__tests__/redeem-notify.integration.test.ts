@@ -1,8 +1,12 @@
 /**
- * Coupon-redemption → owner notification.
- * After a successful redemption, the route calls the notify_coupon_redemption
- * RPC (which notifies the business owner). The call is non-fatal: an RPC error
- * is logged but never fails the redemption response.
+ * POST /api/protected/mobile/redemptions — the RPC hand-off.
+ *
+ * The claim gates, insert and counter bump live in the `redeem_coupon` RPC
+ * (migration 20261024000000; behaviour pinned by
+ * supabase/tests/redemption_lockdown.test.sql). This file pins the route's
+ * half: the RPC call, the status/body each RPC code maps to (unchanged from
+ * when the gates lived here, so the mobile client sees the same responses),
+ * and the non-fatal owner notification.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -20,129 +24,130 @@ import { POST } from '../route';
 const USER_ID = '11111111-0000-0000-0000-000000000001';
 const COUPON_ID = '22222222-0000-0000-0000-000000000001';
 const BRANCH_ID = '33333333-0000-0000-0000-000000000001';
-const BUSINESS_ID = '44444444-0000-0000-0000-000000000001';
 const REDEMPTION_ID = '55555555-0000-0000-0000-000000000001';
 
-const coupon = {
-  id: COUPON_ID,
-  start_date: new Date(Date.now() - 86_400_000).toISOString(),
-  expiry_date: new Date(Date.now() + 86_400_000).toISOString(),
-  status: 'published',
-  max_redemptions_per_user: null,
-  max_redemptions_global: null,
-  current_redemptions: 0,
-  requires_follow: false,
-  business_id: BUSINESS_ID,
-};
+type RpcResult = { data: unknown; error: unknown };
 
-/**
- * Chainable builder that is both awaitable (resolves to `selectResult`) and
- * supports `.insert().select().single()` / `.select()....single()`.
- */
-function tableBuilder(handlers: {
-  selectResult?: { data: unknown; error: unknown };
-  selectSingleResult?: { data: unknown; error: unknown };
-  insertSingleResult?: { data: unknown; error: unknown };
-}) {
-  let mode: 'select' | 'insert' = 'select';
-  const builder: Record<string, unknown> = {};
-  const ret = () => builder;
-  builder.select = vi.fn(ret);
-  builder.insert = vi.fn(() => {
-    mode = 'insert';
-    return builder;
-  });
-  builder.eq = vi.fn(ret);
-  builder.is = vi.fn(ret);
-  builder.lte = vi.fn(ret);
-  builder.not = vi.fn(ret);
-  builder.or = vi.fn(ret);
-  builder.delete = vi.fn(ret);
-  builder.single = vi.fn(() =>
-    Promise.resolve(
-      mode === 'insert'
-        ? handlers.insertSingleResult
-        : handlers.selectSingleResult,
-    ),
-  );
-  // Awaiting a chain that doesn't end in .single() resolves selectResult.
-  builder.then = (resolve: (v: unknown) => unknown) =>
-    resolve(handlers.selectResult ?? { data: [], error: null });
-  return builder;
-}
-
-function makeAuth(notifyResult: { data: unknown; error: unknown }) {
+function makeAuth(opts: { redeem?: RpcResult; notify?: RpcResult } = {}) {
   const rpc = vi.fn((name: string) => {
-    if (name === 'increment_coupon_redemptions')
-      return Promise.resolve({ data: true, error: null });
+    if (name === 'redeem_coupon')
+      return Promise.resolve(
+        opts.redeem ?? { data: { id: REDEMPTION_ID }, error: null },
+      );
     if (name === 'notify_coupon_redemption')
-      return Promise.resolve(notifyResult);
+      return Promise.resolve(opts.notify ?? { data: 'notif-1', error: null });
     return Promise.resolve({ data: null, error: null });
   });
-
+  // Redeem must not touch a table directly — client writes are revoked.
   const from = vi.fn((table: string) => {
-    if (table === 'coupons')
-      return tableBuilder({
-        selectSingleResult: { data: coupon, error: null },
-      });
-    // user_redemptions: select-existing resolves [], insert returns the new row.
-    return tableBuilder({
-      selectResult: { data: [], error: null },
-      insertSingleResult: { data: { id: REDEMPTION_ID }, error: null },
-    });
+    throw new Error(`unexpected table ${table}`);
   });
 
-  return {
-    user: { id: USER_ID },
-    token: 't',
-    supabase: { from, rpc },
-    rpc,
-  };
+  const auth = { user: { id: USER_ID }, token: 't', supabase: { from, rpc } };
+  vi.mocked(getMobileUser).mockResolvedValue(
+    auth as unknown as Awaited<ReturnType<typeof getMobileUser>>,
+  );
+  return { rpc, from };
 }
 
-function makeRequest() {
+function makeRequest(
+  body: unknown = { coupon_id: COUPON_ID, branch_id: BRANCH_ID },
+) {
   return new NextRequest('http://localhost/api/protected/mobile/redemptions', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ coupon_id: COUPON_ID, branch_id: BRANCH_ID }),
+    body: JSON.stringify(body),
   });
 }
 
-describe('POST /api/protected/mobile/redemptions → owner notification', () => {
+describe('POST /api/protected/mobile/redemptions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
-  it('calls notify_coupon_redemption with the new redemption id after redeeming', async () => {
-    const auth = makeAuth({ data: 'notif-1', error: null });
-    vi.mocked(getMobileUser).mockResolvedValue(
-      auth as unknown as Awaited<ReturnType<typeof getMobileUser>>,
-    );
+  it('redeems through redeem_coupon and notifies the owner', async () => {
+    const { rpc, from } = makeAuth();
 
     const res = await POST(makeRequest());
     const body = await res.json();
 
     expect(res.status).toBe(200);
     expect(body.redemption).toEqual({ id: REDEMPTION_ID });
-    expect(auth.rpc).toHaveBeenCalledWith('notify_coupon_redemption', {
+    expect(rpc).toHaveBeenCalledWith('redeem_coupon', {
+      p_coupon_id: COUPON_ID,
+      p_branch_id: BRANCH_ID,
+    });
+    expect(rpc).toHaveBeenCalledWith('notify_coupon_redemption', {
       p_redemption_id: REDEMPTION_ID,
     });
+    expect(rpc).not.toHaveBeenCalledWith(
+      'increment_coupon_redemptions',
+      expect.anything(),
+    );
+    expect(from).not.toHaveBeenCalled();
   });
 
   it('still succeeds when the notification RPC errors (non-fatal)', async () => {
-    const auth = makeAuth({ data: null, error: { message: 'notify boom' } });
-    vi.mocked(getMobileUser).mockResolvedValue(
-      auth as unknown as Awaited<ReturnType<typeof getMobileUser>>,
-    );
+    makeAuth({ notify: { data: null, error: { message: 'notify boom' } } });
 
     const res = await POST(makeRequest());
-    const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body.redemption).toEqual({ id: REDEMPTION_ID });
-    expect(auth.rpc).toHaveBeenCalledWith('notify_coupon_redemption', {
-      p_redemption_id: REDEMPTION_ID,
+    expect((await res.json()).redemption).toEqual({ id: REDEMPTION_ID });
+  });
+
+  it('400s a malformed body before calling the RPC', async () => {
+    const { rpc } = makeAuth();
+    const res = await POST(
+      makeRequest({ coupon_id: 'nope', branch_id: BRANCH_ID }),
+    );
+    expect(res.status).toBe(400);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['COUPON_NOT_FOUND', 'Coupon not found or not yet active', 400],
+    ['BRANCH_MISMATCH', 'This deal cannot be redeemed at that branch', 400],
+    ['COUPON_EXPIRED', 'Coupon has expired', 400],
+    ['COUPON_LIMIT_REACHED', 'Coupon has reached its redemption limit', 400],
+    ['FOLLOW_REQUIRED', 'Follow this business to claim this deal', 403],
+    ['ALREADY_IN_WALLET', 'You already have this deal in your wallet', 400],
+    [
+      'PER_USER_LIMIT_REACHED',
+      'You have already redeemed this coupon the maximum number of times',
+      400,
+    ],
+  ])('%s → %i with the user copy', async (code, hint, status) => {
+    const { rpc } = makeAuth({
+      redeem: { data: null, error: { message: code, hint, code: 'P0001' } },
     });
+
+    const res = await POST(makeRequest());
+
+    expect(res.status).toBe(status);
+    expect(await res.json()).toEqual({ code, message: hint });
+    expect(rpc).not.toHaveBeenCalledWith(
+      'notify_coupon_redemption',
+      expect.anything(),
+    );
+  });
+
+  it('an unknown DB error is a 500 that never forwards the DB text', async () => {
+    makeAuth({
+      redeem: {
+        data: null,
+        error: {
+          message: 'permission denied for table user_redemptions',
+          code: '42501',
+        },
+      },
+    });
+
+    const res = await POST(makeRequest());
+    const text = await res.text();
+
+    expect(res.status).toBe(500);
+    expect(text).not.toContain('permission denied');
   });
 });

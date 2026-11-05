@@ -1,15 +1,17 @@
 import { getMobileUser } from '@/app/api/helpers/mobile-request';
 import {
-  badRequestResponse,
   generalErrorResponse,
   notFoundResponse,
   successResponse,
   unauthorizedResponse,
-  loggedServerError,
 } from '@/app/api/helpers/response';
+import { redemptionErrorResponse } from '@/app/api/helpers/redemptionErrors';
+import { isValidResourceId } from '@/app/api/helpers/resourceId';
 import { NextRequest } from 'next/server';
 
 type Params = { params: Promise<{ id: string }> };
+
+const CONTEXT = 'protected/mobile/redemptions/[id]/claim';
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
@@ -17,44 +19,27 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (!auth) return unauthorizedResponse();
 
     const { id } = await params;
-
-    const { data: redemption, error: fetchError } = await auth.supabase
-      .from('user_redemptions')
-      .select('id, user_id, is_claimed, expires_at')
-      .eq('id', id)
-      .eq('user_id', auth.user.id)
-      .single();
-
-    if (fetchError || !redemption) {
+    if (!isValidResourceId(id)) {
       return notFoundResponse({ message: 'Redemption not found' });
     }
 
-    if (redemption.is_claimed) {
-      return badRequestResponse({ message: 'Redemption already claimed' });
-    }
+    // Own row, unclaimed → claimed, not expired — enforced by the RPC
+    // (migration 20261024000000). Clients can no longer UPDATE
+    // user_redemptions directly, so a claim can't be flipped back.
+    const { data, error } = await auth.supabase.rpc('claim_my_redemption', {
+      p_redemption_id: id,
+    });
 
-    if (redemption.expires_at && new Date(redemption.expires_at) < new Date()) {
-      return badRequestResponse({ message: 'Redemption has expired' });
-    }
+    if (error) return redemptionErrorResponse(CONTEXT, error, auth.user.id);
 
-    const { data, error } = await auth.supabase
-      .from('user_redemptions')
-      .update({ is_claimed: true })
-      .eq('id', id)
-      .eq('user_id', auth.user.id)
-      .eq('is_claimed', false)
-      .select('id, is_claimed, redeemed_at, expires_at')
-      .maybeSingle();
-
-    if (error)
-      return loggedServerError(
-        'protected/mobile/redemptions/[id]/claim',
-        error,
-      );
-    if (!data)
-      return badRequestResponse({ message: 'Redemption already claimed' });
-
-    return successResponse({ redemption: data });
+    return successResponse({
+      redemption: {
+        id: data.id,
+        is_claimed: data.is_claimed,
+        redeemed_at: data.redeemed_at,
+        expires_at: data.expires_at,
+      },
+    });
   } catch {
     return generalErrorResponse();
   }

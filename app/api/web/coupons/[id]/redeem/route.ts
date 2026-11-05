@@ -3,6 +3,11 @@ import { getCurrentUser } from '@/lib/api/getCurrentUser';
 import type { ApiResponse } from '@/lib/types';
 import { NextRequest, NextResponse } from 'next/server';
 import { formatErrorForLog } from '@/lib/utils/describeDbError';
+import {
+  REDEMPTION_ERROR_STATUS,
+  redemptionErrorCode,
+} from '@/app/api/helpers/redemptionErrors';
+import { isValidResourceId } from '@/app/api/helpers/resourceId';
 
 // POST /api/coupons/[couponId]/redeem - User redeems a coupon
 export async function POST(
@@ -28,128 +33,50 @@ export async function POST(
     const body = await req.json();
     const { branch_id } = body;
 
-    if (!branch_id) {
+    if (!isValidResourceId(couponId) || !isValidResourceId(branch_id)) {
       return NextResponse.json(
         {
           success: false,
-          error: { code: 'VALIDATION_ERROR', message: 'branch_id is required' },
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'coupon id and branch_id must be valid UUIDs',
+          },
         },
         { status: 400 },
       );
     }
 
     const supabase = await createServerSupabaseClient();
-    const now = new Date().toISOString();
 
-    // Verify coupon exists and satisfies the full access invariant at query time
-    const { data: coupon, error: couponError } = await supabase
-      .from('coupons')
-      .select('id, expiry_date, max_redemptions_global')
-      .eq('id', couponId)
-      .eq('status', 'published')
-      .is('archived_at', null)
-      .lte('start_date', now)
-      .single();
+    // All gates + insert + counter bump live in the RPC (migration
+    // 20261024000000), shared with the mobile route and the web action.
+    const { data: redemption, error: redeemError } = await supabase.rpc(
+      'redeem_coupon',
+      { p_coupon_id: couponId, p_branch_id: branch_id },
+    );
 
-    if (couponError || !coupon) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'NOT_FOUND', message: 'Coupon not found' },
-        },
-        { status: 404 },
-      );
-    }
-
-    if (new Date(coupon.expiry_date) < new Date()) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'EXPIRED', message: 'Coupon has expired' },
-        },
-        { status: 410 },
-      );
-    }
-
-    // Check if user has already redeemed this coupon
-    const { data: existing } = await supabase
-      .from('user_redemptions')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('coupon_id', couponId)
-      .single();
-
-    if (existing) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'ALREADY_REDEEMED',
-            message: 'You have already redeemed this coupon',
-          },
-        },
-        { status: 409 },
-      );
-    }
-
-    // Create redemption record
-    const { data: redemption, error: redemptionError } = await supabase
-      .from('user_redemptions')
-      .insert([
-        {
-          user_id: user.id,
-          coupon_id: couponId,
-          branch_id,
-          redeemed_at: new Date().toISOString(),
-          is_claimed: false,
-          expires_at: coupon.expiry_date,
-        },
-      ])
-      .select()
-      .single();
-
-    if (redemptionError) {
-      console.error(
-        '[POST /api/coupons/[id]/redeem] DB error:',
-        formatErrorForLog(redemptionError),
-      );
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: 'DB_ERROR', message: redemptionError.message },
-        },
-        { status: 500 },
-      );
-    }
-
-    // Atomic global-cap enforcement — RPC returns false when a concurrent insert
-    // already filled the last slot. Roll back the over-cap row in that case.
-    if (coupon.max_redemptions_global !== null) {
-      const { data: incremented, error: incrError } = await supabase.rpc(
-        'increment_coupon_redemptions',
-        { p_coupon_id: couponId },
-      );
-      if (incrError) {
-        console.error(
-          '[POST /api/coupons/[id]/redeem] counter increment failed:',
-          incrError.message,
-        );
-      } else if (!incremented) {
-        await supabase
-          .from('user_redemptions')
-          .delete()
-          .eq('id', redemption.id);
+    if (redeemError || !redemption) {
+      const code = redeemError ? redemptionErrorCode(redeemError) : null;
+      if (code) {
         return NextResponse.json(
           {
             success: false,
-            error: {
-              code: 'COUPON_LIMIT_REACHED',
-              message: 'Coupon redemption limit reached',
-            },
+            error: { code, message: redeemError?.hint || code },
           },
-          { status: 409 },
+          { status: REDEMPTION_ERROR_STATUS[code] },
         );
       }
+      console.error(
+        '[POST /api/coupons/[id]/redeem] DB error:',
+        formatErrorForLog(redeemError),
+      );
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: 'DB_ERROR', message: 'Failed to redeem coupon' },
+        },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({

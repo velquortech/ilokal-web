@@ -350,7 +350,7 @@ file yet. **Read the handler before integrating** — do not assume a shape.
 | `GET /api/protected/mobile/updates` | followed-business feed (posts + live coupons + new products) |
 | `GET`/`PATCH` `/api/protected/mobile/notifications` · `/[id]` · `/read-all` | in-app inbox |
 | `POST /api/protected/mobile/me/avatar` | avatar upload (WebP pipeline) |
-| `GET /api/protected/mobile/redemptions/[id]` · `PATCH /[id]/claim` | single redemption + the atomic claim flip |
+| `GET /api/protected/mobile/redemptions/[id]` · `PATCH /[id]/claim` | single redemption + the one-way claim flip (`claim_my_redemption` RPC) |
 | `POST /api/protected/mobile/ratings/businesses/[businessId]` · `/ratings/products/[productId]` | rating writes — gated by SEC-4 (`has_redeemed_from_business`), 42501 maps to a friendly 403 |
 
 
@@ -388,7 +388,7 @@ List coupon redemptions. **Query:** `filter=active|claimed|expired` (omit for al
 
 ### `POST /api/protected/mobile/redemptions`
 
-Redeem a coupon. Sets `expires_at` from `coupons.expiry_date`. **Body:** `{ "coupon_id": "uuid", "branch_id": "uuid" }`
+Redeem a coupon via the `redeem_coupon` RPC (all gates + counter bump in one transaction; see `.claude/docs/coupon-rules.md` for the error `code`/status table). Sets `expires_at` from `coupons.expiry_date`. **Body:** `{ "coupon_id": "uuid", "branch_id": "uuid" }`
 
 ### `GET /api/protected/mobile/itinerary`
 
